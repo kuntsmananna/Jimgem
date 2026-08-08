@@ -5,6 +5,9 @@ export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
   const { id } = await ctx.params;
+  if (id.startsWith("sheet-expense:")) {
+    return NextResponse.json({ error: "Sheet-derived expense entries can't be edited." }, { status: 400 });
+  }
   const body = (await request.json()) as ExpenseInput;
   try {
     const expense = await updateExpense(Number(id), body);
@@ -17,6 +20,9 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expens
 
 export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
   const { id } = await ctx.params;
+  if (id.startsWith("sheet-expense:")) {
+    return NextResponse.json({ error: "Sheet-derived expense entries can't be deleted." }, { status: 400 });
+  }
   try {
     await deleteExpense(Number(id));
     return NextResponse.json({ ok: true });

@@ -29,30 +29,25 @@ export function ExpensesClient({
 
   const period = periods.find((p) => p.key === selectedKey) ?? periods[periods.length - 1];
 
-  const categoryNameById = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
-  const paymentMethodNameById = useMemo(() => new Map(paymentMethods.map((m) => [m.id, m.name])), [paymentMethods]);
-  const staffNameById = useMemo(() => new Map(staff.map((s) => [s.id, s.name])), [staff]);
-
   const slices: DonutSlice[] = useMemo(() => {
-    const totals: Record<string, number> = { ...(period?.legacyTotals?.byCategory ?? {}) };
+    const totals: Record<string, number> = {};
     for (const entry of period?.entries ?? []) {
-      const name = categoryNameById.get(entry.categoryId) ?? "Other";
-      totals[name] = (totals[name] ?? 0) + entry.amount;
+      totals[entry.categoryName] = (totals[entry.categoryName] ?? 0) + entry.amount;
     }
     return Object.entries(totals).map(([label, value], i) => ({
       label,
       value,
       color: EXPENSE_PALETTE[i % EXPENSE_PALETTE.length],
     }));
-  }, [period, categoryNameById]);
+  }, [period]);
 
   function refresh() {
     router.refresh();
   }
 
-  async function deleteEntry(id: number) {
+  async function deleteEntry(key: string) {
     if (!confirm("Delete this expense?")) return;
-    await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+    await fetch(`/api/expenses/${key}`, { method: "DELETE" });
     refresh();
   }
 
@@ -94,7 +89,8 @@ export function ExpensesClient({
 
         {period?.isLegacy && (
           <p className="mt-2 rounded-lg bg-tile-peach px-3 py-2 text-xs font-medium text-ink">
-            Legacy month — only a per-category total is available from the Sheet, no itemized entries.
+            Legacy month — the Sheet has no per-item date or description, so these are shown by category and
+            amount only.
           </p>
         )}
 
@@ -114,16 +110,9 @@ export function ExpensesClient({
 
         <div className="mt-4 flex flex-col gap-1.5">
           {period?.entries.map((entry) => (
-            <ExpenseRow
-              key={entry.id}
-              entry={entry}
-              categoryName={categoryNameById.get(entry.categoryId) ?? "—"}
-              paymentMethodName={entry.paymentMethodId ? paymentMethodNameById.get(entry.paymentMethodId) : undefined}
-              staffName={entry.staffId ? staffNameById.get(entry.staffId) : undefined}
-              onDelete={() => deleteEntry(entry.id)}
-            />
+            <ExpenseRow key={entry.key} entry={entry} onDelete={() => deleteEntry(entry.key)} />
           ))}
-          {period?.entries.length === 0 && !period.isLegacy && (
+          {period?.entries.length === 0 && (
             <p className="text-sm text-ink-soft">No expenses logged for this period yet.</p>
           )}
         </div>
@@ -139,33 +128,26 @@ export function ExpensesClient({
   );
 }
 
-function ExpenseRow({
-  entry,
-  categoryName,
-  paymentMethodName,
-  staffName,
-  onDelete,
-}: {
-  entry: Expense;
-  categoryName: string;
-  paymentMethodName?: string;
-  staffName?: string;
-  onDelete: () => void;
-}) {
+function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void }) {
   return (
     <div className="group flex items-center justify-between rounded-xl border border-line px-3 py-2 text-sm">
       <div className="flex items-center gap-4">
-        <span className="w-20 text-ink-soft">{entry.date}</span>
-        <span className="font-medium text-ink">{categoryName}</span>
-        {paymentMethodName && <span className="text-xs text-ink-soft">{paymentMethodName}</span>}
-        {staffName && <span className="text-xs text-ink-soft">{staffName}</span>}
+        <span className="w-20 text-ink-soft">{entry.source === "db" ? entry.date : "—"}</span>
+        <span className="font-medium text-ink">{entry.categoryName}</span>
+        {entry.paymentMethodName && <span className="text-xs text-ink-soft">{entry.paymentMethodName}</span>}
+        {entry.staffName && <span className="text-xs text-ink-soft">{entry.staffName}</span>}
         {entry.note && <span className="text-xs text-ink-soft">{entry.note}</span>}
+        {entry.source === "sheet" && (
+          <span className="rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">sheet</span>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <span className="font-semibold text-ink">{currency(entry.amount)}</span>
-        <button onClick={onDelete} className="hidden text-xs font-semibold text-ink-soft hover:text-ink group-hover:block">
-          Delete
-        </button>
+        {entry.editable && (
+          <button onClick={onDelete} className="hidden text-xs font-semibold text-ink-soft hover:text-ink group-hover:block">
+            Delete
+          </button>
+        )}
       </div>
     </div>
   );

@@ -23,10 +23,23 @@ export const EXPENSE_CATEGORY_COLUMNS = [
   { index: 6, name: "Packaging & Serving" },
 ] as const;
 
+export interface SheetExpenseItem {
+  /** "sheet-expense:<row>:<col>" — stable per cell, used as a React key and for future overrides. */
+  key: string;
+  category: string;
+  amount: number;
+}
+
 export interface MonthlyExpenses {
   month: number; // 1-12
   byCategory: Record<string, number>;
   total: number;
+  /**
+   * Every individual category-column amount for the month — the Sheet has
+   * no per-row date/description (see CLAUDE.md), so this is the finest
+   * grain actually recoverable: one item per (month, category, amount).
+   */
+  items: SheetExpenseItem[];
 }
 
 function parseNum(raw: string | undefined): number {
@@ -82,16 +95,20 @@ export async function getSheetMonthlyExpenses(
 
     const byCategory: Record<string, number> = {};
     for (const cat of EXPENSE_CATEGORY_COLUMNS) byCategory[cat.name] = 0;
+    const items: SheetExpenseItem[] = [];
 
     block.forEach((row, i) => {
       if (i === lastNonEmpty) return; // skip the totals row
       for (const cat of EXPENSE_CATEGORY_COLUMNS) {
-        byCategory[cat.name] += parseNum(row[cat.index]);
+        const amount = parseNum(row[cat.index]);
+        if (amount === 0) continue;
+        byCategory[cat.name] += amount;
+        items.push({ key: `sheet-expense:${start + i}:${cat.index}`, category: cat.name, amount });
       }
     });
 
     const total = Object.values(byCategory).reduce((a, b) => a + b, 0);
-    results.push({ month: monthRowIndices[m].month, byCategory, total });
+    results.push({ month: monthRowIndices[m].month, byCategory, total, items });
   }
 
   return results;
