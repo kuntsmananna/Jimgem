@@ -66,7 +66,7 @@ export function DonutChart({
   const active = hovered !== null ? arcs[hovered] : null;
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex min-w-0 items-center gap-5">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} onMouseLeave={() => setHovered(null)}>
           {arcs.map((arc, i) => (
@@ -88,17 +88,19 @@ export function DonutChart({
           </div>
         )}
       </div>
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
         {nonZero.map((slice, i) => (
           <li
             key={slice.label}
             onMouseEnter={() => setHovered(i)}
             onMouseLeave={() => setHovered(null)}
-            className="flex items-center gap-2 text-xs"
+            className="flex min-w-0 items-center gap-2 text-xs"
           >
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: slice.color }} />
-            <span className="font-medium text-ink">{slice.label}</span>
-            <span className="text-ink-soft">{Math.round((slice.value / total) * 100)}%</span>
+            <span className="min-w-0 flex-1 truncate font-medium text-ink" title={slice.label}>
+              {slice.label}
+            </span>
+            <span className="shrink-0 text-ink-soft">{Math.round((slice.value / total) * 100)}%</span>
           </li>
         ))}
       </ul>
