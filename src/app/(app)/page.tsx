@@ -1,5 +1,5 @@
-import { getYearlyFinancials } from "@/lib/financials";
-import { getMergedOrders, orderMonth, orderDay, PAYMENT_STATUS_LABEL } from "@/lib/orders";
+import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
+import { getMergedOrders, orderMonth, orderDay } from "@/lib/orders";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 
@@ -31,14 +31,24 @@ export default async function DashboardPage() {
   }
 
   const orderPreviews: OrderPreview[] = orders
-    .map((order) => ({
-      key: order.key,
-      month: orderMonth(order),
-      day: orderDay(order),
-      customer: order.customer || "(no name)",
-      totalAmount: order.totalAmount,
-      paymentStatusLabel: PAYMENT_STATUS_LABEL[order.paymentStatus],
-    }))
+    .map((order) => {
+      const month = orderMonth(order);
+      const day = orderDay(order);
+      const units = order.contentLines.reduce(
+        (sum, line) => sum + line.quantity * (unitsByPackageType.get(Number(line.packageTypeId)) ?? 0),
+        0,
+      );
+      return {
+        key: order.key,
+        month,
+        day,
+        dateLabel: month !== null ? `${MONTH_NAMES_EN[month - 1]}${day ? ` ${day}` : ""}` : order.date,
+        customer: order.customer || "(no name)",
+        location: order.location,
+        totalAmount: order.totalAmount,
+        units,
+      };
+    })
     .filter((o): o is OrderPreview & { month: number } => o.month !== null)
     .sort((a, b) => b.month - a.month || (b.day ?? 0) - (a.day ?? 0));
 

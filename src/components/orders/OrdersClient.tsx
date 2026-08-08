@@ -7,7 +7,7 @@ import type { Flavor, PackageType } from "@/lib/settings";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar } from "./OrdersCalendar";
-import { AddOrderForm } from "./AddOrderForm";
+import { OrderFormModal } from "./OrderFormModal";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -23,13 +23,18 @@ export function OrdersClient({
   const router = useRouter();
   const [view, setView] = useState<View>("table");
   const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | "all">("all");
+  const [productionFilter, setProductionFilter] = useState<ProductionStatus | "all">("all");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
 
   const filtered = useMemo(
-    () => (paymentFilter === "all" ? orders : orders.filter((o) => o.paymentStatus === paymentFilter)),
-    [orders, paymentFilter],
+    () =>
+      orders
+        .filter((o) => paymentFilter === "all" || o.paymentStatus === paymentFilter)
+        .filter((o) => productionFilter === "all" || o.productionStatus === productionFilter),
+    [orders, paymentFilter, productionFilter],
   );
 
   function refresh() {
@@ -93,18 +98,18 @@ export function OrdersClient({
           ))}
         </div>
         <button
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => setAdding(true)}
           className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-cream"
         >
-          {adding ? "Cancel" : "+ Add order"}
+          + Add order
         </button>
       </div>
 
       {adding && (
-        <AddOrderForm
+        <OrderFormModal
           flavors={flavors}
           packageTypes={packageTypes}
-          onCancel={() => setAdding(false)}
+          onClose={() => setAdding(false)}
           onSaved={() => {
             setAdding(false);
             refresh();
@@ -112,26 +117,64 @@ export function OrdersClient({
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setPaymentFilter("all")}
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            paymentFilter === "all" ? "bg-black text-cream" : "bg-card text-ink-soft"
-          }`}
-        >
-          All
-        </button>
-        {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((status) => (
+      {editingOrder && (
+        <OrderFormModal
+          order={editingOrder}
+          flavors={flavors}
+          packageTypes={packageTypes}
+          onClose={() => setEditingOrder(null)}
+          onSaved={() => {
+            setEditingOrder(null);
+            refresh();
+          }}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            key={status}
-            onClick={() => setPaymentFilter(status)}
+            onClick={() => setPaymentFilter("all")}
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              paymentFilter === status ? "bg-black text-cream" : "bg-card text-ink-soft"
+              paymentFilter === "all" ? "bg-black text-cream" : "bg-card text-ink-soft"
             }`}
           >
-            {PAYMENT_STATUS_LABEL[status]}
+            All
           </button>
-        ))}
+          {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((status) => (
+            <button
+              key={status}
+              onClick={() => setPaymentFilter(status)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                paymentFilter === status ? "bg-black text-cream" : "bg-card text-ink-soft"
+              }`}
+            >
+              {PAYMENT_STATUS_LABEL[status]}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-ink-soft">Production:</span>
+          <button
+            onClick={() => setProductionFilter("all")}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              productionFilter === "all" ? "bg-black text-cream" : "bg-card text-ink-soft"
+            }`}
+          >
+            All
+          </button>
+          {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((status) => (
+            <button
+              key={status}
+              onClick={() => setProductionFilter(status)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                productionFilter === status ? "bg-black text-cream" : "bg-card text-ink-soft"
+              }`}
+            >
+              {PRODUCTION_STATUS_LABEL[status]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {selectedKeys.size > 0 && (
@@ -163,12 +206,19 @@ export function OrdersClient({
           onToggleSelect={toggleSelect}
           onToggleAll={toggleAll}
           onChanged={refresh}
+          onEdit={setEditingOrder}
           onDuplicate={duplicateOrder}
           onDelete={deleteOrder}
         />
       )}
       {view === "kanban" && (
-        <OrdersKanban orders={filtered} flavors={flavors} packageTypes={packageTypes} onChanged={refresh} />
+        <OrdersKanban
+          orders={filtered}
+          flavors={flavors}
+          packageTypes={packageTypes}
+          onChanged={refresh}
+          onEdit={setEditingOrder}
+        />
       )}
       {view === "calendar" && <OrdersCalendar orders={filtered} />}
     </div>

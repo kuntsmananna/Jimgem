@@ -17,9 +17,11 @@ export interface OrderPreview {
   key: string;
   month: number;
   day: number | null;
+  dateLabel: string;
   customer: string;
+  location: string;
   totalAmount: number;
-  paymentStatusLabel: string;
+  units: number;
 }
 
 interface FlavorMeta {
@@ -138,10 +140,12 @@ export function DashboardClient({
           </div>
           <ul className="mt-4 flex flex-col gap-2">
             {previewOrders.map((order) => (
-              <li key={order.key} className="flex items-center justify-between rounded-xl border border-line px-3 py-2 text-sm">
-                <span className="font-medium text-ink">{order.customer}</span>
-                <span className="text-ink-soft">{order.paymentStatusLabel}</span>
-                <span className="font-semibold text-ink">{currency(order.totalAmount)}</span>
+              <li key={order.key} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm">
+                <span className="w-14 shrink-0 text-xs text-ink-soft">{order.dateLabel}</span>
+                <span className="flex-1 truncate font-medium text-ink">{order.customer}</span>
+                <span className="max-w-[140px] truncate text-xs text-ink-soft">{order.location || "—"}</span>
+                <span className="shrink-0 text-xs text-ink-soft">{order.units > 0 ? `${order.units} units` : "—"}</span>
+                <span className="shrink-0 font-semibold text-ink">{currency(order.totalAmount)}</span>
               </li>
             ))}
             {previewOrders.length === 0 && <p className="text-sm text-ink-soft">No orders in this period.</p>}

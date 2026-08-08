@@ -20,11 +20,13 @@ export function OrdersKanban({
   flavors,
   packageTypes,
   onChanged,
+  onEdit,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
   onChanged: () => void;
+  onEdit: (order: Order) => void;
 }) {
   return (
     <div className="grid grid-cols-4 gap-4">
@@ -39,7 +41,13 @@ export function OrdersKanban({
               {columnOrders.map((order) => (
                 <div key={order.key} className="group rounded-xl border border-line bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-ink">{order.customer || "(no name)"}</p>
+                    <button
+                      onClick={() => order.source === "db" && onEdit(order)}
+                      disabled={order.source !== "db"}
+                      className="text-left text-sm font-semibold text-ink enabled:hover:underline"
+                    >
+                      {order.customer || "(no name)"}
+                    </button>
                     <p className="text-xs text-ink-soft">{order.date}</p>
                   </div>
                   <div className="mt-2">

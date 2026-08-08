@@ -2,22 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Expense, ExpenseInput, ExpensePeriod } from "@/lib/expenses";
+import type { Expense, ExpensePeriod } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE } from "@/lib/chartPalette";
+import { ExpenseFormModal } from "./ExpenseFormModal";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
-
-const emptyDraft = (): ExpenseInput => ({
-  date: new Date().toISOString().slice(0, 10),
-  categoryId: 0,
-  amount: 0,
-  paymentMethodId: null,
-  staffId: null,
-  note: "",
-});
 
 export function ExpensesClient({
   periods,
@@ -34,8 +26,6 @@ export function ExpensesClient({
   const defaultPeriod = periods.find((p) => p.key !== "general" && p.entries.length > 0)?.key ?? periods[0]?.key;
   const [selectedKey, setSelectedKey] = useState<string>(defaultPeriod ?? "general");
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState<ExpenseInput>(emptyDraft());
-  const [busy, setBusy] = useState(false);
 
   const period = periods.find((p) => p.key === selectedKey) ?? periods[periods.length - 1];
 
@@ -58,20 +48,6 @@ export function ExpensesClient({
 
   function refresh() {
     router.refresh();
-  }
-
-  async function submitNew() {
-    if (!draft.categoryId || draft.amount <= 0) return;
-    setBusy(true);
-    await fetch("/api/expenses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    });
-    setDraft(emptyDraft());
-    setAdding(false);
-    setBusy(false);
-    refresh();
   }
 
   async function deleteEntry(id: number) {
@@ -109,10 +85,10 @@ export function ExpensesClient({
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-ink">{period?.label}</h2>
           <button
-            onClick={() => setAdding((v) => !v)}
+            onClick={() => setAdding(true)}
             className="rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
           >
-            {adding ? "Cancel" : "+ Add expense"}
+            + Add expense
           </button>
         </div>
 
@@ -123,76 +99,17 @@ export function ExpensesClient({
         )}
 
         {adding && (
-          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-line bg-cream/50 p-4">
-            <Field label="Date">
-              <input
-                type="date"
-                className="input"
-                value={draft.date}
-                onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-              />
-            </Field>
-            <Field label="Category">
-              <select
-                className="input"
-                value={draft.categoryId}
-                onChange={(e) => setDraft({ ...draft, categoryId: Number(e.target.value) })}
-              >
-                <option value={0}>Select…</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Amount ₪">
-              <input
-                type="number"
-                className="input w-24"
-                value={draft.amount}
-                onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
-              />
-            </Field>
-            <Field label="Payment method">
-              <select
-                className="input"
-                value={draft.paymentMethodId ?? ""}
-                onChange={(e) => setDraft({ ...draft, paymentMethodId: e.target.value ? Number(e.target.value) : null })}
-              >
-                <option value="">—</option>
-                {paymentMethods.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Staff">
-              <select
-                className="input"
-                value={draft.staffId ?? ""}
-                onChange={(e) => setDraft({ ...draft, staffId: e.target.value ? Number(e.target.value) : null })}
-              >
-                <option value="">—</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Note">
-              <input className="input" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
-            </Field>
-            <button
-              onClick={submitNew}
-              disabled={busy}
-              className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
-            >
-              Save
-            </button>
-          </div>
+          <ExpenseFormModal
+            categories={categories}
+            paymentMethods={paymentMethods}
+            staff={staff}
+            onClose={() => setAdding(false)}
+            onSaved={(date) => {
+              setAdding(false);
+              setSelectedKey(date.slice(0, 7));
+              refresh();
+            }}
+          />
         )}
 
         <div className="mt-4 flex flex-col gap-1.5">
@@ -251,14 +168,5 @@ function ExpenseRow({
         </button>
       </div>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
-      {label}
-      {children}
-    </label>
   );
 }

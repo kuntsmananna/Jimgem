@@ -4,44 +4,71 @@ import { useState } from "react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
+  type Order,
   type OrderContentLine,
   type OrderInput,
   type PaymentStatus,
   type ProductionStatus,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
+import { Modal } from "@/components/Modal";
 
 const emptyLine = (): OrderContentLine => ({ packageTypeId: "", flavorId: null, quantity: 1 });
 
-const emptyDraft = (): OrderInput => ({
-  date: new Date().toISOString().slice(0, 10),
-  customer: "",
-  customerType: "",
-  location: "",
-  guests: null,
-  deliveryCost: null,
-  mirrors: null,
-  contentLines: [],
-  totalAmount: 0,
-  deposit: 0,
-  paymentStatus: "unpaid",
-  productionStatus: "queue",
-  notes: "",
-});
+function draftFromOrder(order?: Order): OrderInput {
+  if (!order) {
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      customer: "",
+      customerType: "",
+      location: "",
+      guests: null,
+      deliveryCost: null,
+      mirrors: null,
+      contentLines: [],
+      totalAmount: 0,
+      deposit: 0,
+      paymentStatus: "unpaid",
+      productionStatus: "queue",
+      notes: "",
+    };
+  }
+  return {
+    date: order.date,
+    customer: order.customer,
+    customerType: order.customerType,
+    location: order.location,
+    guests: order.guests,
+    deliveryCost: order.deliveryCost,
+    mirrors: order.mirrors,
+    contentLines: order.contentLines,
+    totalAmount: order.totalAmount,
+    deposit: order.deposit,
+    paymentStatus: order.paymentStatus,
+    productionStatus: order.productionStatus ?? "queue",
+    notes: order.notes,
+  };
+}
 
-export function AddOrderForm({
+export function OrderFormModal({
+  order,
   flavors,
   packageTypes,
   onSaved,
-  onCancel,
+  onClose,
 }: {
+  /** Omit to create a new order; pass an existing DB order to edit it. */
+  order?: Order;
   flavors: Flavor[];
   packageTypes: PackageType[];
   onSaved: () => void;
-  onCancel: () => void;
+  onClose: () => void;
 }) {
-  const [draft, setDraft] = useState<OrderInput>(emptyDraft());
-  const [lines, setLines] = useState<OrderContentLine[]>([emptyLine()]);
+  const isEdit = !!order;
+  const [draft, setDraft] = useState<OrderInput>(draftFromOrder(order));
+  const [lines, setLines] = useState<OrderContentLine[]>(
+    order && order.contentLines.length > 0 ? order.contentLines : [emptyLine()],
+  );
   const [busy, setBusy] = useState(false);
 
   function updateLine(i: number, patch: Partial<OrderContentLine>) {
@@ -51,20 +78,29 @@ export function AddOrderForm({
   async function submit() {
     if (!draft.customer.trim()) return;
     setBusy(true);
-    await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...draft,
-        contentLines: lines.filter((l) => l.packageTypeId && l.quantity > 0),
-      }),
+    const body = JSON.stringify({
+      ...draft,
+      contentLines: lines.filter((l) => l.packageTypeId && l.quantity > 0),
     });
+    if (isEdit) {
+      await fetch(`/api/orders/${order!.key}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+    } else {
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+    }
     setBusy(false);
     onSaved();
   }
 
   return (
-    <div className="rounded-xl border border-line bg-cream/50 p-4">
+    <Modal title={isEdit ? "Edit order" : "Add order"} onClose={onClose} wide>
       <div className="grid grid-cols-4 gap-3">
         <Field label="Date">
           <input
@@ -220,19 +256,19 @@ export function AddOrderForm({
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-6 flex gap-2">
         <button
           onClick={submit}
           disabled={busy}
           className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
         >
-          Save order
+          {isEdit ? "Save changes" : "Save order"}
         </button>
-        <button onClick={onCancel} className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink">
+        <button onClick={onClose} className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink">
           Cancel
         </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 

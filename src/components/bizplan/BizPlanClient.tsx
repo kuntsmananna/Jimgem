@@ -57,6 +57,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
           <div className="mt-4">
             <LineChart
               normalizePerSeries
+              valueFormat={(v) => nf.format(v)}
               xLabels={financials.map((m) => m.monthLabel)}
               series={[
                 { label: "Units sold", color: "#B8A6D9", values: financials.map((m) => m.unitsSold) },

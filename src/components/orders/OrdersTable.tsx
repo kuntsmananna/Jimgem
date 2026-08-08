@@ -16,6 +16,7 @@ export function OrdersTable({
   onToggleSelect,
   onToggleAll,
   onChanged,
+  onEdit,
   onDuplicate,
   onDelete,
 }: {
@@ -26,6 +27,7 @@ export function OrdersTable({
   onToggleSelect: (key: string) => void;
   onToggleAll: () => void;
   onChanged: () => void;
+  onEdit: (order: Order) => void;
   onDuplicate: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
@@ -34,24 +36,24 @@ export function OrdersTable({
   return (
     <div className="overflow-x-auto rounded-card border border-line bg-card">
       <table className="w-full min-w-[1400px] text-left text-sm">
-        <thead>
+        <thead className="sticky top-16 z-10 bg-card">
           <tr className="border-b border-line text-xs font-semibold text-ink-soft">
-            <th className="w-8 px-3 py-2">
+            <th className="w-8 bg-card px-3 py-2">
               <input type="checkbox" checked={allSelected} onChange={onToggleAll} />
             </th>
-            <th className="px-3 py-2">Date</th>
-            <th className="px-3 py-2">Customer</th>
-            <th className="px-3 py-2">Type</th>
-            <th className="px-3 py-2">Location</th>
-            <th className="px-3 py-2">Guests</th>
-            <th className="px-3 py-2">Content</th>
-            <th className="px-3 py-2">Mirrors</th>
-            <th className="px-3 py-2">Delivery</th>
-            <th className="px-3 py-2">Amount</th>
-            <th className="px-3 py-2">Deposit</th>
-            <th className="px-3 py-2">Payment</th>
-            <th className="px-3 py-2">Production</th>
-            <th className="px-3 py-2"></th>
+            <th className="bg-card px-3 py-2">Date</th>
+            <th className="bg-card px-3 py-2">Customer</th>
+            <th className="bg-card px-3 py-2">Type</th>
+            <th className="bg-card px-3 py-2">Location</th>
+            <th className="bg-card px-3 py-2">Guests</th>
+            <th className="bg-card px-3 py-2">Content</th>
+            <th className="bg-card px-3 py-2">Mirrors</th>
+            <th className="bg-card px-3 py-2">Delivery</th>
+            <th className="bg-card px-3 py-2">Amount</th>
+            <th className="bg-card px-3 py-2">Deposit</th>
+            <th className="bg-card px-3 py-2">Payment</th>
+            <th className="bg-card px-3 py-2">Production</th>
+            <th className="bg-card px-3 py-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -98,6 +100,9 @@ export function OrdersTable({
               <td className="px-3 py-2">
                 {order.source === "db" && (
                   <div className="flex gap-2 text-xs font-semibold text-ink-soft">
+                    <button onClick={() => onEdit(order)} className="hover:text-ink">
+                      Edit
+                    </button>
                     <button onClick={() => onDuplicate(Number(order.key))} className="hover:text-ink">
                       Duplicate
                     </button>
