@@ -1,1 +1,38 @@
 @import "tailwindcss";
+
+/*
+ * Design tokens pulled from gem-bites.com's own site plus owner-directed
+ * visual iteration (see CLAUDE.md's Styling conventions section for the
+ * reasoning). Light-only for now — dark mode wasn't part of what was
+ * designed/approved.
+ */
+@theme {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-inter), system-ui, sans-serif;
+
+  --color-cream: #f4ebe7;
+  --color-card: #ffffff;
+  --color-ink: #201d19;
+  --color-ink-soft: #726a5e;
+  --color-line: #e7dbcc;
+  --color-accent: #4f6f52;
+
+  --color-tile-peach: #f6d9a8;
+  --color-tile-mint: #c7e6dc;
+  --color-tile-lavender: #dfd4f2;
+  --color-tile-sage: #cfe0bc;
+
+  --radius-card: 1.25rem;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .input {
+    @apply rounded-lg border border-line bg-card px-2 py-1 text-sm text-ink outline-none focus:border-accent;
+  }
+}

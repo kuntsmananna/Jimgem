@@ -40,3 +40,48 @@ export async function getSheetValues(
   });
   return (response.data.values as string[][]) ?? [];
 }
+
+export interface RgbColor {
+  red: number;
+  green: number;
+  blue: number;
+}
+
+export interface CellData {
+  value: string;
+  backgroundColor: RgbColor | undefined;
+}
+
+/**
+ * Like getSheetValues, but also returns each cell's effective background
+ * color. Needed for sheets that encode meaning (e.g. order payment status)
+ * as row/cell color rather than a data column.
+ */
+export async function getSheetValuesWithFormatting(
+  spreadsheetId: string,
+  range: string,
+): Promise<CellData[][]> {
+  const sheets = getSheetsClient();
+  const response = await sheets.spreadsheets.get({
+    spreadsheetId,
+    ranges: [range],
+    fields: "sheets.data.rowData.values(formattedValue,effectiveFormat.backgroundColor)",
+  });
+
+  const rowData = response.data.sheets?.[0]?.data?.[0]?.rowData ?? [];
+  return rowData.map((row) =>
+    (row.values ?? []).map((cell) => {
+      const bg = cell.effectiveFormat?.backgroundColor;
+      return {
+        value: cell.formattedValue ?? "",
+        backgroundColor: bg
+          ? {
+              red: bg.red ?? 0,
+              green: bg.green ?? 0,
+              blue: bg.blue ?? 0,
+            }
+          : undefined,
+      };
+    }),
+  );
+}
