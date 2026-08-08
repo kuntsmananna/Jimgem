@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
+  orderToInput,
   type Order,
   type PaymentStatus,
   type ProductionStatus,
@@ -41,21 +42,7 @@ export function PaymentStatusSelect({
     await fetch(`/api/orders/${order.key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date: order.date,
-        customer: order.customer,
-        customerType: order.customerType,
-        location: order.location,
-        guests: order.guests,
-        deliveryCost: order.deliveryCost,
-        mirrors: order.mirrors,
-        contentLines: order.contentLines,
-        totalAmount: order.totalAmount,
-        deposit: order.deposit,
-        paymentStatus: status,
-        productionStatus: order.productionStatus ?? "queue",
-        notes: order.notes,
-      }),
+      body: JSON.stringify({ ...orderToInput(order), paymentStatus: status }),
     });
     setBusy(false);
     onChanged();

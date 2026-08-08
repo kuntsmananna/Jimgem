@@ -129,12 +129,23 @@ export async function getExpensePeriods(spreadsheetId: string): Promise<ExpenseP
       };
     });
 
+  const combinedLegacyTotals: MonthlyExpenses = legacyMonths.reduce<MonthlyExpenses>(
+    (acc, m) => {
+      const byCategory: Record<string, number> = { ...acc.byCategory };
+      for (const [cat, amount] of Object.entries(m.byCategory)) {
+        byCategory[cat] = (byCategory[cat] ?? 0) + amount;
+      }
+      return { month: 0, byCategory, total: acc.total + m.total };
+    },
+    { month: 0, byCategory: {}, total: 0 },
+  );
+
   periods.push({
     key: "general",
     label: "General / All time",
     isLegacy: false,
     entries: dbExpenses,
-    legacyTotals: null,
+    legacyTotals: legacyMonths.length > 0 ? combinedLegacyTotals : null,
   });
 
   return periods;

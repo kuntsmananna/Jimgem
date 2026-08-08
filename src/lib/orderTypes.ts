@@ -52,6 +52,25 @@ export interface OrderInput {
   notes: string;
 }
 
+/** Reduces an Order down to the shape the write API expects — used whenever a single field changes but the API needs the full row. */
+export function orderToInput(order: Order): OrderInput {
+  return {
+    date: order.date,
+    customer: order.customer,
+    customerType: order.customerType,
+    location: order.location,
+    guests: order.guests,
+    deliveryCost: order.deliveryCost,
+    mirrors: order.mirrors,
+    contentLines: order.contentLines,
+    totalAmount: order.totalAmount,
+    deposit: order.deposit,
+    paymentStatus: order.paymentStatus,
+    productionStatus: order.productionStatus ?? "queue",
+    notes: order.notes,
+  };
+}
+
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   deposit: "Deposit paid",
