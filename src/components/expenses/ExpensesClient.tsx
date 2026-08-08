@@ -53,7 +53,7 @@ export function ExpensesClient({
 
   return (
     <div className="grid grid-cols-[220px_1.6fr_1fr] gap-6">
-      <section className="rounded-card border border-line bg-card p-4">
+      <section className="min-w-0 rounded-card border border-line bg-card p-4">
         <h2 className="px-2 font-display text-base font-bold text-ink">Periods</h2>
         <ul className="mt-2 flex flex-col gap-1">
           {periods.map((p) => (
@@ -76,7 +76,7 @@ export function ExpensesClient({
         </ul>
       </section>
 
-      <section className="rounded-card border border-line bg-card p-6">
+      <section className="min-w-0 rounded-card border border-line bg-card p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-ink">{period?.label}</h2>
           <button
@@ -118,7 +118,7 @@ export function ExpensesClient({
         </div>
       </section>
 
-      <section className="rounded-card border border-line bg-card p-6">
+      <section className="min-w-0 rounded-card border border-line bg-card p-6">
         <h2 className="font-display text-base font-bold text-ink">Category breakdown</h2>
         <div className="mt-4">
           <DonutChart slices={slices} />
@@ -130,18 +130,32 @@ export function ExpensesClient({
 
 function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void }) {
   return (
-    <div className="group flex items-center justify-between rounded-xl border border-line px-3 py-2 text-sm">
-      <div className="flex items-center gap-4">
-        <span className="w-20 text-ink-soft">{entry.source === "db" ? entry.date : "—"}</span>
-        <span className="font-medium text-ink">{entry.categoryName}</span>
-        {entry.paymentMethodName && <span className="text-xs text-ink-soft">{entry.paymentMethodName}</span>}
-        {entry.staffName && <span className="text-xs text-ink-soft">{entry.staffName}</span>}
-        {entry.note && <span className="text-xs text-ink-soft">{entry.note}</span>}
+    <div className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
+      <div className="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
+        <span className="shrink-0 w-20 text-ink-soft">{entry.source === "db" ? entry.date : "—"}</span>
+        <span className="shrink-0 font-medium text-ink">{entry.categoryName}</span>
+        {entry.paymentMethodName && <span className="shrink-0 text-xs text-ink-soft">{entry.paymentMethodName}</span>}
+        {entry.staffName && <span className="shrink-0 text-xs text-ink-soft">{entry.staffName}</span>}
+        {entry.note && (
+          <span
+            className={`min-w-0 truncate text-xs ${entry.noteUnverified ? "italic text-ink-soft/70" : "text-ink-soft"}`}
+            title={
+              (entry.noteUnverified
+                ? "Best-effort match from a Sheet comment — not verified, double-check before relying on it. "
+                : "") + entry.note
+            }
+          >
+            {entry.note}
+            {entry.noteUnverified && <span className="ml-1 font-semibold not-italic">(unverified)</span>}
+          </span>
+        )}
         {entry.source === "sheet" && (
-          <span className="rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">sheet</span>
+          <span className="shrink-0 rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">
+            sheet
+          </span>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <span className="font-semibold text-ink">{currency(entry.amount)}</span>
         {entry.editable && (
           <button onClick={onDelete} className="hidden text-xs font-semibold text-ink-soft hover:text-ink group-hover:block">

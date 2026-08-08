@@ -13,6 +13,8 @@ export interface Expense {
   paymentMethodName: string | null;
   staffName: string | null;
   note: string;
+  /** True when `note` is a best-effort, unverified match from a Sheet comment — see financials.ts's SheetExpenseItem. */
+  noteUnverified: boolean;
   /** False for Sheet-derived items — there's no DB row to edit or delete. */
   editable: boolean;
 }
@@ -51,6 +53,7 @@ function mapExpense(
     paymentMethodName: row.payment_method_id ? (paymentMethodNameById.get(row.payment_method_id) ?? null) : null,
     staffName: row.staff_id ? (staffNameById.get(row.staff_id) ?? null) : null,
     note: row.note ?? "",
+    noteUnverified: false,
     editable: true,
   };
 }
@@ -167,7 +170,8 @@ export async function getExpensePeriods(spreadsheetId: string): Promise<ExpenseP
         amount: item.amount,
         paymentMethodName: null,
         staffName: null,
-        note: "",
+        note: item.description ?? "",
+        noteUnverified: item.description !== null,
         editable: false,
       });
     }
@@ -213,7 +217,8 @@ export async function getExpensePeriods(spreadsheetId: string): Promise<ExpenseP
       amount: item.amount,
       paymentMethodName: null,
       staffName: null,
-      note: "",
+      note: item.description ?? "",
+      noteUnverified: item.description !== null,
       editable: false,
     }))],
     legacyTotals: legacyMonths.length > 0 ? combinedLegacyTotals : null,

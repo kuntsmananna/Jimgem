@@ -100,17 +100,27 @@ iteration (not guessed) — define these as `@theme` tokens in
   JSON stored base64-encoded in `GOOGLE_SERVICE_ACCOUNT_KEY_BASE64`
   (`.env.local`, git-ignored). See `.env.local.example` for the expected
   shape.
-- Client: `googleapis`'s `sheets_v4.Sheets`, built once and memoized in
+- Client: `googleapis`'s `sheets_v4.Sheets` (and `drive_v3.Drive`, for
+  comments only — see below), each built once and memoized in
   `src/lib/googleSheets.ts`.
-- Scope: **`spreadsheets.readonly`, permanently** — the sheet is never
+- Scope: **`spreadsheets.readonly`, permanently**, plus **`drive.readonly`**
+  (owner-approved, deliberately narrow — added only so `getFileComments`
+  can read comment threads via the Drive API, which the Sheets API has no
+  way to expose). Both remain read-only; the sheet itself is never
   written to, by design (see Database section: everything new goes to
-  Postgres instead, merged with Sheet data at read time). Do not widen
-  this scope.
+  Postgres instead, merged with Sheet data at read time). Don't widen
+  further without confirming it's actually wanted.
 - Reading plain values: `getSheetValues`. Reading values *and* cell
   background color (used for Orders' payment-status encoding — see
-  `src/lib/orders.ts`): `getSheetValuesWithFormatting`. Both live in
-  `src/lib/googleSheets.ts` — don't construct a new `googleapis` client
-  per call site.
+  `src/lib/orders.ts`): `getSheetValuesWithFormatting`. Reading comment
+  threads on the spreadsheet file: `getFileComments` — the Drive API's
+  comment anchor has no resolvable cell reference (every comment shares
+  the same opaque anchor uid regardless of tab), so callers can only
+  match a comment back to a cell by its quoted value, and only when
+  that's unambiguous; see `financials.ts`'s `getSheetMonthlyExpenses`
+  for the pattern (skip the match entirely rather than guess wrong).
+  All three live in `src/lib/googleSheets.ts` — don't construct a new
+  `googleapis` client per call site.
 - The target sheet (`ג'לוס - תוכנית עסקית`) has several tabs; only
   Orders (`הזמנות`) and Expense Tracking (`מעקב הוצאות`) are read.
   Others (Inventory, Alcohol Prices, Staff Shifts, Food Cost, the old

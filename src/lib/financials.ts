@@ -1,4 +1,4 @@
-import { getSheetValues } from "./googleSheets";
+import { getSheetValues, getFileComments } from "./googleSheets";
 import { getMergedOrders, orderMonth, type Order } from "./orders";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories } from "./settings";
@@ -28,6 +28,16 @@ export interface SheetExpenseItem {
   key: string;
   category: string;
   amount: number;
+  /**
+   * Best-effort description pulled from a Google Sheets comment on this
+   * cell — the Drive API's comment anchor has no resolvable cell
+   * reference (see googleSheets.ts's getFileComments), so this is only
+   * ever set when the cell's raw value is unique within its month AND
+   * exactly one comment quotes that same value. Always shown as an
+   * unverified guess, never asserted as fact — a wrong guess here would
+   * misattribute one real expense's description to a different one.
+   */
+  description: string | null;
 }
 
 export interface MonthlyExpenses {
@@ -64,8 +74,21 @@ function isRowEmpty(row: string[]): boolean {
 export async function getSheetMonthlyExpenses(
   spreadsheetId: string,
 ): Promise<MonthlyExpenses[]> {
-  const rows = await getSheetValues(spreadsheetId, `${EXPENSE_TAB}!A1:J200`);
+  const [rows, comments] = await Promise.all([
+    getSheetValues(spreadsheetId, `${EXPENSE_TAB}!A1:J200`),
+    getFileComments(spreadsheetId),
+  ]);
   if (rows.length === 0) return [];
+
+  // Only usable when a quoted value has exactly one comment — a value with
+  // multiple comments can't be attributed to a single cell with confidence.
+  const commentCountByValue = new Map<string, number>();
+  const commentByValue = new Map<string, string>();
+  for (const comment of comments) {
+    if (!comment.quotedValue) continue;
+    commentCountByValue.set(comment.quotedValue, (commentCountByValue.get(comment.quotedValue) ?? 0) + 1);
+    commentByValue.set(comment.quotedValue, comment.content);
+  }
 
   // Find every month-label row: a lone populated cell in column A matching
   // a known Hebrew month name, nothing else in the row.
@@ -95,16 +118,35 @@ export async function getSheetMonthlyExpenses(
 
     const byCategory: Record<string, number> = {};
     for (const cat of EXPENSE_CATEGORY_COLUMNS) byCategory[cat.name] = 0;
-    const items: SheetExpenseItem[] = [];
 
+    const rawCells: { row: number; col: number; rawValue: string; category: string; amount: number }[] = [];
     block.forEach((row, i) => {
       if (i === lastNonEmpty) return; // skip the totals row
       for (const cat of EXPENSE_CATEGORY_COLUMNS) {
-        const amount = parseNum(row[cat.index]);
+        const rawValue = row[cat.index]?.trim();
+        if (!rawValue) continue;
+        const amount = parseNum(rawValue);
         if (amount === 0) continue;
         byCategory[cat.name] += amount;
-        items.push({ key: `sheet-expense:${start + i}:${cat.index}`, category: cat.name, amount });
+        rawCells.push({ row: start + i, col: cat.index, rawValue, category: cat.name, amount });
       }
+    });
+
+    // A raw value repeated within the same month can't be matched to a
+    // single cell with confidence either, even if its comment count is 1.
+    const cellCountByValue = new Map<string, number>();
+    for (const cell of rawCells) {
+      cellCountByValue.set(cell.rawValue, (cellCountByValue.get(cell.rawValue) ?? 0) + 1);
+    }
+
+    const items: SheetExpenseItem[] = rawCells.map((cell) => {
+      const isUnambiguous = cellCountByValue.get(cell.rawValue) === 1 && commentCountByValue.get(cell.rawValue) === 1;
+      return {
+        key: `sheet-expense:${cell.row}:${cell.col}`,
+        category: cell.category,
+        amount: cell.amount,
+        description: isUnambiguous ? (commentByValue.get(cell.rawValue) ?? null) : null,
+      };
     });
 
     const total = Object.values(byCategory).reduce((a, b) => a + b, 0);
