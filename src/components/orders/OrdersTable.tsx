@@ -34,9 +34,9 @@ export function OrdersTable({
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
 
   return (
-    <div className="overflow-x-auto rounded-card border border-line bg-card">
+    <div className="max-h-[70vh] overflow-auto rounded-card border border-line bg-card">
       <table className="w-full min-w-[1400px] text-left text-sm">
-        <thead className="sticky top-16 z-10 bg-card">
+        <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b border-line text-xs font-semibold text-ink-soft">
             <th className="w-8 bg-card px-3 py-2">
               <input type="checkbox" checked={allSelected} onChange={onToggleAll} />
