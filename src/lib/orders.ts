@@ -102,15 +102,91 @@ export async function getSheetOrders(spreadsheetId: string): Promise<Order[]> {
   return orders;
 }
 
-/** order_key -> status, for Sheet-sourced orders that have had a status set via the dashboard. */
-async function getSheetProductionStatusMap(): Promise<Record<string, ProductionStatus>> {
+/** Fields on a Sheet order that can be overridden from the dashboard — date and content lines can't be (see schema.sql). */
+export type OverridableField =
+  | "customer"
+  | "customerType"
+  | "location"
+  | "guests"
+  | "deliveryCost"
+  | "mirrors"
+  | "totalAmount"
+  | "deposit"
+  | "paymentStatus"
+  | "productionStatus"
+  | "notes";
+
+const OVERRIDE_COLUMN: Record<OverridableField, string> = {
+  customer: "customer",
+  customerType: "customer_type",
+  location: "location",
+  guests: "guests",
+  deliveryCost: "delivery_cost",
+  mirrors: "mirrors",
+  totalAmount: "total_amount",
+  deposit: "deposit",
+  paymentStatus: "payment_status",
+  productionStatus: "production_status",
+  notes: "notes",
+};
+
+interface OverrideRow {
+  order_key: string;
+  customer: string | null;
+  customer_type: string | null;
+  location: string | null;
+  guests: number | null;
+  delivery_cost: string | null;
+  mirrors: number | null;
+  total_amount: string | null;
+  deposit: string | null;
+  payment_status: PaymentStatus | null;
+  production_status: ProductionStatus | null;
+  notes: string | null;
+}
+
+/** order_key -> the subset of Order fields that have been overridden from the dashboard for that Sheet row. */
+async function getSheetOverridesMap(): Promise<Record<string, Partial<Order>>> {
   const db = getDb();
-  const { rows } = await db.query<{ order_key: string; status: ProductionStatus }>(
-    "SELECT order_key, status FROM order_production_status",
-  );
-  const map: Record<string, ProductionStatus> = {};
-  for (const row of rows) map[row.order_key] = row.status;
+  const { rows } = await db.query<OverrideRow>("SELECT * FROM order_overrides");
+  const map: Record<string, Partial<Order>> = {};
+  for (const row of rows) {
+    const override: Partial<Order> = { productionStatus: row.production_status ?? null };
+    if (row.customer !== null) override.customer = row.customer;
+    if (row.customer_type !== null) override.customerType = row.customer_type;
+    if (row.location !== null) override.location = row.location;
+    if (row.guests !== null) override.guests = row.guests;
+    if (row.delivery_cost !== null) override.deliveryCost = Number(row.delivery_cost);
+    if (row.mirrors !== null) override.mirrors = row.mirrors;
+    if (row.total_amount !== null) override.totalAmount = Number(row.total_amount);
+    if (row.deposit !== null) override.deposit = Number(row.deposit);
+    if (row.payment_status !== null) override.paymentStatus = row.payment_status;
+    if (row.notes !== null) override.notes = row.notes;
+    map[row.order_key] = override;
+  }
   return map;
+}
+
+/** Sets one or more override fields for a Sheet order — never writes to the Sheet itself, see schema.sql's order_overrides. */
+export async function setSheetOrderOverride(
+  key: string,
+  patch: Partial<Record<OverridableField, string | number | null>>,
+): Promise<void> {
+  const entries = Object.entries(patch) as [OverridableField, string | number | null][];
+  if (entries.length === 0) return;
+
+  const db = getDb();
+  const columns = entries.map(([field]) => OVERRIDE_COLUMN[field]);
+  const values = entries.map(([, value]) => value);
+  const insertPlaceholders = columns.map((_, i) => `$${i + 2}`);
+  const updateSet = columns.map((c, i) => `${c} = $${i + 2}`).join(", ");
+
+  await db.query(
+    `INSERT INTO order_overrides (order_key, ${columns.join(", ")}, updated_at)
+     VALUES ($1, ${insertPlaceholders.join(", ")}, now())
+     ON CONFLICT (order_key) DO UPDATE SET ${updateSet}, updated_at = now()`,
+    [key, ...values],
+  );
 }
 
 interface DbOrderRow {
@@ -180,37 +256,29 @@ export async function getDbOrders(): Promise<Order[]> {
   return orderRows.map((row) => mapDbOrder(row, linesByOrder.get(row.id) ?? []));
 }
 
-/** Combines Sheet orders (with production status merged in) and DB orders into one list. */
+/** Combines Sheet orders (with any dashboard overrides merged in) and DB orders into one list. */
 export async function getMergedOrders(spreadsheetId: string): Promise<Order[]> {
-  const [sheetOrders, statusMap, dbOrders] = await Promise.all([
+  const [sheetOrders, overridesMap, dbOrders] = await Promise.all([
     getSheetOrders(spreadsheetId),
-    getSheetProductionStatusMap(),
+    getSheetOverridesMap(),
     getDbOrders(),
   ]);
 
   const mergedSheetOrders = sheetOrders.map((order) => ({
     ...order,
-    productionStatus: statusMap[order.key] ?? null,
+    ...(overridesMap[order.key] ?? { productionStatus: null }),
   }));
 
   return [...dbOrders, ...mergedSheetOrders];
 }
 
 /** Sets production status for either a Sheet-sourced order ("sheet:<row>") or a DB order (numeric id). */
-export async function setProductionStatus(
-  key: string,
-  status: ProductionStatus,
-): Promise<void> {
-  const db = getDb();
+export async function setProductionStatus(key: string, status: ProductionStatus): Promise<void> {
   if (key.startsWith("sheet:")) {
-    await db.query(
-      `INSERT INTO order_production_status (order_key, status, updated_at)
-       VALUES ($1, $2, now())
-       ON CONFLICT (order_key) DO UPDATE SET status = $2, updated_at = now()`,
-      [key, status],
-    );
+    await setSheetOrderOverride(key, { productionStatus: status });
     return;
   }
+  const db = getDb();
   await db.query("UPDATE orders SET production_status = $1 WHERE id = $2", [status, Number(key)]);
 }
 

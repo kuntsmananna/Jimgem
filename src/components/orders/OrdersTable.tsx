@@ -35,10 +35,14 @@ export function OrdersTable({
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {
-    await fetch(`/api/orders/${order.key}`, {
+    // DB orders replace their full row; Sheet orders never get written to
+    // the Sheet — the patch is stored as a dashboard-side override instead
+    // (see order_overrides in schema.sql / setSheetOrderOverride).
+    const body = order.source === "db" ? { ...orderToInput(order), ...patch } : patch;
+    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...orderToInput(order), ...patch }),
+      body: JSON.stringify(body),
     });
     onChanged();
   }
@@ -68,7 +72,11 @@ export function OrdersTable({
         </thead>
         <tbody>
           {orders.map((order) => {
-            const editable = order.source === "db";
+            // Sheet orders' scalar fields (except date and content, which stay
+            // Sheet-sourced) are editable as dashboard-side overrides — see
+            // saveField above and order_overrides in schema.sql.
+            const editable = true;
+            const dateEditable = order.source === "db";
             return (
               <tr key={order.key} className="border-b border-line/60 align-top hover:bg-black/[0.02]">
                 <td className="px-3 py-2">
@@ -80,7 +88,7 @@ export function OrdersTable({
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   <EditableCell
-                    editable={editable}
+                    editable={dateEditable}
                     type="date"
                     displayValue={order.date}
                     editValue={order.date}

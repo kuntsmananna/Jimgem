@@ -132,14 +132,20 @@ iteration (not guessed) — define these as `@theme` tokens in
   doesn't otherwise guarantee it for data-modifying CTEs with no data
   dependency on each other).
 - Holds everything the Sheet can't: dashboard-created orders
-  (`orders`, `order_content_lines`), production status for Sheet orders
-  (`order_production_status`, keyed by `"sheet:<row>"`), itemized
-  expenses (`expenses`), and the owner-editable value lists (`flavors`,
-  `package_types`, `payment_methods`, `expense_categories`, `staff`).
+  (`orders`, `order_content_lines`), field-level edits to Sheet orders
+  (`order_overrides`, keyed by `"sheet:<row>"` — every editable Order
+  field except `date` and content lines; NULL column = not overridden,
+  falls back to the Sheet-parsed value), itemized expenses (`expenses`),
+  and the owner-editable value lists (`flavors`, `package_types`,
+  `payment_methods`, `expense_categories`, `staff`).
 - Orders and expenses are **merged at read time** from Sheet + DB into
   one list for display — this is a deliberate two-source-of-truth
   design (dashboard-created records don't appear in the Sheet itself),
   not an oversight. Don't try to "fix" it by writing back to Sheets.
+  Editing a Sheet order from the dashboard writes to `order_overrides`,
+  never to the Sheet — once a field is overridden it stays that way
+  permanently (the Sheet is only consulted for fields that were never
+  edited), so there's no ongoing re-sync to worry about.
 
 ## Authentication
 

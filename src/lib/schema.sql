@@ -67,13 +67,28 @@ CREATE TABLE IF NOT EXISTS order_content_lines (
   quantity INTEGER NOT NULL
 );
 
--- Production status for Sheet-sourced orders only (Sheet rows have no id
--- of their own). order_key is "sheet:<row-number>". DB-native orders
--- carry production_status directly on the orders row above instead.
-CREATE TABLE IF NOT EXISTS order_production_status (
+-- Field-level overrides for Sheet-sourced orders only (Sheet rows have no
+-- id of their own, and the Sheet itself is never written to — see
+-- CLAUDE.md's Database section). order_key is "sheet:<row-number>".
+-- Each column is NULL until explicitly edited from the dashboard, at
+-- which point it takes precedence over the Sheet-parsed value at read
+-- time. date and content lines aren't overridable — see orders.ts.
+-- DB-native orders carry all of these directly on the orders row instead.
+CREATE TABLE IF NOT EXISTS order_overrides (
   order_key TEXT PRIMARY KEY,
-  status TEXT NOT NULL DEFAULT 'queue'
-    CHECK (status IN ('queue', 'preparing', 'delivered')),
+  customer TEXT,
+  customer_type TEXT,
+  location TEXT,
+  guests INTEGER,
+  delivery_cost NUMERIC(10, 2),
+  mirrors INTEGER,
+  total_amount NUMERIC(10, 2),
+  deposit NUMERIC(10, 2),
+  payment_status TEXT
+    CHECK (payment_status IS NULL OR payment_status IN ('unpaid', 'deposit', 'paid', 'comp', 'net40')),
+  production_status TEXT
+    CHECK (production_status IS NULL OR production_status IN ('queue', 'preparing', 'delivered')),
+  notes TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

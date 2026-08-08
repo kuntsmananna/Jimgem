@@ -27,22 +27,15 @@ export function PaymentStatusSelect({
 }) {
   const [busy, setBusy] = useState(false);
 
-  // Sheet orders are read-only except for production status — payment status there
-  // comes from the Sheet's own row color and can't be edited from here.
-  if (order.source === "sheet") {
-    return (
-      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${PAYMENT_BADGE_CLASS[order.paymentStatus]}`}>
-        {PAYMENT_STATUS_LABEL[order.paymentStatus]}
-      </span>
-    );
-  }
-
   async function handleChange(status: PaymentStatus) {
     setBusy(true);
-    await fetch(`/api/orders/${order.key}`, {
+    // DB orders replace their full row; Sheet orders never get written to
+    // the Sheet — this is stored as a dashboard-side override instead.
+    const body = order.source === "db" ? { ...orderToInput(order), paymentStatus: status } : { paymentStatus: status };
+    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...orderToInput(order), paymentStatus: status }),
+      body: JSON.stringify(body),
     });
     setBusy(false);
     onChanged();
