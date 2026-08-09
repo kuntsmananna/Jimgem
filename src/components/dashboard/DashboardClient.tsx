@@ -130,8 +130,8 @@ export function DashboardClient({
         <KpiTile label="Units sold" value={nf.format(scoped.unitsSold)} tile="sage" />
       </div>
 
-      <div className="grid grid-cols-[1fr_1.4fr] gap-6">
-        <section className="rounded-card border border-line bg-card p-6">
+      <div className="grid min-w-0 grid-cols-[1fr_1.4fr] gap-6">
+        <section className="min-w-0 rounded-card border border-line bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-ink">Orders</h2>
             <Link href="/orders" className="text-sm font-semibold text-accent hover:underline">
@@ -152,8 +152,8 @@ export function DashboardClient({
           </ul>
         </section>
 
-        <div className="flex flex-col gap-6">
-          <section className="rounded-card border border-line bg-card p-6">
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6">
             <h2 className="font-display text-base font-bold text-ink">Revenue & profit trend</h2>
             <div className="mt-4">
               <LineChart
@@ -167,14 +167,14 @@ export function DashboardClient({
             </div>
           </section>
 
-          <section className="rounded-card border border-line bg-card p-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6">
             <h2 className="font-display text-base font-bold text-ink">Expense category split</h2>
             <div className="mt-4">
               <DonutChart slices={expenseSlices} />
             </div>
           </section>
 
-          <section className="rounded-card border border-line bg-card p-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6">
             <h2 className="font-display text-base font-bold text-ink">Flavor split</h2>
             <div className="mt-4">
               <DonutChart slices={flavorSlices} />
