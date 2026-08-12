@@ -33,21 +33,26 @@ something here isn't obvious.
 - `src/app/api/**` — route handlers for client-triggered interactivity
   (not for initial page data — see below)
 - `src/lib/**` — server-only helpers: `googleSheets.ts`, `db.ts`,
-  `orders.ts` (Sheet parsing + DB order CRUD + merge), `expenses.ts`
-  (DB expense CRUD + Sheet legacy-total merge), `financials.ts`
+  `orders.ts` (DB order CRUD + the Sheet parser the importer uses),
+  `sheetImport.ts` (on-demand Sheet → DB import), `expenses.ts`
+  (DB expense CRUD + imported legacy totals), `financials.ts`
   (monthly rollups), `settings.ts` (value-list CRUD), `flavorParser.ts`,
-  `auth.ts`, `session.ts`
-- `src/lib/orderTypes.ts` — the one exception to "`src/lib/**` is
-  server-only": order types/labels/pure date helpers, split out from
-  `orders.ts` specifically so Client Components can import them without
-  pulling `orders.ts`'s server-only deps (`@neondatabase/serverless` via
-  `db.ts`, `googleapis` via `googleSheets.ts`) into the browser bundle.
-  When a Client
+  `auth.ts`, `session.ts`, `version.ts`
+- `src/lib/orderTypes.ts` and `src/lib/icons.ts` — the exceptions to
+  "`src/lib/**` is server-only". `orderTypes.ts` holds order
+  types/labels/pure date helpers, split out from `orders.ts` so Client
+  Components can import them without pulling `orders.ts`'s server-only
+  deps (`@neondatabase/serverless` via `db.ts`, `googleapis` via
+  `googleSheets.ts`) into the browser bundle. `icons.ts` holds the
+  event-type and expense-category icon/label lookups, which are pure
+  data plus lucide components. When a Client
   Component needs something from a `src/lib/**` module, prefer a
   type-only import (`import type { X } from "@/lib/orders"` — erased at
   compile time, always safe); if a *value* is needed too, it belongs in
-  a dedicated client-safe file like this one, not a value import from a
-  server module.
+  a dedicated client-safe file like these, not a value import from a
+  server module. `version.ts` is the counter-example: it must stay
+  server-only, because the bundler does not tree-shake its
+  `package.json` import.
 - `src/components/**` — `charts/` (inline SVG `LineChart` + CSS
   `conic-gradient` `DonutChart`, no charting library), plus one
   subfolder per page for its Client Components
@@ -73,6 +78,18 @@ iteration (not guessed) — define these as `@theme` tokens in
   Grotesque** (700/800) for the wordmark/headlines/big KPI numbers —
   both loaded via `next/font/google`.
 - Shape: 20-22px card radius, `999px` (pill) on buttons/nav/badges.
+- Icons: **lucide-react**, used where they aid scanning (KPI tiles,
+  action buttons, view switcher, event types, expense categories) and
+  deliberately *not* in the top nav. Note lucide has dropped its brand
+  icons — there is no `Instagram`. Event-type and expense-category
+  lookups live in `src/lib/icons.ts`; both keys are free text the owner
+  controls, so both maps fall back rather than assuming a closed set.
+- Form fields (`.input` in `globals.css`): filled = no box, empty = weak
+  outline, hover = box, focus = accent border. Filled/empty is detected
+  with `:placeholder-shown`, so **every `.input` needs a placeholder**
+  (`" "` is fine). The rules are written as overrides of an outlined
+  base so a field that can't be classified stays visible rather than
+  invisible. `/login` deliberately opts out by not using `.input`.
 - Flavor colors are per-flavor 3-stop same-hue `radial-gradient`s
   (`color_glow` → `color_base` → `color_shadow`, light source at
   `circle at -15% -15%`) meant to read as glowing translucent jelly —
@@ -80,12 +97,13 @@ iteration (not guessed) — define these as `@theme` tokens in
 
 ## Data-fetching conventions
 
-- Server Components fetch Sheets data and DB data directly at render
-  time (via `src/lib/**` helpers) — no client-side fetch needed for
-  initial page data.
+- Server Components fetch DB data directly at render time (via
+  `src/lib/**` helpers) — no client-side fetch needed for initial page
+  data. **Nothing on a render path touches the Google Sheet**: it is read
+  only by the on-demand importer (see Google Sheets integration below).
 - `src/app/api/**` route handlers exist only for things a client needs
-  to trigger after load: creating/editing orders and expenses, Settings
-  CRUD, setting production status, login/logout.
+  to trigger after load: creating/editing orders and expenses, batch
+  order actions, Settings CRUD, running the Sheet import, login/logout.
 - The Google service-account credential is only ever read inside
   `src/lib/googleSheets.ts`; nothing else should touch
   `process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64` directly, and it must
@@ -107,9 +125,19 @@ iteration (not guessed) — define these as `@theme` tokens in
   (owner-approved, deliberately narrow — added only so `getFileComments`
   can read comment threads via the Drive API, which the Sheets API has no
   way to expose). Both remain read-only; the sheet itself is never
-  written to, by design (see Database section: everything new goes to
-  Postgres instead, merged with Sheet data at read time). Don't widen
-  further without confirming it's actually wanted.
+  written to, by design (see Database section — data moves one way, into
+  Postgres). Don't widen further without confirming it's actually wanted.
+- **The Sheet is read on demand only**, never on a render path. Pressing
+  "Import from Google Sheet" in Settings runs `sheetImport.ts`, which
+  pulls rows the DB hasn't seen into `orders` and `legacy_expense_items`.
+  A row already imported is skipped outright — dashboard edits are never
+  overwritten. Idempotency comes from `orders.sheet_row` and
+  `legacy_expense_items.sheet_key`. `scripts/import-sheet.mts` runs the
+  same import from the CLI.
+- Sheet dates are "D/M" with no year. The importer stamps the import year
+  purely because `orders.date` is a real DATE column; the year is never
+  displayed (`formatOrderDate` renders D/M) and nothing should start
+  relying on it.
 - Reading plain values: `getSheetValues`. Reading values *and* cell
   background color (used for Orders' payment-status encoding — see
   `src/lib/orders.ts`): `getSheetValuesWithFormatting`. Reading comment
@@ -141,21 +169,26 @@ iteration (not guessed) — define these as `@theme` tokens in
   `WHERE` trick used there to force CTE execution order — Postgres
   doesn't otherwise guarantee it for data-modifying CTEs with no data
   dependency on each other).
-- Holds everything the Sheet can't: dashboard-created orders
-  (`orders`, `order_content_lines`), field-level edits to Sheet orders
-  (`order_overrides`, keyed by `"sheet:<row>"` — every editable Order
-  field except `date` and content lines; NULL column = not overridden,
-  falls back to the Sheet-parsed value), itemized expenses (`expenses`),
-  and the owner-editable value lists (`flavors`, `package_types`,
-  `payment_methods`, `expense_categories`, `staff`).
-- Orders and expenses are **merged at read time** from Sheet + DB into
-  one list for display — this is a deliberate two-source-of-truth
-  design (dashboard-created records don't appear in the Sheet itself),
-  not an oversight. Don't try to "fix" it by writing back to Sheets.
-  Editing a Sheet order from the dashboard writes to `order_overrides`,
-  never to the Sheet — once a field is overridden it stays that way
-  permanently (the Sheet is only consulted for fields that were never
-  edited), so there's no ongoing re-sync to worry about.
+- **The DB is the only source pages read.** It holds every order
+  (`orders`, `order_content_lines`) — both dashboard-created and
+  imported, distinguished by `orders.sheet_row` being non-NULL —
+  itemized expenses (`expenses`), imported Sheet expense amounts
+  (`legacy_expense_items`), and the owner-editable value lists
+  (`flavors`, `package_types`, `payment_methods`, `expense_categories`,
+  `staff`). `Order.source` records provenance only: an imported order is
+  an ordinary editable row like any other.
+- `order_overrides` is **legacy and unread**. It dates from when pages
+  read the Sheet live and a Sheet row had no DB row to edit. The first
+  import folded every override into the imported order. Kept, not
+  dropped, so that fold-in stays auditable — don't add reads of it.
+- An `order_content_lines` row describes **one axis, never both**:
+  `package_type_id` set with `flavor_id` NULL means a packaging line
+  (quantity = packages), `flavor_id` set with `package_type_id` NULL
+  means a flavour line (quantity = units), enforced by a CHECK. Total
+  units come from packaging lines (`orderUnits`), the flavour split from
+  flavour lines. The order form blocks saving while the two disagree.
+- Nothing is ever written back to the Sheet. Don't try to "fix" the
+  one-way flow by adding writes.
 
 ## Authentication
 
@@ -181,3 +214,10 @@ iteration (not guessed) — define these as `@theme` tokens in
 ## Commands
 
 `npm run dev` / `build` / `start` / `lint`
+
+DB scripts: `npm run db:migrate` applies `src/lib/schema.sql`, `db:seed`
+seeds the value lists, `db:import` pulls the Sheet into Postgres.
+
+`migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
+a SQL comment truncates the statement after it** — keep comments in that
+file semicolon-free.
