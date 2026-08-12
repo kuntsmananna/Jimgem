@@ -1,25 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { orderDay, orderMonth, type Order } from "@/lib/orderTypes";
+import { type Order } from "@/lib/orderTypes";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/**
- * Sheet order dates carry no year (see orderTypes.ts) — assumed to fall in
- * the current year for calendar positioning, consistent with the rest of
- * this codebase's single-year assumption for V1. DB orders have real
- * ISO dates and are parsed as-is.
- */
 function orderDate(order: Order): Date | null {
-  if (order.source === "db") {
-    const d = new Date(`${order.date}T00:00:00`);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const month = orderMonth(order);
-  const day = orderDay(order);
-  if (month === null || day === null) return null;
-  return new Date(new Date().getFullYear(), month - 1, day);
+  const date = new Date(`${order.date}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function startOfWeek(date: Date): Date {

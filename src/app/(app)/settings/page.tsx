@@ -9,6 +9,7 @@ import { FlavorsPanel } from "@/components/settings/FlavorsPanel";
 import { NameListPanel } from "@/components/settings/NameListPanel";
 import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
+import { ImportPanel } from "@/components/settings/ImportPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function SettingsPage() {
         <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />
         <NameListPanel title="Expense categories" resource="expense-categories" items={expenseCategories} />
         <StaffPanel items={staff} />
+        <ImportPanel />
       </div>
     </div>
   );

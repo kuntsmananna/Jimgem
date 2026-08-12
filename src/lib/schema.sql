@@ -59,6 +59,18 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Import provenance for orders brought over from the Google Sheet (see
+-- sheetImport.ts). sheet_row is the 1-based row the order came from, and
+-- is what makes re-import idempotent: a row already present is skipped,
+-- never overwritten, so dashboard edits always win. NULL for orders
+-- created in the dashboard. details/needs_review carry the Sheet's
+-- free-text פירוט column and the best-effort parser's confidence flag
+-- (see flavorParser.ts) so nothing is lost at import time.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS needs_review BOOLEAN NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX IF NOT EXISTS orders_sheet_row_idx ON orders (sheet_row) WHERE sheet_row IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS order_content_lines (
   id SERIAL PRIMARY KEY,
   order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -67,13 +79,13 @@ CREATE TABLE IF NOT EXISTS order_content_lines (
   quantity INTEGER NOT NULL
 );
 
--- Field-level overrides for Sheet-sourced orders only (Sheet rows have no
--- id of their own, and the Sheet itself is never written to — see
--- CLAUDE.md's Database section). order_key is "sheet:<row-number>".
--- Each column is NULL until explicitly edited from the dashboard, at
--- which point it takes precedence over the Sheet-parsed value at read
--- time. date and content lines aren't overridable — see orders.ts.
--- DB-native orders carry all of these directly on the orders row instead.
+-- LEGACY, retained for history only — nothing reads this table anymore.
+-- It dates from when pages read the Sheet live on every render and a
+-- Sheet row had no DB row to edit, so dashboard edits were stored here
+-- as field-level overrides keyed "sheet:<row-number>". Orders are now
+-- imported into `orders` on demand instead (see sheetImport.ts), and the
+-- first import folded every override recorded here into the imported row.
+-- Kept rather than dropped so that fold-in remains auditable.
 CREATE TABLE IF NOT EXISTS order_overrides (
   order_key TEXT PRIMARY KEY,
   customer TEXT,
@@ -90,6 +102,29 @@ CREATE TABLE IF NOT EXISTS order_overrides (
     CHECK (production_status IS NULL OR production_status IN ('queue', 'preparing', 'delivered')),
   notes TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Expense amounts imported from the Sheet's expense-tracking tab. The
+-- Sheet stores each category as a loose stack of amounts with no per-row
+-- date or description (see CLAUDE.md), so one row here is one
+-- (month, category, amount) cell — the finest grain the source actually
+-- has. sheet_key is that cell's coordinates, and makes re-import
+-- idempotent the same way orders.sheet_row does. Kept separate from
+-- `expenses` because these are not itemized and can't be edited: the
+-- Expenses page badges them as legacy totals rather than pretending they
+-- are real line items.
+CREATE TABLE IF NOT EXISTS legacy_expense_items (
+  id SERIAL PRIMARY KEY,
+  sheet_key TEXT NOT NULL UNIQUE,
+  month INTEGER NOT NULL,
+  category_name TEXT NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL,
+  -- Best-effort match from a Sheet cell comment. See financials.ts's
+  -- SheetExpenseItem for why it is only ever an unverified guess.
+  -- (Avoid semicolons in this file's comments — migrate.mjs splits
+  -- statements on them, so one inside a comment truncates a statement.)
+  description TEXT,
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS expenses (

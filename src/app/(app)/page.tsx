@@ -1,5 +1,5 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
-import { getMergedOrders, orderMonth, orderDay } from "@/lib/orders";
+import { getOrders, orderMonth, orderDay } from "@/lib/orders";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 import { APP_VERSION_LABEL } from "@/lib/version";
@@ -7,11 +7,9 @@ import { APP_VERSION_LABEL } from "@/lib/version";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
-
   const [financials, orders, flavors, packageTypes] = await Promise.all([
-    getYearlyFinancials(spreadsheetId),
-    getMergedOrders(spreadsheetId),
+    getYearlyFinancials(),
+    getOrders(),
     getFlavors(true),
     getPackageTypes(),
   ]);

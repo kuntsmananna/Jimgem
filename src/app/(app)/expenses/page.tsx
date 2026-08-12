@@ -5,10 +5,8 @@ import { ExpensesClient } from "@/components/expenses/ExpensesClient";
 export const dynamic = "force-dynamic";
 
 export default async function ExpensesPage() {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
-
   const [periods, categories, paymentMethods, staff] = await Promise.all([
-    getExpensePeriods(spreadsheetId),
+    getExpensePeriods(),
     getExpenseCategories(),
     getPaymentMethods(),
     getStaff(),

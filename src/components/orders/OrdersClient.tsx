@@ -56,15 +56,11 @@ export function OrdersClient({
 
   async function batchSetStatus(status: ProductionStatus) {
     setBatchBusy(true);
-    await Promise.all(
-      Array.from(selectedKeys).map((key) =>
-        fetch("/api/orders/production-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key, status }),
-        }),
-      ),
-    );
+    await fetch("/api/orders/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "productionStatus", ids: Array.from(selectedKeys).map(Number), status }),
+    });
     setBatchBusy(false);
     setSelectedKeys(new Set());
     refresh();

@@ -1,5 +1,5 @@
 import { getSheetValues, getFileComments } from "./googleSheets";
-import { getMergedOrders, orderMonth, type Order } from "./orders";
+import { getOrders, orderMonth, type Order } from "./orders";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories } from "./settings";
 
@@ -62,7 +62,39 @@ function isRowEmpty(row: string[]): boolean {
   return row.every((cell) => !cell || !cell.trim());
 }
 
+/** Legacy Sheet expense amounts, as imported into the DB (see sheetImport.ts). */
+export async function getLegacyExpenseItems(): Promise<MonthlyExpenses[]> {
+  const db = getDb();
+  const { rows } = await db.query<{
+    sheet_key: string;
+    month: number;
+    category_name: string;
+    amount: string;
+    description: string | null;
+  }>("SELECT * FROM legacy_expense_items ORDER BY month, id");
+
+  const byMonth = new Map<number, MonthlyExpenses>();
+  for (const row of rows) {
+    const month = byMonth.get(row.month) ?? { month: row.month, byCategory: {}, total: 0, items: [] };
+    const amount = Number(row.amount);
+    month.byCategory[row.category_name] = (month.byCategory[row.category_name] ?? 0) + amount;
+    month.total += amount;
+    month.items.push({
+      key: row.sheet_key,
+      category: row.category_name,
+      amount,
+      description: row.description,
+    });
+    byMonth.set(row.month, month);
+  }
+
+  return Array.from(byMonth.values()).sort((a, b) => a.month - b.month);
+}
+
 /**
+ * Reads the Sheet's expense tab directly. Only the importer calls this —
+ * pages read the imported copy via getLegacyExpenseItems().
+ *
  * The sheet's own per-month "totals" row is unreliable — cross-checking
  * against the raw category columns shows June's totals row has a formula
  * bug (its Waitressing figure is folded into a different cell), while
@@ -231,10 +263,10 @@ export interface MonthlyFinancials {
 }
 
 /** Net profit per month = revenue − recorded expenses, full-year rollup for Biz Plan and Dashboard. */
-export async function getYearlyFinancials(spreadsheetId: string): Promise<MonthlyFinancials[]> {
+export async function getYearlyFinancials(): Promise<MonthlyFinancials[]> {
   const [orders, sheetExpenses, dbExpenses, packageTypes] = await Promise.all([
-    getMergedOrders(spreadsheetId),
-    getSheetMonthlyExpenses(spreadsheetId),
+    getOrders(),
+    getLegacyExpenseItems(),
     getDbExpensesForRollup(),
     getPackageTypes(),
   ]);

@@ -1,5 +1,5 @@
 import { getDb } from "./db";
-import { getSheetMonthlyExpenses, MONTH_NAMES_EN, type MonthlyExpenses } from "./financials";
+import { getLegacyExpenseItems, MONTH_NAMES_EN, type MonthlyExpenses } from "./financials";
 import { getExpenseCategories, getPaymentMethods, getStaff } from "./settings";
 
 export interface Expense {
@@ -141,10 +141,10 @@ export interface ExpensePeriod {
  * and labeled by category alone, which is the finest grain actually
  * recoverable from the source data.
  */
-export async function getExpensePeriods(spreadsheetId: string): Promise<ExpensePeriod[]> {
+export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
   const [dbExpenses, legacyMonths] = await Promise.all([
     getDbExpenses(),
-    getSheetMonthlyExpenses(spreadsheetId),
+    getLegacyExpenseItems(),
   ]);
 
   const now = new Date();

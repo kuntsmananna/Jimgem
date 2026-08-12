@@ -42,9 +42,8 @@ export function OrdersKanban({
                 <div key={order.key} className="group rounded-xl border border-line bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <button
-                      onClick={() => order.source === "db" && onEdit(order)}
-                      disabled={order.source !== "db"}
-                      className="text-left text-sm font-semibold text-ink enabled:hover:underline"
+                      onClick={() => onEdit(order)}
+                      className="text-left text-sm font-semibold text-ink hover:underline"
                     >
                       {order.customer || "(no name)"}
                     </button>

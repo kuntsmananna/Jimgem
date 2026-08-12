@@ -14,9 +14,15 @@ export interface OrderContentLine {
 }
 
 export interface Order {
-  /** "sheet:<row>" for Sheet-sourced orders, DB id for dashboard-created ones. */
+  /** DB row id. Every order is a DB row — Sheet rows are imported (see sheetImport.ts). */
   key: string;
+  /**
+   * Where the order originally came from. Provenance only: an imported
+   * order is an ordinary editable DB row like any other, and both kinds
+   * store their date the same way.
+   */
   source: "sheet" | "db";
+  /** "YYYY-MM-DD". */
   date: string;
   customer: string;
   customerType: string;
@@ -86,28 +92,17 @@ export const PRODUCTION_STATUS_LABEL: Record<ProductionStatus, string> = {
 };
 
 /**
- * Month (1-12) an order falls in, regardless of source — Sheet dates are
- * "D/M" (no year, matching the rest of this codebase's single-year
- * assumption for V1), DB dates are "YYYY-MM-DD" (see db.ts's DATE type
- * parser override).
+ * Every order date is "YYYY-MM-DD" (see db.ts's DATE type parser
+ * override). Sheet rows arrive as "D/M" and are given a year at import
+ * time — see sheetImport.ts for why the year is never surfaced.
  */
 export function orderMonth(order: Order): number | null {
-  if (order.source === "sheet") {
-    const match = order.date.trim().match(/^(\d{1,2})\/(\d{1,2})$/);
-    if (!match) return null;
-    const month = Number(match[2]);
-    return month >= 1 && month <= 12 ? month : null;
-  }
   const match = order.date.trim().match(/^\d{4}-(\d{2})-\d{2}$/);
   return match ? Number(match[1]) : null;
 }
 
-/** Day-of-month an order falls on, regardless of source — for chronological sort within a month. */
+/** Day-of-month an order falls on — for chronological sort within a month. */
 export function orderDay(order: Order): number | null {
-  if (order.source === "sheet") {
-    const match = order.date.trim().match(/^(\d{1,2})\/(\d{1,2})$/);
-    return match ? Number(match[1]) : null;
-  }
   const match = order.date.trim().match(/^\d{4}-\d{2}-(\d{2})$/);
   return match ? Number(match[1]) : null;
 }

@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateOrder, deleteOrder, setSheetOrderOverride, type OrderInput, type OverridableField } from "@/lib/orders";
+import { updateOrder, updateOrderFields, deleteOrder, type OrderInput, type EditableField } from "@/lib/orders";
 
 export const runtime = "nodejs";
 
 /**
- * DB orders (numeric id) get a full OrderInput replace via updateOrder.
- * Sheet orders ("sheet:<row>") never get written to the Sheet — instead
- * the request body is treated as a partial field patch and stored in
- * order_overrides, merged in at read time (see orders.ts).
+ * Two shapes of update share this route. A body carrying `contentLines`
+ * is a full replace from the order form; anything else is a partial field
+ * patch from an inline table cell. Sheet-sourced orders are ordinary DB
+ * rows since the import change (see sheetImport.ts), so both paths apply
+ * to every order — there is no separate override path any more.
  */
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const { id } = await ctx.params;
   const body = await request.json();
   try {
-    if (id.startsWith("sheet:")) {
-      await setSheetOrderOverride(id, body as Partial<Record<OverridableField, string | number | null>>);
-      return NextResponse.json({ ok: true });
+    if (Array.isArray(body?.contentLines)) {
+      return NextResponse.json(await updateOrder(Number(id), body as OrderInput));
     }
-    const order = await updateOrder(Number(id), body as OrderInput);
-    return NextResponse.json(order);
+    await updateOrderFields(Number(id), body as Partial<Record<EditableField, string | number | null>>);
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(`Failed to update order ${id}:`, error);
     return NextResponse.json({ error: "Failed to update order." }, { status: 500 });

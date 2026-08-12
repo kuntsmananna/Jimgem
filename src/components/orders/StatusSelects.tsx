@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
-  orderToInput,
   type Order,
   type PaymentStatus,
   type ProductionStatus,
@@ -29,13 +28,10 @@ export function PaymentStatusSelect({
 
   async function handleChange(status: PaymentStatus) {
     setBusy(true);
-    // DB orders replace their full row; Sheet orders never get written to
-    // the Sheet — this is stored as a dashboard-side override instead.
-    const body = order.source === "db" ? { ...orderToInput(order), paymentStatus: status } : { paymentStatus: status };
     await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ paymentStatus: status }),
     });
     setBusy(false);
     onChanged();
@@ -68,10 +64,10 @@ export function ProductionStatusSelect({
 
   async function handleChange(status: ProductionStatus) {
     setBusy(true);
-    await fetch("/api/orders/production-status", {
-      method: "POST",
+    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: order.key, status }),
+      body: JSON.stringify({ productionStatus: status }),
     });
     setBusy(false);
     onChanged();
