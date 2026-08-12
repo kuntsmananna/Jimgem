@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  setPaymentStatus,
-  setProductionStatus,
+  setPaymentStatusMany,
+  setProductionStatusMany,
+  deleteOrdersMany,
   duplicateOrder,
-  deleteOrder,
   type PaymentStatus,
   type ProductionStatus,
 } from "@/lib/orders";
@@ -17,10 +17,14 @@ type BatchBody =
   | { action: "delete"; ids: number[] };
 
 /**
- * Applies one action to a selection of orders. Each id is attempted
- * independently and failures are counted rather than thrown, so the
- * caller can report partial success ("3 deleted, 1 failed") instead of
- * the whole batch appearing to have done nothing.
+ * Applies one action to a selection of orders, reporting how many landed
+ * so the caller can say "3 deleted, 1 couldn't be" rather than implying
+ * all-or-nothing.
+ *
+ * Status changes and deletes are single set-statements — one HTTP round
+ * trip on Neon's driver instead of one per id (see db.ts). Duplicating
+ * genuinely needs per-order work (it reads the row and its content lines
+ * before inserting), so it stays a settled batch.
  */
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as BatchBody;
@@ -29,26 +33,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No orders selected." }, { status: 400 });
   }
 
-  const run = (id: number): Promise<unknown> => {
-    switch (body.action) {
-      case "paymentStatus":
-        return setPaymentStatus(id, body.status);
-      case "productionStatus":
-        return setProductionStatus(id, body.status);
-      case "duplicate":
-        return duplicateOrder(id);
-      case "delete":
-        return deleteOrder(id);
-      default:
-        return Promise.reject(new Error("Unknown action."));
+  try {
+    if (body.action === "duplicate") {
+      const results = await Promise.allSettled(ids.map((id) => duplicateOrder(id)));
+      const failed = results.filter((r) => r.status === "rejected");
+      for (const failure of failed) {
+        console.error("Batch duplicate failed for one order:", (failure as PromiseRejectedResult).reason);
+      }
+      return NextResponse.json({
+        succeeded: results.length - failed.length,
+        failed: failed.length,
+      });
     }
-  };
 
-  const results = await Promise.allSettled(ids.map(run));
-  const failed = results.filter((r) => r.status === "rejected");
-  for (const failure of failed) {
-    console.error(`Batch ${body.action} failed for one order:`, (failure as PromiseRejectedResult).reason);
+    const affected =
+      body.action === "paymentStatus"
+        ? await setPaymentStatusMany(ids, body.status)
+        : body.action === "productionStatus"
+          ? await setProductionStatusMany(ids, body.status)
+          : await deleteOrdersMany(ids);
+
+    return NextResponse.json({
+      succeeded: affected,
+      failed: ids.length - affected,
+    });
+  } catch (error) {
+    console.error(`Batch ${body.action} failed:`, error);
+    return NextResponse.json({ error: "Couldn't apply that to the selected orders." }, { status: 500 });
   }
-
-  return NextResponse.json({ succeeded: results.length - failed.length, failed: failed.length });
 }

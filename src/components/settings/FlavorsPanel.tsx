@@ -4,11 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import type { Flavor } from "@/lib/settings";
+import { flavorGradient } from "@/lib/flavorStyle";
 import { Modal } from "@/components/Modal";
-
-function flavorGradient(f: Pick<Flavor, "colorGlow" | "colorBase" | "colorShadow">) {
-  return `radial-gradient(circle at -15% -15%, ${f.colorGlow}, ${f.colorBase} 55%, ${f.colorShadow} 100%)`;
-}
 
 interface Draft {
   name: string;

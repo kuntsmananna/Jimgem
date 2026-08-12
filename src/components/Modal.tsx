@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayDismiss } from "./useOverlayDismiss";
 
 export function Modal({
   title,
@@ -14,17 +14,7 @@ export function Modal({
   children: React.ReactNode;
   wide?: boolean;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
+  useOverlayDismiss(onClose);
 
   return createPortal(
     <div

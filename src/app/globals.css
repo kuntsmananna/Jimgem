@@ -92,6 +92,35 @@ body {
     @apply text-ink-soft;
   }
 
+  /*
+   * Orders table row focus. Hovering a row brings it forward and lets the
+   * others recede, so the eye lands on one line in a dense table.
+   *
+   * Done in CSS rather than by tracking the hovered row in React: that
+   * re-rendered every row (~80 rows × 13 cells) on each row-to-row mouse
+   * move. `tbody:hover` matches while the pointer is anywhere in the
+   * table, so the un-hovered rows dim only during a hover, never at rest.
+   */
+  .orders-rows:hover > tr {
+    opacity: 0.55;
+    transition:
+      opacity 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .orders-rows:hover > tr:hover,
+  .orders-rows > tr.is-open {
+    opacity: 1;
+  }
+
+  .orders-rows > tr:hover {
+    background-color: --alpha(var(--color-ink) / 4.5%);
+  }
+
+  .orders-rows > tr.is-open {
+    background-color: --alpha(var(--color-accent) / 7%);
+  }
+
   /* Selects can't show a placeholder, so they keep a visible affordance:
      the native chevron plus room for it, filled or not. */
   select.input {

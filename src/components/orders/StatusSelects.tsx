@@ -31,7 +31,7 @@ export function PaymentStatusSelect({
     await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentStatus: status }),
+      body: JSON.stringify({ mode: "patch", paymentStatus: status }),
     });
     setBusy(false);
     onChanged();
@@ -67,7 +67,7 @@ export function ProductionStatusSelect({
     await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productionStatus: status }),
+      body: JSON.stringify({ mode: "patch", productionStatus: status }),
     });
     setBusy(false);
     onChanged();
@@ -75,12 +75,11 @@ export function ProductionStatusSelect({
 
   return (
     <select
-      value={order.productionStatus ?? ""}
+      value={order.productionStatus}
       disabled={busy}
       onChange={(e) => handleChange(e.target.value as ProductionStatus)}
       className="rounded-full border border-line bg-cream px-2.5 py-1 text-xs font-semibold text-ink outline-none"
     >
-      {!order.productionStatus && <option value="">Not tracked</option>}
       {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((status) => (
         <option key={status} value={status}>
           {PRODUCTION_STATUS_LABEL[status]}

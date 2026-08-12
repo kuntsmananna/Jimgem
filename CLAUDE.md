@@ -33,20 +33,20 @@ something here isn't obvious.
 - `src/app/api/**` — route handlers for client-triggered interactivity
   (not for initial page data — see below)
 - `src/lib/**` — server-only helpers: `googleSheets.ts`, `db.ts`,
-  `orders.ts` (DB order CRUD + the Sheet parser the importer uses),
-  `sheetImport.ts` (on-demand Sheet → DB import), `expenses.ts`
+  `orders.ts` (DB order CRUD), `sheetImport.ts` (every Sheet reader,
+  plus the on-demand Sheet → DB import), `expenses.ts`
   (DB expense CRUD + imported legacy totals), `financials.ts`
   (monthly rollups), `settings.ts` (value-list CRUD), `flavorParser.ts`,
   `auth.ts`, `session.ts`, `version.ts`
-- `src/lib/orderTypes.ts` and `src/lib/icons.ts` — the exceptions to
-  "`src/lib/**` is server-only". `orderTypes.ts` holds order
+- `src/lib/orderTypes.ts`, `src/lib/icons.ts` and `src/lib/flavorStyle.ts`
+  — the exceptions to "`src/lib/**` is server-only". `orderTypes.ts` holds order
   types/labels/pure date helpers, split out from `orders.ts` so Client
   Components can import them without pulling `orders.ts`'s server-only
   deps (`@neondatabase/serverless` via `db.ts`, `googleapis` via
   `googleSheets.ts`) into the browser bundle. `icons.ts` holds the
   event-type and expense-category icon/label lookups, which are pure
-  data plus lucide components. When a Client
-  Component needs something from a `src/lib/**` module, prefer a
+  data plus lucide components. `flavorStyle.ts` holds the jelly-gradient
+  recipe. When a Client Component needs something from a `src/lib/**` module, prefer a
   type-only import (`import type { X } from "@/lib/orders"` — erased at
   compile time, always safe); if a *value* is needed too, it belongs in
   a dedicated client-safe file like these, not a value import from a
@@ -84,12 +84,18 @@ iteration (not guessed) — define these as `@theme` tokens in
   icons — there is no `Instagram`. Event-type and expense-category
   lookups live in `src/lib/icons.ts`; both keys are free text the owner
   controls, so both maps fall back rather than assuming a closed set.
-- Form fields (`.input` in `globals.css`): filled = no box, empty = weak
-  outline, hover = box, focus = accent border. Filled/empty is detected
-  with `:placeholder-shown`, so **every `.input` needs a placeholder**
-  (`" "` is fine). The rules are written as overrides of an outlined
-  base so a field that can't be classified stays visible rather than
-  invisible. `/login` deliberately opts out by not using `.input`.
+- Form fields: filled = no box, empty = weak outline, hover = box, focus
+  = accent border. Filled/empty is detected with `:placeholder-shown`,
+  which needs a placeholder attribute to match against — so use
+  `TextInput`/`SelectInput` from `src/components/Field.tsx` rather than a
+  bare `<input className="input">`; they carry the default `placeholder=" "`
+  with the class. The CSS is written as overrides of an outlined base, so
+  a field that can't be classified stays visible rather than invisible.
+  `/login` deliberately opts out by not using `.input` at all.
+- Overlays (`Modal`, `OrderDetailsPane`) share `useOverlayDismiss` for
+  Escape-to-close and a reference-counted body scroll lock. They nest —
+  the details pane hosts a form that can open a modal — so the count is
+  what stops the inner one unlocking the page under the outer.
 - Flavor colors are per-flavor 3-stop same-hue `radial-gradient`s
   (`color_glow` → `color_base` → `color_shadow`, light source at
   `circle at -15% -15%`) meant to read as glowing translucent jelly —
@@ -127,6 +133,11 @@ iteration (not guessed) — define these as `@theme` tokens in
   way to expose). Both remain read-only; the sheet itself is never
   written to, by design (see Database section — data moves one way, into
   Postgres). Don't widen further without confirming it's actually wanted.
+- **Every Sheet reader lives in `sheetImport.ts`, and nothing else imports
+  it.** That is what makes "no render path touches the Sheet" structural
+  rather than a rule to remember: `googleSheets.ts` (and with it
+  `googleapis`) is reachable only from there. Don't move a reader back
+  into `orders.ts`/`financials.ts` for convenience.
 - **The Sheet is read on demand only**, never on a render path. Pressing
   "Import from Google Sheet" in Settings runs `sheetImport.ts`, which
   pulls rows the DB hasn't seen into `orders` and `legacy_expense_items`.

@@ -16,15 +16,29 @@ export type OrderContentLine =
   | { kind: "package"; packageTypeId: string; quantity: number }
   | { kind: "flavor"; flavorId: string; quantity: number };
 
-/** Total units in an order, from its packaging lines. */
-export function orderUnits(
-  contentLines: OrderContentLine[],
-  unitsPerPackage: Map<number, number>,
-): number {
+/**
+ * Total units in an order, from its packaging lines — a packaging line's
+ * quantity counts packages, so it needs the per-package size.
+ */
+export function orderUnits(contentLines: OrderContentLine[], unitsPerPackage: Map<number, number>): number {
   return contentLines.reduce(
     (sum, line) =>
-      line.kind === "package" ? sum + line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) : sum,
+      line.kind === "package"
+        ? sum + line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0)
+        : sum,
     0,
+  );
+}
+
+/**
+ * Units per flavour in an order. The counterpart to orderUnits, and kept
+ * beside it so the asymmetry stays in one place: a flavour line's
+ * quantity is already in units, so unlike a packaging line it needs no
+ * conversion.
+ */
+export function orderFlavorUnits(contentLines: OrderContentLine[]): { flavorId: string; units: number }[] {
+  return contentLines.flatMap((line) =>
+    line.kind === "flavor" ? [{ flavorId: line.flavorId, units: line.quantity }] : [],
   );
 }
 
@@ -51,7 +65,8 @@ export interface Order {
   totalAmount: number;
   deposit: number;
   paymentStatus: PaymentStatus;
-  productionStatus: ProductionStatus | null;
+  /** Never null: `orders.production_status` is NOT NULL DEFAULT 'queue'. */
+  productionStatus: ProductionStatus;
   notes: string;
   /** True when best-effort parsing of a Sheet row's פירוט text found little/nothing reliable. */
   needsReview: boolean;
@@ -73,25 +88,6 @@ export interface OrderInput {
   notes: string;
 }
 
-/** Reduces an Order down to the shape the write API expects — used whenever a single field changes but the API needs the full row. */
-export function orderToInput(order: Order): OrderInput {
-  return {
-    date: order.date,
-    customer: order.customer,
-    customerType: order.customerType,
-    location: order.location,
-    guests: order.guests,
-    deliveryCost: order.deliveryCost,
-    mirrors: order.mirrors,
-    contentLines: order.contentLines,
-    totalAmount: order.totalAmount,
-    deposit: order.deposit,
-    paymentStatus: order.paymentStatus,
-    productionStatus: order.productionStatus ?? "queue",
-    notes: order.notes,
-  };
-}
-
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   deposit: "Deposit paid",
@@ -111,15 +107,18 @@ export const PRODUCTION_STATUS_LABEL: Record<ProductionStatus, string> = {
  * override). Sheet rows arrive as "D/M" and are given a year at import
  * time — see sheetImport.ts for why the year is never surfaced.
  */
+function parseIsoDate(isoDate: string): { month: number; day: number } | null {
+  const match = isoDate.trim().match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return match ? { month: Number(match[1]), day: Number(match[2]) } : null;
+}
+
 export function orderMonth(order: Order): number | null {
-  const match = order.date.trim().match(/^\d{4}-(\d{2})-\d{2}$/);
-  return match ? Number(match[1]) : null;
+  return parseIsoDate(order.date)?.month ?? null;
 }
 
 /** Day-of-month an order falls on — for chronological sort within a month. */
 export function orderDay(order: Order): number | null {
-  const match = order.date.trim().match(/^\d{4}-\d{2}-(\d{2})$/);
-  return match ? Number(match[1]) : null;
+  return parseIsoDate(order.date)?.day ?? null;
 }
 
 /**
@@ -129,6 +128,6 @@ export function orderDay(order: Order): number | null {
  * sheetImport.ts), so showing it would be inventing precision.
  */
 export function formatOrderDate(isoDate: string): string {
-  const match = isoDate.trim().match(/^\d{4}-(\d{2})-(\d{2})$/);
-  return match ? `${Number(match[2])}/${Number(match[1])}` : isoDate;
+  const parsed = parseIsoDate(isoDate);
+  return parsed ? `${parsed.day}/${parsed.month}` : isoDate;
 }

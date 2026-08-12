@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, Columns3, Copy, Plus, Table2, Trash2, X } from "lucide-react";
+import { CalendarDays, Columns3, Copy, Plus, Table2, Trash2, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
@@ -20,18 +20,20 @@ import { FilterDropdown, type FilterOption } from "./FilterDropdown";
 
 type View = "table" | "kanban" | "calendar";
 
-const VIEWS: { value: View; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
+const VIEWS: { value: View; label: string; Icon: LucideIcon }[] = [
   { value: "table", label: "Table", Icon: Table2 },
   { value: "kanban", label: "Kanban", Icon: Columns3 },
   { value: "calendar", label: "Calendar", Icon: CalendarDays },
 ];
 
-/** Builds dropdown options with a live count of how many orders carry each value. */
+/** Dropdown options with a live count of how many orders carry each value. */
 function optionsWithCounts<T extends string>(labels: Record<T, string>, values: T[]): FilterOption<T>[] {
+  const counts = new Map<T, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
   return (Object.keys(labels) as T[]).map((value) => ({
     value,
     label: labels[value],
-    count: values.filter((v) => v === value).length,
+    count: counts.get(value) ?? 0,
   }));
 }
 
@@ -62,14 +64,37 @@ export function OrdersClient({
     () =>
       orders
         .filter((o) => paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus))
-        .filter((o) => productionFilter.size === 0 || (o.productionStatus !== null && productionFilter.has(o.productionStatus))),
+        .filter((o) => productionFilter.size === 0 || productionFilter.has(o.productionStatus)),
     [orders, paymentFilter, productionFilter],
   );
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
 
+  const paymentOptions = useMemo(
+    () =>
+      optionsWithCounts(
+        PAYMENT_STATUS_LABEL,
+        orders.map((o) => o.paymentStatus),
+      ),
+    [orders],
+  );
+  const productionOptions = useMemo(
+    () =>
+      optionsWithCounts(
+        PRODUCTION_STATUS_LABEL,
+        orders.map((o) => o.productionStatus),
+      ),
+    [orders],
+  );
+
   function refresh() {
     router.refresh();
+  }
+
+  /** Also drops ?order= so refreshing doesn't reopen a pane you closed. */
+  function closePane() {
+    setOpenKey(null);
+    if (searchParams.get("order")) router.replace("/orders");
   }
 
   function toggleSelect(key: string) {
@@ -82,7 +107,9 @@ export function OrdersClient({
   }
 
   function toggleAll() {
-    setSelectedKeys((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((o) => o.key))));
+    setSelectedKeys((prev) =>
+      prev.size === filtered.length ? new Set() : new Set(filtered.map((o) => o.key)),
+    );
   }
 
   async function runBatch(body: Record<string, unknown>, verb: string) {
@@ -91,7 +118,10 @@ export function OrdersClient({
     const response = await fetch("/api/orders/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, ids: Array.from(selectedKeys).map(Number) }),
+      body: JSON.stringify({
+        ...body,
+        ids: Array.from(selectedKeys).map(Number),
+      }),
     });
     const result = await response.json();
     setBatchBusy(false);
@@ -122,19 +152,13 @@ export function OrdersClient({
         <div className="flex flex-1 items-center gap-2">
           <FilterDropdown
             label="Payment"
-            options={optionsWithCounts(
-              PAYMENT_STATUS_LABEL,
-              orders.map((o) => o.paymentStatus),
-            )}
+            options={paymentOptions}
             selected={paymentFilter}
             onChange={setPaymentFilter}
           />
           <FilterDropdown
             label="Production"
-            options={optionsWithCounts(
-              PRODUCTION_STATUS_LABEL,
-              orders.flatMap((o) => (o.productionStatus ? [o.productionStatus] : [])),
-            )}
+            options={productionOptions}
             selected={productionFilter}
             onChange={setProductionFilter}
           />
@@ -192,9 +216,9 @@ export function OrdersClient({
           order={openOrder}
           flavors={flavors}
           packageTypes={packageTypes}
-          onClose={() => setOpenKey(null)}
+          onClose={closePane}
           onSaved={() => {
-            setOpenKey(null);
+            closePane();
             refresh();
           }}
         />

@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { TextInput } from "@/components/Field";
 
 /**
- * Click-to-edit table cell. The button swallows the click so it edits the
- * cell rather than bubbling up to the row, which would open the details
- * pane instead (see OrdersTable).
+ * Click-to-edit table cell. Both the display button and the edit input
+ * are interactive elements, which is how the Orders table's row-click
+ * guard knows to leave them alone (see OrdersTable's INTERACTIVE).
  */
 export function EditableCell({
-  editable,
   displayValue,
   editValue,
   type = "text",
   onSave,
 }: {
-  editable: boolean;
   displayValue: React.ReactNode;
   editValue: string;
   type?: "text" | "number" | "date";
@@ -23,10 +22,6 @@ export function EditableCell({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(editValue);
   const [busy, setBusy] = useState(false);
-
-  if (!editable) {
-    return <span>{displayValue}</span>;
-  }
 
   if (!editing) {
     return (
@@ -50,13 +45,12 @@ export function EditableCell({
   }
 
   return (
-    <input
+    <TextInput
       autoFocus
       type={type}
       value={value}
       disabled={busy}
-      className="input w-full"
-      placeholder=" "
+      className="w-full"
       onChange={(e) => setValue(e.target.value)}
       onBlur={save}
       onKeyDown={(e) => {

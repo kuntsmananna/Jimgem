@@ -1,9 +1,3 @@
-import {
-  getSheetValuesWithFormatting,
-  type CellData,
-  type RgbColor,
-} from "./googleSheets";
-import { parseOrderDetails } from "./flavorParser";
 import { getDb } from "./db";
 import {
   type PaymentStatus,
@@ -13,94 +7,19 @@ import {
   type OrderInput,
 } from "./orderTypes";
 
-export const ORDERS_TAB = "הזמנות (באחריות אביב)";
-
 // Re-exported so existing server-side call sites (`@/lib/orders`) keep
 // working unchanged — client components should import these (and the
 // pure orderMonth/orderDay helpers) from `@/lib/orderTypes` directly to
-// avoid pulling this module's server-only deps (pg, googleapis) into a
-// client bundle.
+// avoid pulling this module's server-only deps into a client bundle.
 export type { PaymentStatus, ProductionStatus, OrderContentLine, Order, OrderInput };
-export { PAYMENT_STATUS_LABEL, PRODUCTION_STATUS_LABEL, orderMonth, orderDay, orderUnits } from "./orderTypes";
-
-function parseAmount(raw: string): number {
-  const cleaned = raw.replace(/,/g, "").trim();
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function classifyColor(color: RgbColor | undefined): PaymentStatus {
-  if (!color) return "unpaid";
-  const r = Math.round(color.red * 255);
-  const g = Math.round(color.green * 255);
-  const b = Math.round(color.blue * 255);
-
-  if (r === 0 && g === 255 && b === 0) return "paid";
-  if (r === 255 && g === 0 && b === 255) return "comp";
-  if (r === 255 && g === 255 && b === 0) return "deposit";
-  if (r === 0 && g === 255 && b === 255) return "net40";
-  return "unpaid"; // white or any other/unrecognized color
-}
-
-function isMonthDivider(cells: CellData[]): boolean {
-  const first = cells[0];
-  if (!first?.backgroundColor) return false;
-  const { red, green, blue } = first.backgroundColor;
-  return red === 0 && green === 0 && blue === 0;
-}
-
-function isBlankRow(cells: CellData[]): boolean {
-  const hasCustomer = cells[1]?.value?.trim();
-  const hasAmount = cells[7]?.value?.trim();
-  return !hasCustomer && !hasAmount;
-}
-
-/**
- * Parses the Orders tab into Order records. Only the importer calls this
- * — pages read Postgres via getOrders() and never touch the Sheet (see
- * sheetImport.ts).
- */
-export async function getSheetOrders(spreadsheetId: string): Promise<Order[]> {
-  const range = `${ORDERS_TAB}!A1:K1000`;
-  const rows = await getSheetValuesWithFormatting(spreadsheetId, range);
-  if (rows.length === 0) return [];
-
-  const orders: Order[] = [];
-  for (let i = 1; i < rows.length; i++) {
-    const cells = rows[i];
-    if (!cells || cells.length === 0) continue;
-    if (isMonthDivider(cells)) continue;
-    if (isBlankRow(cells)) continue;
-
-    const get = (idx: number) => cells[idx]?.value ?? "";
-    const details = get(4);
-    const parsed = parseOrderDetails(details);
-
-    orders.push({
-      key: `sheet:${i + 1}`,
-      source: "sheet",
-      date: get(0),
-      customer: get(1),
-      customerType: get(2),
-      location: get(3),
-      details,
-      guests: parsed.guests,
-      deliveryCost: parsed.deliveryCost,
-      mirrors: parsed.mirrors,
-      contentLines: [],
-      totalAmount: parseAmount(get(7)),
-      deposit: parseAmount(get(8)),
-      paymentStatus: classifyColor(cells[0]?.backgroundColor),
-      // Not tracked for historical Sheet orders unless a production status
-      // was explicitly set via the dashboard — merged in by getMergedOrders.
-      productionStatus: null,
-      notes: get(6),
-      needsReview: parsed.needsReview,
-    });
-  }
-
-  return orders;
-}
+export {
+  PAYMENT_STATUS_LABEL,
+  PRODUCTION_STATUS_LABEL,
+  orderMonth,
+  orderDay,
+  orderUnits,
+  orderFlavorUnits,
+} from "./orderTypes";
 
 /**
  * Fields editable one at a time from the Orders table's inline cells.
@@ -149,10 +68,10 @@ export async function updateOrderFields(
 
   const db = getDb();
   const assignments = entries.map(([field], i) => `${COLUMN_FOR_FIELD[field]} = $${i + 2}`);
-  await db.query(
-    `UPDATE orders SET ${assignments.join(", ")} WHERE id = $1`,
-    [id, ...entries.map(([, value]) => value)],
-  );
+  await db.query(`UPDATE orders SET ${assignments.join(", ")} WHERE id = $1`, [
+    id,
+    ...entries.map(([, value]) => value),
+  ]);
 }
 
 interface DbOrderRow {
@@ -184,8 +103,16 @@ interface DbContentLineRow {
 /** Which axis a row describes is decided by which column is set — see schema.sql. */
 function mapContentLine(row: DbContentLineRow): OrderContentLine {
   return row.package_type_id !== null
-    ? { kind: "package", packageTypeId: String(row.package_type_id), quantity: row.quantity }
-    : { kind: "flavor", flavorId: String(row.flavor_id), quantity: row.quantity };
+    ? {
+        kind: "package",
+        packageTypeId: String(row.package_type_id),
+        quantity: row.quantity,
+      }
+    : {
+        kind: "flavor",
+        flavorId: String(row.flavor_id),
+        quantity: row.quantity,
+      };
 }
 
 function mapDbOrder(row: DbOrderRow, contentLines: OrderContentLine[]): Order {
@@ -232,14 +159,31 @@ export async function getOrders(): Promise<Order[]> {
   return orderRows.map((row) => mapDbOrder(row, linesByOrder.get(row.id) ?? []));
 }
 
-export async function setProductionStatus(id: number, status: ProductionStatus): Promise<void> {
-  const db = getDb();
-  await db.query("UPDATE orders SET production_status = $1 WHERE id = $2", [status, id]);
+/**
+ * Set-at-a-time status writes and deletes. One statement over `= ANY()`
+ * rather than a query per id: every db.query is its own HTTP round trip
+ * (see db.ts), so a select-all batch would otherwise fire ~80 of them at
+ * once. Each returns the number of rows actually affected, which is what
+ * lets callers report partial success.
+ */
+async function affectedRows(text: string, params: unknown[]): Promise<number> {
+  const { rows } = await getDb().query<{ id: number }>(text, params);
+  return rows.length;
 }
 
-export async function setPaymentStatus(id: number, status: PaymentStatus): Promise<void> {
-  const db = getDb();
-  await db.query("UPDATE orders SET payment_status = $1 WHERE id = $2", [status, id]);
+export function setPaymentStatusMany(ids: number[], status: PaymentStatus): Promise<number> {
+  return affectedRows("UPDATE orders SET payment_status = $1 WHERE id = ANY($2) RETURNING id", [status, ids]);
+}
+
+export function setProductionStatusMany(ids: number[], status: ProductionStatus): Promise<number> {
+  return affectedRows("UPDATE orders SET production_status = $1 WHERE id = ANY($2) RETURNING id", [
+    status,
+    ids,
+  ]);
+}
+
+export function deleteOrdersMany(ids: number[]): Promise<number> {
+  return affectedRows("DELETE FROM orders WHERE id = ANY($1) RETURNING id", [ids]);
 }
 
 /**

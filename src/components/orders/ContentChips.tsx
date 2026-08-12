@@ -1,4 +1,6 @@
 import type { OrderContentLine } from "@/lib/orderTypes";
+import type { PackageType } from "@/lib/settings";
+import { flavorGradient } from "@/lib/flavorStyle";
 
 export interface FlavorMeta {
   id: number;
@@ -6,16 +8,6 @@ export interface FlavorMeta {
   colorGlow: string;
   colorBase: string;
   colorShadow: string;
-}
-
-export interface PackageTypeMeta {
-  id: number;
-  name: string;
-  unitsPerPackage: number;
-}
-
-export function flavorGradient(flavor: FlavorMeta): string {
-  return `radial-gradient(circle at -15% -15%, ${flavor.colorGlow}, ${flavor.colorBase} 55%, ${flavor.colorShadow} 100%)`;
 }
 
 /**
@@ -30,7 +22,7 @@ export function ContentChips({
 }: {
   lines: OrderContentLine[];
   flavors: FlavorMeta[];
-  packageTypes: PackageTypeMeta[];
+  packageTypes: PackageType[];
 }) {
   if (lines.length === 0) return <span className="text-xs text-ink-soft">—</span>;
 

@@ -8,12 +8,9 @@ import { ProductionStatusSelect } from "./StatusSelects";
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
 
-const COLUMNS: { key: ProductionStatus | "unset"; label: string }[] = [
-  { key: "unset", label: "Not tracked" },
-  { key: "queue", label: PRODUCTION_STATUS_LABEL.queue },
-  { key: "preparing", label: PRODUCTION_STATUS_LABEL.preparing },
-  { key: "delivered", label: PRODUCTION_STATUS_LABEL.delivered },
-];
+// Every order has a production status (the column is NOT NULL), so there
+// is no "not tracked" bucket to show.
+const COLUMNS = Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[];
 
 export function OrdersKanban({
   orders,
@@ -29,13 +26,14 @@ export function OrdersKanban({
   onOpen: (key: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-4 gap-4">
-      {COLUMNS.map((col) => {
-        const columnOrders = orders.filter((o) => (o.productionStatus ?? "unset") === col.key);
+    <div className="grid grid-cols-3 gap-4">
+      {COLUMNS.map((status) => {
+        const columnOrders = orders.filter((o) => o.productionStatus === status);
         return (
-          <div key={col.key} className="rounded-card border border-line bg-card/60 p-3">
+          <div key={status} className="rounded-card border border-line bg-card/60 p-3">
             <h3 className="px-1 text-sm font-bold text-ink">
-              {col.label} <span className="font-normal text-ink-soft">({columnOrders.length})</span>
+              {PRODUCTION_STATUS_LABEL[status]}{" "}
+              <span className="font-normal text-ink-soft">({columnOrders.length})</span>
             </h3>
             <div className="mt-3 flex flex-col gap-2">
               {columnOrders.map((order) => (

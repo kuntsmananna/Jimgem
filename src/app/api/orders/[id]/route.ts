@@ -1,37 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateOrder, updateOrderFields, deleteOrder, type OrderInput, type EditableField } from "@/lib/orders";
+import { updateOrder, updateOrderFields, type OrderInput, type EditableField } from "@/lib/orders";
 
 export const runtime = "nodejs";
 
 /**
- * Two shapes of update share this route. A body carrying `contentLines`
- * is a full replace from the order form; anything else is a partial field
- * patch from an inline table cell. Sheet-sourced orders are ordinary DB
- * rows since the import change (see sheetImport.ts), so both paths apply
- * to every order — there is no separate override path any more.
+ * Two kinds of write share this route, told apart by an explicit `mode`
+ * rather than by which keys happen to be present:
+ *
+ *   "replace" — the whole order, from the order form. Every column is set
+ *               from the body, and content lines are rewritten.
+ *   "patch"   — named fields only, from an inline table cell. Anything
+ *               not mentioned is left alone.
+ *
+ * The distinction is worth stating rather than inferring: a "replace"
+ * that arrives missing a field silently blanks it, so a caller must not
+ * be able to trigger one by accident.
  */
+type UpdateBody =
+  | ({ mode: "replace" } & OrderInput)
+  | ({ mode: "patch" } & Partial<Record<EditableField, string | number | null>>);
+
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const { id } = await ctx.params;
-  const body = await request.json();
+  const body = (await request.json()) as UpdateBody;
   try {
-    if (Array.isArray(body?.contentLines)) {
-      return NextResponse.json(await updateOrder(Number(id), body as OrderInput));
+    if (body.mode === "replace") {
+      return NextResponse.json(await updateOrder(Number(id), body));
     }
-    await updateOrderFields(Number(id), body as Partial<Record<EditableField, string | number | null>>);
-    return NextResponse.json({ ok: true });
+    if (body.mode === "patch") {
+      await updateOrderFields(Number(id), body);
+      return NextResponse.json({ ok: true });
+    }
+    return NextResponse.json({ error: 'Body needs a "mode" of "replace" or "patch".' }, { status: 400 });
   } catch (error) {
     console.error(`Failed to update order ${id}:`, error);
     return NextResponse.json({ error: "Failed to update order." }, { status: 500 });
-  }
-}
-
-export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
-  const { id } = await ctx.params;
-  try {
-    await deleteOrder(Number(id));
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error(`Failed to delete order ${id}:`, error);
-    return NextResponse.json({ error: "Failed to delete order." }, { status: 500 });
   }
 }

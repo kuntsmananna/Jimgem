@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { PAYMENT_STATUS_LABEL, formatOrderDate, type Order } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
-import { eventType } from "@/lib/icons";
+import { useOverlayDismiss } from "@/components/useOverlayDismiss";
+import { EventTypeChip } from "./EventTypeChip";
 import { OrderForm } from "./OrderForm";
 
 /**
@@ -27,19 +27,7 @@ export function OrderDetailsPane({
   onSaved: () => void;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  const type = eventType(order.customerType);
+  useOverlayDismiss(onClose);
 
   return createPortal(
     <div
@@ -58,12 +46,7 @@ export function OrderDetailsPane({
             <h2 className="truncate font-display text-lg font-bold text-ink">{order.customer || "(no name)"}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
               <span>{formatOrderDate(order.date)}</span>
-              {type && (
-                <span className="flex items-center gap-1 rounded-full bg-black/[0.06] px-2 py-0.5 font-semibold text-ink">
-                  <type.Icon size={11} />
-                  {type.label}
-                </span>
-              )}
+              <EventTypeChip value={order.customerType} />
               <span>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</span>
               {order.source === "sheet" && <span className="text-ink-soft/70">imported from sheet</span>}
             </div>

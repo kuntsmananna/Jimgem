@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Banknote, Boxes, MapPin, Receipt, TrendingUp, Users } from "lucide-react";
+import { Banknote, Boxes, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE } from "@/lib/chartPalette";
-import { eventType } from "@/lib/icons";
+import { EventTypeChip } from "@/components/orders/EventTypeChip";
 
 export interface FlavorLine {
   month: number;
-  flavorId: string | null;
+  flavorId: string;
   units: number;
 }
 
@@ -36,26 +36,23 @@ interface FlavorMeta {
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
+const count = (n: number) => nf.format(n);
 
-/** Metrics for one period, and the same metrics for the period it's compared against. */
-interface Totals {
-  revenue: number;
-  profit: number;
-  orderCount: number;
-  unitsSold: number;
-}
+/** The KPI metrics, named so a tile's value and its percentage can't be mismatched. */
+type Metric = "revenue" | "profit" | "orderCount" | "unitsSold";
 
-const ZERO_TOTALS: Totals = { revenue: 0, profit: 0, orderCount: 0, unitsSold: 0 };
-
-function totalsFor(month: MonthlyFinancials | undefined): Totals {
-  if (!month) return ZERO_TOTALS;
-  return {
-    revenue: month.revenue,
-    profit: month.profit,
-    orderCount: month.orderCount,
-    unitsSold: month.unitsSold,
-  };
-}
+const KPI_TILES: {
+  metric: Metric;
+  label: string;
+  tile: "peach" | "mint" | "lavender" | "sage";
+  Icon: LucideIcon;
+  format: (value: number) => string;
+}[] = [
+  { metric: "revenue", label: "Revenue", tile: "peach", Icon: Banknote, format: currency },
+  { metric: "profit", label: "Profit", tile: "mint", Icon: TrendingUp, format: currency },
+  { metric: "orderCount", label: "Orders", tile: "lavender", Icon: Receipt, format: count },
+  { metric: "unitsSold", label: "Units sold", tile: "sage", Icon: Boxes, format: count },
+];
 
 /**
  * Percentage change against the previous month. Null whenever there is no
@@ -121,14 +118,10 @@ export function DashboardClient({
         ? financials.length - 1
         : financials.findIndex((m) => m.month === selectedMonth);
     if (index < 1) return null;
-    return {
-      current: totalsFor(financials[index]),
-      previous: totalsFor(financials[index - 1]),
-      label: financials[index - 1].monthLabel,
-    };
+    return { current: financials[index], previous: financials[index - 1] };
   }, [financials, selectedMonth]);
 
-  const deltaFor = (metric: keyof Totals): number | null =>
+  const deltaFor = (metric: Metric): number | null =>
     comparison ? percentChange(comparison.current[metric], comparison.previous[metric]) : null;
 
   const expenseSlices: DonutSlice[] = Object.entries(scoped.expensesByCategory).map(([label, value], i) => ({
@@ -142,12 +135,10 @@ export function DashboardClient({
       selectedMonth === "all" ? flavorLines : flavorLines.filter((l) => l.month === selectedMonth);
     const byFlavor = new Map<string, number>();
     for (const line of scopedLines) {
-      const key = line.flavorId ?? "mix";
-      byFlavor.set(key, (byFlavor.get(key) ?? 0) + line.units);
+      byFlavor.set(line.flavorId, (byFlavor.get(line.flavorId) ?? 0) + line.units);
     }
-    return Array.from(byFlavor.entries()).map(([key, units]) => {
-      if (key === "mix") return { label: "Mix", value: units, color: "#726A5E" };
-      const flavor = flavors.find((f) => String(f.id) === key);
+    return Array.from(byFlavor.entries()).map(([flavorId, units]) => {
+      const flavor = flavors.find((f) => String(f.id) === flavorId);
       return { label: flavor?.name ?? "Unknown", value: units, color: flavor?.colorBase ?? "#726A5E" };
     });
   }, [flavorLines, flavors, selectedMonth]);
@@ -158,7 +149,7 @@ export function DashboardClient({
   );
 
   const highlightIndex = selectedMonth === "all" ? null : financials.findIndex((m) => m.month === selectedMonth);
-  const comparedTo = comparison ? `vs ${comparison.label}` : null;
+  const comparedTo = comparison ? `vs ${comparison.previous.monthLabel}` : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -185,38 +176,17 @@ export function DashboardClient({
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <KpiTile
-          label="Revenue"
-          value={currency(scoped.revenue)}
-          tile="peach"
-          Icon={Banknote}
-          delta={deltaFor("revenue")}
-          comparedTo={comparedTo}
-        />
-        <KpiTile
-          label="Profit"
-          value={currency(scoped.profit)}
-          tile="mint"
-          Icon={TrendingUp}
-          delta={deltaFor("profit")}
-          comparedTo={comparedTo}
-        />
-        <KpiTile
-          label="Orders"
-          value={nf.format(scoped.orderCount)}
-          tile="lavender"
-          Icon={Receipt}
-          delta={deltaFor("orderCount")}
-          comparedTo={comparedTo}
-        />
-        <KpiTile
-          label="Units sold"
-          value={nf.format(scoped.unitsSold)}
-          tile="sage"
-          Icon={Boxes}
-          delta={deltaFor("unitsSold")}
-          comparedTo={comparedTo}
-        />
+        {KPI_TILES.map(({ metric, label, tile, Icon, format }) => (
+          <KpiTile
+            key={metric}
+            label={label}
+            value={format(scoped[metric])}
+            tile={tile}
+            Icon={Icon}
+            delta={deltaFor(metric)}
+            comparedTo={comparedTo}
+          />
+        ))}
       </div>
 
       <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6">
@@ -238,7 +208,7 @@ export function DashboardClient({
                   <span className="w-40 shrink-0 truncate font-medium text-ink" title={order.customer}>
                     {order.customer}
                   </span>
-                  <EventTypeChip value={order.customerType} />
+                  <EventTypeChip value={order.customerType} className="w-28 shrink-0" />
                   <span className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-soft">
                     <MapPin size={12} className="shrink-0" />
                     <span className="truncate" title={order.location}>
@@ -296,20 +266,6 @@ export function DashboardClient({
   );
 }
 
-function EventTypeChip({ value }: { value: string }) {
-  const type = eventType(value);
-  if (!type) return <span className="w-28 shrink-0" />;
-  const { label, Icon } = type;
-  return (
-    <span
-      title={label}
-      className="flex w-28 shrink-0 items-center gap-1 rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold text-ink"
-    >
-      <Icon size={11} className="shrink-0" />
-      <span className="truncate">{label}</span>
-    </span>
-  );
-}
 
 function KpiTile({
   label,
@@ -322,7 +278,7 @@ function KpiTile({
   label: string;
   value: string;
   tile: "peach" | "mint" | "lavender" | "sage";
-  Icon: React.ComponentType<{ size?: number | string; className?: string }>;
+  Icon: LucideIcon;
   /** Percentage change vs the previous month, or null when there's nothing to compare against. */
   delta: number | null;
   comparedTo: string | null;

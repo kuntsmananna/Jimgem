@@ -1,5 +1,5 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
-import { getOrders, orderMonth, orderDay, orderUnits } from "@/lib/orders";
+import { getOrders, orderMonth, orderDay, orderUnits, orderFlavorUnits } from "@/lib/orders";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 import { APP_VERSION_LABEL } from "@/lib/version";
@@ -16,17 +16,14 @@ export default async function DashboardPage() {
 
   const unitsByPackageType = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
 
-  // Flavour lines already carry their quantity in units (see schema.sql's
-  // order_content_lines), so unlike packaging lines they need no conversion.
-  const flavorLines: FlavorLine[] = [];
-  for (const order of orders) {
+  const flavorLines: FlavorLine[] = orders.flatMap((order) => {
     const month = orderMonth(order);
-    if (month === null) continue;
-    for (const line of order.contentLines) {
-      if (line.kind !== "flavor") continue;
-      flavorLines.push({ month, flavorId: line.flavorId, units: line.quantity });
-    }
-  }
+    if (month === null) return [];
+    return orderFlavorUnits(order.contentLines).map((line) => ({
+      month,
+      ...line,
+    }));
+  });
 
   const orderPreviews: OrderPreview[] = orders
     .map((order) => {
@@ -52,7 +49,11 @@ export default async function DashboardPage() {
     <>
       <DashboardClient
         financials={financials}
-        flavors={flavors.map((f) => ({ id: f.id, name: f.name, colorBase: f.colorBase }))}
+        flavors={flavors.map((f) => ({
+          id: f.id,
+          name: f.name,
+          colorBase: f.colorBase,
+        }))}
         flavorLines={flavorLines}
         orders={orderPreviews}
       />

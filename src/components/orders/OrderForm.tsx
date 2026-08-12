@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Boxes, Package, PackageOpen } from "lucide-react";
+import { useState } from "react";
+import { Boxes, Package, PackageOpen, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
@@ -10,9 +10,11 @@ import {
   type OrderInput,
   type PaymentStatus,
   type ProductionStatus,
+  orderUnits,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
-import { flavorGradient } from "./ContentChips";
+import { flavorGradient } from "@/lib/flavorStyle";
+import { Field, TextInput, SelectInput } from "@/components/Field";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -23,7 +25,17 @@ const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
  */
 type Quantities = Record<string, number>;
 
-const PACKAGE_ICONS = [Package, Boxes, PackageOpen];
+/**
+ * Keyed by name, not by list position — package types are owner-editable,
+ * so indexing by position would reshuffle every icon when one is added or
+ * reordered. Unknown names fall back rather than assuming a closed set,
+ * same as the event-type and expense-category maps in lib/icons.ts.
+ */
+const PACKAGE_ICONS: Record<string, LucideIcon> = {
+  "Small tray": Package,
+  "Big tray": Boxes,
+  Units: PackageOpen,
+};
 
 function draftFromOrder(order?: Order): OrderInput {
   if (!order) {
@@ -58,6 +70,29 @@ function draftFromOrder(order?: Order): OrderInput {
     productionStatus: order.productionStatus ?? "queue",
     notes: order.notes,
   };
+}
+
+function buildContentLines(packageQty: Quantities, flavorQty: Quantities): OrderContentLine[] {
+  return [
+    ...Object.entries(packageQty)
+      .filter(([, qty]) => qty > 0)
+      .map(
+        ([packageTypeId, quantity]): OrderContentLine => ({
+          kind: "package",
+          packageTypeId,
+          quantity,
+        }),
+      ),
+    ...Object.entries(flavorQty)
+      .filter(([, qty]) => qty > 0)
+      .map(
+        ([flavorId, quantity]): OrderContentLine => ({
+          kind: "flavor",
+          flavorId,
+          quantity,
+        }),
+      ),
+  ];
 }
 
 function quantitiesFrom(lines: OrderContentLine[], kind: OrderContentLine["kind"]): Quantities {
@@ -96,18 +131,13 @@ export function OrderForm({
   const [packageQty, setPackageQty] = useState<Quantities>(() =>
     quantitiesFrom(order?.contentLines ?? [], "package"),
   );
-  const [flavorQty, setFlavorQty] = useState<Quantities>(() => quantitiesFrom(order?.contentLines ?? [], "flavor"));
+  const [flavorQty, setFlavorQty] = useState<Quantities>(() =>
+    quantitiesFrom(order?.contentLines ?? [], "flavor"),
+  );
   const [busy, setBusy] = useState(false);
 
-  const unitsPerPackage = useMemo(
-    () => new Map(packageTypes.map((p) => [String(p.id), p.unitsPerPackage])),
-    [packageTypes],
-  );
-
-  const packagedUnits = Object.entries(packageQty).reduce(
-    (sum, [id, qty]) => sum + qty * (unitsPerPackage.get(id) ?? 0),
-    0,
-  );
+  const contentLines = buildContentLines(packageQty, flavorQty);
+  const packagedUnits = orderUnits(contentLines, new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])));
   const assignedUnits = Object.values(flavorQty).reduce((sum, qty) => sum + qty, 0);
 
   // An order with no content at all is allowed — plenty of orders are
@@ -118,25 +148,14 @@ export function OrderForm({
   const contentBalanced = contentEmpty || packagedUnits === assignedUnits;
   const canSave = draft.customer.trim().length > 0 && contentBalanced && !busy;
 
-  function buildContentLines(): OrderContentLine[] {
-    return [
-      ...Object.entries(packageQty)
-        .filter(([, qty]) => qty > 0)
-        .map(([packageTypeId, quantity]): OrderContentLine => ({ kind: "package", packageTypeId, quantity })),
-      ...Object.entries(flavorQty)
-        .filter(([, qty]) => qty > 0)
-        .map(([flavorId, quantity]): OrderContentLine => ({ kind: "flavor", flavorId, quantity })),
-    ];
-  }
-
   async function submit() {
     if (!canSave) return;
     setBusy(true);
-    const body = JSON.stringify({ ...draft, contentLines: buildContentLines() });
+    // "replace" is explicit: this sends the whole order, not a patch.
     await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body,
+      body: JSON.stringify({ mode: "replace", ...draft, contentLines }),
     });
     setBusy(false);
     onSaved();
@@ -146,116 +165,116 @@ export function OrderForm({
     <>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2">
         <Field label="Date">
-          <input
+          <TextInput
             type="date"
-            className="input"
-            placeholder=" "
             value={draft.date}
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
           />
         </Field>
         <Field label="Customer">
-          <input
-            className="input"
-            placeholder=" "
+          <TextInput
             value={draft.customer}
             onChange={(e) => setDraft({ ...draft, customer: e.target.value })}
           />
         </Field>
         <Field label="Type">
-          <input
-            className="input"
-            placeholder=" "
+          <TextInput
             value={draft.customerType}
             onChange={(e) => setDraft({ ...draft, customerType: e.target.value })}
           />
         </Field>
         <Field label="Location">
-          <input
-            className="input"
-            placeholder=" "
+          <TextInput
             value={draft.location}
             onChange={(e) => setDraft({ ...draft, location: e.target.value })}
           />
         </Field>
         <Field label="Guests">
-          <input
+          <TextInput
             type="number"
-            className="input"
-            placeholder=" "
             value={draft.guests ?? ""}
-            onChange={(e) => setDraft({ ...draft, guests: e.target.value ? Number(e.target.value) : null })}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                guests: e.target.value ? Number(e.target.value) : null,
+              })
+            }
           />
         </Field>
         <Field label="Mirrors">
-          <input
+          <TextInput
             type="number"
-            className="input"
-            placeholder=" "
             value={draft.mirrors ?? ""}
-            onChange={(e) => setDraft({ ...draft, mirrors: e.target.value ? Number(e.target.value) : null })}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                mirrors: e.target.value ? Number(e.target.value) : null,
+              })
+            }
           />
         </Field>
         <Field label="Delivery ₪">
-          <input
+          <TextInput
             type="number"
-            className="input"
-            placeholder=" "
             value={draft.deliveryCost ?? ""}
-            onChange={(e) => setDraft({ ...draft, deliveryCost: e.target.value ? Number(e.target.value) : null })}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                deliveryCost: e.target.value ? Number(e.target.value) : null,
+              })
+            }
           />
         </Field>
         <Field label="Amount ₪">
-          <input
+          <TextInput
             type="number"
-            className="input"
-            placeholder=" "
             value={draft.totalAmount}
             onChange={(e) => setDraft({ ...draft, totalAmount: Number(e.target.value) })}
           />
         </Field>
         <Field label="Deposit ₪">
-          <input
+          <TextInput
             type="number"
-            className="input"
-            placeholder=" "
             value={draft.deposit}
             onChange={(e) => setDraft({ ...draft, deposit: Number(e.target.value) })}
           />
         </Field>
         <Field label="Payment status">
-          <select
-            className="input"
+          <SelectInput
             value={draft.paymentStatus}
-            onChange={(e) => setDraft({ ...draft, paymentStatus: e.target.value as PaymentStatus })}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                paymentStatus: e.target.value as PaymentStatus,
+              })
+            }
           >
             {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => (
               <option key={s} value={s}>
                 {PAYMENT_STATUS_LABEL[s]}
               </option>
             ))}
-          </select>
+          </SelectInput>
         </Field>
         <Field label="Production status">
-          <select
-            className="input"
+          <SelectInput
             value={draft.productionStatus}
-            onChange={(e) => setDraft({ ...draft, productionStatus: e.target.value as ProductionStatus })}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                productionStatus: e.target.value as ProductionStatus,
+              })
+            }
           >
             {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((s) => (
               <option key={s} value={s}>
                 {PRODUCTION_STATUS_LABEL[s]}
               </option>
             ))}
-          </select>
+          </SelectInput>
         </Field>
         <Field label="Notes">
-          <input
-            className="input"
-            placeholder=" "
-            value={draft.notes}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-          />
+          <TextInput value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
         </Field>
       </div>
 
@@ -270,8 +289,8 @@ export function OrderForm({
           <p className="text-xs font-semibold text-ink-soft">{nf.format(packagedUnits)} units</p>
         </div>
         <div className="mt-2 flex flex-col gap-1.5">
-          {packageTypes.map((pkg, i) => {
-            const Icon = PACKAGE_ICONS[i % PACKAGE_ICONS.length];
+          {packageTypes.map((pkg) => {
+            const Icon = PACKAGE_ICONS[pkg.name] ?? Package;
             return (
               <ContentCard
                 key={pkg.id}
@@ -337,7 +356,10 @@ export function OrderForm({
         >
           {isEdit ? "Save changes" : "Save order"}
         </button>
-        <button onClick={onCancel} className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink">
+        <button
+          onClick={onCancel}
+          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
+        >
           {cancelLabel}
         </button>
       </div>
@@ -381,15 +403,6 @@ function ContentCard({
         className="w-16 rounded-lg border border-line bg-cream px-2 py-1 text-right text-sm font-semibold text-ink outline-none focus:border-accent"
       />
       <span className="w-10 shrink-0 text-[11px] text-ink-soft">{unitLabel}</span>
-    </label>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-0.5">
-      <span className="text-xs font-semibold text-ink-soft">{label}</span>
-      {children}
     </label>
   );
 }
