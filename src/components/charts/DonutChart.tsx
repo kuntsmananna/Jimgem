@@ -50,8 +50,13 @@ export function DonutChart({
 
   const cx = size / 2;
   const cy = size / 2;
-  const rOuter = size / 2;
-  const rInner = size * 0.59;
+  // rOuter is inset by 1px so the outer edge isn't sitting exactly on the
+  // SVG boundary, where antialiasing shaves a hairline off the stroke.
+  // rInner is a fraction of rOuter (not of size) — the hole has to be
+  // inside the ring, otherwise the band lands outside the viewport and
+  // gets clipped at the cardinal points.
+  const rOuter = size / 2 - 1;
+  const rInner = rOuter * 0.59;
 
   const { arcs } = nonZero.reduce<{ arcs: { slice: DonutSlice; startAngle: number; endAngle: number }[]; cumulative: number }>(
     (acc, slice) => {

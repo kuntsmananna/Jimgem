@@ -31,6 +31,22 @@ body {
   font-family: var(--font-sans);
 }
 
+/*
+ * Tailwind 4's Preflight dropped v3's `button { cursor: pointer }` to match
+ * the browser default (an arrow), which leaves every button in the app
+ * without a hand cursor. Put it back — including the non-<button> elements
+ * we make clickable, and excluding disabled ones.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label[for],
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
 @layer components {
   .input {
     @apply rounded-lg border border-line bg-card px-2 py-1 text-sm text-ink outline-none focus:border-accent;

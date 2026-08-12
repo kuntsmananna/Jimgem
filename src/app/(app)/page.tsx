@@ -2,6 +2,7 @@ import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
 import { getMergedOrders, orderMonth, orderDay } from "@/lib/orders";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
+import { APP_VERSION_LABEL } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
@@ -53,11 +54,14 @@ export default async function DashboardPage() {
     .sort((a, b) => b.month - a.month || (b.day ?? 0) - (a.day ?? 0));
 
   return (
-    <DashboardClient
-      financials={financials}
-      flavors={flavors.map((f) => ({ id: f.id, name: f.name, colorBase: f.colorBase }))}
-      flavorLines={flavorLines}
-      orders={orderPreviews}
-    />
+    <>
+      <DashboardClient
+        financials={financials}
+        flavors={flavors.map((f) => ({ id: f.id, name: f.name, colorBase: f.colorBase }))}
+        flavorLines={flavorLines}
+        orders={orderPreviews}
+      />
+      <p className="mt-6 text-right text-xs text-ink-soft/60">{APP_VERSION_LABEL}</p>
+    </>
   );
 }
