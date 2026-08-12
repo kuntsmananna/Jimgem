@@ -30,6 +30,16 @@ function donutSlicePath(cx: number, cy: number, rOuter: number, rInner: number, 
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
+/** Inset from the viewport edge so antialiasing doesn't shave the outer stroke. */
+const EDGE_PADDING = 1;
+
+/**
+ * Hole size as a fraction of the OUTER radius. Must stay below 1 — a value at
+ * or above it puts the ring outside the viewport, where it gets clipped at the
+ * cardinal points and renders as a flat-edged squircle.
+ */
+const INNER_RADIUS_RATIO = 0.59;
+
 /** Inline SVG donut chart — no charting library, per the approved design (see CLAUDE.md). */
 export function DonutChart({
   slices,
@@ -50,13 +60,8 @@ export function DonutChart({
 
   const cx = size / 2;
   const cy = size / 2;
-  // rOuter is inset by 1px so the outer edge isn't sitting exactly on the
-  // SVG boundary, where antialiasing shaves a hairline off the stroke.
-  // rInner is a fraction of rOuter (not of size) — the hole has to be
-  // inside the ring, otherwise the band lands outside the viewport and
-  // gets clipped at the cardinal points.
-  const rOuter = size / 2 - 1;
-  const rInner = rOuter * 0.59;
+  const rOuter = size / 2 - EDGE_PADDING;
+  const rInner = rOuter * INNER_RADIUS_RATIO;
 
   const { arcs } = nonZero.reduce<{ arcs: { slice: DonutSlice; startAngle: number; endAngle: number }[]; cumulative: number }>(
     (acc, slice) => {
@@ -73,7 +78,7 @@ export function DonutChart({
   return (
     <div className="flex min-w-0 items-center gap-5">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} onMouseLeave={() => setHovered(null)}>
+        <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} onMouseLeave={() => setHovered(null)}>
           {arcs.map((arc, i) => (
             <path
               key={arc.slice.label}

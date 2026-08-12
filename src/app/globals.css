@@ -32,17 +32,16 @@ body {
 }
 
 /*
- * Tailwind 4's Preflight dropped v3's `button { cursor: pointer }` to match
- * the browser default (an arrow), which leaves every button in the app
- * without a hand cursor. Put it back — including the non-<button> elements
- * we make clickable, and excluding disabled ones.
+ * Tailwind 4's Preflight dropped v3's `button, [role="button"]
+ * { cursor: pointer }` to match the browser default (an arrow), which leaves
+ * every button in the app without a hand cursor. Put that rule back, skipping
+ * disabled controls. `select` is ours to add: a dropdown reads as clickable
+ * and the app has several.
  */
 @layer base {
   button:not(:disabled),
   [role="button"]:not(:disabled),
-  label[for],
-  select:not(:disabled),
-  summary {
+  select:not(:disabled) {
     cursor: pointer;
   }
 }
