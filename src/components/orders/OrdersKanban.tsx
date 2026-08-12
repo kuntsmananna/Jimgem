@@ -1,6 +1,6 @@
 "use client";
 
-import { PRODUCTION_STATUS_LABEL, type Order, type ProductionStatus } from "@/lib/orderTypes";
+import { PRODUCTION_STATUS_LABEL, formatOrderDate, type Order, type ProductionStatus } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { ContentChips } from "./ContentChips";
 import { ProductionStatusSelect } from "./StatusSelects";
@@ -20,13 +20,13 @@ export function OrdersKanban({
   flavors,
   packageTypes,
   onChanged,
-  onEdit,
+  onOpen,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
   onChanged: () => void;
-  onEdit: (order: Order) => void;
+  onOpen: (key: string) => void;
 }) {
   return (
     <div className="grid grid-cols-4 gap-4">
@@ -42,12 +42,12 @@ export function OrdersKanban({
                 <div key={order.key} className="group rounded-xl border border-line bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <button
-                      onClick={() => onEdit(order)}
+                      onClick={() => onOpen(order.key)}
                       className="text-left text-sm font-semibold text-ink hover:underline"
                     >
                       {order.customer || "(no name)"}
                     </button>
-                    <p className="text-xs text-ink-soft">{order.date}</p>
+                    <p className="text-xs text-ink-soft">{formatOrderDate(order.date)}</p>
                   </div>
                   <div className="mt-2">
                     <ContentChips lines={order.contentLines} flavors={flavors} packageTypes={packageTypes} />

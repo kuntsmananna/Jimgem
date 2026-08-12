@@ -71,13 +71,30 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS needs_review BOOLEAN NOT NULL DEFAULT false;
 CREATE UNIQUE INDEX IF NOT EXISTS orders_sheet_row_idx ON orders (sheet_row) WHERE sheet_row IS NOT NULL;
 
+-- An order's content is described along two axes, entered as two lists in
+-- the order form: how it is packaged, and how the units split by flavour.
+-- One row is one entry on one of those lists, never both:
+--
+--   packaging line  package_type_id set, flavor_id NULL, quantity = packages
+--   flavour line    flavor_id set, package_type_id NULL, quantity = units
+--
+-- Total units come from the packaging lines alone, the flavour breakdown
+-- from the flavour lines alone, so neither double-counts the other. The
+-- form requires the two to agree before it will save.
 CREATE TABLE IF NOT EXISTS order_content_lines (
   id SERIAL PRIMARY KEY,
   order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  package_type_id INTEGER NOT NULL REFERENCES package_types(id),
-  flavor_id INTEGER REFERENCES flavors(id), -- NULL = "Mix"
+  package_type_id INTEGER REFERENCES package_types(id),
+  flavor_id INTEGER REFERENCES flavors(id),
   quantity INTEGER NOT NULL
 );
+
+ALTER TABLE order_content_lines ALTER COLUMN package_type_id DROP NOT NULL;
+
+-- Exactly one of the two axes per row. Named so a re-run is idempotent.
+ALTER TABLE order_content_lines DROP CONSTRAINT IF EXISTS order_content_lines_one_axis;
+ALTER TABLE order_content_lines ADD CONSTRAINT order_content_lines_one_axis
+  CHECK ((package_type_id IS NULL) <> (flavor_id IS NULL));
 
 -- LEGACY, retained for history only — nothing reads this table anymore.
 -- It dates from when pages read the Sheet live on every render and a

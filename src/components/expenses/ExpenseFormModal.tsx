@@ -50,6 +50,7 @@ export function ExpenseFormModal({
           <input
             type="date"
             className="input"
+            placeholder=" "
             value={draft.date}
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
           />
@@ -72,6 +73,7 @@ export function ExpenseFormModal({
           <input
             type="number"
             className="input"
+            placeholder=" "
             value={draft.amount}
             onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
           />

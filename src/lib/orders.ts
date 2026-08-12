@@ -21,7 +21,7 @@ export const ORDERS_TAB = "הזמנות (באחריות אביב)";
 // avoid pulling this module's server-only deps (pg, googleapis) into a
 // client bundle.
 export type { PaymentStatus, ProductionStatus, OrderContentLine, Order, OrderInput };
-export { PAYMENT_STATUS_LABEL, PRODUCTION_STATUS_LABEL, orderMonth, orderDay } from "./orderTypes";
+export { PAYMENT_STATUS_LABEL, PRODUCTION_STATUS_LABEL, orderMonth, orderDay, orderUnits } from "./orderTypes";
 
 function parseAmount(raw: string): number {
   const cleaned = raw.replace(/,/g, "").trim();
@@ -176,9 +176,16 @@ interface DbOrderRow {
 
 interface DbContentLineRow {
   order_id: number;
-  package_type_id: number;
+  package_type_id: number | null;
   flavor_id: number | null;
   quantity: number;
+}
+
+/** Which axis a row describes is decided by which column is set — see schema.sql. */
+function mapContentLine(row: DbContentLineRow): OrderContentLine {
+  return row.package_type_id !== null
+    ? { kind: "package", packageTypeId: String(row.package_type_id), quantity: row.quantity }
+    : { kind: "flavor", flavorId: String(row.flavor_id), quantity: row.quantity };
 }
 
 function mapDbOrder(row: DbOrderRow, contentLines: OrderContentLine[]): Order {
@@ -218,11 +225,7 @@ export async function getOrders(): Promise<Order[]> {
   const linesByOrder = new Map<number, OrderContentLine[]>();
   for (const line of lineRows) {
     const list = linesByOrder.get(line.order_id) ?? [];
-    list.push({
-      packageTypeId: String(line.package_type_id),
-      flavorId: line.flavor_id !== null ? String(line.flavor_id) : null,
-      quantity: line.quantity,
-    });
+    list.push(mapContentLine(line));
     linesByOrder.set(line.order_id, list);
   }
 
@@ -247,8 +250,8 @@ export async function setPaymentStatus(id: number, status: PaymentStatus): Promi
  */
 function toLineArrays(contentLines: OrderContentLine[]) {
   return {
-    packageTypeIds: contentLines.map((l) => Number(l.packageTypeId)),
-    flavorIds: contentLines.map((l) => (l.flavorId !== null ? Number(l.flavorId) : null)),
+    packageTypeIds: contentLines.map((l) => (l.kind === "package" ? Number(l.packageTypeId) : null)),
+    flavorIds: contentLines.map((l) => (l.kind === "flavor" ? Number(l.flavorId) : null)),
     quantities: contentLines.map((l) => l.quantity),
   };
 }
@@ -362,11 +365,7 @@ export async function duplicateOrder(id: number): Promise<Order> {
     guests: source.guests,
     deliveryCost: source.delivery_cost !== null ? Number(source.delivery_cost) : null,
     mirrors: source.mirrors,
-    contentLines: lineRows.map((line) => ({
-      packageTypeId: String(line.package_type_id),
-      flavorId: line.flavor_id !== null ? String(line.flavor_id) : null,
-      quantity: line.quantity,
-    })),
+    contentLines: lineRows.map(mapContentLine),
     totalAmount: Number(source.total_amount),
     deposit: Number(source.deposit),
     paymentStatus: source.payment_status,

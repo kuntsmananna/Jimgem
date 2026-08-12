@@ -3,9 +3,9 @@
 import { useState } from "react";
 
 /**
- * Click-to-edit table cell. Only rendered as editable for DB orders —
- * Sheet orders are read-only except for production status (see
- * StatusSelects.tsx), so callers pass editable=false for those.
+ * Click-to-edit table cell. The button swallows the click so it edits the
+ * cell rather than bubbling up to the row, which would open the details
+ * pane instead (see OrdersTable).
  */
 export function EditableCell({
   editable,
@@ -56,6 +56,7 @@ export function EditableCell({
       value={value}
       disabled={busy}
       className="input w-full"
+      placeholder=" "
       onChange={(e) => setValue(e.target.value)}
       onBlur={save}
       onKeyDown={(e) => {

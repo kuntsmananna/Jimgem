@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import type { Flavor } from "@/lib/settings";
 import { Modal } from "@/components/Modal";
 
@@ -67,6 +68,7 @@ function FlavorFormModal({
           Name
           <input
             className="input"
+            placeholder=" "
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
@@ -136,9 +138,10 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
         <h2 className="font-display text-lg font-bold text-ink">Flavors</h2>
         <button
           onClick={() => setAdding(true)}
-          className="rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
+          className="flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
         >
-          + Add flavor
+          <Plus size={13} />
+          Add flavor
         </button>
       </div>
 

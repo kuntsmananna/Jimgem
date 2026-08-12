@@ -34,6 +34,16 @@ function smoothPath(points: Point[]): string {
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
+/** Stroke weight in px. Non-scaling, so it stays constant however wide the chart renders. */
+const LINE_WIDTH = 2.75;
+
+/**
+ * Horizontal inset for the tooltip card, as a fraction of chart width.
+ * Inside this margin the card flips to the other side of its point so it
+ * never gets clipped at the edges.
+ */
+const TOOLTIP_FLIP_MARGIN = 0.25;
+
 /** Inline SVG line chart — no charting library, per the approved design (see CLAUDE.md). */
 export function LineChart({
   series,
@@ -55,8 +65,8 @@ export function LineChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const width = 100; // viewBox units, scales via SVG's own responsiveness
-  const padTop = 28;
-  const padBottom = 20;
+  const padTop = 12;
+  const padBottom = 12;
   const chartHeight = height - padTop - padBottom;
 
   const sharedMax = Math.max(1, ...series.flatMap((s) => s.values));
@@ -70,93 +80,129 @@ export function LineChart({
     }));
 
   const activeIndex = hoverIndex ?? highlightIndex;
+  // Only the first series gets an area fill. Two overlapping gradients
+  // would blend into a third colour where they cross, which reads as a
+  // series that isn't there.
   const primary = series[0];
   const primaryPoints = primary ? pointsFor(primary) : [];
+  const activePoint = activeIndex !== null ? primaryPoints[activeIndex] : undefined;
+
+  // The tooltip is positioned in percentages against the wrapper rather
+  // than drawn in the SVG: the SVG uses preserveAspectRatio="none", which
+  // would stretch any text inside it horizontally.
+  const activeFraction = activeIndex !== null && xLabels.length > 1 ? activeIndex / (xLabels.length - 1) : 0;
+  const flipLeft = activeFraction > 1 - TOOLTIP_FLIP_MARGIN;
+  const flipRight = activeFraction < TOOLTIP_FLIP_MARGIN;
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-ink-soft">
-        <span aria-hidden className="text-sm">
-          ↑
-        </span>
-        {activeIndex !== null && series[0] && (
-          <div className="text-right">
+      <div className="relative">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          width="100%"
+          height={height}
+          preserveAspectRatio="none"
+          onMouseLeave={() => setHoverIndex(null)}
+        >
+          <defs>
+            {primary && (
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={primary.color} stopOpacity={0.32} />
+                <stop offset="100%" stopColor={primary.color} stopOpacity={0.02} />
+              </linearGradient>
+            )}
+          </defs>
+
+          {primary && primaryPoints.length > 1 && (
+            <path
+              d={`${smoothPath(primaryPoints)} L ${primaryPoints[primaryPoints.length - 1].x} ${padTop + chartHeight} L ${primaryPoints[0].x} ${padTop + chartHeight} Z`}
+              fill={`url(#${gradientId})`}
+              stroke="none"
+            />
+          )}
+
+          {series.map((s) => (
+            <path
+              key={s.label}
+              d={smoothPath(pointsFor(s))}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={LINE_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+
+          {activePoint && (
+            <line
+              x1={activePoint.x}
+              y1={activePoint.y}
+              x2={activePoint.x}
+              y2={padTop + chartHeight}
+              stroke={primary.color}
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+              strokeOpacity={0.55}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+
+          {/* Invisible hit targets — one per x-index, spanning the full chart height, for hover tooltips on every datapoint. */}
+          {xLabels.map((label, i) => (
+            <rect
+              key={label + i}
+              x={i * stepX - stepX / 2}
+              y={0}
+              width={stepX || width}
+              height={height}
+              fill="transparent"
+              onMouseEnter={() => setHoverIndex(i)}
+            />
+          ))}
+        </svg>
+
+        {/*
+          Dots and tooltip are HTML positioned over the SVG, not drawn in
+          it: preserveAspectRatio="none" stretches the viewBox
+          horizontally, which would turn a circle into an ellipse and
+          distort any text.
+        */}
+        {activeIndex !== null &&
+          series.map((s) => {
+            const p = pointsFor(s)[activeIndex];
+            if (!p) return null;
+            return (
+              <span
+                key={s.label}
+                className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+                style={{ background: s.color, left: `${activeFraction * 100}%`, top: `${(p.y / height) * 100}%` }}
+              />
+            );
+          })}
+
+        {activeIndex !== null && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-2xl border border-line bg-card px-3 py-2 shadow-lg"
+            style={{
+              left: `${activeFraction * 100}%`,
+              top: 0,
+              transform: `translateX(${flipLeft ? "-100%" : flipRight ? "0%" : "-50%"}) translateY(-0.5rem)`,
+            }}
+          >
+            <p className="text-[10px] font-semibold tracking-wide text-ink-soft uppercase">{xLabels[activeIndex]}</p>
             {series.map((s) => (
-              <div key={s.label} className="flex items-center justify-end gap-1.5 text-xs font-semibold">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
-                <span className="text-ink-soft">{s.label}</span>
-                <span style={{ color: s.color }}>{valueFormat(s.values[activeIndex] ?? 0)}</span>
-              </div>
+              <p key={s.label} className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />
+                <span className="text-[11px] text-ink-soft">{s.label}</span>
+                <span className="font-display text-sm font-bold text-ink">
+                  {valueFormat(s.values[activeIndex] ?? 0)}
+                </span>
+              </p>
             ))}
           </div>
         )}
       </div>
-
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        width="100%"
-        height={height}
-        preserveAspectRatio="none"
-        onMouseLeave={() => setHoverIndex(null)}
-      >
-        <defs>
-          {primary && (
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={primary.color} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={primary.color} stopOpacity={0} />
-            </linearGradient>
-          )}
-        </defs>
-
-        {primary && primaryPoints.length > 1 && (
-          <path
-            d={`${smoothPath(primaryPoints)} L ${primaryPoints[primaryPoints.length - 1].x} ${padTop + chartHeight} L ${primaryPoints[0].x} ${padTop + chartHeight} Z`}
-            fill={`url(#${gradientId})`}
-            stroke="none"
-          />
-        )}
-
-        {series.map((s) => {
-          const points = pointsFor(s);
-          return (
-            <path
-              key={s.label}
-              d={smoothPath(points)}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          );
-        })}
-
-        {activeIndex !== null &&
-          series.map((s) => {
-            const points = pointsFor(s);
-            const p = points[activeIndex];
-            if (!p) return null;
-            return (
-              <g key={s.label}>
-                <line x1={p.x} y1={padTop} x2={p.x} y2={padTop + chartHeight} stroke={s.color} strokeOpacity={0.15} strokeWidth={1} vectorEffect="non-scaling-stroke" />
-                <circle cx={p.x} cy={p.y} r={2.2} fill="white" stroke={s.color} strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
-              </g>
-            );
-          })}
-
-        {/* Invisible hit targets — one per x-index, spanning the full chart height, for hover tooltips on every datapoint. */}
-        {xLabels.map((label, i) => (
-          <rect
-            key={label + i}
-            x={i * stepX - stepX / 2}
-            y={0}
-            width={stepX || width}
-            height={height}
-            fill="transparent"
-            onMouseEnter={() => setHoverIndex(i)}
-          />
-        ))}
-      </svg>
 
       <div className="mt-1 flex justify-between text-[10px] font-medium text-ink-soft">
         {xLabels.map((label, i) => (

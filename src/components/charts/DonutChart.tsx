@@ -98,19 +98,28 @@ export function DonutChart({
           </div>
         )}
       </div>
+      {/*
+        The percentage sits directly after the label rather than being
+        pushed to the far edge, so the number stays visually attached to
+        the thing it describes. `min-w-0` on the label lets it truncate
+        instead of forcing the row wider than the column.
+      */}
       <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
         {nonZero.map((slice, i) => (
           <li
             key={slice.label}
             onMouseEnter={() => setHovered(i)}
             onMouseLeave={() => setHovered(null)}
-            className="flex min-w-0 items-center gap-2 text-xs"
+            className="flex min-w-0 items-baseline gap-1.5 text-xs"
           >
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: slice.color }} />
-            <span className="min-w-0 flex-1 truncate font-medium text-ink" title={slice.label}>
+            <span
+              className="h-2.5 w-2.5 shrink-0 translate-y-0.5 rounded-full"
+              style={{ background: slice.color }}
+            />
+            <span className="min-w-0 truncate font-medium text-ink" title={slice.label}>
               {slice.label}
             </span>
-            <span className="shrink-0 text-ink-soft">{Math.round((slice.value / total) * 100)}%</span>
+            <span className="shrink-0 font-semibold text-ink-soft">{Math.round((slice.value / total) * 100)}%</span>
           </li>
         ))}
       </ul>

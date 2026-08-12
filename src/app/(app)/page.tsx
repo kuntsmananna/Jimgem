@@ -1,5 +1,5 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
-import { getOrders, orderMonth, orderDay } from "@/lib/orders";
+import { getOrders, orderMonth, orderDay, orderUnits } from "@/lib/orders";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 import { APP_VERSION_LABEL } from "@/lib/version";
@@ -16,16 +16,15 @@ export default async function DashboardPage() {
 
   const unitsByPackageType = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
 
+  // Flavour lines already carry their quantity in units (see schema.sql's
+  // order_content_lines), so unlike packaging lines they need no conversion.
   const flavorLines: FlavorLine[] = [];
   for (const order of orders) {
     const month = orderMonth(order);
     if (month === null) continue;
     for (const line of order.contentLines) {
-      flavorLines.push({
-        month,
-        flavorId: line.flavorId,
-        units: line.quantity * (unitsByPackageType.get(Number(line.packageTypeId)) ?? 0),
-      });
+      if (line.kind !== "flavor") continue;
+      flavorLines.push({ month, flavorId: line.flavorId, units: line.quantity });
     }
   }
 
@@ -33,19 +32,17 @@ export default async function DashboardPage() {
     .map((order) => {
       const month = orderMonth(order);
       const day = orderDay(order);
-      const units = order.contentLines.reduce(
-        (sum, line) => sum + line.quantity * (unitsByPackageType.get(Number(line.packageTypeId)) ?? 0),
-        0,
-      );
       return {
         key: order.key,
         month,
         day,
         dateLabel: month !== null ? `${MONTH_NAMES_EN[month - 1]}${day ? ` ${day}` : ""}` : order.date,
         customer: order.customer || "(no name)",
+        customerType: order.customerType,
         location: order.location,
+        guests: order.guests,
         totalAmount: order.totalAmount,
-        units,
+        units: orderUnits(order.contentLines, unitsByPackageType),
       };
     })
     .filter((o): o is OrderPreview & { month: number } => o.month !== null)

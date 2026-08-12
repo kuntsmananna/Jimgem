@@ -1,5 +1,5 @@
 import { getSheetValues, getFileComments } from "./googleSheets";
-import { getOrders, orderMonth, type Order } from "./orders";
+import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories } from "./settings";
 
@@ -215,9 +215,7 @@ export async function getMonthlyRevenue(
     const existing = byMonth.get(month) ?? { month, total: 0, orderCount: 0, unitsSold: 0 };
     existing.total += order.totalAmount;
     existing.orderCount += 1;
-    for (const line of order.contentLines) {
-      existing.unitsSold += line.quantity * (packageUnitsById.get(Number(line.packageTypeId)) ?? 0);
-    }
+    existing.unitsSold += orderUnits(order.contentLines, packageUnitsById);
     byMonth.set(month, existing);
   }
 

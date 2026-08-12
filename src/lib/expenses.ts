@@ -187,7 +187,11 @@ export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
       const entries = byMonth.get(key) ?? [];
       return {
         key,
-        label: `${MONTH_NAMES_EN[month - 1]} ${key.split("-")[0]}`,
+        // Month alone, no year: the app works in a single season and
+        // imported Sheet rows carry a year only because the DB column
+        // needs one (see sheetImport.ts). Printing it would assert a
+        // fact the source data doesn't have.
+        label: MONTH_NAMES_EN[month - 1],
         isLegacy: entries.every((e) => e.source === "sheet"),
         entries: entries.sort((a, b) => (a.source === b.source ? 0 : a.source === "db" ? -1 : 1)),
         legacyTotals: legacyByMonth.get(month) ?? null,

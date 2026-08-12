@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createElement, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Expense, ExpensePeriod } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE } from "@/lib/chartPalette";
+import { Plus, Trash2 } from "lucide-react";
+import { expenseCategoryIcon } from "@/lib/icons";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -81,9 +83,10 @@ export function ExpensesClient({
           <h2 className="font-display text-lg font-bold text-ink">{period?.label}</h2>
           <button
             onClick={() => setAdding(true)}
-            className="rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
+            className="flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
           >
-            + Add expense
+            <Plus size={13} />
+            Add expense
           </button>
         </div>
 
@@ -128,12 +131,25 @@ export function ExpensesClient({
   );
 }
 
+/*
+ * createElement rather than `const Icon = …; <Icon />`: the icon is
+ * selected from a fixed lookup table, not constructed, but the JSX form
+ * is indistinguishable from defining a component mid-render and trips
+ * react-hooks/static-components.
+ */
+function CategoryIcon({ name }: { name: string }) {
+  return createElement(expenseCategoryIcon(name), { size: 13, className: "shrink-0 text-ink-soft" });
+}
+
 function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void }) {
   return (
     <div className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
       <div className="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
         <span className="shrink-0 w-20 text-ink-soft">{entry.source === "db" ? entry.date : "—"}</span>
-        <span className="shrink-0 font-medium text-ink">{entry.categoryName}</span>
+        <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink">
+          <CategoryIcon name={entry.categoryName} />
+          {entry.categoryName}
+        </span>
         {entry.paymentMethodName && <span className="shrink-0 text-xs text-ink-soft">{entry.paymentMethodName}</span>}
         {entry.staffName && <span className="shrink-0 text-xs text-ink-soft">{entry.staffName}</span>}
         {entry.note && (
@@ -158,7 +174,11 @@ function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void 
       <div className="flex shrink-0 items-center gap-3">
         <span className="font-semibold text-ink">{currency(entry.amount)}</span>
         {entry.editable && (
-          <button onClick={onDelete} className="hidden text-xs font-semibold text-ink-soft hover:text-ink group-hover:block">
+          <button
+            onClick={onDelete}
+            className="hidden items-center gap-1 text-xs font-semibold text-ink-soft hover:text-ink group-hover:flex"
+          >
+            <Trash2 size={12} />
             Delete
           </button>
         )}

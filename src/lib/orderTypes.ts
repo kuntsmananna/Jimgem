@@ -7,10 +7,25 @@
 export type PaymentStatus = "unpaid" | "deposit" | "paid" | "comp" | "net40";
 export type ProductionStatus = "queue" | "preparing" | "delivered";
 
-export interface OrderContentLine {
-  packageTypeId: string;
-  flavorId: string | null; // null = "Mix"
-  quantity: number;
+/**
+ * One entry on one of the order form's two content lists. Packaging and
+ * flavour are separate axes of the same order — see schema.sql's
+ * order_content_lines for why they are never combined on one row.
+ */
+export type OrderContentLine =
+  | { kind: "package"; packageTypeId: string; quantity: number }
+  | { kind: "flavor"; flavorId: string; quantity: number };
+
+/** Total units in an order, from its packaging lines. */
+export function orderUnits(
+  contentLines: OrderContentLine[],
+  unitsPerPackage: Map<number, number>,
+): number {
+  return contentLines.reduce(
+    (sum, line) =>
+      line.kind === "package" ? sum + line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) : sum,
+    0,
+  );
 }
 
 export interface Order {
@@ -105,4 +120,15 @@ export function orderMonth(order: Order): number | null {
 export function orderDay(order: Order): number | null {
   const match = order.date.trim().match(/^\d{4}-\d{2}-(\d{2})$/);
   return match ? Number(match[1]) : null;
+}
+
+/**
+ * "D/M", the way the business writes dates in the Sheet. The stored year
+ * is an artefact of `orders.date` being a real DATE column — the Sheet
+ * has no year and the app never works in more than one (see
+ * sheetImport.ts), so showing it would be inventing precision.
+ */
+export function formatOrderDate(isoDate: string): string {
+  const match = isoDate.trim().match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return match ? `${Number(match[2])}/${Number(match[1])}` : isoDate;
 }

@@ -47,7 +47,56 @@ body {
 }
 
 @layer components {
+  /*
+   * Quiet field styling for the forms filled in daily (order popup,
+   * Expenses, Settings). A filled field drops its box so a completed form
+   * reads as a document rather than a grid of outlines; an empty one keeps
+   * a faint outline so what's still blank is obvious at a glance. Hovering
+   * brings the box back to signal "editable", and focus is the loudest
+   * state.
+   *
+   * Filled vs empty is `:placeholder-shown` inverted, which is why every
+   * .input needs a placeholder — even " " — for the CSS to read it. Number
+   * inputs count as filled while holding an invalid partial value, which
+   * is the behaviour we want mid-typing.
+   *
+   * The login form deliberately keeps visible boxes and so does not use
+   * this class — two nearly invisible fields on an otherwise empty page
+   * read as broken.
+   */
   .input {
-    @apply rounded-lg border border-line bg-card px-2 py-1 text-sm text-ink outline-none focus:border-accent;
+    @apply rounded-lg border border-line/70 bg-transparent px-2 py-1 text-sm text-ink outline-none;
+    @apply transition-colors;
+  }
+
+  /*
+   * Filled → drop the box. Stated as an override of the outlined base
+   * rather than the other way round, so the fallback is safe: a field
+   * that never matches (no placeholder attribute, or a select) stays
+   * outlined and visible instead of turning invisible.
+   */
+  .input:not(:placeholder-shown),
+  select.input:not(:has(option[value=""]:checked)) {
+    @apply border-transparent;
+  }
+
+  .input:hover:not(:disabled):not(:focus) {
+    @apply border-line bg-card;
+  }
+
+  .input:focus {
+    @apply border-accent bg-card;
+  }
+
+  .input:disabled {
+    @apply text-ink-soft;
+  }
+
+  /* Selects can't show a placeholder, so they keep a visible affordance:
+     the native chevron plus room for it, filled or not. */
+  select.input {
+    @apply appearance-none bg-no-repeat pr-6;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23726a5e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
   }
 }
