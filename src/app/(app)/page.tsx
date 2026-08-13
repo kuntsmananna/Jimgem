@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   const flavorLines: FlavorLine[] = orders.flatMap((order) => {
     const month = orderMonth(order);
     if (month === null) return [];
-    return orderFlavorUnits(order.contentLines).map((line) => ({
+    return orderFlavorUnits(order.packageLines).map((line) => ({
       month,
       ...line,
     }));
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
         location: order.location,
         guests: order.guests,
         totalAmount: order.totalAmount,
-        units: orderUnits(order.contentLines, unitsByPackageType),
+        units: orderUnits(order.packageLines, unitsByPackageType),
       };
     })
     .filter((o): o is OrderPreview & { month: number } => o.month !== null)

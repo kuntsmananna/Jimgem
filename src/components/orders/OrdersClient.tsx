@@ -10,7 +10,7 @@ import {
   type PaymentStatus,
   type ProductionStatus,
 } from "@/lib/orderTypes";
-import type { Flavor, PackageType } from "@/lib/settings";
+import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar } from "./OrdersCalendar";
@@ -41,10 +41,12 @@ export function OrdersClient({
   orders,
   flavors,
   packageTypes,
+  presets,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
+  presets: ContentPreset[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -203,6 +205,7 @@ export function OrdersClient({
         <OrderFormModal
           flavors={flavors}
           packageTypes={packageTypes}
+          presets={presets}
           onClose={() => setAdding(false)}
           onSaved={() => {
             setAdding(false);
@@ -216,6 +219,7 @@ export function OrdersClient({
           order={openOrder}
           flavors={flavors}
           packageTypes={packageTypes}
+          presets={presets}
           onClose={closePane}
           onSaved={() => {
             closePane();

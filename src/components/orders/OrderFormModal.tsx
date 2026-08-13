@@ -1,7 +1,7 @@
 "use client";
 
 import type { Order } from "@/lib/orderTypes";
-import type { Flavor, PackageType } from "@/lib/settings";
+import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { Modal } from "@/components/Modal";
 import { OrderForm } from "./OrderForm";
 
@@ -10,6 +10,7 @@ export function OrderFormModal({
   order,
   flavors,
   packageTypes,
+  presets,
   onSaved,
   onClose,
 }: {
@@ -17,6 +18,7 @@ export function OrderFormModal({
   order?: Order;
   flavors: Flavor[];
   packageTypes: PackageType[];
+  presets: ContentPreset[];
   onSaved: () => void;
   onClose: () => void;
 }) {
@@ -26,6 +28,7 @@ export function OrderFormModal({
         order={order}
         flavors={flavors}
         packageTypes={packageTypes}
+        presets={presets}
         onSaved={onSaved}
         onCancel={onClose}
       />

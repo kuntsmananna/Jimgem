@@ -58,6 +58,12 @@ something here isn't obvious.
   subfolder per page for its Client Components. Settings is split into
   tabs (`SettingsTabs`) rather than one stacked screen — the flavor grid
   alone filled it and pushed the five smaller lists below the fold.
+- `src/components/FlavorSplitBar.tsx` sits at the top level rather than
+  under `orders/` because two pages share it: the order form edits a
+  package line's units with it, and Settings' `PresetsPanel` edits a
+  recipe's percentages with it against a total of 100. They are the same
+  control over a different denominator — worth one implementation rather
+  than two drag handlers that drift.
 - `src/proxy.ts` — session-cookie auth gate, redirects to `/login`
 - Import alias `@/*` → `src/*`
 
@@ -208,23 +214,41 @@ iteration (not guessed) — define these as `@theme` tokens in
   doesn't otherwise guarantee it for data-modifying CTEs with no data
   dependency on each other).
 - **The DB is the only source pages read.** It holds every order
-  (`orders`, `order_content_lines`) — both dashboard-created and
-  imported, distinguished by `orders.sheet_row` being non-NULL —
-  itemized expenses (`expenses`), imported Sheet expense amounts
-  (`legacy_expense_items`), and the owner-editable value lists
+  (`orders`, `order_package_lines`, `order_package_line_flavors`) — both
+  dashboard-created and imported, distinguished by `orders.sheet_row`
+  being non-NULL — itemized expenses (`expenses`), imported Sheet expense
+  amounts (`legacy_expense_items`), and the owner-editable value lists
   (`flavors`, `package_types`, `payment_methods`, `expense_categories`,
-  `staff`). `Order.source` records provenance only: an imported order is
-  an ordinary editable row like any other.
+  `content_presets`, `staff`). `Order.source` records provenance only: an
+  imported order is an ordinary editable row like any other.
 - `order_overrides` is **legacy and unread**. It dates from when pages
   read the Sheet live and a Sheet row had no DB row to edit. The first
   import folded every override into the imported order. Kept, not
   dropped, so that fold-in stays auditable — don't add reads of it.
-- An `order_content_lines` row describes **one axis, never both**:
-  `package_type_id` set with `flavor_id` NULL means a packaging line
-  (quantity = packages), `flavor_id` set with `package_type_id` NULL
-  means a flavour line (quantity = units), enforced by a CHECK. Total
-  units come from packaging lines (`orderUnits`), the flavour split from
-  flavour lines. The order form blocks saving while the two disagree.
+- **An order is a list of package lines, and flavours hang off the line,
+  not off the order.** One `order_package_lines` row is "2 × Small tray"
+  (quantity = packages); its `order_package_line_flavors` rows are that
+  line's flavour split in units. That shape exists because a single order
+  routinely mixes them — two small trays of one flavour beside one big
+  tray of a four-way mix — which the old one-split-per-order shape could
+  not express.
+- **Flavour amounts are stored in units, never percentages.** Percent is
+  an input mode in the form (see `PackageLineEditor`), resolved to units
+  at entry time so a saved order's meaning doesn't shift when a package
+  type's `units_per_package` is later edited.
+- `content_presets` + `content_preset_flavors` are the owner's saved
+  "package + recipe" combinations ("Mix small"), managed in Settings and
+  offered as one-click chips in the order form. A recipe is stored as
+  **proportions**, which is what lets one preset serve any quantity.
+  Applying a preset *copies* it into ordinary order lines — never a live
+  link, so editing a preset cannot rewrite orders already booked.
+- A line whose flavours don't add up to what it packs is **warned about,
+  not blocked**: orders get booked before the mix is decided, and
+  refusing the save would lose the booking to protect a total nobody is
+  reading yet.
+- `order_content_lines` is **legacy and unread**, superseded by the two
+  tables above. `scripts/migrate-003-package-lines.mjs` folded every row
+  into the new shape. Kept for the same reason as `order_overrides`.
 - Nothing is ever written back to the Sheet. Don't try to "fix" the
   one-way flow by adding writes.
 
@@ -255,6 +279,12 @@ iteration (not guessed) — define these as `@theme` tokens in
 
 DB scripts: `npm run db:migrate` applies `src/lib/schema.sql`, `db:seed`
 seeds the value lists, `db:import` pulls the Sheet into Postgres.
+
+One-off data migrations live beside them as numbered scripts
+(`scripts/migrate-00N-*.mjs`) and are run by hand after `db:migrate`
+creates the tables they need. Each is idempotent — re-running one is a
+no-op, not a duplicate — so a script stays runnable against a database
+that has already had it applied.
 
 `migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
 a SQL comment truncates the statement after it** — keep comments in that

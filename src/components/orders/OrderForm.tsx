@@ -1,44 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Grid2x2, Grid3x3, Minus, Package, Plus, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
   type Order,
-  type OrderContentLine,
   type OrderInput,
   type PaymentStatus,
   type ProductionStatus,
-  orderUnits,
+  lineAssignedUnits,
+  linePackedUnits,
 } from "@/lib/orderTypes";
-import type { Flavor, PackageType } from "@/lib/settings";
-import { flavorGradient } from "@/lib/flavorStyle";
-import { UnitsIcon } from "@/lib/icons";
+import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { Field, TextInput, SelectInput } from "@/components/Field";
+import {
+  PackageLineEditor,
+  toDraftLines,
+  toPackageLines,
+  type DraftPackageLine,
+} from "./PackageLineEditor";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-
-/**
- * Quantities keyed by id, for each of the form's two content lists. Held
- * as maps rather than a line array so a card can be blanked and refilled
- * without the row disappearing and reappearing under the cursor.
- */
-type Quantities = Record<string, number>;
-
-/**
- * Keyed by name, not by list position — package types are owner-editable,
- * so indexing by position would reshuffle every icon when one is added or
- * reordered. Unknown names fall back rather than assuming a closed set,
- * same as the event-type and expense-category maps in lib/icons.ts.
- */
-const PACKAGE_ICONS: Record<string, LucideIcon> = {
-  // Trays read as grids of cubes, of two densities — a generic box for
-  // each was indistinguishable from the single cube that means "Units".
-  "Small tray": Grid2x2,
-  "Big tray": Grid3x3,
-  Units: UnitsIcon,
-};
 
 function draftFromOrder(order?: Order): OrderInput {
   if (!order) {
@@ -50,7 +32,7 @@ function draftFromOrder(order?: Order): OrderInput {
       guests: null,
       deliveryCost: null,
       mirrors: null,
-      contentLines: [],
+      packageLines: [],
       totalAmount: 0,
       deposit: 0,
       paymentStatus: "unpaid",
@@ -66,46 +48,13 @@ function draftFromOrder(order?: Order): OrderInput {
     guests: order.guests,
     deliveryCost: order.deliveryCost,
     mirrors: order.mirrors,
-    contentLines: order.contentLines,
+    packageLines: order.packageLines,
     totalAmount: order.totalAmount,
     deposit: order.deposit,
     paymentStatus: order.paymentStatus,
     productionStatus: order.productionStatus ?? "queue",
     notes: order.notes,
   };
-}
-
-function buildContentLines(packageQty: Quantities, flavorQty: Quantities): OrderContentLine[] {
-  return [
-    ...Object.entries(packageQty)
-      .filter(([, qty]) => qty > 0)
-      .map(
-        ([packageTypeId, quantity]): OrderContentLine => ({
-          kind: "package",
-          packageTypeId,
-          quantity,
-        }),
-      ),
-    ...Object.entries(flavorQty)
-      .filter(([, qty]) => qty > 0)
-      .map(
-        ([flavorId, quantity]): OrderContentLine => ({
-          kind: "flavor",
-          flavorId,
-          quantity,
-        }),
-      ),
-  ];
-}
-
-function quantitiesFrom(lines: OrderContentLine[], kind: OrderContentLine["kind"]): Quantities {
-  const result: Quantities = {};
-  for (const line of lines) {
-    if (line.kind !== kind) continue;
-    const id = line.kind === "package" ? line.packageTypeId : line.flavorId;
-    result[id] = (result[id] ?? 0) + line.quantity;
-  }
-  return result;
 }
 
 /**
@@ -117,6 +66,7 @@ export function OrderForm({
   order,
   flavors,
   packageTypes,
+  presets,
   onSaved,
   onCancel,
   cancelLabel = "Cancel",
@@ -125,31 +75,33 @@ export function OrderForm({
   order?: Order;
   flavors: Flavor[];
   packageTypes: PackageType[];
+  presets: ContentPreset[];
   onSaved: () => void;
   onCancel: () => void;
   cancelLabel?: string;
 }) {
   const isEdit = !!order;
   const [draft, setDraft] = useState<OrderInput>(() => draftFromOrder(order));
-  const [packageQty, setPackageQty] = useState<Quantities>(() =>
-    quantitiesFrom(order?.contentLines ?? [], "package"),
-  );
-  const [flavorQty, setFlavorQty] = useState<Quantities>(() =>
-    quantitiesFrom(order?.contentLines ?? [], "flavor"),
-  );
+  const [lines, setLines] = useState<DraftPackageLine[]>(() => toDraftLines(order?.packageLines ?? []));
   const [busy, setBusy] = useState(false);
 
-  const contentLines = buildContentLines(packageQty, flavorQty);
-  const packagedUnits = orderUnits(contentLines, new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])));
-  const assignedUnits = Object.values(flavorQty).reduce((sum, qty) => sum + qty, 0);
+  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  // Lines whose flavours don't add up to what they pack. Reported, not
+  // enforced: plenty of orders are booked before anyone knows the mix,
+  // and refusing to save one loses the booking to protect a total nobody
+  // is reading yet. The count is what units-sold and the flavour chart
+  // may disagree about until it's filled in.
+  const unbalanced = lines.filter((line) => linePackedUnits(line, unitsPerPackage) !== lineAssignedUnits(line));
+  const unassignedUnits = unbalanced.reduce(
+    (sum, line) => sum + Math.max(0, linePackedUnits(line, unitsPerPackage) - lineAssignedUnits(line)),
+    0,
+  );
+  const overAssignedUnits = unbalanced.reduce(
+    (sum, line) => sum + Math.max(0, lineAssignedUnits(line) - linePackedUnits(line, unitsPerPackage)),
+    0,
+  );
 
-  // An order with no content at all is allowed — plenty of orders are
-  // booked before anyone knows the mix. What isn't allowed is a flavour
-  // split that disagrees with the packaging, which would make units-sold
-  // and the flavour chart contradict each other.
-  const contentEmpty = packagedUnits === 0 && assignedUnits === 0;
-  const contentBalanced = contentEmpty || packagedUnits === assignedUnits;
-  const canSave = draft.customer.trim().length > 0 && contentBalanced && !busy;
+  const canSave = draft.customer.trim().length > 0 && !busy;
 
   async function submit() {
     if (!canSave) return;
@@ -158,7 +110,7 @@ export function OrderForm({
     await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "replace", ...draft, contentLines }),
+      body: JSON.stringify({ mode: "replace", ...draft, packageLines: toPackageLines(lines) }),
     });
     setBusy(false);
     onSaved();
@@ -283,78 +235,31 @@ export function OrderForm({
 
       {/*
         Content is set apart from the text fields above on purpose: it is
-        picked, not typed. Cards with nothing entered stay dimmed so the
-        eye lands only on what's actually in the order.
+        picked and dragged, not typed.
       */}
-      <div className="mt-6 rounded-card bg-cream/60 p-4">
-        <div className="flex items-baseline justify-between">
-          <h3 className="font-display text-sm font-bold text-ink">Packaging</h3>
-          <p className="text-xs font-semibold text-ink-soft">{nf.format(packagedUnits)} units</p>
-        </div>
-        <div className="mt-2 flex flex-col gap-1.5">
-          {packageTypes.map((pkg) => {
-            const Icon = PACKAGE_ICONS[pkg.name] ?? Package;
-            return (
-              <ContentCard
-                key={pkg.id}
-                title={pkg.name}
-                subtitle={`${nf.format(pkg.unitsPerPackage)} ${pkg.unitsPerPackage === 1 ? "unit" : "units"} each`}
-                quantity={packageQty[String(pkg.id)] ?? 0}
-                unitLabel="packs"
-                onChange={(qty) => setPackageQty((prev) => ({ ...prev, [String(pkg.id)]: qty }))}
-                swatch={
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/[0.06] text-ink">
-                    <Icon size={16} />
-                  </span>
-                }
-              />
-            );
-          })}
-        </div>
-
-        <div className="mt-5 flex items-baseline justify-between">
-          <h3 className="font-display text-sm font-bold text-ink">Flavors</h3>
-          <p
-            className={`text-xs font-semibold ${contentBalanced ? "text-ink-soft" : "text-amber-700"}`}
-            role={contentBalanced ? undefined : "alert"}
-          >
-            {nf.format(assignedUnits)} / {nf.format(packagedUnits)} units assigned
-          </p>
-        </div>
-        <div className="mt-2 flex flex-col gap-1.5">
-          {flavors.map((flavor) => (
-            <ContentCard
-              key={flavor.id}
-              title={flavor.name}
-              subtitle={flavor.isAlcoholic ? "Alcoholic" : "Non-alcoholic"}
-              quantity={flavorQty[String(flavor.id)] ?? 0}
-              unitLabel="units"
-              onChange={(qty) => setFlavorQty((prev) => ({ ...prev, [String(flavor.id)]: qty }))}
-              swatch={
-                <span
-                  className="h-8 w-8 rounded-xl shadow-sm"
-                  style={{ background: flavorGradient(flavor) }}
-                  aria-hidden
-                />
-              }
-            />
-          ))}
-        </div>
-
-        {!contentBalanced && (
-          <p className="mt-3 text-xs font-semibold text-amber-700">
-            {assignedUnits > packagedUnits
-              ? `${nf.format(assignedUnits - packagedUnits)} more units assigned to flavors than the packaging holds.`
-              : `${nf.format(packagedUnits - assignedUnits)} units still need a flavor.`}
-          </p>
-        )}
+      <div className="mt-6">
+        <PackageLineEditor
+          lines={lines}
+          onChange={setLines}
+          flavors={flavors}
+          packageTypes={packageTypes}
+          presets={presets}
+        />
       </div>
+
+      {unbalanced.length > 0 && (
+        <p className="mt-3 text-xs font-semibold text-amber-700" role="status">
+          {overAssignedUnits > 0 &&
+            `${nf.format(overAssignedUnits)} more units are assigned to flavours than the packaging holds. `}
+          {unassignedUnits > 0 && `${nf.format(unassignedUnits)} units still need a flavour. `}
+          You can still save and come back to it.
+        </p>
+      )}
 
       <div className="mt-6 flex items-center gap-2">
         <button
           onClick={submit}
           disabled={!canSave}
-          title={contentBalanced ? undefined : "Flavor quantities must add up to the packaged units"}
           className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-40"
         >
           {isEdit ? "Save changes" : "Save order"}
@@ -367,86 +272,5 @@ export function OrderForm({
         </button>
       </div>
     </>
-  );
-}
-
-function ContentCard({
-  title,
-  subtitle,
-  quantity,
-  unitLabel,
-  onChange,
-  swatch,
-}: {
-  title: string;
-  subtitle: string;
-  quantity: number;
-  unitLabel: string;
-  onChange: (quantity: number) => void;
-  swatch: React.ReactNode;
-}) {
-  const active = quantity > 0;
-  return (
-    <label
-      className={`flex items-center gap-3 rounded-2xl border px-3 py-2 transition ${
-        active ? "border-line bg-card" : "border-transparent bg-card/50 opacity-45 hover:opacity-80"
-      }`}
-    >
-      {swatch}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-ink">{title}</span>
-        <span className="block truncate text-xs text-ink-soft">{subtitle}</span>
-      </span>
-      {/*
-        Stepper as well as a typable field: balancing a flavour split
-        against the packaging is usually a nudge of one or two, but an
-        order of 150 units is not something anyone wants to click to.
-      */}
-      <span className="flex shrink-0 items-center gap-1">
-        <StepButton
-          label={`One less ${title}`}
-          disabled={quantity === 0}
-          onClick={() => onChange(Math.max(0, quantity - 1))}
-        >
-          <Minus size={13} />
-        </StepButton>
-        <input
-          type="number"
-          min={0}
-          value={quantity === 0 ? "" : quantity}
-          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-          placeholder="0"
-          className="w-14 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold text-ink outline-none focus:border-accent"
-        />
-        <StepButton label={`One more ${title}`} onClick={() => onChange(quantity + 1)}>
-          <Plus size={13} />
-        </StepButton>
-      </span>
-      <span className="w-10 shrink-0 text-[11px] text-ink-soft">{unitLabel}</span>
-    </label>
-  );
-}
-
-function StepButton({
-  label,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="flex h-6 w-6 items-center justify-center rounded-full border border-line text-ink transition hover:bg-black hover:text-cream disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink"
-    >
-      {children}
-    </button>
   );
 }

@@ -1,5 +1,6 @@
-import { Boxes, Cloud, ListChecks, Palette, Users } from "lucide-react";
+import { Blend, Boxes, Cloud, ListChecks, Palette, Users } from "lucide-react";
 import {
+  getContentPresets,
   getFlavors,
   getPackageTypes,
   getPaymentMethods,
@@ -9,6 +10,7 @@ import {
 import { FlavorsPanel } from "@/components/settings/FlavorsPanel";
 import { NameListPanel } from "@/components/settings/NameListPanel";
 import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
+import { PresetsPanel } from "@/components/settings/PresetsPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
@@ -16,13 +18,15 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff] = await Promise.all([
-    getFlavors(),
-    getPackageTypes(),
-    getPaymentMethods(),
-    getExpenseCategories(),
-    getStaff(),
-  ]);
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets] =
+    await Promise.all([
+      getFlavors(),
+      getPackageTypes(),
+      getPaymentMethods(),
+      getExpenseCategories(),
+      getStaff(),
+      getContentPresets(),
+    ]);
 
   return (
     <SettingsTabs
@@ -38,6 +42,14 @@ export default async function SettingsPage() {
             <div className="max-w-xl">
               <PackageTypesPanel items={packageTypes} />
             </div>
+          ),
+        },
+        {
+          id: "presets",
+          label: "Presets",
+          icon: <Blend size={14} />,
+          content: (
+            <PresetsPanel presets={presets} flavors={flavors} packageTypes={packageTypes} />
           ),
         },
         {

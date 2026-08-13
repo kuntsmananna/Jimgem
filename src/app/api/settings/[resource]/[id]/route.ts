@@ -5,6 +5,8 @@ import {
   updatePackageType,
   updatePaymentMethod,
   updateExpenseCategory,
+  updateContentPreset,
+  archiveContentPreset,
 } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -47,6 +49,23 @@ export async function PATCH(
       case "expense-categories": {
         const category = await updateExpenseCategory(numericId, body.name);
         return NextResponse.json(category);
+      }
+      case "presets": {
+        if (body.archive) {
+          await archiveContentPreset(numericId);
+          return NextResponse.json({ ok: true });
+        }
+        const preset = await updateContentPreset(numericId, {
+          name: body.name,
+          packageTypeId: Number(body.packageTypeId),
+          flavors: (body.flavors ?? []).map(
+            (f: { flavorId: number | string; share: number | string }) => ({
+              flavorId: Number(f.flavorId),
+              share: Number(f.share),
+            }),
+          ),
+        });
+        return NextResponse.json(preset);
       }
       default:
         return NextResponse.json({ error: `Unknown resource: ${resource}` }, { status: 404 });

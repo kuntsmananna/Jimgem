@@ -144,6 +144,112 @@ export async function updatePackageType(
   return { id: rows[0].id, name: rows[0].name, unitsPerPackage: rows[0].units_per_package };
 }
 
+/**
+ * A saved "package type + flavour recipe" the owner maintains in Settings
+ * and applies in one click in the order form ("Mix small"). Shares are
+ * percentages of the package, not units, so one preset serves any
+ * quantity — see schema.sql's content_presets.
+ */
+export interface ContentPreset {
+  id: number;
+  name: string;
+  packageTypeId: number;
+  flavors: { flavorId: number; share: number }[];
+}
+
+export type ContentPresetInput = Omit<ContentPreset, "id">;
+
+interface PresetRow {
+  id: number;
+  name: string;
+  package_type_id: number;
+}
+
+interface PresetFlavorRow {
+  preset_id: number;
+  flavor_id: number;
+  share: string;
+  position: number;
+}
+
+function nestPresets(presetRows: PresetRow[], flavorRows: PresetFlavorRow[]): ContentPreset[] {
+  const byPreset = new Map<number, { flavorId: number; share: number }[]>();
+  for (const row of [...flavorRows].sort((a, b) => a.position - b.position)) {
+    const list = byPreset.get(row.preset_id) ?? [];
+    // NUMERIC arrives as a string from node-postgres-style drivers.
+    list.push({ flavorId: row.flavor_id, share: Number(row.share) });
+    byPreset.set(row.preset_id, list);
+  }
+  return presetRows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    packageTypeId: row.package_type_id,
+    flavors: byPreset.get(row.id) ?? [],
+  }));
+}
+
+export async function getContentPresets(): Promise<ContentPreset[]> {
+  const db = getDb();
+  const [{ rows: presetRows }, { rows: flavorRows }] = await Promise.all([
+    db.query<PresetRow>("SELECT * FROM content_presets WHERE archived_at IS NULL ORDER BY id"),
+    db.query<PresetFlavorRow>(
+      `SELECT f.* FROM content_preset_flavors f
+       JOIN content_presets p ON p.id = f.preset_id
+       WHERE p.archived_at IS NULL`,
+    ),
+  ]);
+  return nestPresets(presetRows, flavorRows);
+}
+
+function toPresetFlavorArrays(flavors: ContentPresetInput["flavors"]) {
+  return [flavors.map((f) => f.flavorId), flavors.map((f) => f.share), flavors.map((_, i) => i)];
+}
+
+export async function createContentPreset(input: ContentPresetInput): Promise<ContentPreset> {
+  const db = getDb();
+  const { rows } = await db.query<PresetRow>(
+    `WITH new_preset AS (
+       INSERT INTO content_presets (name, package_type_id) VALUES ($1, $2) RETURNING *
+     ), new_flavors AS (
+       INSERT INTO content_preset_flavors (preset_id, flavor_id, share, position)
+       SELECT new_preset.id, t.flavor_id, t.share, t.pos
+       FROM new_preset, unnest($3::int[], $4::numeric[], $5::int[]) AS t(flavor_id, share, pos)
+       RETURNING 1
+     )
+     SELECT * FROM new_preset`,
+    [input.name, input.packageTypeId, ...toPresetFlavorArrays(input.flavors)],
+  );
+  return { id: rows[0].id, name: rows[0].name, packageTypeId: rows[0].package_type_id, flavors: input.flavors };
+}
+
+export async function updateContentPreset(id: number, input: ContentPresetInput): Promise<ContentPreset> {
+  const db = getDb();
+  const { rows } = await db.query<PresetRow>(
+    `WITH updated_preset AS (
+       UPDATE content_presets SET name = $1, package_type_id = $2 WHERE id = $3 RETURNING *
+     ), deleted_flavors AS (
+       DELETE FROM content_preset_flavors WHERE preset_id = $3 RETURNING 1
+     ), new_flavors AS (
+       INSERT INTO content_preset_flavors (preset_id, flavor_id, share, position)
+       SELECT $3, t.flavor_id, t.share, t.pos
+       FROM unnest($4::int[], $5::numeric[], $6::int[]) AS t(flavor_id, share, pos)
+       -- Forces the delete to run first, same reasoning as orders.ts's
+       -- updateOrder: unrelated data-modifying CTEs have no defined order.
+       WHERE (SELECT count(*) FROM deleted_flavors) >= 0
+       RETURNING 1
+     )
+     SELECT * FROM updated_preset`,
+    [input.name, input.packageTypeId, id, ...toPresetFlavorArrays(input.flavors)],
+  );
+  return { id: rows[0].id, name: rows[0].name, packageTypeId: rows[0].package_type_id, flavors: input.flavors };
+}
+
+/** Presets archive rather than delete, for the same reason flavors do. */
+export async function archiveContentPreset(id: number): Promise<void> {
+  const db = getDb();
+  await db.query("UPDATE content_presets SET archived_at = now() WHERE id = $1", [id]);
+}
+
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   const db = getDb();
   const { rows } = await db.query<NamedRow>("SELECT * FROM payment_methods ORDER BY id");

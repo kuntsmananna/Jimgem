@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { PAYMENT_STATUS_LABEL, formatOrderDate, type Order } from "@/lib/orderTypes";
-import type { Flavor, PackageType } from "@/lib/settings";
+import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { useOverlayDismiss } from "@/components/useOverlayDismiss";
 import { EventTypeChip } from "./EventTypeChip";
 import { OrderForm } from "./OrderForm";
@@ -18,12 +18,14 @@ export function OrderDetailsPane({
   order,
   flavors,
   packageTypes,
+  presets,
   onSaved,
   onClose,
 }: {
   order: Order;
   flavors: Flavor[];
   packageTypes: PackageType[];
+  presets: ContentPreset[];
   onSaved: () => void;
   onClose: () => void;
 }) {
@@ -69,6 +71,7 @@ export function OrderDetailsPane({
             order={order}
             flavors={flavors}
             packageTypes={packageTypes}
+            presets={presets}
             onSaved={onSaved}
             onCancel={onClose}
             cancelLabel="Close"

@@ -4,7 +4,25 @@ import {
   createPackageType,
   createPaymentMethod,
   createExpenseCategory,
+  createContentPreset,
+  type ContentPresetInput,
 } from "@/lib/settings";
+
+/** Coerces the JSON body's loosely-typed recipe into numbers. */
+function presetInput(body: {
+  name: string;
+  packageTypeId: number | string;
+  flavors?: { flavorId: number | string; share: number | string }[];
+}): ContentPresetInput {
+  return {
+    name: body.name,
+    packageTypeId: Number(body.packageTypeId),
+    flavors: (body.flavors ?? []).map((f) => ({
+      flavorId: Number(f.flavorId),
+      share: Number(f.share),
+    })),
+  };
+}
 
 export const runtime = "nodejs";
 
@@ -38,6 +56,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/setting
       case "expense-categories": {
         const category = await createExpenseCategory(body.name);
         return NextResponse.json(category, { status: 201 });
+      }
+      case "presets": {
+        const preset = await createContentPreset(presetInput(body));
+        return NextResponse.json(preset, { status: 201 });
       }
       default:
         return NextResponse.json({ error: `Unknown resource: ${resource}` }, { status: 404 });

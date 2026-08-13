@@ -59,7 +59,7 @@ export function OrderHoverCard({
   children: ReactNode;
 }) {
   const [at, setAt] = useState<{ left: number; top: number } | null>(null);
-  const units = orderUnits(order.contentLines, new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])));
+  const units = orderUnits(order.packageLines, new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])));
 
   return (
     <div
@@ -124,7 +124,7 @@ export function OrderHoverCard({
             </dl>
 
             <div className="mt-3">
-              <ContentChips lines={order.contentLines} flavors={flavors} packageTypes={packageTypes} />
+              <ContentChips lines={order.packageLines} flavors={flavors} packageTypes={packageTypes} />
             </div>
 
             <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">

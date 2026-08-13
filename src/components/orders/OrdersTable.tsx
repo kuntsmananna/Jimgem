@@ -166,7 +166,7 @@ export function OrdersTable({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <ContentChips lines={order.contentLines} flavors={flavors} packageTypes={packageTypes} />
+                  <ContentChips lines={order.packageLines} flavors={flavors} packageTypes={packageTypes} />
                 </td>
                 <td className="px-3 py-2">
                   <EditableCell

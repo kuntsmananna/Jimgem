@@ -112,7 +112,7 @@ export function OrdersCalendar({
                   // Packaging lines only — summing every content line
                   // would add the flavour split on top of the packages it
                   // describes, double-counting the whole order.
-                  const units = orderUnits(order.contentLines, unitsPerPackage);
+                  const units = orderUnits(order.packageLines, unitsPerPackage);
                   return (
                     <OrderHoverCard
                       key={order.key}

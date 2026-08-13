@@ -2,7 +2,8 @@ import { getDb } from "./db";
 import {
   type PaymentStatus,
   type ProductionStatus,
-  type OrderContentLine,
+  type OrderLineFlavor,
+  type OrderPackageLine,
   type Order,
   type OrderInput,
 } from "./orderTypes";
@@ -11,7 +12,7 @@ import {
 // working unchanged — client components should import these (and the
 // pure orderMonth/orderDay helpers) from `@/lib/orderTypes` directly to
 // avoid pulling this module's server-only deps into a client bundle.
-export type { PaymentStatus, ProductionStatus, OrderContentLine, Order, OrderInput };
+export type { PaymentStatus, ProductionStatus, OrderLineFlavor, OrderPackageLine, Order, OrderInput };
 export {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
@@ -19,6 +20,9 @@ export {
   orderDay,
   orderUnits,
   orderFlavorUnits,
+  linePackedUnits,
+  lineAssignedUnits,
+  lineRemainingUnits,
 } from "./orderTypes";
 
 /**
@@ -93,29 +97,50 @@ interface DbOrderRow {
   needs_review: boolean;
 }
 
-interface DbContentLineRow {
+interface DbPackageLineRow {
+  id: number;
   order_id: number;
-  package_type_id: number | null;
-  flavor_id: number | null;
+  package_type_id: number;
   quantity: number;
+  position: number;
 }
 
-/** Which axis a row describes is decided by which column is set — see schema.sql. */
-function mapContentLine(row: DbContentLineRow): OrderContentLine {
-  return row.package_type_id !== null
-    ? {
-        kind: "package",
-        packageTypeId: String(row.package_type_id),
-        quantity: row.quantity,
-      }
-    : {
-        kind: "flavor",
-        flavorId: String(row.flavor_id),
-        quantity: row.quantity,
-      };
+interface DbLineFlavorRow {
+  line_id: number;
+  flavor_id: number;
+  units: number;
+  position: number;
 }
 
-function mapDbOrder(row: DbOrderRow, contentLines: OrderContentLine[]): Order {
+/**
+ * Nests flat line and flavour rows into the shape the app works in.
+ * Shared by every read path so the two-query fetch is written once.
+ */
+function nestPackageLines(
+  lineRows: DbPackageLineRow[],
+  flavorRows: DbLineFlavorRow[],
+): Map<number, OrderPackageLine[]> {
+  const flavorsByLine = new Map<number, OrderLineFlavor[]>();
+  for (const row of [...flavorRows].sort((a, b) => a.position - b.position)) {
+    const list = flavorsByLine.get(row.line_id) ?? [];
+    list.push({ flavorId: String(row.flavor_id), units: row.units });
+    flavorsByLine.set(row.line_id, list);
+  }
+
+  const linesByOrder = new Map<number, OrderPackageLine[]>();
+  for (const row of [...lineRows].sort((a, b) => a.position - b.position)) {
+    const list = linesByOrder.get(row.order_id) ?? [];
+    list.push({
+      packageTypeId: String(row.package_type_id),
+      quantity: row.quantity,
+      flavors: flavorsByLine.get(row.id) ?? [],
+    });
+    linesByOrder.set(row.order_id, list);
+  }
+  return linesByOrder;
+}
+
+function mapDbOrder(row: DbOrderRow, packageLines: OrderPackageLine[]): Order {
   return {
     key: String(row.id),
     source: row.sheet_row !== null ? "sheet" : "db",
@@ -127,7 +152,7 @@ function mapDbOrder(row: DbOrderRow, contentLines: OrderContentLine[]): Order {
     guests: row.guests,
     deliveryCost: row.delivery_cost !== null ? Number(row.delivery_cost) : null,
     mirrors: row.mirrors,
-    contentLines,
+    packageLines,
     totalAmount: Number(row.total_amount),
     deposit: Number(row.deposit),
     paymentStatus: row.payment_status,
@@ -144,18 +169,13 @@ function mapDbOrder(row: DbOrderRow, contentLines: OrderContentLine[]): Order {
  */
 export async function getOrders(): Promise<Order[]> {
   const db = getDb();
-  const [{ rows: orderRows }, { rows: lineRows }] = await Promise.all([
+  const [{ rows: orderRows }, { rows: lineRows }, { rows: flavorRows }] = await Promise.all([
     db.query<DbOrderRow>("SELECT * FROM orders ORDER BY date DESC, id DESC"),
-    db.query<DbContentLineRow>("SELECT * FROM order_content_lines"),
+    db.query<DbPackageLineRow>("SELECT * FROM order_package_lines"),
+    db.query<DbLineFlavorRow>("SELECT * FROM order_package_line_flavors"),
   ]);
 
-  const linesByOrder = new Map<number, OrderContentLine[]>();
-  for (const line of lineRows) {
-    const list = linesByOrder.get(line.order_id) ?? [];
-    list.push(mapContentLine(line));
-    linesByOrder.set(line.order_id, list);
-  }
-
+  const linesByOrder = nestPackageLines(lineRows, flavorRows);
   return orderRows.map((row) => mapDbOrder(row, linesByOrder.get(row.id) ?? []));
 }
 
@@ -187,61 +207,90 @@ export function deleteOrdersMany(ids: number[]): Promise<number> {
 }
 
 /**
- * Splits content lines into 3 parallel arrays for `unnest()` — Neon's HTTP
- * driver has no interactive multi-statement transactions (see db.ts), so
- * an order and its content lines are written atomically via a single SQL
- * statement with chained CTEs instead of BEGIN/COMMIT.
+ * Flattens the nested package lines into parallel arrays for `unnest()` —
+ * Neon's HTTP driver has no interactive multi-statement transactions (see
+ * db.ts), so an order and its content are written atomically via a single
+ * SQL statement with chained CTEs instead of BEGIN/COMMIT.
+ *
+ * Flavours are flattened alongside their line's `position` rather than a
+ * line id, because the ids don't exist until the statement runs. The
+ * insert joins the two back together on that position, which works
+ * because a position is unique within one order.
  */
-function toLineArrays(contentLines: OrderContentLine[]) {
+function toLineArrays(lines: OrderPackageLine[]) {
+  const flavors = lines.flatMap((line, linePosition) =>
+    line.flavors.map((entry, position) => ({ linePosition, entry, position })),
+  );
   return {
-    packageTypeIds: contentLines.map((l) => (l.kind === "package" ? Number(l.packageTypeId) : null)),
-    flavorIds: contentLines.map((l) => (l.kind === "flavor" ? Number(l.flavorId) : null)),
-    quantities: contentLines.map((l) => l.quantity),
+    packageTypeIds: lines.map((l) => Number(l.packageTypeId)),
+    quantities: lines.map((l) => l.quantity),
+    linePositions: lines.map((_, i) => i),
+    flavorLinePositions: flavors.map((f) => f.linePosition),
+    flavorIds: flavors.map((f) => Number(f.entry.flavorId)),
+    flavorUnits: flavors.map((f) => f.entry.units),
+    flavorPositions: flavors.map((f) => f.position),
   };
+}
+
+const ORDER_COLUMNS = `date, customer, customer_type, location, guests, delivery_cost, mirrors,
+          total_amount, deposit, payment_status, production_status, notes`;
+
+function orderValues(input: OrderInput) {
+  return [
+    input.date,
+    input.customer,
+    input.customerType,
+    input.location,
+    input.guests,
+    input.deliveryCost,
+    input.mirrors,
+    input.totalAmount,
+    input.deposit,
+    input.paymentStatus,
+    input.productionStatus,
+    input.notes,
+  ];
 }
 
 export async function createOrder(input: OrderInput): Promise<Order> {
   const db = getDb();
-  const { packageTypeIds, flavorIds, quantities } = toLineArrays(input.contentLines);
+  const arrays = toLineArrays(input.packageLines);
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH new_order AS (
-       INSERT INTO orders
-         (date, customer, customer_type, location, guests, delivery_cost, mirrors,
-          total_amount, deposit, payment_status, production_status, notes)
+       INSERT INTO orders (${ORDER_COLUMNS})
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *
-     ), inserted_lines AS (
-       INSERT INTO order_content_lines (order_id, package_type_id, flavor_id, quantity)
-       SELECT new_order.id, t.pkg, t.flv, t.qty
-       FROM new_order, unnest($13::int[], $14::int[], $15::int[]) AS t(pkg, flv, qty)
+     ), new_lines AS (
+       INSERT INTO order_package_lines (order_id, package_type_id, quantity, position)
+       SELECT new_order.id, t.pkg, t.qty, t.pos
+       FROM new_order, unnest($13::int[], $14::int[], $15::int[]) AS t(pkg, qty, pos)
+       RETURNING id, position
+     ), new_flavors AS (
+       INSERT INTO order_package_line_flavors (line_id, flavor_id, units, position)
+       SELECT new_lines.id, f.flavor_id, f.units, f.pos
+       FROM unnest($16::int[], $17::int[], $18::int[], $19::int[]) AS f(line_pos, flavor_id, units, pos)
+       JOIN new_lines ON new_lines.position = f.line_pos
        RETURNING 1
      )
      SELECT * FROM new_order`,
     [
-      input.date,
-      input.customer,
-      input.customerType,
-      input.location,
-      input.guests,
-      input.deliveryCost,
-      input.mirrors,
-      input.totalAmount,
-      input.deposit,
-      input.paymentStatus,
-      input.productionStatus,
-      input.notes,
-      packageTypeIds,
-      flavorIds,
-      quantities,
+      ...orderValues(input),
+      arrays.packageTypeIds,
+      arrays.quantities,
+      arrays.linePositions,
+      arrays.flavorLinePositions,
+      arrays.flavorIds,
+      arrays.flavorUnits,
+      arrays.flavorPositions,
     ],
   );
-  return mapDbOrder(rows[0], input.contentLines);
+  return mapDbOrder(rows[0], input.packageLines);
 }
 
 export async function updateOrder(id: number, input: OrderInput): Promise<Order> {
   const db = getDb();
-  const { packageTypeIds, flavorIds, quantities } = toLineArrays(input.contentLines);
+  const arrays = toLineArrays(input.packageLines);
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH updated_order AS (
@@ -252,39 +301,41 @@ export async function updateOrder(id: number, input: OrderInput): Promise<Order>
        WHERE id = $13
        RETURNING *
      ), deleted_lines AS (
-       DELETE FROM order_content_lines WHERE order_id = $13
+       -- Flavour rows go with them, via ON DELETE CASCADE.
+       DELETE FROM order_package_lines WHERE order_id = $13
        RETURNING 1
-     ), inserted_lines AS (
-       INSERT INTO order_content_lines (order_id, package_type_id, flavor_id, quantity)
-       SELECT $13, t.pkg, t.flv, t.qty
-       FROM unnest($14::int[], $15::int[], $16::int[]) AS t(pkg, flv, qty)
+     ), new_lines AS (
+       INSERT INTO order_package_lines (order_id, package_type_id, quantity, position)
+       SELECT $13, t.pkg, t.qty, t.pos
+       FROM unnest($14::int[], $15::int[], $16::int[]) AS t(pkg, qty, pos)
        -- always-true condition on deleted_lines: CTEs with no data dependency
        -- between them run in an unspecified order, so this forces the delete
        -- to happen before the insert (otherwise it could wipe out the new rows)
        WHERE (SELECT count(*) FROM deleted_lines) >= 0
+       RETURNING id, position
+     ), new_flavors AS (
+       -- No such guard needed here: the join on new_lines is a real data
+       -- dependency, so this cannot run before the lines exist.
+       INSERT INTO order_package_line_flavors (line_id, flavor_id, units, position)
+       SELECT new_lines.id, f.flavor_id, f.units, f.pos
+       FROM unnest($17::int[], $18::int[], $19::int[], $20::int[]) AS f(line_pos, flavor_id, units, pos)
+       JOIN new_lines ON new_lines.position = f.line_pos
        RETURNING 1
      )
      SELECT * FROM updated_order`,
     [
-      input.date,
-      input.customer,
-      input.customerType,
-      input.location,
-      input.guests,
-      input.deliveryCost,
-      input.mirrors,
-      input.totalAmount,
-      input.deposit,
-      input.paymentStatus,
-      input.productionStatus,
-      input.notes,
+      ...orderValues(input),
       id,
-      packageTypeIds,
-      flavorIds,
-      quantities,
+      arrays.packageTypeIds,
+      arrays.quantities,
+      arrays.linePositions,
+      arrays.flavorLinePositions,
+      arrays.flavorIds,
+      arrays.flavorUnits,
+      arrays.flavorPositions,
     ],
   );
-  return mapDbOrder(rows[0], input.contentLines);
+  return mapDbOrder(rows[0], input.packageLines);
 }
 
 export async function deleteOrder(id: number): Promise<void> {
@@ -294,9 +345,15 @@ export async function deleteOrder(id: number): Promise<void> {
 
 export async function duplicateOrder(id: number): Promise<Order> {
   const db = getDb();
-  const [{ rows: orderRows }, { rows: lineRows }] = await Promise.all([
+  const [{ rows: orderRows }, { rows: lineRows }, { rows: flavorRows }] = await Promise.all([
     db.query<DbOrderRow>("SELECT * FROM orders WHERE id = $1", [id]),
-    db.query<DbContentLineRow>("SELECT * FROM order_content_lines WHERE order_id = $1", [id]),
+    db.query<DbPackageLineRow>("SELECT * FROM order_package_lines WHERE order_id = $1", [id]),
+    db.query<DbLineFlavorRow>(
+      `SELECT f.* FROM order_package_line_flavors f
+       JOIN order_package_lines l ON l.id = f.line_id
+       WHERE l.order_id = $1`,
+      [id],
+    ),
   ]);
   const source = orderRows[0];
   if (!source) throw new Error(`Order ${id} not found`);
@@ -309,7 +366,7 @@ export async function duplicateOrder(id: number): Promise<Order> {
     guests: source.guests,
     deliveryCost: source.delivery_cost !== null ? Number(source.delivery_cost) : null,
     mirrors: source.mirrors,
-    contentLines: lineRows.map(mapContentLine),
+    packageLines: nestPackageLines(lineRows, flavorRows).get(id) ?? [],
     totalAmount: Number(source.total_amount),
     deposit: Number(source.deposit),
     paymentStatus: source.payment_status,

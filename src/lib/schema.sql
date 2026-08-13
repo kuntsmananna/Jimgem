@@ -96,6 +96,92 @@ ALTER TABLE order_content_lines DROP CONSTRAINT IF EXISTS order_content_lines_on
 ALTER TABLE order_content_lines ADD CONSTRAINT order_content_lines_one_axis
   CHECK ((package_type_id IS NULL) <> (flavor_id IS NULL));
 
+-- An order is a list of package lines, one per tray/box ordered, and each
+-- line carries its own flavour split. That shape exists because a single
+-- order routinely mixes them: two small trays of one flavour beside one
+-- big tray of a four-way mix. The older order_content_lines below could
+-- not express it — it held one flavour split for the whole order.
+--
+--   order_package_lines        one row = "2 x Small tray", quantity = packages
+--   order_package_line_flavors one row = "40 units of Gin and Tonic" on that line
+--
+-- Units are stored, never percentages: a percentage is an input mode in
+-- the form (see PackageLineEditor), and resolving it to units at entry
+-- time keeps a saved order's meaning fixed when a package type's
+-- units_per_package is later edited.
+CREATE TABLE IF NOT EXISTS order_package_lines (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  package_type_id INTEGER NOT NULL REFERENCES package_types(id),
+  quantity INTEGER NOT NULL,
+  -- Display order within the order, so a re-read returns the lines in the
+  -- sequence they were entered rather than by insertion id.
+  position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS order_package_line_flavors (
+  id SERIAL PRIMARY KEY,
+  line_id INTEGER NOT NULL REFERENCES order_package_lines(id) ON DELETE CASCADE,
+  flavor_id INTEGER NOT NULL REFERENCES flavors(id),
+  units INTEGER NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS order_package_lines_order_idx ON order_package_lines (order_id);
+CREATE INDEX IF NOT EXISTS order_package_line_flavors_line_idx ON order_package_line_flavors (line_id);
+
+-- Owner-editable presets ("Mix small" = a small tray of the house mix),
+-- managed in Settings and offered as one-click chips in the order form.
+--
+-- A recipe is stored as proportions, not units, which is what lets one
+-- preset serve any quantity. Applying a preset copies it into ordinary
+-- editable order lines — it is a starting point, never a live link, so
+-- editing a preset afterwards cannot rewrite orders already booked.
+CREATE TABLE IF NOT EXISTS content_presets (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  package_type_id INTEGER NOT NULL REFERENCES package_types(id),
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS content_preset_flavors (
+  id SERIAL PRIMARY KEY,
+  preset_id INTEGER NOT NULL REFERENCES content_presets(id) ON DELETE CASCADE,
+  flavor_id INTEGER NOT NULL REFERENCES flavors(id),
+  -- Percent of the preset's package. The set is expected to total 100,
+  -- enforced in the form rather than here, so a half-finished recipe can
+  -- still be saved and come back to.
+  share NUMERIC(6, 3) NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS content_preset_flavors_preset_idx ON content_preset_flavors (preset_id);
+
+-- LEGACY, superseded by order_package_lines above — nothing reads this
+-- table anymore. It held an order's content as two independent lists
+-- (packaging on one axis, flavours on the other), which could not say
+-- which flavours went in which tray. The 003 migration folded every row
+-- into the new per-line shape. Kept rather than dropped so that fold-in
+-- stays auditable, same as order_overrides below.
+--
+--   packaging line  package_type_id set, flavor_id NULL, quantity = packages
+--   flavour line    flavor_id set, package_type_id NULL, quantity = units
+CREATE TABLE IF NOT EXISTS order_content_lines (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  package_type_id INTEGER REFERENCES package_types(id),
+  flavor_id INTEGER REFERENCES flavors(id),
+  quantity INTEGER NOT NULL
+);
+
+ALTER TABLE order_content_lines ALTER COLUMN package_type_id DROP NOT NULL;
+
+-- Exactly one of the two axes per row. Named so a re-run is idempotent.
+ALTER TABLE order_content_lines DROP CONSTRAINT IF EXISTS order_content_lines_one_axis;
+ALTER TABLE order_content_lines ADD CONSTRAINT order_content_lines_one_axis
+  CHECK ((package_type_id IS NULL) <> (flavor_id IS NULL));
+
 -- LEGACY, retained for history only — nothing reads this table anymore.
 -- It dates from when pages read the Sheet live on every render and a
 -- Sheet row had no DB row to edit, so dashboard edits were stored here

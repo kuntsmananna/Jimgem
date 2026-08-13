@@ -60,7 +60,7 @@ export function OrdersKanban({
                     <p className="text-xs text-ink-soft">{formatOrderDate(order.date)}</p>
                   </div>
                   <div className="mt-2">
-                    <ContentChips lines={order.contentLines} flavors={flavors} packageTypes={packageTypes} />
+                    <ContentChips lines={order.packageLines} flavors={flavors} packageTypes={packageTypes} />
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-sm font-semibold text-ink">{currency(order.totalAmount)}</p>

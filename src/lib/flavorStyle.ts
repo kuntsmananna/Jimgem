@@ -15,3 +15,14 @@ import type { Flavor } from "./settings";
 export function flavorGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase" | "colorShadow">): string {
   return `radial-gradient(circle at -15% -15%, ${flavor.colorGlow}, ${flavor.colorBase} 55%, ${flavor.colorShadow} 100%)`;
 }
+
+/**
+ * The same three stops run top-to-bottom instead of from a corner, for
+ * the flavour-split bar. A segment there can be a few pixels wide and is
+ * always full height, which puts the radial version's light source
+ * off-screen and flattens the whole segment to its shadow colour — this
+ * keeps the glow readable at any width.
+ */
+export function flavorBarGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase" | "colorShadow">): string {
+  return `linear-gradient(180deg, ${flavor.colorGlow} 0%, ${flavor.colorBase} 55%, ${flavor.colorShadow} 100%)`;
+}

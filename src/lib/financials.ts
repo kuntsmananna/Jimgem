@@ -136,7 +136,7 @@ export async function getMonthlyRevenue(
     };
     existing.total += order.totalAmount;
     existing.orderCount += 1;
-    existing.unitsSold += orderUnits(order.contentLines, packageUnitsById);
+    existing.unitsSold += orderUnits(order.packageLines, packageUnitsById);
     byMonth.set(month, existing);
   }
 

@@ -11,6 +11,7 @@
  * (see CLAUDE.md's note on orderTypes.ts for why that matters).
  */
 
+import { createElement, type ReactElement } from "react";
 import {
   Bike,
   Box,
@@ -18,7 +19,10 @@ import {
   ChefHat,
   Cpu,
   GlassWater,
+  Grid2x2,
+  Grid3x3,
   Megaphone,
+  Package,
   PartyPopper,
   Receipt,
   Store,
@@ -82,4 +86,30 @@ const EXPENSE_CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 export function expenseCategoryIcon(categoryName: string): LucideIcon {
   return EXPENSE_CATEGORY_ICONS[categoryName.trim()] ?? Receipt;
+}
+
+/**
+ * Package types are owner-editable in Settings, so this is keyed by name
+ * with a fallback, like the maps above. Trays read as grids of cubes at
+ * two densities — a generic box for each was indistinguishable from the
+ * single cube that means "Units".
+ */
+const PACKAGE_ICONS: Record<string, LucideIcon> = {
+  "Small tray": Grid2x2,
+  "Big tray": Grid3x3,
+  Units: UnitsIcon,
+};
+
+export function packageTypeIcon(packageName: string): LucideIcon {
+  return PACKAGE_ICONS[packageName.trim()] ?? Package;
+}
+
+/**
+ * The same lookup as an element rather than a component type. Binding a
+ * looked-up component to a capitalized local inside a render counts as
+ * creating a component during render, so call sites take the element —
+ * same approach as ExpensesClient's CategoryIcon.
+ */
+export function packageTypeIconElement(packageName: string, size = 14): ReactElement {
+  return createElement(packageTypeIcon(packageName), { size });
 }
