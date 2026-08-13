@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
@@ -57,6 +57,11 @@ function draftFromOrder(order?: Order): OrderInput {
   };
 }
 
+/** Exactly what submit() sends, so "changed" means "would write something different". */
+function serialize(draft: OrderInput, lines: DraftPackageLine[]): string {
+  return JSON.stringify({ ...draft, packageLines: toPackageLines(lines) });
+}
+
 /**
  * The order form itself, with no surrounding chrome — rendered both in
  * the Add-order modal and in the row-click details pane so the two can
@@ -69,6 +74,7 @@ export function OrderForm({
   presets,
   onSaved,
   onCancel,
+  onDirtyChange,
   cancelLabel = "Cancel",
 }: {
   /** Omit to create a new order, pass one to edit it. */
@@ -78,12 +84,37 @@ export function OrderForm({
   presets: ContentPreset[];
   onSaved: () => void;
   onCancel: () => void;
+  /**
+   * Fires when the form gains or loses unsaved edits, so the overlay
+   * hosting it can warn before discarding them. Nothing in this form
+   * saves on its own — unlike the Orders table's inline cells, which
+   * commit on blur — and that difference is what made a closed pane look
+   * like a failed save.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
   cancelLabel?: string;
 }) {
   const isEdit = !!order;
-  const [draft, setDraft] = useState<OrderInput>(() => draftFromOrder(order));
-  const [lines, setLines] = useState<DraftPackageLine[]>(() => toDraftLines(order?.packageLines ?? []));
+  // Built once, so the starting values and the baseline they're compared
+  // against can't drift apart — draftFromOrder stamps today's date for a
+  // new order, and calling it twice could straddle midnight.
+  const [initial] = useState(() => {
+    const draft = draftFromOrder(order);
+    const lines = toDraftLines(order?.packageLines ?? []);
+    return { draft, lines, payload: serialize(draft, lines) };
+  });
+  const [draft, setDraft] = useState<OrderInput>(initial.draft);
+  const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
+
+  // Comparing what a save *would* send against what it started as makes
+  // "dirty" mean "differs from the stored order" rather than "was
+  // touched", so typing a character and undoing it stops warning.
+  const dirty = serialize(draft, lines) !== initial.payload;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
   // Lines whose flavours don't add up to what they pack. Reported, not
@@ -260,6 +291,9 @@ export function OrderForm({
         <button
           onClick={submit}
           disabled={!canSave}
+          title={
+            draft.customer.trim().length === 0 ? "Give the order a customer name first" : undefined
+          }
           className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-40"
         >
           {isEdit ? "Save changes" : "Save order"}
@@ -270,6 +304,20 @@ export function OrderForm({
         >
           {cancelLabel}
         </button>
+
+        {/* Nothing here saves as you type, so say so while it's still fixable. */}
+        {dirty && (
+          <span className="text-xs font-semibold text-amber-700" role="status">
+            Unsaved changes
+          </span>
+        )}
+        {/*
+          The one reason Save is ever disabled. It used to give no
+          explanation, so the button just looked broken.
+        */}
+        {draft.customer.trim().length === 0 && (
+          <span className="text-xs text-ink-soft">Add a customer name to save</span>
+        )}
       </div>
     </>
   );

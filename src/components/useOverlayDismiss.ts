@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /** How many overlays are currently open. */
 let openCount = 0;
@@ -16,9 +16,21 @@ let openCount = 0;
  * behind it scroll.
  */
 export function useOverlayDismiss(onDismiss: () => void) {
+  /*
+   * The callback is held in a ref so the effect can depend on nothing.
+   * Callers now pass a guard that closes over "are there unsaved edits",
+   * which is a different function on every render — as a dependency that
+   * would tear down and re-run the whole effect on each keystroke,
+   * cycling the scroll-lock count with it.
+   */
+  const handler = useRef(onDismiss);
+  useEffect(() => {
+    handler.current = onDismiss;
+  }, [onDismiss]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onDismiss();
+      if (e.key === "Escape") handler.current();
     };
     document.addEventListener("keydown", onKey);
 
@@ -30,5 +42,5 @@ export function useOverlayDismiss(onDismiss: () => void) {
       openCount -= 1;
       if (openCount === 0) document.body.style.overflow = "";
     };
-  }, [onDismiss]);
+  }, []);
 }

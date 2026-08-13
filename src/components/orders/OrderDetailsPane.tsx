@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { PAYMENT_STATUS_LABEL, formatOrderDate, type Order } from "@/lib/orderTypes";
@@ -29,13 +30,28 @@ export function OrderDetailsPane({
   onSaved: () => void;
   onClose: () => void;
 }) {
-  useOverlayDismiss(onClose);
+  const [dirty, setDirty] = useState(false);
+
+  /**
+   * Every way out of the pane goes through here. The form saves only when
+   * "Save changes" is pressed, but the Orders table's inline cells commit
+   * on blur — so the habit this pane has to survive is "I edited it,
+   * therefore it's saved". Escape and a stray click outside are the easy
+   * ones to trigger by accident, and both used to bin the edit without a
+   * word.
+   */
+  const requestClose = useCallback(() => {
+    if (dirty && !confirm("Discard your unsaved changes to this order?")) return;
+    onClose();
+  }, [dirty, onClose]);
+
+  useOverlayDismiss(requestClose);
 
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex justify-end bg-black/30"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) requestClose();
       }}
     >
       <aside
@@ -61,7 +77,7 @@ export function OrderDetailsPane({
             */}
           </div>
           <button
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
             className="rounded-full p-1.5 text-ink-soft hover:bg-black/5 hover:text-ink"
           >
@@ -79,7 +95,8 @@ export function OrderDetailsPane({
             packageTypes={packageTypes}
             presets={presets}
             onSaved={onSaved}
-            onCancel={onClose}
+            onCancel={requestClose}
+            onDirtyChange={setDirty}
             cancelLabel="Close"
           />
         </div>
