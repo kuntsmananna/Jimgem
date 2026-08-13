@@ -133,8 +133,15 @@ export function OrdersTable({
                       </span>
                     )}
                   </div>
-                  {order.details && (
-                    <p className="mt-0.5 max-w-[220px] text-xs text-ink-soft">{order.details}</p>
+                  {/*
+                    Notes, not the Sheet's raw `details`: the two used to be
+                    separate free-text fields with only one of them editable,
+                    which read as an unlabelled mystery line under the name.
+                    Migration 004 folded details into notes, so this is now
+                    the same text — editable from the order form.
+                  */}
+                  {order.notes && (
+                    <p className="mt-0.5 max-w-[220px] text-xs text-ink-soft">{order.notes}</p>
                   )}
                 </td>
                 <td className="px-3 py-2">

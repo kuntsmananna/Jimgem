@@ -68,6 +68,17 @@ interface SheetOrder {
   needsReview: boolean;
 }
 
+/**
+ * The Sheet's description and note columns as one note. Description
+ * first: it's the substance, and the note is usually a short tag like
+ * "כולל מעמ". Must stay in step with migrate-004's merge, so an order
+ * imported today reads the same as one imported before it.
+ */
+function joinNote(details: string, note: string): string {
+  const parts = [details.trim(), note.trim()].filter((part) => part !== "");
+  return parts.join(" · ");
+}
+
 function parseAmount(raw: string): number {
   const n = Number(raw.replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : 0;
@@ -124,7 +135,12 @@ async function readSheetOrders(spreadsheetId: string): Promise<SheetOrder[]> {
       totalAmount: parseAmount(get(7)),
       deposit: parseAmount(get(8)),
       paymentStatus: classifyColor(cells[0]?.backgroundColor),
-      notes: get(6),
+      // The Sheet keeps its description (פירוט) and its note in separate
+      // columns. They arrive as one editable note, matching what migration
+      // 004 did to the rows imported before this — otherwise every future
+      // import would recreate the unlabelled, uneditable second field that
+      // change removed. `details` still stores the description untouched.
+      notes: joinNote(details, get(6)),
       needsReview: parsed.needsReview,
     });
   }

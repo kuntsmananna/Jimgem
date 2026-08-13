@@ -81,7 +81,13 @@ export interface Order {
   customer: string;
   customerType: string;
   location: string;
-  /** Free text (פירוט) for Sheet orders; empty for DB orders, which use packageLines instead. */
+  /**
+   * The Sheet's פירוט cell, exactly as imported. **Legacy and unread** —
+   * migration 004 folded this text into `notes`, which is the editable
+   * field the UI shows, and the importer now does the same for new rows.
+   * Kept as the untouched original so the fold-in stays auditable, same
+   * as order_overrides and order_content_lines. Don't add reads of it.
+   */
   details: string;
   guests: number | null;
   deliveryCost: number | null;

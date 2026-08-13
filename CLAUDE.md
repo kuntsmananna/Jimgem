@@ -249,6 +249,14 @@ iteration (not guessed) — define these as `@theme` tokens in
 - `order_content_lines` is **legacy and unread**, superseded by the two
   tables above. `scripts/migrate-003-package-lines.mjs` folded every row
   into the new shape. Kept for the same reason as `order_overrides`.
+- `orders.details` (the Sheet's פירוט cell) is **legacy and unread**.
+  It and `notes` were two free-text fields where only `notes` was
+  editable, so the Orders table showed an unlabelled line nobody could
+  change. `scripts/migrate-004-details-into-notes.mjs` merged it into
+  `notes` ("description · note", never overwriting an existing note),
+  and `sheetImport.ts`'s `joinNote` does the same for new rows — keep
+  the two in step, or imports will recreate the split. The column stays
+  as the untouched original.
 - Nothing is ever written back to the Sheet. Don't try to "fix" the
   one-way flow by adding writes.
 

@@ -52,7 +52,13 @@ export function OrderDetailsPane({
               <span>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</span>
               {order.source === "sheet" && <span className="text-ink-soft/70">imported from sheet</span>}
             </div>
-            {order.details && <p className="mt-2 text-xs text-ink-soft">{order.details}</p>}
+            {/*
+              No `details` echo here: migration 004 folded it into notes,
+              which the form below shows in an editable field a few lines
+              down. Repeating it in the header would put the same text on
+              screen twice, once uneditable — the exact confusion that
+              change removed.
+            */}
           </div>
           <button
             onClick={onClose}
