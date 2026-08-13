@@ -13,6 +13,7 @@
 
 import {
   Bike,
+  Box,
   Boxes,
   ChefHat,
   Cpu,
@@ -28,6 +29,14 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
+
+/**
+ * A single jelly cube — what a "unit" actually is, as opposed to the
+ * stacked-boxes mark that means packaging. Exported as one alias so the
+ * KPI tile, the order form and anything else counting units can't drift
+ * onto different icons.
+ */
+export const UnitsIcon: LucideIcon = Box;
 
 interface EventType {
   label: string;

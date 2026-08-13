@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Boxes, Package, PackageOpen, type LucideIcon } from "lucide-react";
+import { Grid2x2, Grid3x3, Minus, Package, Plus, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { flavorGradient } from "@/lib/flavorStyle";
+import { UnitsIcon } from "@/lib/icons";
 import { Field, TextInput, SelectInput } from "@/components/Field";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -32,9 +33,11 @@ type Quantities = Record<string, number>;
  * same as the event-type and expense-category maps in lib/icons.ts.
  */
 const PACKAGE_ICONS: Record<string, LucideIcon> = {
-  "Small tray": Package,
-  "Big tray": Boxes,
-  Units: PackageOpen,
+  // Trays read as grids of cubes, of two densities — a generic box for
+  // each was indistinguishable from the single cube that means "Units".
+  "Small tray": Grid2x2,
+  "Big tray": Grid3x3,
+  Units: UnitsIcon,
 };
 
 function draftFromOrder(order?: Order): OrderInput {
@@ -394,15 +397,56 @@ function ContentCard({
         <span className="block truncate text-sm font-semibold text-ink">{title}</span>
         <span className="block truncate text-xs text-ink-soft">{subtitle}</span>
       </span>
-      <input
-        type="number"
-        min={0}
-        value={quantity === 0 ? "" : quantity}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
-        placeholder="0"
-        className="w-16 rounded-lg border border-line bg-cream px-2 py-1 text-right text-sm font-semibold text-ink outline-none focus:border-accent"
-      />
+      {/*
+        Stepper as well as a typable field: balancing a flavour split
+        against the packaging is usually a nudge of one or two, but an
+        order of 150 units is not something anyone wants to click to.
+      */}
+      <span className="flex shrink-0 items-center gap-1">
+        <StepButton
+          label={`One less ${title}`}
+          disabled={quantity === 0}
+          onClick={() => onChange(Math.max(0, quantity - 1))}
+        >
+          <Minus size={13} />
+        </StepButton>
+        <input
+          type="number"
+          min={0}
+          value={quantity === 0 ? "" : quantity}
+          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+          placeholder="0"
+          className="w-14 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+        />
+        <StepButton label={`One more ${title}`} onClick={() => onChange(quantity + 1)}>
+          <Plus size={13} />
+        </StepButton>
+      </span>
       <span className="w-10 shrink-0 text-[11px] text-ink-soft">{unitLabel}</span>
     </label>
+  );
+}
+
+function StepButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-6 w-6 items-center justify-center rounded-full border border-line text-ink transition hover:bg-black hover:text-cream disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink"
+    >
+      {children}
+    </button>
   );
 }

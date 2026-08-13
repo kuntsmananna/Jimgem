@@ -3,6 +3,7 @@
 import { PRODUCTION_STATUS_LABEL, formatOrderDate, type Order, type ProductionStatus } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { ContentChips } from "./ContentChips";
+import { OrderHoverCard } from "./OrderHoverCard";
 import { ProductionStatusSelect } from "./StatusSelects";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -36,12 +37,23 @@ export function OrdersKanban({
               <span className="font-normal text-ink-soft">({columnOrders.length})</span>
             </h3>
             <div className="mt-3 flex flex-col gap-2">
+              {/*
+                The card stays a summary — location/guests/mirrors/notes
+                used to expand it in place on hover, which reflowed the
+                whole column. They live in the hover card now.
+              */}
               {columnOrders.map((order) => (
-                <div key={order.key} className="group rounded-xl border border-line bg-card p-3 shadow-sm">
+                <OrderHoverCard
+                  key={order.key}
+                  order={order}
+                  flavors={flavors}
+                  packageTypes={packageTypes}
+                  className="hover-line rounded-xl border border-line bg-card p-3 shadow-sm"
+                >
                   <div className="flex items-center justify-between">
                     <button
                       onClick={() => onOpen(order.key)}
-                      className="text-left text-sm font-semibold text-ink hover:underline"
+                      className="text-left text-sm font-semibold text-ink"
                     >
                       {order.customer || "(no name)"}
                     </button>
@@ -50,17 +62,11 @@ export function OrdersKanban({
                   <div className="mt-2">
                     <ContentChips lines={order.contentLines} flavors={flavors} packageTypes={packageTypes} />
                   </div>
-                  <div className="mt-2 hidden text-xs text-ink-soft group-hover:block">
-                    {order.location && <p>{order.location}</p>}
-                    {order.guests !== null && <p>{order.guests} guests</p>}
-                    {order.mirrors !== null && <p>{order.mirrors} mirrors</p>}
-                    {order.notes && <p>{order.notes}</p>}
-                  </div>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-sm font-semibold text-ink">{currency(order.totalAmount)}</p>
                     <ProductionStatusSelect order={order} onChanged={onChanged} />
                   </div>
-                </div>
+                </OrderHoverCard>
               ))}
             </div>
           </div>

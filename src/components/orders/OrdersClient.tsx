@@ -246,7 +246,14 @@ export function OrdersClient({
           onOpen={setOpenKey}
         />
       )}
-      {view === "calendar" && <OrdersCalendar orders={filtered} />}
+      {view === "calendar" && (
+        <OrdersCalendar
+          orders={filtered}
+          flavors={flavors}
+          packageTypes={packageTypes}
+          onOpen={setOpenKey}
+        />
+      )}
 
       {/*
         Floating rather than inline: an action bar that appears in the flow

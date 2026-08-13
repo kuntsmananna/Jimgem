@@ -77,7 +77,7 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
               </>
             ) : (
               <button
-                className="flex flex-1 items-center justify-between rounded-lg px-2 py-1 text-left text-ink hover:bg-black/5"
+                className="hover-line flex flex-1 items-center justify-between rounded-lg px-2 py-1 text-left text-ink"
                 onClick={() => {
                   setEditing(item.id);
                   setEditDraft({ name: item.name, unitsPerPackage: String(item.unitsPerPackage) });

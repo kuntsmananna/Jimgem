@@ -80,7 +80,7 @@ export function NameListPanel({
               </>
             ) : (
               <button
-                className="flex-1 rounded-lg px-2 py-1 text-left text-ink hover:bg-black/5"
+                className="hover-line flex-1 rounded-lg px-2 py-1 text-left text-ink"
                 onClick={() => {
                   setEditing(item.id);
                   setEditDraft(item.name);

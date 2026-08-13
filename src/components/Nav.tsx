@@ -17,7 +17,13 @@ export function Nav({ name }: { name: string }) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur">
       <div className="flex items-center gap-8">
-        <span className="font-display text-xl font-extrabold tracking-tight text-ink">Gems</span>
+        <Link
+          href="/"
+          aria-label="Gems — dashboard"
+          className="font-display text-xl font-extrabold tracking-tight text-ink transition hover:opacity-70"
+        >
+          Gems
+        </Link>
         <nav className="flex items-center gap-1">
           {LINKS.map((link) => {
             const active = link.href === "/" ? activeHref === "/" : activeHref.startsWith(link.href);

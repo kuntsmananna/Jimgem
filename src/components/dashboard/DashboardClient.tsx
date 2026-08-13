@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Banknote, Boxes, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { Banknote, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { UnitsIcon } from "@/lib/icons";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
@@ -51,7 +52,7 @@ const KPI_TILES: {
   { metric: "revenue", label: "Revenue", tile: "peach", Icon: Banknote, format: currency },
   { metric: "profit", label: "Profit", tile: "mint", Icon: TrendingUp, format: currency },
   { metric: "orderCount", label: "Orders", tile: "lavender", Icon: Receipt, format: count },
-  { metric: "unitsSold", label: "Units sold", tile: "sage", Icon: Boxes, format: count },
+  { metric: "unitsSold", label: "Units sold", tile: "sage", Icon: UnitsIcon, format: count },
 ];
 
 /**
@@ -202,7 +203,7 @@ export function DashboardClient({
               <li key={order.key}>
                 <Link
                   href={`/orders?order=${encodeURIComponent(order.key)}`}
-                  className="flex items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm transition hover:border-ink/25 hover:bg-black/[0.03]"
+                  className="hover-line flex items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
                 >
                   <span className="w-14 shrink-0 text-xs text-ink-soft">{order.dateLabel}</span>
                   <span className="w-40 shrink-0 truncate font-medium text-ink" title={order.customer}>
@@ -219,8 +220,9 @@ export function DashboardClient({
                     <Users size={12} className="shrink-0" />
                     {order.guests ?? "—"}
                   </span>
-                  <span className="w-16 shrink-0 text-right text-xs text-ink-soft">
-                    {order.units > 0 ? `${nf.format(order.units)}u` : "—"}
+                  <span className="flex w-16 shrink-0 items-center justify-end gap-1 text-xs text-ink-soft">
+                    <UnitsIcon size={12} className="shrink-0" />
+                    {order.units > 0 ? nf.format(order.units) : "—"}
                   </span>
                   <span className="w-20 shrink-0 text-right font-semibold text-ink">
                     {currency(order.totalAmount)}

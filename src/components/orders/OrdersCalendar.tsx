@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { type Order } from "@/lib/orderTypes";
+import { orderUnits, type Order } from "@/lib/orderTypes";
+import type { Flavor, PackageType } from "@/lib/settings";
+import { OrderHoverCard } from "./OrderHoverCard";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -28,11 +30,26 @@ function sameDay(a: Date, b: Date): boolean {
 }
 
 /**
- * True weekly calendar (Sun-Sat). No money or payment status shown by
- * design (see CLAUDE.md's Orders page notes) — address and unit count
- * instead.
+ * True weekly calendar (Sun-Sat). The pills themselves stay money-free by
+ * design (see CLAUDE.md's Orders page notes) — customer, address, unit
+ * count. The full order, money included, is a hover away.
  */
-export function OrdersCalendar({ orders }: { orders: Order[] }) {
+export function OrdersCalendar({
+  orders,
+  flavors,
+  packageTypes,
+  onOpen,
+}: {
+  orders: Order[];
+  flavors: Flavor[];
+  packageTypes: PackageType[];
+  onOpen: (key: string) => void;
+}) {
+  const unitsPerPackage = useMemo(
+    () => new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])),
+    [packageTypes],
+  );
+
   const dated = useMemo(
     () =>
       orders
@@ -92,13 +109,28 @@ export function OrdersCalendar({ orders }: { orders: Order[] }) {
               </p>
               <div className="mt-1.5 flex flex-col gap-1.5">
                 {dayOrders.map(({ order }) => {
-                  const units = order.contentLines.reduce((sum, l) => sum + l.quantity, 0);
+                  // Packaging lines only — summing every content line
+                  // would add the flavour split on top of the packages it
+                  // describes, double-counting the whole order.
+                  const units = orderUnits(order.contentLines, unitsPerPackage);
                   return (
-                    <div key={order.key} className="rounded-lg bg-cream px-2 py-1.5 text-xs" title={order.location}>
-                      <p className="truncate font-semibold text-ink">{order.customer || "(no name)"}</p>
-                      {order.location && <p className="truncate text-ink-soft">{order.location}</p>}
-                      {units > 0 && <p className="text-ink-soft">{units} units</p>}
-                    </div>
+                    <OrderHoverCard
+                      key={order.key}
+                      order={order}
+                      flavors={flavors}
+                      packageTypes={packageTypes}
+                      className="hover-line cursor-pointer rounded-lg bg-cream px-2 py-1.5 text-xs"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onOpen(order.key)}
+                        className="block w-full text-left"
+                      >
+                        <p className="truncate font-semibold text-ink">{order.customer || "(no name)"}</p>
+                        {order.location && <p className="truncate text-ink-soft">{order.location}</p>}
+                        {units > 0 && <p className="text-ink-soft">{units} units</p>}
+                      </button>
+                    </OrderHoverCard>
                   );
                 })}
               </div>

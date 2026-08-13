@@ -113,12 +113,24 @@ body {
     opacity: 1;
   }
 
-  .orders-rows > tr:hover {
-    background-color: --alpha(var(--color-ink) / 4.5%);
-  }
-
   .orders-rows > tr.is-open {
     background-color: --alpha(var(--color-accent) / 7%);
+  }
+
+  /*
+   * No native number spinners anywhere. They only appear on hover/focus,
+   * so they shift the field's contents just as it is being used, and in
+   * the order form's content cards they would sit next to the explicit
+   * +/- stepper doing the same job twice.
+   */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 
   /* Selects can't show a placeholder, so they keep a visible affordance:
@@ -128,4 +140,56 @@ body {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23726a5e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-position: right 0.5rem center;
   }
+}
+
+/*
+ * Prominent line hover, shared by every list of lines in the app: the
+ * hovered one goes solid black with light text, so it separates from its
+ * neighbours instead of being a slightly different shade of them.
+ *
+ * Deliberately written outside every @layer. Tailwind's utilities live in
+ * `@layer utilities`, and unlayered rules beat every layer regardless of
+ * specificity — which is what lets this flip a `text-ink-soft` cell to
+ * cream without !important or a specificity arms race.
+ *
+ * Two opt-outs, because "make all the text light" is wrong for parts that
+ * carry their own fill:
+ *   .keeps-color  chips, badges and status pills, where the colour *is*
+ *                 the information (a cream package chip given cream text
+ *                 would simply vanish)
+ *   .chip-neutral a chip whose fill is a tint of the surface it sits on,
+ *                 so it has to invert along with that surface
+ * Inputs and selects opt out by not being in the match list at all: they
+ * bring their own background the moment they're focused.
+ */
+.hover-line,
+.orders-rows > tr {
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.hover-line:hover,
+.orders-rows > tr:hover {
+  background-color: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-cream);
+}
+
+.hover-line:hover :where(p, span, div, a, button, h3, h4, dt, dd):not(.keeps-color):not(.keeps-color *),
+.orders-rows > tr:hover :where(td, p, span, div, a, button):not(.keeps-color):not(.keeps-color *) {
+  color: var(--color-cream);
+}
+
+.hover-line:hover .chip-neutral,
+.orders-rows > tr:hover .chip-neutral {
+  background-color: --alpha(var(--color-cream) / 16%);
+  color: var(--color-cream);
+}
+
+/* Ghost hover states nested inside a dark line — the table's
+   click-to-edit cells tint themselves with black, invisible here. */
+.orders-rows > tr:hover button:hover {
+  background-color: --alpha(var(--color-cream) / 12%);
 }

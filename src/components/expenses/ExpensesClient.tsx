@@ -62,8 +62,8 @@ export function ExpensesClient({
             <li key={p.key}>
               <button
                 onClick={() => setSelectedKey(p.key)}
-                className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm ${
-                  selectedKey === p.key ? "bg-black text-cream" : "text-ink hover:bg-black/5"
+                className={`hover-line flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm ${
+                  selectedKey === p.key ? "bg-black text-cream" : "text-ink"
                 }`}
               >
                 <span>{p.label}</span>
@@ -143,7 +143,7 @@ function CategoryIcon({ name }: { name: string }) {
 
 function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void }) {
   return (
-    <div className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
+    <div className="hover-line group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
       <div className="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
         <span className="shrink-0 w-20 text-ink-soft">{entry.source === "db" ? entry.date : "—"}</span>
         <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink">
@@ -166,7 +166,7 @@ function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void 
           </span>
         )}
         {entry.source === "sheet" && (
-          <span className="shrink-0 rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">
+          <span className="keeps-color shrink-0 rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">
             sheet
           </span>
         )}

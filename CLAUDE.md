@@ -55,7 +55,9 @@ something here isn't obvious.
   `package.json` import.
 - `src/components/**` — `charts/` (inline SVG `LineChart` + CSS
   `conic-gradient` `DonutChart`, no charting library), plus one
-  subfolder per page for its Client Components
+  subfolder per page for its Client Components. Settings is split into
+  tabs (`SettingsTabs`) rather than one stacked screen — the flavor grid
+  alone filled it and pushed the five smaller lists below the fold.
 - `src/proxy.ts` — session-cookie auth gate, redirects to `/login`
 - Import alias `@/*` → `src/*`
 
@@ -84,6 +86,13 @@ iteration (not guessed) — define these as `@theme` tokens in
   icons — there is no `Instagram`. Event-type and expense-category
   lookups live in `src/lib/icons.ts`; both keys are free text the owner
   controls, so both maps fall back rather than assuming a closed set.
+  `UnitsIcon` (a clean cube — a unit *is* one jelly cube) is exported
+  from the same module so the KPI tile, the order form and the hover
+  cards can't drift onto different marks. Package types get grids of
+  increasing density, which is what keeps them distinct from it.
+  A lucide component is a plain function and **cannot be passed from a
+  Server Component to a Client Component** — pass the rendered element
+  (`icon: <Palette size={14} />`) instead; see `settings/page.tsx`.
 - Form fields: filled = no box, empty = weak outline, hover = box, focus
   = accent border. Filled/empty is detected with `:placeholder-shown`,
   which needs a placeholder attribute to match against — so use
@@ -96,6 +105,24 @@ iteration (not guessed) — define these as `@theme` tokens in
   Escape-to-close and a reference-counted body scroll lock. They nest —
   the details pane hosts a form that can open a modal — so the count is
   what stops the inner one unlocking the page under the outer.
+- Hovering a line — an orders-table row, a Kanban card, a calendar pill,
+  an expense row, a settings list item — turns it **solid black with
+  light text**. One mechanism in `globals.css`: add `.hover-line` to the
+  element (the Orders table gets it via `.orders-rows > tr` instead,
+  since a `<tr>` can't carry the transition cleanly). That block sits
+  **outside every `@layer` on purpose** — Tailwind's utilities live in
+  `@layer utilities`, and unlayered rules beat every layer, which is how
+  it recolors a `text-ink-soft` cell without `!important`. Two opt-outs
+  for things that carry their own fill: `.keeps-color` on chips, badges
+  and status pills where the color *is* the information (a cream package
+  chip given cream text simply vanishes), and `.chip-neutral` on a chip
+  whose fill is a tint of its surface, so it inverts along with it.
+  Inputs and selects opt out by not being in the match list.
+- Kanban cards and calendar pills show the whole order on hover via
+  `OrderHoverCard`, portaled to `document.body` at fixed coordinates —
+  as an absolutely-positioned child it would be clipped by, or stacked
+  under, the day cell it belongs to. The pills themselves still show no
+  money (see the Orders page notes); the hover card does.
 - Flavor colors are per-flavor 3-stop same-hue `radial-gradient`s
   (`color_glow` → `color_base` → `color_shadow`, light source at
   `circle at -15% -15%`) meant to read as glowing translucent jelly —

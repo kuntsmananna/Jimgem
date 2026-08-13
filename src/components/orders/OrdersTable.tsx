@@ -127,7 +127,7 @@ export function OrdersTable({
                     {order.needsReview && (
                       <span
                         title="Best-effort parsed from legacy notes — please review"
-                        className="rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink"
+                        className="keeps-color rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink"
                       >
                         review
                       </span>

@@ -17,7 +17,9 @@ export function EventTypeChip({ value, className = "" }: { value: string; classN
   return (
     <span
       title={label}
-      className={`flex w-fit items-center gap-1 rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-ink ${className}`}
+      // chip-neutral: the fill is a tint of whatever it sits on, so it
+      // inverts with the surface on a hovered line (see globals.css).
+      className={`chip-neutral flex w-fit items-center gap-1 rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-ink ${className}`}
     >
       <Icon size={11} className="shrink-0" />
       <span className="truncate">{label}</span>

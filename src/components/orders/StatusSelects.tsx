@@ -9,12 +9,17 @@ import {
   type ProductionStatus,
 } from "@/lib/orderTypes";
 
+/**
+ * `keeps-color` on the coloured badges, `chip-neutral` on the one that is
+ * just a tint of the surface — see globals.css's line-hover block for why
+ * the two behave differently on a hovered black row.
+ */
 const PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
-  unpaid: "bg-black/5 text-ink-soft",
-  deposit: "bg-tile-peach text-ink",
-  paid: "bg-tile-sage text-ink",
-  comp: "bg-tile-lavender text-ink",
-  net40: "bg-tile-mint text-ink",
+  unpaid: "chip-neutral bg-black/5 text-ink-soft",
+  deposit: "keeps-color bg-tile-peach text-ink",
+  paid: "keeps-color bg-tile-sage text-ink",
+  comp: "keeps-color bg-tile-lavender text-ink",
+  net40: "keeps-color bg-tile-mint text-ink",
 };
 
 export function PaymentStatusSelect({
@@ -78,7 +83,7 @@ export function ProductionStatusSelect({
       value={order.productionStatus}
       disabled={busy}
       onChange={(e) => handleChange(e.target.value as ProductionStatus)}
-      className="rounded-full border border-line bg-cream px-2.5 py-1 text-xs font-semibold text-ink outline-none"
+      className="keeps-color rounded-full border border-line bg-cream px-2.5 py-1 text-xs font-semibold text-ink outline-none"
     >
       {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((status) => (
         <option key={status} value={status}>

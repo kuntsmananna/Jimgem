@@ -162,7 +162,10 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
         />
       )}
 
-      <div className="mt-4 grid grid-cols-4 gap-3">
+      {/* Six across on a wide screen: the panel owns the full page width
+          now that Settings is tabbed, and 8-12 flavors then fit in two
+          rows without shrinking the swatches. */}
+      <div className="mt-4 grid grid-cols-4 gap-3 xl:grid-cols-6">
         {flavors.map((f) => (
           <div key={f.id} className="rounded-xl border border-line p-3">
             <button className="block w-full" onClick={() => setEditing(f)}>
