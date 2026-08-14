@@ -112,7 +112,7 @@ export const ORDER_TYPE_ICONS: Record<string, LucideIcon> = {
 
 export const ORDER_TYPE_ICON_KEYS = Object.keys(ORDER_TYPE_ICONS);
 
-export function orderTypeIcon(key: string | null | undefined): LucideIcon {
+function orderTypeIcon(key: string | null | undefined): LucideIcon {
   return (key && ORDER_TYPE_ICONS[key]) || Tag;
 }
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
-import type { OrderLineFlavor } from "@/lib/orderTypes";
+import { memo, useMemo } from "react";
+import { expandMixFlavors, type OrderLineFlavor } from "@/lib/orderTypes";
 import type { Flavor } from "@/lib/settings";
-import { flavorCubeGradient, isMixFlavor } from "@/lib/flavorStyle";
+import { flavorCubeGradient } from "@/lib/flavorStyle";
 
 /**
  * Above this many units a literal grid stops being readable — cubes drop
@@ -36,48 +36,6 @@ function mulberry32(seed: number) {
 }
 
 /**
- * Turns "N units of MIX" into N units spread evenly over every real
- * flavour, so a mixed tray previews as what it actually contains — an
- * assortment — rather than as a block of one invented colour.
- *
- * Only the preview does this. The saved order keeps the single MIX line,
- * because that is genuinely what was ordered: "a mix", not a committed
- * recipe. Deciding the exact split is a kitchen decision, and writing one
- * here would invent a promise nobody made.
- */
-function expandMix(entries: OrderLineFlavor[], flavors: Flavor[]): OrderLineFlavor[] {
-  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => String(f.id)));
-  if (!entries.some((e) => mixIds.has(e.flavorId))) return entries;
-
-  const spread = flavors.filter((f) => !isMixFlavor(f) && !f.archivedAt);
-  if (spread.length === 0) return entries;
-
-  const out: OrderLineFlavor[] = [];
-  const add = (flavorId: string, units: number) => {
-    const found = out.find((o) => o.flavorId === flavorId);
-    if (found) found.units += units;
-    else out.push({ flavorId, units });
-  };
-
-  for (const entry of entries) {
-    if (!mixIds.has(entry.flavorId)) {
-      add(entry.flavorId, entry.units);
-      continue;
-    }
-    // Integer split with the remainder dealt out one at a time, so the
-    // cube count still totals exactly what the mix line held.
-    const base = Math.floor(entry.units / spread.length);
-    let rest = entry.units - base * spread.length;
-    for (const flavor of spread) {
-      const extra = rest > 0 ? 1 : 0;
-      rest -= extra;
-      add(String(flavor.id), base + extra);
-    }
-  }
-  return out;
-}
-
-/**
  * One entry per cube, shuffled into an assorted mix. `null` is a cube
  * with no flavour assigned yet, which is how an unbalanced line shows.
  */
@@ -105,7 +63,7 @@ function cubeOrder(entries: OrderLineFlavor[], total: number, seed: number): (st
  * but never showed the *product* — this is the thing being handed to a
  * customer, so getting the mix wrong is visible at a glance.
  */
-export function TrayPreview({
+export const TrayPreview = memo(function TrayPreview({
   entries,
   unitsPerPackage,
   quantity,
@@ -124,14 +82,14 @@ export function TrayPreview({
   }, [flavors]);
 
   const totalUnits = unitsPerPackage * quantity;
-  const assigned = entries.reduce((sum, e) => sum + e.units, 0);
-  // Everything below draws from the expanded copy; `entries` stays the
-  // source of truth for the unassigned count above.
-  const drawn = expandMix(entries, flavors);
-
   if (totalUnits <= 0) {
     return <p className="text-xs text-ink-soft">Set a quantity to see the tray.</p>;
   }
+
+  const assigned = entries.reduce((sum, e) => sum + e.units, 0);
+  // Everything below draws from the expanded copy; `entries` stays the
+  // source of truth for the unassigned count reported alongside it.
+  const drawn = expandMixFlavors(entries, flavors);
 
   // Loose units have no tray to divide into — draw the whole run at once.
   const loose = unitsPerPackage <= 1;
@@ -186,7 +144,7 @@ export function TrayPreview({
       </p>
     </div>
   );
-}
+});
 
 function Grid({
   cubes,

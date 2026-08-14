@@ -164,7 +164,7 @@ export function OrderForm({
       {/* Real tabs: joined along a shared baseline, the active one sitting
           on the panel below it. The pill pair they replaced read as two
           separate buttons rather than one control with a body. */}
-      <div className="-mx-6 mb-4 flex gap-1 border-b border-line px-6">
+      <div role="tablist" className="-mx-6 mb-4 flex gap-1 border-b border-line px-6">
         {(["details", "content"] as const).map((id) => (
           <button
             key={id}
@@ -198,7 +198,10 @@ export function OrderForm({
 
       {/* Three across rather than two: at this popup width two columns
           made a date field as wide as a paragraph. */}
-      <div className={`grid grid-cols-3 gap-x-4 gap-y-2 ${tab === "details" ? "" : "hidden"}`}>
+      <div
+        role="tabpanel"
+        className={`grid grid-cols-3 gap-x-4 gap-y-2 ${tab === "details" ? "" : "hidden"}`}
+      >
         <Field label="Date">
           <TextInput
             type="date"
@@ -327,7 +330,7 @@ export function OrderForm({
         otherwise throw away which package line was open and any
         half-typed number in it.
       */}
-      <div className={tab === "content" ? "" : "hidden"}>
+      <div role="tabpanel" className={tab === "content" ? "" : "hidden"}>
         <PackageLineEditor
           lines={lines}
           onChange={setLines}

@@ -2,11 +2,13 @@
 
 import { ChevronDown, ChevronRight, Minus, Plus, X } from "lucide-react";
 import {
-  type OrderLineFlavor,
   type OrderPackageLine,
   evenSplit,
   lineAssignedUnits,
   linePackedUnits,
+  presetUnits,
+  setFlavorUnits,
+  toggleFlavorUnits,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { flavorBarGradient, flavorGradient } from "@/lib/flavorStyle";
@@ -66,22 +68,10 @@ export function toPackageLines(draft: DraftPackageLine[]): OrderPackageLine[] {
   }));
 }
 
-/**
- * Turns a preset's proportions into a concrete one-package line. Rounding
- * drift lands on the largest share, so a preset always totals exactly one
- * package rather than leaving a stray unit unassigned.
- */
+/** Turns a preset's proportions into a concrete one-package line (see presetUnits). */
 export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[]): DraftPackageLine {
   const packed = packageTypes.find((p) => p.id === preset.packageTypeId)?.unitsPerPackage ?? 0;
-  const flavors: OrderLineFlavor[] = preset.flavors.map((entry) => ({
-    flavorId: String(entry.flavorId),
-    units: Math.round((entry.share / 100) * packed),
-  }));
-  const drift = packed - flavors.reduce((sum, f) => sum + f.units, 0);
-  if (drift !== 0 && flavors.length > 0) {
-    const biggest = flavors.reduce((a, b) => (b.units > a.units ? b : a));
-    biggest.units += drift;
-  }
+  const flavors = presetUnits(preset.flavors, packed);
   return {
     uid: nextUid++,
     packageTypeId: String(preset.packageTypeId),
@@ -208,7 +198,7 @@ export function PackageLineEditor({
 }
 
 /** A preset's recipe as a miniature of the bar it will produce. */
-export function PresetSwatch({
+function PresetSwatch({
   preset,
   flavors,
   className = "h-3.5 w-9",
@@ -271,40 +261,27 @@ function LineCard({
    * immediately overwrite what was just set by hand.
    */
   function setUnits(flavorId: string, units: number) {
-    const existing = line.flavors.find((f) => f.flavorId === flavorId);
-    const flavors =
-      units <= 0
-        ? line.flavors.filter((f) => f.flavorId !== flavorId)
-        : existing
-          ? line.flavors.map((f) => (f.flavorId === flavorId ? { ...f, units } : f))
-          : [...line.flavors, { flavorId, units }];
-    onPatch({ flavors, autoSplit: false });
+    onPatch({ flavors: setFlavorUnits(line.flavors, flavorId, units), autoSplit: false });
+  }
+
+  function toggleFlavor(flavorId: string) {
+    onPatch({
+      flavors: toggleFlavorUnits(line.flavors, flavorId, { autoSplit: line.autoSplit, packed }),
+    });
   }
 
   /**
-   * Picking a flavour in or out. While the line is still on auto-split
-   * this re-divides the tray equally between whatever is now selected —
-   * two flavours are halves, three are thirds — which is how a mixed tray
-   * is actually described out loud. Once someone has set a number by
-   * hand, a new pick takes only what is unassigned and leaves the rest
-   * alone.
+   * Resizing the tray while still on auto-split re-divides it, so three
+   * flavours in one small tray stay thirds when it becomes two big ones.
+   * Without this the units stay as they were and the line silently goes
+   * unbalanced against a package the user only just changed.
    */
-  function toggleFlavor(flavorId: string) {
-    const selected = line.flavors.some((f) => f.flavorId === flavorId);
-    const ids = selected
-      ? line.flavors.filter((f) => f.flavorId !== flavorId).map((f) => f.flavorId)
-      : [...line.flavors.map((f) => f.flavorId), flavorId];
-
-    if (line.autoSplit) {
-      onPatch({ flavors: evenSplit(ids, packed), autoSplit: true });
-      return;
-    }
-    onPatch({
-      flavors: selected
-        ? line.flavors.filter((f) => f.flavorId !== flavorId)
-        : [...line.flavors, { flavorId, units: Math.max(0, remaining) }],
-      autoSplit: false,
-    });
+  function resize(patch: Partial<DraftPackageLine>, nextPacked: number) {
+    onPatch(
+      line.autoSplit
+        ? { ...patch, flavors: evenSplit(line.flavors.map((f) => f.flavorId), nextPacked) }
+        : patch,
+    );
   }
 
   if (line.folded) {
@@ -347,7 +324,12 @@ function LineCard({
         <select
           aria-label="Package type"
           value={line.packageTypeId}
-          onChange={(e) => onPatch({ packageTypeId: e.target.value })}
+          onChange={(e) =>
+            resize(
+              { packageTypeId: e.target.value },
+              (unitsPerPackage.get(Number(e.target.value)) ?? 0) * line.quantity,
+            )
+          }
           className="rounded-full border border-line bg-cream px-3 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
         >
           {packageTypes.map((p) => (
@@ -361,7 +343,9 @@ function LineCard({
           label="packages"
           value={line.quantity}
           min={1}
-          onChange={(quantity) => onPatch({ quantity })}
+          onChange={(quantity) =>
+            resize({ quantity }, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity)
+          }
         />
 
         <span className="text-xs text-ink-soft">
@@ -476,18 +460,24 @@ function FoldedMix({
  * Both the percentage and the unit count are always visible: percent is
  * how the mix is usually described, units are what actually gets saved.
  */
-function FlavorRow({
+/**
+ * One flavour's row: pick it in or out by name, read its share, set it by
+ * number or slider. Exported because Settings' preset editor shows the
+ * same list against a single package — keeping a second copy there meant
+ * two controls to hold in visual step by hand.
+ */
+export function FlavorRow({
   flavor,
   units,
   packed,
-  mode,
+  mode = "units",
   onToggle,
   onChange,
 }: {
   flavor: Flavor;
   units: number;
   packed: number;
-  mode: DraftPackageLine["mode"];
+  mode?: DraftPackageLine["mode"];
   onToggle: () => void;
   onChange: (units: number) => void;
 }) {

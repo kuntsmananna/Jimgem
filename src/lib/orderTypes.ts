@@ -4,6 +4,9 @@
  * server-only dependencies (pg via db.ts, googleapis via googleSheets.ts).
  */
 
+import type { Flavor } from "./settings";
+import { isMixFlavor } from "./flavorStyle";
+
 export type PaymentStatus = "unpaid" | "deposit" | "paid" | "comp" | "net40";
 export type ProductionStatus = "queue" | "preparing" | "delivered";
 
@@ -41,6 +44,102 @@ export function evenSplit(flavorIds: string[], total: number): OrderLineFlavor[]
     rest -= extra;
     return { flavorId, units: base + extra };
   });
+}
+
+/**
+ * Sets one flavour's units, adding or removing it as needed. Pure, and
+ * shared by the order form and Settings' preset editor so the two can't
+ * drift on what "set this to zero" means.
+ */
+export function setFlavorUnits(
+  flavors: OrderLineFlavor[],
+  flavorId: string,
+  units: number,
+): OrderLineFlavor[] {
+  if (units <= 0) return flavors.filter((f) => f.flavorId !== flavorId);
+  if (flavors.some((f) => f.flavorId === flavorId)) {
+    return flavors.map((f) => (f.flavorId === flavorId ? { ...f, units } : f));
+  }
+  return [...flavors, { flavorId, units }];
+}
+
+/**
+ * Picks a flavour in or out.
+ *
+ * While `autoSplit` holds, the package is re-divided equally between
+ * whatever is now selected — two flavours are halves, three are thirds —
+ * which is how a mixed tray gets described out loud. Once someone has set
+ * a number by hand the caller turns that off, and a new pick then takes
+ * only what is unassigned and leaves the rest alone.
+ */
+export function toggleFlavorUnits(
+  flavors: OrderLineFlavor[],
+  flavorId: string,
+  { autoSplit, packed }: { autoSplit: boolean; packed: number },
+): OrderLineFlavor[] {
+  const selected = flavors.some((f) => f.flavorId === flavorId);
+
+  if (autoSplit) {
+    const ids = selected
+      ? flavors.filter((f) => f.flavorId !== flavorId).map((f) => f.flavorId)
+      : [...flavors.map((f) => f.flavorId), flavorId];
+    return evenSplit(ids, packed);
+  }
+  if (selected) return flavors.filter((f) => f.flavorId !== flavorId);
+
+  const remaining = packed - flavors.reduce((sum, f) => sum + f.units, 0);
+  return [...flavors, { flavorId, units: Math.max(0, remaining) }];
+}
+
+/**
+ * A preset's stored proportions as concrete units of one package.
+ *
+ * Rounding drift lands on the largest share so a full recipe totals the
+ * package exactly — but only when the shares actually add up to 100. A
+ * half-finished recipe stays half-empty rather than having the missing
+ * 40% dumped onto one flavour.
+ */
+export function presetUnits(
+  shares: { flavorId: number; share: number }[],
+  packed: number,
+): OrderLineFlavor[] {
+  const units = shares.map((s) => ({
+    flavorId: String(s.flavorId),
+    units: Math.round((s.share / 100) * packed),
+  }));
+  const totalShare = shares.reduce((sum, s) => sum + s.share, 0);
+  const drift = packed - units.reduce((sum, u) => sum + u.units, 0);
+  if (units.length > 0 && drift !== 0 && Math.abs(totalShare - 100) < 0.5) {
+    const biggest = units.reduce((a, b) => (b.units > a.units ? b : a));
+    biggest.units += drift;
+  }
+  return units;
+}
+
+/**
+ * Turns "N units of MIX" into N units spread evenly over every real
+ * flavour, so a mixed package reads as what it actually contains — an
+ * assortment — rather than as a block of one invented colour.
+ *
+ * A view-time transform, never stored: the saved order keeps its single
+ * MIX line, because "a mix" is genuinely what was ordered and choosing
+ * the exact split is a kitchen decision. Lives here rather than inside
+ * the preview so any surface that draws flavours can honour it.
+ */
+export function expandMixFlavors(entries: OrderLineFlavor[], flavors: Flavor[]): OrderLineFlavor[] {
+  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => String(f.id)));
+  if (!entries.some((e) => mixIds.has(e.flavorId))) return entries;
+
+  const spreadIds = flavors.filter((f) => !isMixFlavor(f) && !f.archivedAt).map((f) => String(f.id));
+  if (spreadIds.length === 0) return entries;
+
+  const totals = new Map<string, number>();
+  for (const entry of entries.flatMap((entry) =>
+    mixIds.has(entry.flavorId) ? evenSplit(spreadIds, entry.units) : [entry],
+  )) {
+    totals.set(entry.flavorId, (totals.get(entry.flavorId) ?? 0) + entry.units);
+  }
+  return [...totals].map(([flavorId, units]) => ({ flavorId, units }));
 }
 
 /** Units this line packs: its package count times that package's size. */

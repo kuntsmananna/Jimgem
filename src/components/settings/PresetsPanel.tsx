@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
-import { evenSplit, type OrderLineFlavor } from "@/lib/orderTypes";
-import { flavorGradient } from "@/lib/flavorStyle";
+import {
+  evenSplit,
+  presetUnits,
+  setFlavorUnits,
+  toggleFlavorUnits,
+  type OrderLineFlavor,
+} from "@/lib/orderTypes";
 import { packageTypeIconElement } from "@/lib/icons";
+import { FlavorRow } from "@/components/orders/PackageLineEditor";
 import { TrayPreview } from "@/components/orders/TrayPreview";
 
 /**
@@ -26,23 +32,16 @@ interface PresetDraft {
   autoSplit: boolean;
 }
 
-const packedUnits = (draft: PresetDraft, packageTypes: PackageType[]) =>
-  packageTypes.find((p) => String(p.id) === draft.packageTypeId)?.unitsPerPackage ?? 0;
-
-/** Stored shares → units of one package, for editing and for the preview. */
-function shareUnits(preset: ContentPreset, packageTypes: PackageType[]): OrderLineFlavor[] {
-  const packed = packageTypes.find((p) => p.id === preset.packageTypeId)?.unitsPerPackage ?? 0;
-  return preset.flavors.map((f) => ({
-    flavorId: String(f.flavorId),
-    units: Math.round((f.share / 100) * packed),
-  }));
-}
+/** The package a draft is built against — its size drives every number below. */
+const packageFor = (packageTypeId: string, packageTypes: PackageType[]) =>
+  packageTypes.find((p) => String(p.id) === packageTypeId);
 
 function draftFrom(preset: ContentPreset, packageTypes: PackageType[]): PresetDraft {
+  const packed = packageFor(String(preset.packageTypeId), packageTypes)?.unitsPerPackage ?? 0;
   return {
     name: preset.name,
     packageTypeId: String(preset.packageTypeId),
-    flavors: shareUnits(preset, packageTypes),
+    flavors: presetUnits(preset.flavors, packed),
     autoSplit: false,
   };
 }
@@ -86,7 +85,7 @@ export function PresetsPanel({
 
   async function save() {
     if (!draft?.name.trim() || !draft.packageTypeId) return;
-    const packed = packedUnits(draft, packageTypes);
+    const packed = packageFor(draft.packageTypeId, packageTypes)?.unitsPerPackage ?? 0;
     setBusy(true);
     await fetch(editing === "new" ? "/api/settings/presets" : `/api/settings/presets/${editing}`, {
       method: editing === "new" ? "POST" : "PATCH",
@@ -151,11 +150,13 @@ export function PresetsPanel({
         </div>
       )}
 
-      {presets.length === 0 && editing !== "new" ? (
+      {presets.length === 0 && editing !== "new" && (
         <p className="mt-4 text-xs text-ink-soft">
           No presets yet. Add the mixes you order most and they become one click on an order.
         </p>
-      ) : (
+      )}
+
+      {presets.length > 0 && (
         <div className="mt-4 grid grid-cols-3 gap-3">
           {presets.map((preset) =>
             editing === preset.id && draft ? (
@@ -196,7 +197,7 @@ export function PresetsPanel({
  * it. A row of text percentages never told you what came out of the
  * kitchen.
  */
-function PresetCard({
+const PresetCard = memo(function PresetCard({
   preset,
   flavors,
   packageTypes,
@@ -207,7 +208,16 @@ function PresetCard({
   packageTypes: PackageType[];
   onEdit: () => void;
 }) {
-  const packageType = packageTypes.find((p) => p.id === preset.packageTypeId);
+  const packageType = packageFor(String(preset.packageTypeId), packageTypes);
+  /*
+   * Memoized because the panel above owns the editor's draft state: without
+   * it, every keystroke in the preset name re-derives and re-renders a
+   * 50-150 cube grid for every other card on the page.
+   */
+  const entries = useMemo(
+    () => presetUnits(preset.flavors, packageType?.unitsPerPackage ?? 0),
+    [preset.flavors, packageType?.unitsPerPackage],
+  );
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-line bg-cream/40 p-3">
       <div className="flex items-start justify-between gap-2">
@@ -229,7 +239,7 @@ function PresetCard({
 
       <div className="rounded-xl bg-card p-2">
         <TrayPreview
-          entries={shareUnits(preset, packageTypes)}
+          entries={entries}
           unitsPerPackage={packageType?.unitsPerPackage ?? 0}
           quantity={1}
           flavors={flavors}
@@ -246,7 +256,7 @@ function PresetCard({
       </p>
     </div>
   );
-}
+});
 
 function PresetEditor({
   draft,
@@ -267,39 +277,18 @@ function PresetEditor({
   onCancel: () => void;
   onArchive?: () => void;
 }) {
-  const packed = packedUnits(draft, packageTypes);
-  const assigned = draft.flavors.reduce((sum, f) => sum + f.units, 0);
-  const remaining = packed - assigned;
-  const packageType = packageTypes.find((p) => String(p.id) === draft.packageTypeId);
+  const packageType = packageFor(draft.packageTypeId, packageTypes);
+  const packed = packageType?.unitsPerPackage ?? 0;
+  const remaining = packed - draft.flavors.reduce((sum, f) => sum + f.units, 0);
 
   function setUnits(flavorId: string, units: number) {
-    const existing = draft.flavors.find((f) => f.flavorId === flavorId);
-    const flavors =
-      units <= 0
-        ? draft.flavors.filter((f) => f.flavorId !== flavorId)
-        : existing
-          ? draft.flavors.map((f) => (f.flavorId === flavorId ? { ...f, units } : f))
-          : [...draft.flavors, { flavorId, units }];
-    onChange({ ...draft, flavors, autoSplit: false });
+    onChange({ ...draft, flavors: setFlavorUnits(draft.flavors, flavorId, units), autoSplit: false });
   }
 
-  /** Same even-split behaviour as the order form — see its toggleFlavor. */
   function toggleFlavor(flavorId: string) {
-    const selected = draft.flavors.some((f) => f.flavorId === flavorId);
-    const ids = selected
-      ? draft.flavors.filter((f) => f.flavorId !== flavorId).map((f) => f.flavorId)
-      : [...draft.flavors.map((f) => f.flavorId), flavorId];
-
-    if (draft.autoSplit) {
-      onChange({ ...draft, flavors: evenSplit(ids, packed), autoSplit: true });
-      return;
-    }
     onChange({
       ...draft,
-      flavors: selected
-        ? draft.flavors.filter((f) => f.flavorId !== flavorId)
-        : [...draft.flavors, { flavorId, units: Math.max(0, remaining) }],
-      autoSplit: false,
+      flavors: toggleFlavorUnits(draft.flavors, flavorId, { autoSplit: draft.autoSplit, packed }),
     });
   }
 
@@ -317,15 +306,16 @@ function PresetEditor({
           aria-label="Package type"
           value={draft.packageTypeId}
           onChange={(e) => {
-            const next = { ...draft, packageTypeId: e.target.value };
             // Re-split to the new tray size while still on auto, so
             // switching Small → Big doesn't leave 50 units in a 150 tray.
-            const nextPacked = packedUnits(next, packageTypes);
-            onChange(
-              draft.autoSplit
-                ? { ...next, flavors: evenSplit(draft.flavors.map((f) => f.flavorId), nextPacked) }
-                : next,
-            );
+            const nextPacked = packageFor(e.target.value, packageTypes)?.unitsPerPackage ?? 0;
+            onChange({
+              ...draft,
+              packageTypeId: e.target.value,
+              flavors: draft.autoSplit
+                ? evenSplit(draft.flavors.map((f) => f.flavorId), nextPacked)
+                : draft.flavors,
+            });
           }}
           className="rounded-full border border-line bg-card px-3 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
         >
@@ -361,57 +351,16 @@ function PresetEditor({
         <div className="flex flex-col">
           {flavors
             .filter((f) => !f.archivedAt || draft.flavors.some((e) => e.flavorId === String(f.id)))
-            .map((flavor) => {
-              const units = draft.flavors.find((f) => f.flavorId === String(flavor.id))?.units ?? 0;
-              const active = units > 0;
-              const percent = packed > 0 ? Math.round((units / packed) * 100) : 0;
-              return (
-                <div
-                  key={flavor.id}
-                  className={`rounded-lg px-1 py-1 transition ${active ? "" : "opacity-45 hover:opacity-90"} hover:bg-card/70`}
-                >
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleFlavor(String(flavor.id))}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                    >
-                      <span
-                        className="h-5 w-5 shrink-0 rounded-md shadow-sm"
-                        style={{ background: flavorGradient(flavor) }}
-                        aria-hidden
-                      />
-                      <span className="min-w-0 truncate text-xs font-semibold text-ink">{flavor.name}</span>
-                    </button>
-                    <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-soft">
-                      {active ? `${percent}%` : ""}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      aria-label={`${flavor.name} units`}
-                      value={active ? units : ""}
-                      placeholder="0"
-                      onChange={(e) => setUnits(String(flavor.id), Math.max(0, Number(e.target.value) || 0))}
-                      className="w-14 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card"
-                    />
-                    <span className="w-4 shrink-0 text-[10px] text-ink-soft">u</span>
-                  </div>
-                  {active && packed > 0 && (
-                    <input
-                      type="range"
-                      min={0}
-                      max={packed}
-                      value={Math.min(units, packed)}
-                      aria-label={`${flavor.name} share`}
-                      onChange={(e) => setUnits(String(flavor.id), Number(e.target.value))}
-                      style={{ accentColor: flavor.colorBase }}
-                      className="mt-0.5 h-1 w-full cursor-pointer appearance-none rounded-full bg-line"
-                    />
-                  )}
-                </div>
-              );
-            })}
+            .map((flavor) => (
+              <FlavorRow
+                key={flavor.id}
+                flavor={flavor}
+                units={draft.flavors.find((f) => f.flavorId === String(flavor.id))?.units ?? 0}
+                packed={packed}
+                onToggle={() => toggleFlavor(String(flavor.id))}
+                onChange={(units) => setUnits(String(flavor.id), units)}
+              />
+            ))}
         </div>
 
         <div className="rounded-xl bg-card p-2.5">
