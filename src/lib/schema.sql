@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS order_types (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Icon key from the fixed set in lib/icons.ts, chosen in Settings. A key
+-- that isn't in that set falls back to a neutral tag rather than breaking,
+-- same rule the rest of the icon lookups follow.
+ALTER TABLE order_types ADD COLUMN IF NOT EXISTS icon TEXT;
+
 CREATE TABLE IF NOT EXISTS expense_categories (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,

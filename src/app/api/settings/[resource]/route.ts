@@ -59,7 +59,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/setting
         return NextResponse.json(category, { status: 201 });
       }
       case "order-types": {
-        const type = await createOrderType({ name: body.name, color: body.color });
+        const type = await createOrderType({ name: body.name, color: body.color, icon: body.icon ?? null });
         return NextResponse.json(type, { status: 201 });
       }
       case "presets": {

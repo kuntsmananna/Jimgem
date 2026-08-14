@@ -3,12 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderType } from "@/lib/settings";
+import { ORDER_TYPE_ICON_KEYS, orderTypeIconElement } from "@/lib/icons";
 
 const DEFAULT_COLOR = "#f6d9a8";
 
+interface TypeDraft {
+  name: string;
+  color: string;
+  icon: string | null;
+}
+
+const BLANK: TypeDraft = { name: "", color: DEFAULT_COLOR, icon: "tag" };
+
 /**
- * Settings → Lists → Order types. The kind of event an order is for,
- * with the colour its chip gets everywhere it appears.
+ * Settings → Lists → Order types. The kind of event an order is for, with
+ * the colour and icon its chip gets everywhere it appears.
  *
  * Orders store the type's *name*, not its id (see schema.sql), so
  * renaming one here also renames it on every order that used it —
@@ -16,30 +25,22 @@ const DEFAULT_COLOR = "#f6d9a8";
  */
 export function OrderTypesPanel({ items }: { items: OrderType[] }) {
   const router = useRouter();
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: "", color: DEFAULT_COLOR });
-  const [editing, setEditing] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState({ name: "", color: DEFAULT_COLOR });
+  const [editing, setEditing] = useState<number | "new" | null>(null);
+  const [draft, setDraft] = useState<TypeDraft>(BLANK);
   const [busy, setBusy] = useState(false);
 
   async function send(url: string, method: string, body: unknown) {
     setBusy(true);
     await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
+    setEditing(null);
     router.refresh();
   }
 
-  async function submitNew() {
+  function submit() {
     if (!draft.name.trim()) return;
-    await send("/api/settings/order-types", "POST", draft);
-    setDraft({ name: "", color: DEFAULT_COLOR });
-    setAdding(false);
-  }
-
-  async function submitEdit(id: number) {
-    if (!editDraft.name.trim()) return;
-    await send(`/api/settings/order-types/${id}`, "PATCH", editDraft);
-    setEditing(null);
+    if (editing === "new") return send("/api/settings/order-types", "POST", draft);
+    return send(`/api/settings/order-types/${editing}`, "PATCH", draft);
   }
 
   return (
@@ -50,58 +51,47 @@ export function OrderTypesPanel({ items }: { items: OrderType[] }) {
           <p className="mt-0.5 text-xs text-ink-soft">Shown as a coloured chip on every order.</p>
         </div>
         <button
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => {
+            setEditing(editing === "new" ? null : "new");
+            setDraft(BLANK);
+          }}
           className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-cream"
         >
-          {adding ? "Cancel" : "+ Add"}
+          {editing === "new" ? "Cancel" : "+ Add"}
         </button>
       </div>
+
+      {editing === "new" && (
+        <div className="mt-3">
+          <TypeEditor draft={draft} onChange={setDraft} busy={busy} onSave={submit} onCancel={() => setEditing(null)} />
+        </div>
+      )}
 
       <ul className="mt-3 flex flex-col gap-1.5">
         {items.map((item) => (
           <li key={item.id}>
             {editing === item.id ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  aria-label={`${item.name} colour`}
-                  className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-line bg-transparent"
-                  value={editDraft.color}
-                  onChange={(e) => setEditDraft({ ...editDraft, color: e.target.value })}
-                />
-                <input
-                  autoFocus
-                  className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
-                  value={editDraft.name}
-                  onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
-                />
-                <button
-                  onClick={() => submitEdit(item.id)}
-                  disabled={busy}
-                  className="text-xs font-semibold text-accent disabled:opacity-40"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => send(`/api/settings/order-types/${item.id}`, "PATCH", { archive: true })}
-                  disabled={busy}
-                  className="text-xs font-semibold text-ink-soft hover:text-amber-700"
-                >
-                  Remove
-                </button>
-              </div>
+              <TypeEditor
+                draft={draft}
+                onChange={setDraft}
+                busy={busy}
+                onSave={submit}
+                onCancel={() => setEditing(null)}
+                onRemove={() => send(`/api/settings/order-types/${item.id}`, "PATCH", { archive: true })}
+              />
             ) : (
               <button
                 className="hover-line flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left"
                 onClick={() => {
                   setEditing(item.id);
-                  setEditDraft({ name: item.name, color: item.color });
+                  setDraft({ name: item.name, color: item.color, icon: item.icon });
                 }}
               >
                 <span
-                  className="keeps-color rounded-full px-2.5 py-0.5 text-[11px] font-bold text-ink"
+                  className="keeps-color flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold text-ink"
                   style={{ background: item.color }}
                 >
+                  {orderTypeIconElement(item.icon, 11)}
                   {item.name}
                 </span>
                 <span className="flex-1" />
@@ -111,32 +101,95 @@ export function OrderTypesPanel({ items }: { items: OrderType[] }) {
           </li>
         ))}
       </ul>
-
-      {adding && (
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            type="color"
-            aria-label="New type colour"
-            className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-line bg-transparent"
-            value={draft.color}
-            onChange={(e) => setDraft({ ...draft, color: e.target.value })}
-          />
-          <input
-            autoFocus
-            placeholder="Type name"
-            className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          />
-          <button
-            onClick={submitNew}
-            disabled={busy}
-            className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-cream disabled:opacity-50"
-          >
-            Save
-          </button>
-        </div>
-      )}
     </section>
+  );
+}
+
+function TypeEditor({
+  draft,
+  onChange,
+  busy,
+  onSave,
+  onCancel,
+  onRemove,
+}: {
+  draft: TypeDraft;
+  onChange: (draft: TypeDraft) => void;
+  busy: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+  onRemove?: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-cream/50 p-3">
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label="Type colour"
+          className="h-8 w-10 shrink-0 cursor-pointer rounded-lg border border-line bg-transparent"
+          value={draft.color}
+          onChange={(e) => onChange({ ...draft, color: e.target.value })}
+        />
+        <input
+          autoFocus
+          placeholder="Type name"
+          className="flex-1 rounded-lg border border-line bg-card px-2 py-1 text-sm outline-none focus:border-accent"
+          value={draft.name}
+          onChange={(e) => onChange({ ...draft, name: e.target.value })}
+        />
+        <span
+          className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold text-ink"
+          style={{ background: draft.color }}
+        >
+          {orderTypeIconElement(draft.icon, 11)}
+          {draft.name.trim() || "Preview"}
+        </span>
+      </div>
+
+      {/* The whole set at once rather than a dropdown: there are eighteen,
+          they're the point of the choice, and a picker you have to open to
+          see defeats picking by eye. */}
+      <div className="mt-2 flex flex-wrap gap-1">
+        {ORDER_TYPE_ICON_KEYS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            aria-label={key}
+            aria-pressed={draft.icon === key}
+            onClick={() => onChange({ ...draft, icon: key })}
+            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${
+              draft.icon === key
+                ? "border-ink bg-black text-cream"
+                : "border-line bg-card text-ink-soft hover:border-ink hover:text-ink"
+            }`}
+          >
+            {orderTypeIconElement(key, 14)}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={onSave}
+          disabled={busy || !draft.name.trim()}
+          className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-cream disabled:opacity-40"
+        >
+          Save
+        </button>
+        <button onClick={onCancel} className="text-xs font-semibold text-ink-soft hover:text-ink">
+          Cancel
+        </button>
+        <span className="flex-1" />
+        {onRemove && (
+          <button
+            onClick={onRemove}
+            disabled={busy}
+            className="text-xs font-semibold text-ink-soft hover:text-amber-700"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

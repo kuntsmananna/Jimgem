@@ -58,13 +58,21 @@ something here isn't obvious.
   subfolder per page for its Client Components. Settings is split into
   tabs (`SettingsTabs`) rather than one stacked screen — the flavor grid
   alone filled it and pushed the five smaller lists below the fold.
-- `src/components/FlavorSplitBar.tsx` is the draggable split bar, now used
-  **only** by Settings' `PresetsPanel`, where a recipe is percentages
-  against a total of 100 and there is no tray to draw. The order form
-  replaced it with `orders/TrayPreview.tsx` — a grid of jelly cubes
-  showing the actual packed tray, which the bar could never do.
-- `src/components/OrderTypesContext.tsx` provides order-type colours (and
-  the list itself) from the app layout. Context rather than props because
+- `src/components/orders/TrayPreview.tsx` draws a package as its actual
+  grid of jelly cubes, assorted at random rather than sorted into blocks.
+  Shared by the order form's Content tab and Settings' `PresetsPanel`, so
+  a preset previews as exactly the tray it produces. It replaced a
+  draggable split bar (deleted): the bar showed proportions accurately but
+  never showed the product being handed to a customer.
+- **A flavour named `MIX` means "assorted"**, matched by name in
+  `flavorStyle.ts`'s `isMixFlavor`. The preview expands it into an even
+  spread of every other flavour (`expandMix`) so a mixed tray looks mixed
+  — but the *saved* order keeps the single MIX line, because "a mix" is
+  genuinely what was ordered and choosing the exact split is a kitchen
+  decision. Renaming that flavour turns it back into an ordinary colour,
+  at which point the fix is a flag on the row rather than a name match.
+- `src/components/OrderTypesContext.tsx` provides the order types (colour
+  and icon) from the app layout. Context rather than props because
   `EventTypeChip` appears in five unrelated trees; threading a colour
   lookup to all of them would touch a dozen components.
 - `src/proxy.ts` — session-cookie auth gate, redirects to `/login`
@@ -264,6 +272,11 @@ iteration (not guessed) — define these as `@theme` tokens in
 - `order_content_lines` is **legacy and unread**, superseded by the two
   tables above. `scripts/migrate-003-package-lines.mjs` folded every row
   into the new shape. Kept for the same reason as `order_overrides`.
+- `order_types.icon` is a key into `lib/icons.ts`'s `ORDER_TYPE_ICONS`,
+  picked in Settings → Lists. A fixed set, not free text: the value has to
+  survive in the database and resolve back to a real component, and an
+  unknown key falls back to a neutral tag.
+  `scripts/migrate-006-order-type-icons.mjs` seeded the 7 types in use.
 - `orders.details` (the Sheet's פירוט cell) is **legacy and unread**.
   It and `notes` were two free-text fields where only `notes` was
   editable, so the Orders table showed an unlabelled line nobody could

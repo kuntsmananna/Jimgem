@@ -57,7 +57,7 @@ export async function PATCH(
           await archiveOrderType(numericId);
           return NextResponse.json({ ok: true });
         }
-        const type = await updateOrderType(numericId, { name: body.name, color: body.color });
+        const type = await updateOrderType(numericId, { name: body.name, color: body.color, icon: body.icon ?? null });
         return NextResponse.json(type);
       }
       case "presets": {

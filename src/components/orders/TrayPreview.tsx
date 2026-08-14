@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { OrderLineFlavor } from "@/lib/orderTypes";
 import type { Flavor } from "@/lib/settings";
-import { flavorCubeGradient } from "@/lib/flavorStyle";
+import { flavorCubeGradient, isMixFlavor } from "@/lib/flavorStyle";
 
 /**
  * Above this many units a literal grid stops being readable — cubes drop
@@ -33,6 +33,48 @@ function mulberry32(seed: number) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/**
+ * Turns "N units of MIX" into N units spread evenly over every real
+ * flavour, so a mixed tray previews as what it actually contains — an
+ * assortment — rather than as a block of one invented colour.
+ *
+ * Only the preview does this. The saved order keeps the single MIX line,
+ * because that is genuinely what was ordered: "a mix", not a committed
+ * recipe. Deciding the exact split is a kitchen decision, and writing one
+ * here would invent a promise nobody made.
+ */
+function expandMix(entries: OrderLineFlavor[], flavors: Flavor[]): OrderLineFlavor[] {
+  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => String(f.id)));
+  if (!entries.some((e) => mixIds.has(e.flavorId))) return entries;
+
+  const spread = flavors.filter((f) => !isMixFlavor(f) && !f.archivedAt);
+  if (spread.length === 0) return entries;
+
+  const out: OrderLineFlavor[] = [];
+  const add = (flavorId: string, units: number) => {
+    const found = out.find((o) => o.flavorId === flavorId);
+    if (found) found.units += units;
+    else out.push({ flavorId, units });
+  };
+
+  for (const entry of entries) {
+    if (!mixIds.has(entry.flavorId)) {
+      add(entry.flavorId, entry.units);
+      continue;
+    }
+    // Integer split with the remainder dealt out one at a time, so the
+    // cube count still totals exactly what the mix line held.
+    const base = Math.floor(entry.units / spread.length);
+    let rest = entry.units - base * spread.length;
+    for (const flavor of spread) {
+      const extra = rest > 0 ? 1 : 0;
+      rest -= extra;
+      add(String(flavor.id), base + extra);
+    }
+  }
+  return out;
 }
 
 /**
@@ -83,6 +125,9 @@ export function TrayPreview({
 
   const totalUnits = unitsPerPackage * quantity;
   const assigned = entries.reduce((sum, e) => sum + e.units, 0);
+  // Everything below draws from the expanded copy; `entries` stays the
+  // source of truth for the unassigned count above.
+  const drawn = expandMix(entries, flavors);
 
   if (totalUnits <= 0) {
     return <p className="text-xs text-ink-soft">Set a quantity to see the tray.</p>;
@@ -95,11 +140,11 @@ export function TrayPreview({
   if (loose || sampled) {
     const shown = sampled ? SAMPLE_CUBES : totalUnits;
     const scale = totalUnits / shown;
-    const scaledEntries = entries.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / scale) }));
+    const scaledEntries = drawn.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / scale) }));
     return (
       <div className="flex flex-col gap-2">
         <Grid
-          cubes={cubeOrder(sampled ? scaledEntries : entries, shown, totalUnits * 7919 + entries.length)}
+          cubes={cubeOrder(sampled ? scaledEntries : drawn, shown, totalUnits * 7919 + drawn.length)}
           columns={Math.min(25, Math.ceil(Math.sqrt(shown * 1.7)))}
           colorFor={colorFor}
         />
@@ -119,12 +164,12 @@ export function TrayPreview({
    * times the scrolling for no extra information — the count says the
    * rest.
    */
-  const perTray = entries.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / quantity) }));
+  const perTray = drawn.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / quantity) }));
 
   return (
     <div className="flex flex-col gap-2">
       <Grid
-        cubes={cubeOrder(perTray, unitsPerPackage, unitsPerPackage * 7919 + entries.length)}
+        cubes={cubeOrder(perTray, unitsPerPackage, unitsPerPackage * 7919 + drawn.length)}
         columns={trayColumns(unitsPerPackage)}
         colorFor={colorFor}
       />

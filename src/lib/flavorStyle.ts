@@ -35,3 +35,16 @@ export function flavorBarGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase"
 export function flavorCubeGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase" | "colorShadow">): string {
   return `linear-gradient(145deg, ${flavor.colorGlow} 0%, ${flavor.colorBase} 55%, ${flavor.colorShadow} 100%)`;
 }
+
+/**
+ * Is this flavour the assorted one — "a bit of everything" rather than a
+ * colour of its own?
+ *
+ * Matched by name, which is what the owner asked for: no extra setting to
+ * keep in step. The cost is that renaming it away from MIX turns it back
+ * into an ordinary flavour with its own (currently blue/red) colours, so
+ * if that ever happens the fix is a flag on the flavour row instead.
+ */
+export function isMixFlavor(flavor: Pick<Flavor, "name">): boolean {
+  return flavor.name.trim().toUpperCase() === "MIX";
+}

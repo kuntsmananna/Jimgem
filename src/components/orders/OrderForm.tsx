@@ -161,22 +161,26 @@ export function OrderForm({
         order is booked first and mixed later. The Content tab carries a
         unit count so you can see it is filled in without switching.
       */}
-      <div className="mb-4 flex gap-0.5 rounded-full bg-cream p-0.5">
+      {/* Real tabs: joined along a shared baseline, the active one sitting
+          on the panel below it. The pill pair they replaced read as two
+          separate buttons rather than one control with a body. */}
+      <div className="-mx-6 mb-4 flex gap-1 border-b border-line px-6">
         {(["details", "content"] as const).map((id) => (
           <button
             key={id}
             type="button"
-            aria-pressed={tab === id}
+            role="tab"
+            aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold capitalize transition ${
-              tab === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+            className={`-mb-px flex items-center gap-2 rounded-t-lg border border-b-0 px-5 py-2 text-xs font-bold capitalize transition ${
+              tab === id
+                ? "border-line bg-card text-ink"
+                : "border-transparent bg-transparent text-ink-soft hover:text-ink"
             }`}
           >
             {id}
             {id === "content" && totalUnits > 0 && (
-              <span className={tab === id ? "text-cream/70" : "text-ink-soft/70"}>
-                {nf.format(totalUnits)}u
-              </span>
+              <span className="font-semibold text-ink-soft">{nf.format(totalUnits)}u</span>
             )}
             {id === "content" && unbalanced.length > 0 && (
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Some units have no flavour" />
@@ -185,7 +189,16 @@ export function OrderForm({
         ))}
       </div>
 
-      <div className={`grid grid-cols-2 gap-x-4 gap-y-2 ${tab === "details" ? "" : "hidden"}`}>
+      {/*
+        One fixed-height, scrolling body holding both panels, so the popup
+        is exactly the same size on either tab. Letting it size to its
+        contents made the whole dialog jump and re-centre on every switch.
+      */}
+      <div className="h-[26rem] overflow-y-auto pr-1">
+
+      {/* Three across rather than two: at this popup width two columns
+          made a date field as wide as a paragraph. */}
+      <div className={`grid grid-cols-3 gap-x-4 gap-y-2 ${tab === "details" ? "" : "hidden"}`}>
         <Field label="Date">
           <TextInput
             type="date"
@@ -322,6 +335,8 @@ export function OrderForm({
           packageTypes={packageTypes}
           presets={presets}
         />
+      </div>
+
       </div>
 
       {unbalanced.length > 0 && (

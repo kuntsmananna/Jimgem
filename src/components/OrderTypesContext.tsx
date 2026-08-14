@@ -4,7 +4,7 @@ import { createContext, useContext, useMemo } from "react";
 import type { OrderType } from "@/lib/settings";
 
 const OrderTypeList = createContext<OrderType[]>([]);
-const OrderTypeColors = createContext<Map<string, string>>(new Map());
+const OrderTypeByName = createContext<Map<string, OrderType>>(new Map());
 
 /**
  * Order-type colours, provided once at the app layout and read by
@@ -27,16 +27,20 @@ export function OrderTypesProvider({
   types: OrderType[];
   children: React.ReactNode;
 }) {
-  const colors = useMemo(() => new Map(types.map((t) => [t.name, t.color])), [types]);
+  const byName = useMemo(() => new Map(types.map((t) => [t.name, t])), [types]);
   return (
     <OrderTypeList.Provider value={types}>
-      <OrderTypeColors.Provider value={colors}>{children}</OrderTypeColors.Provider>
+      <OrderTypeByName.Provider value={byName}>{children}</OrderTypeByName.Provider>
     </OrderTypeList.Provider>
   );
 }
 
-export function useOrderTypeColor(name: string): string | undefined {
-  return useContext(OrderTypeColors).get(name.trim());
+/**
+ * The whole type, not just its colour — the chip needs the icon too, and
+ * two lookups keyed the same way would only drift.
+ */
+export function useOrderType(name: string): OrderType | undefined {
+  return useContext(OrderTypeByName).get(name.trim());
 }
 
 /** The list itself, for the order form's Type dropdown. */

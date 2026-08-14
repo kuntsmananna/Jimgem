@@ -27,6 +27,22 @@ export interface OrderPackageLine {
   flavors: OrderLineFlavor[];
 }
 
+/**
+ * Whole units split as evenly as a tray allows, with the remainder dealt
+ * out one unit at a time. Integer arithmetic because a cube cannot be
+ * cut: 50 units across 3 flavours is 17/17/16, never 16.67 each.
+ */
+export function evenSplit(flavorIds: string[], total: number): OrderLineFlavor[] {
+  if (flavorIds.length === 0) return [];
+  const base = Math.floor(Math.max(0, total) / flavorIds.length);
+  let rest = Math.max(0, total) - base * flavorIds.length;
+  return flavorIds.map((flavorId) => {
+    const extra = rest > 0 ? 1 : 0;
+    rest -= extra;
+    return { flavorId, units: base + extra };
+  });
+}
+
 /** Units this line packs: its package count times that package's size. */
 export function linePackedUnits(line: OrderPackageLine, unitsPerPackage: Map<number, number>): number {
   return line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0);

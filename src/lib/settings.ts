@@ -259,31 +259,45 @@ export interface OrderType {
   id: number;
   name: string;
   color: string;
+  /** Key into lib/icons.ts's ORDER_TYPE_ICONS. Null falls back to a tag. */
+  icon: string | null;
 }
 
 interface OrderTypeRow {
   id: number;
   name: string;
   color: string;
+  icon: string | null;
 }
+
+const mapOrderType = (r: OrderTypeRow): OrderType => ({
+  id: r.id,
+  name: r.name,
+  color: r.color,
+  icon: r.icon,
+});
 
 export async function getOrderTypes(): Promise<OrderType[]> {
   const db = getDb();
   const { rows } = await db.query<OrderTypeRow>(
-    "SELECT id, name, color FROM order_types WHERE archived_at IS NULL ORDER BY position, id",
+    "SELECT id, name, color, icon FROM order_types WHERE archived_at IS NULL ORDER BY position, id",
   );
-  return rows.map((r) => ({ id: r.id, name: r.name, color: r.color }));
+  return rows.map(mapOrderType);
 }
 
-export async function createOrderType(input: { name: string; color: string }): Promise<OrderType> {
+export async function createOrderType(input: {
+  name: string;
+  color: string;
+  icon: string | null;
+}): Promise<OrderType> {
   const db = getDb();
   const { rows } = await db.query<OrderTypeRow>(
-    `INSERT INTO order_types (name, color, position)
-     VALUES ($1, $2, (SELECT coalesce(max(position), -1) + 1 FROM order_types))
-     RETURNING id, name, color`,
-    [input.name, input.color],
+    `INSERT INTO order_types (name, color, icon, position)
+     VALUES ($1, $2, $3, (SELECT coalesce(max(position), -1) + 1 FROM order_types))
+     RETURNING id, name, color, icon`,
+    [input.name, input.color, input.icon],
   );
-  return { id: rows[0].id, name: rows[0].name, color: rows[0].color };
+  return mapOrderType(rows[0]);
 }
 
 /**
@@ -292,7 +306,7 @@ export async function createOrderType(input: { name: string; color: string }): P
  */
 export async function updateOrderType(
   id: number,
-  input: { name: string; color: string },
+  input: { name: string; color: string; icon: string | null },
 ): Promise<OrderType> {
   const db = getDb();
   const { rows } = await db.query<OrderTypeRow>(
@@ -303,12 +317,12 @@ export async function updateOrderType(
        WHERE customer_type = (SELECT name FROM old) AND $1 <> (SELECT name FROM old)
        RETURNING 1
      )
-     UPDATE order_types SET name = $1, color = $2
+     UPDATE order_types SET name = $1, color = $2, icon = $4
      WHERE id = $3 AND (SELECT count(*) FROM renamed) >= 0
-     RETURNING id, name, color`,
-    [input.name, input.color, id],
+     RETURNING id, name, color, icon`,
+    [input.name, input.color, id, input.icon],
   );
-  return { id: rows[0].id, name: rows[0].name, color: rows[0].color };
+  return mapOrderType(rows[0]);
 }
 
 /** Archived, not deleted: orders keep their text and simply lose the colour. */

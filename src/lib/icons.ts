@@ -16,15 +16,23 @@ import {
   Bike,
   Box,
   Boxes,
+  Briefcase,
+  Building2,
+  Cake,
+  Camera,
   ChefHat,
   Cpu,
+  Gift,
   GlassWater,
   Grid2x2,
   Grid3x3,
+  Heart,
   Megaphone,
+  Music,
   Package,
   PartyPopper,
   Receipt,
+  Star,
   Store,
   Tag,
   User,
@@ -73,6 +81,43 @@ export function eventType(rawValue: string): EventType | null {
   const trimmed = rawValue.trim();
   if (!trimmed) return null;
   return EVENT_TYPES[trimmed] ?? { label: trimmed, Icon: Tag };
+}
+
+/**
+ * The icons an order type can be given in Settings, keyed by a stable
+ * string stored in `order_types.icon`. A fixed set rather than free text:
+ * the value has to survive in the database and resolve back to a real
+ * component, and an unknown key falls back to a neutral tag.
+ */
+export const ORDER_TYPE_ICONS: Record<string, LucideIcon> = {
+  user: User,
+  users: Users,
+  wedding: GlassWater,
+  party: PartyPopper,
+  cake: Cake,
+  hitech: Cpu,
+  production: Video,
+  store: Store,
+  deli: UtensilsCrossed,
+  megaphone: Megaphone,
+  briefcase: Briefcase,
+  building: Building2,
+  gift: Gift,
+  music: Music,
+  camera: Camera,
+  heart: Heart,
+  star: Star,
+  tag: Tag,
+};
+
+export const ORDER_TYPE_ICON_KEYS = Object.keys(ORDER_TYPE_ICONS);
+
+export function orderTypeIcon(key: string | null | undefined): LucideIcon {
+  return (key && ORDER_TYPE_ICONS[key]) || Tag;
+}
+
+export function orderTypeIconElement(key: string | null | undefined, size = 12): ReactElement {
+  return createElement(orderTypeIcon(key), { size });
 }
 
 const EXPENSE_CATEGORY_ICONS: Record<string, LucideIcon> = {

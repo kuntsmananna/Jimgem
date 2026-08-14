@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Minus, Plus, X } from "lucide-react";
 import {
   type OrderLineFlavor,
   type OrderPackageLine,
+  evenSplit,
   lineAssignedUnits,
   linePackedUnits,
 } from "@/lib/orderTypes";
@@ -30,6 +31,13 @@ export interface DraftPackageLine extends OrderPackageLine {
   mode: "units" | "percent";
   /** Collapsed to a one-line summary. Set on the others when a new package is added. */
   folded: boolean;
+  /**
+   * While true, picking flavours re-splits the tray evenly between them —
+   * three flavours means thirds. Typing a number or dragging a slider is
+   * a deliberate ratio, so it turns this off and later picks stop
+   * disturbing what was set by hand.
+   */
+  autoSplit: boolean;
 }
 
 let nextUid = 1;
@@ -37,7 +45,15 @@ let nextUid = 1;
 export function toDraftLines(lines: OrderPackageLine[]): DraftPackageLine[] {
   // Everything arrives folded on an existing order: you are usually
   // opening it to read, not to re-mix every tray.
-  return lines.map((line) => ({ ...line, uid: nextUid++, mode: "units", folded: true }));
+  // autoSplit off: a saved order's ratios were decided once already, and
+  // re-splitting them the moment a flavour is added would overwrite them.
+  return lines.map((line) => ({
+    ...line,
+    uid: nextUid++,
+    mode: "units",
+    folded: true,
+    autoSplit: false,
+  }));
 }
 
 export function toPackageLines(draft: DraftPackageLine[]): OrderPackageLine[] {
@@ -72,6 +88,9 @@ export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[
     quantity: 1,
     mode: "units",
     folded: false,
+    // A preset is a deliberate recipe, so picking another flavour after
+    // applying one must not re-split it into equal shares.
+    autoSplit: false,
     flavors,
   };
 }
@@ -82,9 +101,9 @@ export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[
  * percentage and unit count, and a picture of the packed tray on the
  * right (see TrayPreview).
  *
- * The split bar this replaced showed proportions but never the product.
- * FlavorSplitBar still exists — Settings' preset editor uses it, where
- * there is no tray to draw.
+ * The draggable split bar this replaced showed proportions but never the
+ * product. Settings' preset editor now draws the same tray, so the bar
+ * had no remaining caller and is gone.
  */
 export function PackageLineEditor({
   lines,
@@ -126,6 +145,7 @@ export function PackageLineEditor({
       quantity: 1,
       mode: "units",
       folded: false,
+      autoSplit: true,
       flavors: [],
     });
   }
@@ -245,15 +265,46 @@ function LineCard({
   const remaining = packed - assigned;
   const packageType = packageTypes.find((p) => String(p.id) === line.packageTypeId);
 
+  /**
+   * A number typed or dragged is a deliberate ratio, so it also switches
+   * the line off auto-split — otherwise picking one more flavour would
+   * immediately overwrite what was just set by hand.
+   */
   function setUnits(flavorId: string, units: number) {
     const existing = line.flavors.find((f) => f.flavorId === flavorId);
-    if (units <= 0) {
-      onPatch({ flavors: line.flavors.filter((f) => f.flavorId !== flavorId) });
-    } else if (existing) {
-      onPatch({ flavors: line.flavors.map((f) => (f.flavorId === flavorId ? { ...f, units } : f)) });
-    } else {
-      onPatch({ flavors: [...line.flavors, { flavorId, units }] });
+    const flavors =
+      units <= 0
+        ? line.flavors.filter((f) => f.flavorId !== flavorId)
+        : existing
+          ? line.flavors.map((f) => (f.flavorId === flavorId ? { ...f, units } : f))
+          : [...line.flavors, { flavorId, units }];
+    onPatch({ flavors, autoSplit: false });
+  }
+
+  /**
+   * Picking a flavour in or out. While the line is still on auto-split
+   * this re-divides the tray equally between whatever is now selected —
+   * two flavours are halves, three are thirds — which is how a mixed tray
+   * is actually described out loud. Once someone has set a number by
+   * hand, a new pick takes only what is unassigned and leaves the rest
+   * alone.
+   */
+  function toggleFlavor(flavorId: string) {
+    const selected = line.flavors.some((f) => f.flavorId === flavorId);
+    const ids = selected
+      ? line.flavors.filter((f) => f.flavorId !== flavorId).map((f) => f.flavorId)
+      : [...line.flavors.map((f) => f.flavorId), flavorId];
+
+    if (line.autoSplit) {
+      onPatch({ flavors: evenSplit(ids, packed), autoSplit: true });
+      return;
     }
+    onPatch({
+      flavors: selected
+        ? line.flavors.filter((f) => f.flavorId !== flavorId)
+        : [...line.flavors, { flavorId, units: Math.max(0, remaining) }],
+      autoSplit: false,
+    });
   }
 
   if (line.folded) {
@@ -356,7 +407,7 @@ function LineCard({
                 units={line.flavors.find((f) => f.flavorId === String(flavor.id))?.units ?? 0}
                 packed={packed}
                 mode={line.mode}
-                remaining={remaining}
+                onToggle={() => toggleFlavor(String(flavor.id))}
                 onChange={(units) => setUnits(String(flavor.id), units)}
               />
             ))}
@@ -430,14 +481,14 @@ function FlavorRow({
   units,
   packed,
   mode,
-  remaining,
+  onToggle,
   onChange,
 }: {
   flavor: Flavor;
   units: number;
   packed: number;
   mode: DraftPackageLine["mode"];
-  remaining: number;
+  onToggle: () => void;
   onChange: (units: number) => void;
 }) {
   const active = units > 0;
@@ -445,51 +496,71 @@ function FlavorRow({
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-1 py-1 transition ${
+      className={`group rounded-lg px-1 py-1 transition ${
         active ? "" : "opacity-45 hover:opacity-90"
       } hover:bg-cream/70`}
     >
-      {/* Clicking the name adds the flavour at whatever is unassigned, so
-          a one-flavour tray is a single click. */}
-      <button
-        type="button"
-        onClick={() => onChange(active ? 0 : Math.max(0, remaining))}
-        title={active ? `Remove ${flavor.name}` : `Fill the rest with ${flavor.name}`}
-        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-      >
-        <span
-          className="h-5 w-5 shrink-0 rounded-md shadow-sm"
-          style={{ background: flavorGradient(flavor) }}
-          aria-hidden
+      <div className="flex items-center gap-2">
+        {/* Clicking the name picks the flavour in or out. While the line
+            is on auto-split that re-divides the tray evenly. */}
+        <button
+          type="button"
+          onClick={onToggle}
+          title={active ? `Remove ${flavor.name}` : `Add ${flavor.name}`}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <span
+            className="h-5 w-5 shrink-0 rounded-md shadow-sm"
+            style={{ background: flavorGradient(flavor) }}
+            aria-hidden
+          />
+          <span className="min-w-0 truncate text-xs font-semibold text-ink">{flavor.name}</span>
+        </button>
+
+        <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-soft">
+          {active ? `${percent}%` : ""}
+        </span>
+
+        <input
+          type="number"
+          min={0}
+          aria-label={`${flavor.name} ${mode === "percent" ? "percent" : "units"}`}
+          value={mode === "percent" ? (active ? percent : "") : active ? units : ""}
+          placeholder="0"
+          onChange={(e) => {
+            const raw = Math.max(0, Number(e.target.value) || 0);
+            /*
+             * Floor, not round: a tray rarely divides evenly — 25% of a
+             * 50-cube tray is 12.5 — and rounding each share up made four
+             * equal quarters total 52, reporting the line "2 over" a tray
+             * that physically cannot hold them. Flooring leaves the
+             * remainder unassigned instead, which is both true and
+             * fixable by nudging one flavour up.
+             */
+            onChange(mode === "percent" ? Math.floor((raw / 100) * packed) : raw);
+          }}
+          className="w-14 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card"
         />
-        <span className="min-w-0 truncate text-xs font-semibold text-ink">{flavor.name}</span>
-      </button>
+        <span className="w-5 shrink-0 text-[10px] text-ink-soft">{mode === "percent" ? "%" : "u"}</span>
+      </div>
 
-      <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-ink-soft">
-        {active ? `${percent}%` : ""}
-      </span>
-
-      <input
-        type="number"
-        min={0}
-        aria-label={`${flavor.name} ${mode === "percent" ? "percent" : "units"}`}
-        value={mode === "percent" ? (active ? percent : "") : active ? units : ""}
-        placeholder="0"
-        onChange={(e) => {
-          const raw = Math.max(0, Number(e.target.value) || 0);
-          /*
-           * Floor, not round: a tray rarely divides evenly — 25% of a
-           * 50-cube tray is 12.5 — and rounding each share up made four
-           * equal quarters total 52, reporting the line "2 over" a tray
-           * that physically cannot hold them. Flooring leaves the
-           * remainder unassigned instead, which is both true and
-           * fixable by nudging one flavour up.
-           */
-          onChange(mode === "percent" ? Math.floor((raw / 100) * packed) : raw);
-        }}
-        className="w-14 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card"
-      />
-      <span className="w-8 shrink-0 text-[10px] text-ink-soft">{mode === "percent" ? "%" : "u"}</span>
+      {/*
+        Only on a flavour that's in the tray. A row of eight sliders all
+        sitting at zero reads as clutter, and dragging one is how you'd
+        add a flavour by accident.
+      */}
+      {active && packed > 0 && (
+        <input
+          type="range"
+          min={0}
+          max={packed}
+          value={Math.min(units, packed)}
+          aria-label={`${flavor.name} share`}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{ accentColor: flavor.colorBase }}
+          className="mt-0.5 h-1 w-full cursor-pointer appearance-none rounded-full bg-line"
+        />
+      )}
     </div>
   );
 }
