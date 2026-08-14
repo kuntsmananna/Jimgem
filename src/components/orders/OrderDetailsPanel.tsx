@@ -1,0 +1,346 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import {
+  PAYMENT_STATUS_LABEL,
+  PRODUCTION_STATUS_LABEL,
+  type OrderInput,
+  type PaymentStatus,
+  type ProductionStatus,
+} from "@/lib/orderTypes";
+import { TextInput, TextArea } from "@/components/Field";
+import { useOrderTypes } from "@/components/OrderTypesContext";
+import { orderTypeIconElement } from "@/lib/icons";
+import { NumberStepper } from "./PackageLineEditor";
+import { PAYMENT_BADGE_CLASS, PRODUCTION_DOT } from "./StatusSelects";
+
+const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const money = (amount: number) => `₪${nf.format(amount)}`;
+
+/**
+ * The Details tab, laid out as the order sheet rather than as a form.
+ *
+ * It replaced twelve identical label-and-box pairs in a flat 3x4 grid,
+ * which spent a 976px panel saying every field was equally important and
+ * left the bottom third empty. Here the customer is a headline, what the
+ * event *is* sits under it, and the two things that get read — how big it
+ * is and what is still owed — are two short statements side by side.
+ *
+ * Nothing here saves on its own; the whole draft goes up when OrderForm
+ * submits.
+ */
+export function OrderDetailsPanel({
+  draft,
+  onChange,
+  totalUnits,
+  onOpenContent,
+}: {
+  draft: OrderInput;
+  onChange: (draft: OrderInput) => void;
+  /** Units the Content tab packs, shown here so the two tabs agree. */
+  totalUnits: number;
+  onOpenContent: () => void;
+}) {
+  const orderTypes = useOrderTypes();
+  const type = orderTypes.find((t) => t.name === draft.customerType);
+  const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
+
+  // What is still owed. Delivery is deliberately not in this sum: nothing
+  // in the data says whether it is included in the total or charged on top,
+  // so it stays a field rather than a line in the statement.
+  const balance = draft.totalAmount - draft.deposit;
+
+  return (
+    <div className="flex flex-col">
+      <header className="flex items-end justify-between gap-5 border-b border-line pb-3.5">
+        <div className="min-w-0 flex-1">
+          {/*
+            The name is the headline, not a field: it is how you know which
+            order is open, and at 14px in a grid cell it never read that way.
+          */}
+          <input
+            value={draft.customer}
+            onChange={(e) => set({ customer: e.target.value })}
+            placeholder="Customer name"
+            aria-label="Customer"
+            className="w-full border-b border-transparent bg-transparent font-display text-[32px] leading-none font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-ink-soft">
+            <PillSelect
+              value={draft.customerType}
+              onChange={(value) => set({ customerType: value })}
+              aria-label="Order type"
+              className={type ? "text-ink" : "border border-line bg-black/[0.04] text-ink-soft"}
+              style={type ? { background: type.color } : undefined}
+              icon={type ? orderTypeIconElement(type.icon, 11) : undefined}
+            >
+              <option value="">No type</option>
+              {orderTypes.map((t) => (
+                <option key={t.id} value={t.name}>
+                  {t.name}
+                </option>
+              ))}
+              {/* An imported order can carry a type that isn't on the list.
+                  It has to stay selectable, or saving would retype it. */}
+              {draft.customerType && !type && (
+                <option value={draft.customerType}>{draft.customerType} (not on the list)</option>
+              )}
+            </PillSelect>
+            <Dot />
+            <TextInput
+              type="date"
+              value={draft.date}
+              onChange={(e) => set({ date: e.target.value })}
+              aria-label="Date"
+              className="w-[8.5rem] text-[13px] tabular-nums"
+            />
+            <Dot />
+            <TextInput
+              value={draft.location}
+              onChange={(e) => set({ location: e.target.value })}
+              placeholder="Location"
+              aria-label="Location"
+              className="w-44 text-[13px]"
+            />
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <PillSelect
+            value={draft.paymentStatus}
+            onChange={(value) => set({ paymentStatus: value as PaymentStatus })}
+            aria-label="Payment status"
+            className={PAYMENT_BADGE_CLASS[draft.paymentStatus]}
+          >
+            {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {PAYMENT_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </PillSelect>
+          <PillSelect
+            value={draft.productionStatus}
+            onChange={(value) => set({ productionStatus: value as ProductionStatus })}
+            aria-label="Production status"
+            className="border border-line bg-cream text-ink"
+            icon={
+              <span aria-hidden className={`h-2 w-2 rounded-full ${PRODUCTION_DOT[draft.productionStatus]}`} />
+            }
+          >
+            {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {PRODUCTION_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </PillSelect>
+        </div>
+      </header>
+
+      {/* Two statements, hairline between them: how big the event is, and
+          what it is worth. The 1px column is the rule itself, so it spans
+          whichever of the two happens to be taller. */}
+      <div className="grid grid-cols-[1fr_1px_1fr] gap-x-7 pt-4">
+        <section className="flex flex-col">
+          <GroupLabel>The event</GroupLabel>
+          <SheetRow label="Guests">
+            <NumberStepper
+              label="guests"
+              value={draft.guests}
+              allowEmpty
+              onChange={(guests) => set({ guests })}
+            />
+          </SheetRow>
+          <SheetRow label="Mirrors">
+            <NumberStepper
+              label="mirrors"
+              value={draft.mirrors}
+              allowEmpty
+              onChange={(mirrors) => set({ mirrors })}
+            />
+          </SheetRow>
+          <SheetRow label="Delivery">
+            <MoneyInput
+              label="Delivery cost"
+              value={draft.deliveryCost}
+              onChange={(deliveryCost) => set({ deliveryCost })}
+            />
+          </SheetRow>
+          <SheetRow label="Units ordered">
+            {/* Packed on the Content tab, so this reads it rather than
+                editing it — and offers the trip there instead. */}
+            <button
+              type="button"
+              onClick={onOpenContent}
+              className="rounded-md px-1.5 py-0.5 text-sm tabular-nums text-ink underline decoration-line underline-offset-4 hover:bg-black/[0.04] hover:decoration-accent"
+              title="Edit the packing on the Content tab"
+            >
+              {totalUnits > 0 ? nf.format(totalUnits) : "None yet"}
+            </button>
+          </SheetRow>
+        </section>
+
+        <div aria-hidden className="bg-line" />
+
+        <section className="flex flex-col">
+          <GroupLabel>The money</GroupLabel>
+          <SheetRow label="Order amount">
+            <MoneyInput
+              label="Order amount"
+              value={draft.totalAmount}
+              onChange={(totalAmount) => set({ totalAmount: totalAmount ?? 0 })}
+            />
+          </SheetRow>
+          <SheetRow label="Deposit received">
+            <MoneyInput
+              label="Deposit"
+              value={draft.deposit}
+              onChange={(deposit) => set({ deposit: deposit ?? 0 })}
+            />
+          </SheetRow>
+          <SheetRow label={balance < 0 ? "Overpaid by" : "Balance due"} total>
+            <span className="font-display text-[21px] leading-none font-extrabold tabular-nums text-ink">
+              {money(Math.abs(balance))}
+            </span>
+          </SheetRow>
+        </section>
+      </div>
+
+      <div className="mt-5">
+        <GroupLabel>Notes</GroupLabel>
+        {/* Keeps its box whether filled or not, unlike the single-line
+            fields: an unbordered block of text has nothing to say where
+            the writing area ends, and this one is three lines tall. */}
+        <TextArea
+          rows={3}
+          value={draft.notes}
+          onChange={(e) => set({ notes: e.target.value })}
+          aria-label="Notes"
+          placeholder="Anything worth remembering about this order"
+          className="mt-1.5 w-full border-line bg-cream/40 px-2.5 py-2 text-sm"
+        />
+      </div>
+    </div>
+  );
+}
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">{children}</span>
+  );
+}
+
+function Dot() {
+  return <span aria-hidden className="h-[3px] w-[3px] shrink-0 rounded-full bg-line" />;
+}
+
+/**
+ * One line of a statement: what it is on the left, what it says on the
+ * right. `total` turns off the dotted rule and draws the solid one a sum
+ * sits under.
+ */
+function SheetRow({
+  label,
+  total = false,
+  children,
+}: {
+  label: string;
+  total?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`flex min-h-[34px] items-center justify-between gap-4 ${
+        total ? "mt-1.5 border-t-[1.5px] border-ink pt-2.5" : "border-b border-dotted border-line py-1"
+      }`}
+    >
+      <span className={total ? "text-xs font-bold text-ink" : "text-[12.5px] text-ink-soft"}>{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A shekel amount, right-aligned so a column of them lines up. Empty is
+ * null rather than 0 — a delivery cost nobody has entered is not free.
+ *
+ * It reads as money at rest ("₪4,410") and as a bare number while being
+ * typed into, which `type="number"` can't do: the browser rejects a value
+ * carrying a currency mark or a thousands separator, so the field can
+ * either be formatted or be editable, not both. Text plus `inputMode`
+ * keeps the numeric keypad on touch without that restriction.
+ */
+function MoneyInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  const [typing, setTyping] = useState<string | null>(null);
+
+  return (
+    <TextInput
+      type="text"
+      inputMode="numeric"
+      aria-label={label}
+      // Zero shows as blank, not "₪0", so an amount nobody has filled in
+      // keeps the empty-field outline that says it still wants a number.
+      value={typing ?? (value ? money(value) : "")}
+      onFocus={() => setTyping(value ? String(value) : "")}
+      onChange={(e) => {
+        setTyping(e.target.value);
+        // Keep only what can be part of a number, so a pasted "₪4,410"
+        // still lands as 4410 rather than as NaN.
+        const digits = e.target.value.replace(/[^\d.-]/g, "");
+        onChange(digits === "" ? null : Number(digits));
+      }}
+      onBlur={() => setTyping(null)}
+      className="w-28 text-right text-sm tabular-nums"
+    />
+  );
+}
+
+/**
+ * A `select` wearing a pill. `appearance-none` drops the platform arrow so
+ * the chip keeps its shape at 11px; the chevron is drawn back on top,
+ * because without it nothing says the colour is clickable.
+ */
+function PillSelect({
+  value,
+  onChange,
+  className = "",
+  style,
+  icon,
+  children,
+  ...props
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+} & Omit<React.ComponentProps<"select">, "value" | "onChange" | "style" | "className" | "children">) {
+  return (
+    <span className="relative inline-flex shrink-0 items-center">
+      {icon && (
+        <span className="pointer-events-none absolute left-2.5 flex items-center text-ink">{icon}</span>
+      )}
+      <select
+        {...props}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={style}
+        className={`appearance-none rounded-full py-1 text-[11px] font-bold whitespace-nowrap outline-none focus:ring-2 focus:ring-accent/40 ${
+          icon ? "pl-7" : "pl-2.5"
+        } pr-6 ${className}`}
+      >
+        {children}
+      </select>
+      <ChevronDown size={11} aria-hidden className="pointer-events-none absolute right-2 opacity-50" />
+    </span>
+  );
+}

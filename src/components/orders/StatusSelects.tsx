@@ -14,7 +14,7 @@ import {
  * just a tint of the surface — see globals.css's line-hover block for why
  * the two behave differently on a hovered black row.
  */
-const PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
+export const PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
   unpaid: "chip-neutral bg-black/5 text-ink-soft",
   deposit: "keeps-color bg-tile-peach text-ink",
   paid: "keeps-color bg-tile-sage text-ink",
@@ -97,7 +97,7 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
 /** Queue → Preparing → Delivered → Queue. Production only ever moves forward in practice. */
 const PRODUCTION_ORDER: ProductionStatus[] = ["queue", "preparing", "delivered"];
 
-const PRODUCTION_DOT: Record<ProductionStatus, string> = {
+export const PRODUCTION_DOT: Record<ProductionStatus, string> = {
   queue: "bg-ink-soft/40",
   preparing: "bg-tile-peach",
   delivered: "bg-accent",

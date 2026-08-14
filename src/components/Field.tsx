@@ -21,6 +21,15 @@ export function SelectInput({ className = "", ...props }: React.ComponentProps<"
   return <select className={`input ${className}`} {...props} />;
 }
 
+/**
+ * Same quiet styling for text that runs to more than a line. Notes carries
+ * a description *and* a note joined with " · " (see migration 004), which a
+ * single-line input showed a third of.
+ */
+export function TextArea({ placeholder = " ", className = "", ...props }: React.ComponentProps<"textarea">) {
+  return <textarea className={`input resize-none ${className}`} placeholder={placeholder} {...props} />;
+}
+
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-0.5">

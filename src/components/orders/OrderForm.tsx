@@ -2,20 +2,14 @@
 
 import { useEffect, useState } from "react";
 import {
-  PAYMENT_STATUS_LABEL,
-  PRODUCTION_STATUS_LABEL,
   type Order,
   type OrderInput,
-  type PaymentStatus,
-  type ProductionStatus,
   lineAssignedUnits,
   linePackedUnits,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
-import { Field, TextInput, SelectInput } from "@/components/Field";
-import { useOrderTypes } from "@/components/OrderTypesContext";
+import { OrderDetailsPanel } from "./OrderDetailsPanel";
 import {
-  NumberStepper,
   PackageLineEditor,
   toDraftLines,
   toPackageLines,
@@ -97,8 +91,6 @@ export function OrderForm({
   cancelLabel?: string;
 }) {
   const isEdit = !!order;
-  // From the app-layout provider rather than a prop — see OrderTypesContext.
-  const orderTypes = useOrderTypes();
   // Built once, so the starting values and the baseline they're compared
   // against can't drift apart — draftFromOrder stamps today's date for a
   // new order, and calling it twice could straddle midnight.
@@ -196,133 +188,13 @@ export function OrderForm({
       */}
       <div className="h-[26rem] overflow-y-auto pr-1">
 
-      {/* Three across rather than two: at this popup width two columns
-          made a date field as wide as a paragraph. */}
-      <div
-        role="tabpanel"
-        className={`grid grid-cols-3 gap-x-4 gap-y-2 ${tab === "details" ? "" : "hidden"}`}
-      >
-        <Field label="Date">
-          <TextInput
-            type="date"
-            value={draft.date}
-            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-          />
-        </Field>
-        <Field label="Customer">
-          <TextInput
-            value={draft.customer}
-            onChange={(e) => setDraft({ ...draft, customer: e.target.value })}
-          />
-        </Field>
-        <Field label="Type">
-          {/*
-            A dropdown over the managed list now, not free text. The blank
-            option matters: an imported order can carry a type the owner
-            hasn't added yet, and it has to stay selectable so saving the
-            order doesn't silently retype it.
-          */}
-          <SelectInput
-            value={draft.customerType}
-            onChange={(e) => setDraft({ ...draft, customerType: e.target.value })}
-          >
-            <option value="">—</option>
-            {orderTypes.map((type) => (
-              <option key={type.id} value={type.name}>
-                {type.name}
-              </option>
-            ))}
-            {draft.customerType && !orderTypes.some((t) => t.name === draft.customerType) && (
-              <option value={draft.customerType}>{draft.customerType} (not on the list)</option>
-            )}
-          </SelectInput>
-        </Field>
-        <Field label="Location">
-          <TextInput
-            value={draft.location}
-            onChange={(e) => setDraft({ ...draft, location: e.target.value })}
-          />
-        </Field>
-        {/* Counts, so they get the same stepper the package quantity has. */}
-        <Field label="Guests">
-          <NumberStepper
-            label="guests"
-            value={draft.guests}
-            allowEmpty
-            onChange={(guests) => setDraft({ ...draft, guests })}
-          />
-        </Field>
-        <Field label="Mirrors">
-          <NumberStepper
-            label="mirrors"
-            value={draft.mirrors}
-            allowEmpty
-            onChange={(mirrors) => setDraft({ ...draft, mirrors })}
-          />
-        </Field>
-        <Field label="Delivery ₪">
-          <TextInput
-            type="number"
-            value={draft.deliveryCost ?? ""}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                deliveryCost: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          />
-        </Field>
-        <Field label="Amount ₪">
-          <TextInput
-            type="number"
-            value={draft.totalAmount}
-            onChange={(e) => setDraft({ ...draft, totalAmount: Number(e.target.value) })}
-          />
-        </Field>
-        <Field label="Deposit ₪">
-          <TextInput
-            type="number"
-            value={draft.deposit}
-            onChange={(e) => setDraft({ ...draft, deposit: Number(e.target.value) })}
-          />
-        </Field>
-        <Field label="Payment status">
-          <SelectInput
-            value={draft.paymentStatus}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                paymentStatus: e.target.value as PaymentStatus,
-              })
-            }
-          >
-            {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {PAYMENT_STATUS_LABEL[s]}
-              </option>
-            ))}
-          </SelectInput>
-        </Field>
-        <Field label="Production status">
-          <SelectInput
-            value={draft.productionStatus}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                productionStatus: e.target.value as ProductionStatus,
-              })
-            }
-          >
-            {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {PRODUCTION_STATUS_LABEL[s]}
-              </option>
-            ))}
-          </SelectInput>
-        </Field>
-        <Field label="Notes">
-          <TextInput value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
-        </Field>
+      <div role="tabpanel" className={tab === "details" ? "" : "hidden"}>
+        <OrderDetailsPanel
+          draft={draft}
+          onChange={setDraft}
+          totalUnits={totalUnits}
+          onOpenContent={() => setTab("content")}
+        />
       </div>
 
       {/*

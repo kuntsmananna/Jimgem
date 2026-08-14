@@ -123,6 +123,19 @@ iteration (not guessed) — define these as `@theme` tokens in
   header). The form is split into Details and Content tabs, and both are
   kept mounted while hidden so switching tabs doesn't discard a
   half-typed line.
+- **The Details tab is an order sheet, not a form** (`OrderDetailsPanel`).
+  It replaced twelve identical label-and-box pairs in a flat 3×4 grid,
+  which spent a 976×416 panel saying every field mattered equally and left
+  the bottom third empty. Now the customer is a headline, what the event
+  *is* sits under it as a meta line, and two short statements — *The
+  event* and *The money* — sit either side of a hairline, with Notes (a
+  `TextArea`, not the single-line input it was) full width beneath. Money
+  is formatted at rest and bare while focused, because `type="number"`
+  rejects both the ₪ and the thousands separator; zero renders blank so an
+  unfilled amount keeps its empty-field outline. Balance due is derived
+  (`totalAmount − deposit`) and never stored — **delivery is deliberately
+  not in that sum**, since nothing in the data says whether it is included
+  in the total or charged on top.
 - Overlays (`Modal`, `OrderDetailsPane`) share `useOverlayDismiss` for
   Escape-to-close and a reference-counted body scroll lock. They nest —
   the details pane hosts a form that can open a modal — so the count is
