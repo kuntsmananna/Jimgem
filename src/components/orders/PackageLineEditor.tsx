@@ -47,14 +47,16 @@ let nextUid = 1;
 export function toDraftLines(lines: OrderPackageLine[]): DraftPackageLine[] {
   // Everything arrives folded on an existing order: you are usually
   // opening it to read, not to re-mix every tray.
-  // autoSplit off: a saved order's ratios were decided once already, and
-  // re-splitting them the moment a flavour is added would overwrite them.
   return lines.map((line) => ({
     ...line,
     uid: nextUid++,
     mode: "units",
     folded: true,
-    autoSplit: false,
+    // Off once the line already carries a split, because those ratios were
+    // decided before and re-splitting them the moment a flavour is added
+    // would overwrite them. A line with no flavours yet has nothing to
+    // protect, so it behaves like a fresh one and spreads evenly.
+    autoSplit: line.flavors.length === 0,
   }));
 }
 

@@ -88,7 +88,49 @@ export function toggleFlavorUnits(
   if (selected) return flavors.filter((f) => f.flavorId !== flavorId);
 
   const remaining = packed - flavors.reduce((sum, f) => sum + f.units, 0);
-  return [...flavors, { flavorId, units: Math.max(0, remaining) }];
+  if (remaining > 0) return [...flavors, { flavorId, units: remaining }];
+
+  // The tray is already full. Picking a flavour has to put some of it in
+  // there — adding a zero-unit row looked like the click had been ignored,
+  // and left you hand-reducing another flavour first to make room.
+  return makeRoomFor(flavors, flavorId, packed);
+}
+
+/**
+ * Fits one more flavour into a full package: the newcomer takes an equal
+ * share and everything already there is scaled down proportionally into
+ * what's left, so a deliberate 70/30 becomes 47/20/33 rather than being
+ * flattened to thirds.
+ *
+ * Largest-remainder rounding, so the parts still add up to the package
+ * exactly — plain rounding loses or invents units a cube at a time.
+ */
+function makeRoomFor(
+  flavors: OrderLineFlavor[],
+  flavorId: string,
+  packed: number,
+): OrderLineFlavor[] {
+  const assigned = flavors.reduce((sum, f) => sum + f.units, 0);
+  // Nothing to take from — an unsized package, or flavours all at zero.
+  if (packed <= 0 || assigned <= 0) return [...flavors, { flavorId, units: Math.max(0, packed) }];
+
+  const share = Math.floor(packed / (flavors.length + 1));
+  const rest = packed - share;
+
+  const exact = flavors.map((f) => (f.units / assigned) * rest);
+  const scaled = flavors.map((f, i) => ({ flavorId: f.flavorId, units: Math.floor(exact[i]) }));
+
+  let spare = rest - scaled.reduce((sum, f) => sum + f.units, 0);
+  const byFraction = exact
+    .map((value, i) => ({ i, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction);
+  for (const { i } of byFraction) {
+    if (spare <= 0) break;
+    scaled[i].units += 1;
+    spare -= 1;
+  }
+
+  return [...scaled, { flavorId, units: share }];
 }
 
 /**

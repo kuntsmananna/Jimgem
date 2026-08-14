@@ -282,6 +282,16 @@ iteration (not guessed) — define these as `@theme` tokens in
   an input mode in the form (see `PackageLineEditor`), resolved to units
   at entry time so a saved order's meaning doesn't shift when a package
   type's `units_per_package` is later edited.
+- **Picking a flavour always gives it units.** While a line is on
+  auto-split it re-divides evenly (three flavours are thirds); once
+  someone types or drags a number that stops, and a later pick takes
+  whatever is unassigned. When nothing is unassigned — the common case,
+  since the first flavour on an empty tray takes all of it —
+  `toggleFlavorUnits` falls back to `makeRoomFor`, which gives the
+  newcomer an equal share and scales the others proportionally into the
+  rest, so a deliberate 70/30 stays 7:3 instead of flattening to thirds.
+  Adding a zero-unit flavour instead read as the click being ignored, and
+  left you hand-reducing another flavour to make room.
 - `order_types` is the owner's list of event types with a colour each,
   edited in Settings → Lists. Orders reference it by **name**
   (`orders.customer_type` stays free text) so a Sheet import can never be
