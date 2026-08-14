@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import type { ReactNode } from "react";
 import { MapPin, StickyNote, Users } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { UnitsIcon } from "@/lib/icons";
+import { HoverCard } from "@/components/HoverCard";
 import { EventTypeChip } from "./EventTypeChip";
 import { ContentChips } from "./ContentChips";
 
@@ -21,19 +21,6 @@ const currency = (n: number) => `₪${nf.format(n)}`;
 const CARD_WIDTH = 300;
 /** Enough for the tallest card (content chips wrap), used to keep it on screen. */
 const CARD_HEIGHT = 340;
-const GAP = 8;
-
-/**
- * Places the card beside the hovered element, flipping to its other side
- * rather than running off the edge — the Kanban's right-hand column and
- * the calendar's Saturday cell both sit against the viewport edge.
- */
-function position(rect: DOMRect): { left: number; top: number } {
-  const fitsRight = rect.right + GAP + CARD_WIDTH <= window.innerWidth - GAP;
-  const left = fitsRight ? rect.right + GAP : Math.max(GAP, rect.left - GAP - CARD_WIDTH);
-  const top = Math.max(GAP, Math.min(rect.top, window.innerHeight - CARD_HEIGHT - GAP));
-  return { left, top };
-}
 
 /**
  * Wraps a Kanban card or calendar pill so hovering it shows the whole
@@ -41,9 +28,9 @@ function position(rect: DOMRect): { left: number; top: number } {
  * this day / in this column", and this answers "what exactly is it"
  * without a click.
  *
- * Rendered through a portal at fixed coordinates rather than as an
- * absolutely-positioned child, so it is never clipped by, or stacked
- * under, the day cell it belongs to.
+ * The Orders table doesn't use this one: every field here is already a
+ * column there, so it shows `ContentHoverCard` instead — the one thing a
+ * row can't spell out in the space it has.
  */
 export function OrderHoverCard({
   order,
@@ -58,24 +45,15 @@ export function OrderHoverCard({
   className?: string;
   children: ReactNode;
 }) {
-  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
   const units = orderUnits(order.packageLines, new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])));
 
   return (
-    <div
+    <HoverCard
+      width={CARD_WIDTH}
+      height={CARD_HEIGHT}
       className={className}
-      onMouseEnter={(e) => setAt(position(e.currentTarget.getBoundingClientRect()))}
-      onMouseLeave={() => setAt(null)}
-    >
-      {children}
-
-      {at !== null &&
-        createPortal(
-          <div
-            role="tooltip"
-            style={{ left: at.left, top: at.top, width: CARD_WIDTH }}
-            className="pointer-events-none fixed z-50 rounded-card border border-line bg-card p-4 shadow-xl"
-          >
+      render={() => (
+        <>
             <div className="flex items-baseline justify-between gap-2">
               <p className="truncate font-display text-sm font-bold text-ink">
                 {order.customer || "(no name)"}
@@ -134,9 +112,10 @@ export function OrderHoverCard({
                 {order.deliveryCost !== null && ` · ${currency(order.deliveryCost)} delivery`}
               </span>
             </div>
-          </div>,
-          document.body,
-        )}
-    </div>
+        </>
+      )}
+    >
+      {children}
+    </HoverCard>
   );
 }

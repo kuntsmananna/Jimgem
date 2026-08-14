@@ -153,11 +153,21 @@ iteration (not guessed) — define these as `@theme` tokens in
   chip given cream text simply vanishes), and `.chip-neutral` on a chip
   whose fill is a tint of its surface, so it inverts along with it.
   Inputs and selects opt out by not being in the match list.
-- Kanban cards and calendar pills show the whole order on hover via
-  `OrderHoverCard`, portaled to `document.body` at fixed coordinates —
-  as an absolutely-positioned child it would be clipped by, or stacked
-  under, the day cell it belongs to. The pills themselves still show no
-  money (see the Orders page notes); the hover card does.
+- `src/components/HoverCard.tsx` is the one hover mechanism: portal to
+  `document.body` at fixed coordinates, flipping to the other side of the
+  trigger rather than running off the edge. As an absolutely-positioned
+  child it would be clipped by, or stacked under, the cell it belongs to.
+  Its `render` prop is a function, not a node — the Orders table mounts one
+  per row, and building seventy hidden cards to show one would do the work
+  seventy times over. Two cards sit on it:
+  - `OrderHoverCard` — the whole order, for Kanban cards and calendar
+    pills, which are deliberately sparse. The pills themselves still show
+    no money (see the Orders page notes); the card does.
+  - `ContentHoverCard` — the content column only, for the Orders table,
+    where customer/date/money/status are each already a column. It draws
+    the same `TrayPreview` the order form does, plus per-flavour units and
+    percentage, so a row and the editor describe one tray rather than two.
+    A line with no flavours yet is called out rather than left blank.
 - Flavor colors are per-flavor 3-stop same-hue `radial-gradient`s
   (`color_glow` → `color_base` → `color_shadow`, light source at
   `circle at -15% -15%`) meant to read as glowing translucent jelly —

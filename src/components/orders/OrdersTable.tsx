@@ -3,6 +3,7 @@
 import { formatOrderDate, type Order, type OrderInput } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { ContentChips } from "./ContentChips";
+import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
 import { PaymentStatusSelect, ProductionStatusPill } from "./StatusSelects";
@@ -174,7 +175,17 @@ export function OrdersTable({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <ContentChips lines={order.packageLines} flavors={flavors} packageTypes={packageTypes} />
+                  <ContentHoverCard
+                    lines={order.packageLines}
+                    flavors={flavors}
+                    packageTypes={packageTypes}
+                  >
+                    <ContentChips
+                      lines={order.packageLines}
+                      flavors={flavors}
+                      packageTypes={packageTypes}
+                    />
+                  </ContentHoverCard>
                 </td>
                 <td className="px-3 py-2">
                   <EditableCell
