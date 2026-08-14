@@ -184,6 +184,7 @@ export function OrdersTable({
                       lines={order.packageLines}
                       flavors={flavors}
                       packageTypes={packageTypes}
+                      showFlavors={false}
                     />
                   </ContentHoverCard>
                 </td>

@@ -164,10 +164,17 @@ iteration (not guessed) — define these as `@theme` tokens in
     pills, which are deliberately sparse. The pills themselves still show
     no money (see the Orders page notes); the card does.
   - `ContentHoverCard` — the content column only, for the Orders table,
-    where customer/date/money/status are each already a column. It draws
-    the same `TrayPreview` the order form does, plus per-flavour units and
-    percentage, so a row and the editor describe one tray rather than two.
+    where customer/date/money/status are each already a column. A heading
+    per package line, then one row per flavour with its units and share.
     A line with no flavours yet is called out rather than left blank.
+    **No `TrayPreview` here**: the picture belongs in the order form, where
+    you are deciding the mix — in a tooltip it crowded out the numbers.
+- The Orders table passes `showFlavors={false}` to `ContentChips`, so the
+  Content column carries the quantity alone (`5× Small tray`) and the
+  flavour split lives in the hover card. A four-flavour line used to spend
+  the whole column on chips that then truncated, pushing the quantity —
+  the thing being scanned for — out of sight. Kanban and calendar keep the
+  flavour chips; they have the width and no hover-side table to lean on.
 - Flavor colors are per-flavor 3-stop same-hue `radial-gradient`s
   (`color_glow` → `color_base` → `color_shadow`, light source at
   `circle at -15% -15%`) meant to read as glowing translucent jelly —

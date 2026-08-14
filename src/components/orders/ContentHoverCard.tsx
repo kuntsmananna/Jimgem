@@ -1,33 +1,32 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  expandMixFlavors,
-  lineAssignedUnits,
-  linePackedUnits,
-  type OrderPackageLine,
-} from "@/lib/orderTypes";
+import { lineAssignedUnits, linePackedUnits, type OrderPackageLine } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
-import { flavorGradient, isMixFlavor } from "@/lib/flavorStyle";
+import { flavorGradient } from "@/lib/flavorStyle";
 import { UnitsIcon } from "@/lib/icons";
 import { HoverCard } from "@/components/HoverCard";
-import { TrayPreview } from "./TrayPreview";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
-const CARD_WIDTH = 320;
-/** Header, plus roughly what one line's preview and flavour list occupy. */
-const lineHeight = (lines: number) => Math.min(560, 70 + lines * 200);
+const CARD_WIDTH = 280;
+/** Header, plus a heading and a few flavour rows per package line. */
+const cardHeight = (lines: OrderPackageLine[]) =>
+  Math.min(520, 64 + lines.reduce((sum, line) => sum + 34 + (line.flavors.length + 1) * 22, 0));
 
 /**
  * The content column, spelled out on hover: what each package line packs
  * and how its units divide between flavours.
  *
- * The chips in the cell answer "how much of what" in the width a table
- * column can spare; this answers "what does that actually look like",
- * which is the question the chips keep raising. It shows the same
- * `TrayPreview` the order form draws, so the row and the editor describe
- * one tray rather than two.
+ * The chips in the cell fit "how much of what" into the width a table
+ * column can spare, which costs them the per-flavour share and truncates
+ * once a line has more than two or three flavours. This is the same
+ * information given room to be read — a heading per package line, then one
+ * row per flavour with its units and its share of that line.
+ *
+ * Deliberately no `TrayPreview`: the picture belongs in the order form,
+ * where you are deciding the mix. Here you are reading an order, and the
+ * grid crowded out the numbers that answer the question.
  *
  * Content-only rather than the whole order (`OrderHoverCard`, used by the
  * Kanban and calendar): everything that card carries — customer, date,
@@ -56,7 +55,7 @@ export function ContentHoverCard({
   return (
     <HoverCard
       width={CARD_WIDTH}
-      height={lineHeight(lines.length)}
+      height={cardHeight(lines)}
       className={className}
       render={() => (
         <>
@@ -68,7 +67,7 @@ export function ContentHoverCard({
             </p>
           </div>
 
-          <div className="flex flex-col gap-3.5 pt-3">
+          <div className="flex flex-col gap-3 pt-2.5">
             {lines.map((line, i) => (
               <LineDetail
                 key={i}
@@ -96,43 +95,40 @@ function LineDetail({
   packageType: PackageType | undefined;
 }) {
   const packed = line.quantity * (packageType?.unitsPerPackage ?? 0);
-  const assigned = lineAssignedUnits(line);
-  const missing = packed - assigned;
+  const missing = packed - lineAssignedUnits(line);
 
   return (
-    <section className="flex flex-col gap-2">
-      <p className="text-xs font-bold text-ink">
-        {line.quantity}× {packageType?.name ?? "Unknown package"}
-        {packed > 0 && <span className="font-semibold text-ink-soft"> · {nf.format(packed)} units</span>}
-      </p>
+    <section>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="min-w-0 truncate text-xs font-bold text-ink">
+          {line.quantity}× {packageType?.name ?? "Unknown package"}
+        </p>
+        {packed > 0 && (
+          <p className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">
+            {nf.format(packed)} units
+          </p>
+        )}
+      </div>
 
-      {packageType && (
-        <TrayPreview
-          entries={line.flavors}
-          unitsPerPackage={packageType.unitsPerPackage}
-          quantity={line.quantity}
-          flavors={flavors}
-          packageName={packageType.name}
-        />
-      )}
-
-      <ul className="flex flex-col gap-0.5">
+      <ul className="mt-1 flex flex-col">
         {line.flavors.map((entry, i) => {
           const flavor = flavors.find((f) => String(f.id) === entry.flavorId);
           return (
-            <li key={i} className="flex items-center gap-2 text-[11px]">
+            <li key={i} className="flex items-center gap-2 py-[3px] text-xs">
               <span
                 aria-hidden
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: flavor ? flavorGradient(flavor) : "#726A5E" }}
               />
-              <span className="min-w-0 flex-1 truncate font-semibold text-ink">
-                {flavor?.name ?? "Unknown flavour"}
-              </span>
-              <span className="shrink-0 tabular-nums text-ink-soft">
+              <span className="min-w-0 flex-1 truncate text-ink">{flavor?.name ?? "Unknown flavour"}</span>
+              <span className="w-14 shrink-0 text-right font-semibold tabular-nums text-ink">
                 {nf.format(entry.units)}u
-                {packed > 0 && ` · ${Math.round((entry.units / packed) * 100)}%`}
               </span>
+              {packed > 0 && (
+                <span className="w-9 shrink-0 text-right tabular-nums text-ink-soft">
+                  {Math.round((entry.units / packed) * 100)}%
+                </span>
+              )}
             </li>
           );
         })}
@@ -140,34 +136,23 @@ function LineDetail({
         {/* A line booked before anyone decided the mix. Reported, never
             blocked — see the order form's matching warning. */}
         {missing > 0 && (
-          <li className="flex items-center gap-2 text-[11px] text-amber-700">
-            <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-amber-700" />
-            <span className="flex-1 font-semibold">No flavour yet</span>
-            <span className="shrink-0 tabular-nums">{nf.format(missing)}u</span>
+          <li className="flex items-center gap-2 py-[3px] text-xs text-amber-700">
+            <span
+              aria-hidden
+              className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-amber-700"
+            />
+            <span className="min-w-0 flex-1 truncate font-semibold">No flavour yet</span>
+            <span className="w-14 shrink-0 text-right font-semibold tabular-nums">
+              {nf.format(missing)}u
+            </span>
+            {packed > 0 && (
+              <span className="w-9 shrink-0 text-right tabular-nums">
+                {Math.round((missing / packed) * 100)}%
+              </span>
+            )}
           </li>
         )}
       </ul>
-
-      <MixNote line={line} flavors={flavors} />
     </section>
-  );
-}
-
-/**
- * MIX is stored as one line — "a mix" is what was ordered, and picking the
- * exact split is a kitchen decision (see CLAUDE.md). The preview above
- * draws it as an even spread of every other flavour, so say so rather than
- * let the grid look like it knows something the list doesn't.
- */
-function MixNote({ line, flavors }: { line: OrderPackageLine; flavors: Flavor[] }) {
-  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => String(f.id)));
-  const mixed = line.flavors.filter((entry) => mixIds.has(entry.flavorId));
-  if (mixed.length === 0) return null;
-
-  const spread = expandMixFlavors(mixed, flavors).length;
-  return (
-    <p className="text-[10px] text-ink-soft">
-      Shown as an even spread of {spread} flavours — the mix itself is decided in the kitchen.
-    </p>
   );
 }
