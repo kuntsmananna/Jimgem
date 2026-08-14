@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Minus, Plus, X } from "lucide-react";
 import {
   type OrderLineFlavor,
   type OrderPackageLine,
@@ -11,7 +10,7 @@ import {
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { flavorBarGradient, flavorGradient } from "@/lib/flavorStyle";
 import { packageTypeIconElement } from "@/lib/icons";
-import { FlavorSplitBar } from "@/components/FlavorSplitBar";
+import { TrayPreview } from "./TrayPreview";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -29,12 +28,16 @@ const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 export interface DraftPackageLine extends OrderPackageLine {
   uid: number;
   mode: "units" | "percent";
+  /** Collapsed to a one-line summary. Set on the others when a new package is added. */
+  folded: boolean;
 }
 
 let nextUid = 1;
 
 export function toDraftLines(lines: OrderPackageLine[]): DraftPackageLine[] {
-  return lines.map((line) => ({ ...line, uid: nextUid++, mode: "units" }));
+  // Everything arrives folded on an existing order: you are usually
+  // opening it to read, not to re-mix every tray.
+  return lines.map((line) => ({ ...line, uid: nextUid++, mode: "units", folded: true }));
 }
 
 export function toPackageLines(draft: DraftPackageLine[]): OrderPackageLine[] {
@@ -68,17 +71,20 @@ export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[
     packageTypeId: String(preset.packageTypeId),
     quantity: 1,
     mode: "units",
+    folded: false,
     flavors,
   };
 }
 
 /**
- * The order form's Content section: a list of package lines, each with
- * its own flavour split shown as a draggable bar and as numbers.
+ * The order form's Content section: a list of package lines, one open at
+ * a time. Each open line puts every flavour on the left with its
+ * percentage and unit count, and a picture of the packed tray on the
+ * right (see TrayPreview).
  *
- * The bar and the numbers are one control in two notations, not two
- * controls — both write the same units, so a drag updates the numbers and
- * a typed number moves the bar.
+ * The split bar this replaced showed proportions but never the product.
+ * FlavorSplitBar still exists — Settings' preset editor uses it, where
+ * there is no tray to draw.
  */
 export function PackageLineEditor({
   lines,
@@ -99,13 +105,29 @@ export function PackageLineEditor({
     onChange(lines.map((line) => (line.uid === uid ? { ...line, ...patch } : line)));
   }
 
-  function addLine() {
+  /**
+   * Only one line is ever open. Adding or unfolding folds the rest, so the
+   * form stays one editor tall no matter how many packages an order has.
+   */
+  function openOnly(uid: number, incoming: DraftPackageLine[] = lines) {
+    onChange(incoming.map((line) => ({ ...line, folded: line.uid !== uid })));
+  }
+
+  function addLine(line: DraftPackageLine) {
+    openOnly(line.uid, [...lines, line]);
+  }
+
+  function addBlankLine() {
     const [first] = packageTypes;
     if (!first) return;
-    onChange([
-      ...lines,
-      { uid: nextUid++, packageTypeId: String(first.id), quantity: 1, mode: "units", flavors: [] },
-    ]);
+    addLine({
+      uid: nextUid++,
+      packageTypeId: String(first.id),
+      quantity: 1,
+      mode: "units",
+      folded: false,
+      flavors: [],
+    });
   }
 
   return (
@@ -132,6 +154,9 @@ export function PackageLineEditor({
               unitsPerPackage={unitsPerPackage}
               onPatch={(patch) => updateLine(line.uid, patch)}
               onRemove={() => onChange(lines.filter((l) => l.uid !== line.uid))}
+              onToggleFold={() =>
+                line.folded ? openOnly(line.uid) : updateLine(line.uid, { folded: true })
+              }
             />
           ))}
         </div>
@@ -140,7 +165,7 @@ export function PackageLineEditor({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={addLine}
+          onClick={addBlankLine}
           className="rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream transition hover:opacity-85"
         >
           + Add package
@@ -150,7 +175,7 @@ export function PackageLineEditor({
           <button
             key={preset.id}
             type="button"
-            onClick={() => onChange([...lines, lineFromPreset(preset, packageTypes)])}
+            onClick={() => addLine(lineFromPreset(preset, packageTypes))}
             className="flex items-center gap-2 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold text-ink transition hover:border-ink"
           >
             <PresetSwatch preset={preset} flavors={flavors} />
@@ -190,6 +215,14 @@ export function PresetSwatch({
   );
 }
 
+/**
+ * One package line. Collapsed it is a single summary row; expanded it is
+ * the editor — the flavour list on the left, the packed tray on the
+ * right.
+ *
+ * Folding exists because an order of three different trays otherwise
+ * stacks three full editors, and only the one being worked on matters.
+ */
 function LineCard({
   line,
   flavors,
@@ -197,6 +230,7 @@ function LineCard({
   unitsPerPackage,
   onPatch,
   onRemove,
+  onToggleFold,
 }: {
   line: DraftPackageLine;
   flavors: Flavor[];
@@ -204,24 +238,57 @@ function LineCard({
   unitsPerPackage: Map<number, number>;
   onPatch: (patch: Partial<DraftPackageLine>) => void;
   onRemove: () => void;
+  onToggleFold: () => void;
 }) {
   const packed = linePackedUnits(line, unitsPerPackage);
-  const remaining = packed - lineAssignedUnits(line);
+  const assigned = lineAssignedUnits(line);
+  const remaining = packed - assigned;
   const packageType = packageTypes.find((p) => String(p.id) === line.packageTypeId);
 
-  // Archived flavours are excluded from the picker but still render on a
-  // line that already uses one — an old order keeps its original mix.
-  const unusedFlavors = flavors.filter(
-    (f) => !f.archivedAt && !line.flavors.some((entry) => entry.flavorId === String(f.id)),
-  );
+  function setUnits(flavorId: string, units: number) {
+    const existing = line.flavors.find((f) => f.flavorId === flavorId);
+    if (units <= 0) {
+      onPatch({ flavors: line.flavors.filter((f) => f.flavorId !== flavorId) });
+    } else if (existing) {
+      onPatch({ flavors: line.flavors.map((f) => (f.flavorId === flavorId ? { ...f, units } : f)) });
+    } else {
+      onPatch({ flavors: [...line.flavors, { flavorId, units }] });
+    }
+  }
 
-  function setFlavors(next: OrderLineFlavor[]) {
-    onPatch({ flavors: next });
+  if (line.folded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggleFold}
+        className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left"
+      >
+        <ChevronRight size={14} className="shrink-0 text-ink-soft" />
+        <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink">
+          {packageTypeIconElement(packageType?.name ?? "", 12)}
+          {line.quantity}× {packageType?.name ?? "?"}
+        </span>
+        <FoldedMix line={line} flavors={flavors} packed={packed} />
+        <span className="flex-1" />
+        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">
+          {nf.format(packed)}u
+        </span>
+      </button>
+    );
   }
 
   return (
     <div className="rounded-2xl border border-line bg-card px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleFold}
+          aria-label="Fold this package"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-black hover:text-cream"
+        >
+          <ChevronDown size={14} />
+        </button>
+
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/[0.06] text-ink">
           {packageTypeIconElement(packageType?.name ?? "", 16)}
         </span>
@@ -239,26 +306,12 @@ function LineCard({
           ))}
         </select>
 
-        <span className="flex shrink-0 items-center gap-1">
-          <StepButton
-            label="One less package"
-            disabled={line.quantity <= 1}
-            onClick={() => onPatch({ quantity: Math.max(1, line.quantity - 1) })}
-          >
-            <Minus size={13} />
-          </StepButton>
-          <input
-            type="number"
-            min={1}
-            aria-label="Number of packages"
-            value={line.quantity}
-            onChange={(e) => onPatch({ quantity: Math.max(1, Number(e.target.value) || 1) })}
-            className="w-14 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold text-ink outline-none focus:border-accent"
-          />
-          <StepButton label="One more package" onClick={() => onPatch({ quantity: line.quantity + 1 })}>
-            <Plus size={13} />
-          </StepButton>
-        </span>
+        <NumberStepper
+          label="packages"
+          value={line.quantity}
+          min={1}
+          onChange={(quantity) => onPatch({ quantity })}
+        />
 
         <span className="text-xs text-ink-soft">
           = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
@@ -290,155 +343,194 @@ function LineCard({
         </button>
       </div>
 
-      <div className="mt-2">
-        <FlavorSplitBar entries={line.flavors} total={packed} flavors={flavors} onChange={setFlavors} />
-      </div>
-
-      {line.flavors.length > 0 && (
-        <div className="mt-1 flex flex-col">
-          {line.flavors.map((entry, index) => (
-            <FlavorRow
-              key={entry.flavorId}
-              entry={entry}
-              flavor={flavors.find((f) => String(f.id) === entry.flavorId)}
-              packed={packed}
-              mode={line.mode}
-              onChangeUnits={(units) =>
-                setFlavors(line.flavors.map((e, i) => (i === index ? { ...e, units } : e)))
-              }
-              onRemove={() => setFlavors(line.flavors.filter((_, i) => i !== index))}
-            />
-          ))}
+      {/* Flavours left, tray right — the numbers and the picture of the
+          same thing, side by side. */}
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+        <div className="flex flex-col">
+          {flavors
+            .filter((f) => !f.archivedAt || line.flavors.some((e) => e.flavorId === String(f.id)))
+            .map((flavor) => (
+              <FlavorRow
+                key={flavor.id}
+                flavor={flavor}
+                units={line.flavors.find((f) => f.flavorId === String(flavor.id))?.units ?? 0}
+                packed={packed}
+                mode={line.mode}
+                remaining={remaining}
+                onChange={(units) => setUnits(String(flavor.id), units)}
+              />
+            ))}
         </div>
-      )}
 
-      {unusedFlavors.length > 0 && (
-        <AddFlavorButton
-          flavors={unusedFlavors}
-          onPick={(flavorId) =>
-            setFlavors([...line.flavors, { flavorId: String(flavorId), units: Math.max(0, remaining) }])
-          }
-        />
-      )}
+        <div className="rounded-xl bg-cream/60 p-2.5">
+          <TrayPreview
+            entries={line.flavors}
+            unitsPerPackage={unitsPerPackage.get(Number(line.packageTypeId)) ?? 0}
+            quantity={line.quantity}
+            flavors={flavors}
+            packageName={packageType?.name ?? "Package"}
+          />
+        </div>
+      </div>
     </div>
   );
 }
 
-function FlavorRow({
-  entry,
-  flavor,
+/** The mix as colour proportions, for a folded line. */
+function FoldedMix({
+  line,
+  flavors,
   packed,
-  mode,
-  onChangeUnits,
-  onRemove,
 }: {
-  entry: OrderLineFlavor;
-  flavor?: Flavor;
+  line: DraftPackageLine;
+  flavors: Flavor[];
   packed: number;
-  mode: DraftPackageLine["mode"];
-  onChangeUnits: (units: number) => void;
-  onRemove: () => void;
 }) {
-  const percent = packed > 0 ? Math.round((entry.units / packed) * 100) : 0;
-
+  if (line.flavors.length === 0) {
+    return <span className="text-[11px] text-ink-soft">No flavours yet</span>;
+  }
   return (
-    <div className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-cream/70">
-      <span
-        className="h-5 w-5 shrink-0 rounded-md shadow-sm"
-        style={{ background: flavor ? flavorGradient(flavor) : "var(--color-ink-soft)" }}
-        aria-hidden
-      />
-      <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
-        {flavor?.name ?? "Unknown flavour"}
+    <>
+      <span className="flex h-3.5 w-20 shrink-0 overflow-hidden rounded" aria-hidden>
+        {line.flavors.map((entry, i) => {
+          const flavor = flavors.find((f) => String(f.id) === entry.flavorId);
+          return (
+            <span
+              key={i}
+              style={{
+                flex: `0 0 ${packed > 0 ? (entry.units / packed) * 100 : 0}%`,
+                background: flavor ? flavorBarGradient(flavor) : "var(--color-ink-soft)",
+              }}
+            />
+          );
+        })}
       </span>
-
-      {/* In percent mode the resolved units stay on screen — the saved
-          order is in units, so hiding them would hide what's being saved. */}
-      {mode === "percent" && (
-        <span className="text-[11px] tabular-nums text-ink-soft">{nf.format(entry.units)} units</span>
-      )}
-
-      <input
-        type="number"
-        min={0}
-        aria-label={`${flavor?.name ?? "Flavour"} amount`}
-        value={mode === "percent" ? percent : entry.units}
-        onChange={(e) => {
-          const raw = Math.max(0, Number(e.target.value) || 0);
-          onChangeUnits(mode === "percent" ? Math.round((raw / 100) * packed) : raw);
-        }}
-        className="w-16 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card"
-      />
-      <span className="w-14 shrink-0 text-[10px] text-ink-soft">
-        {mode === "percent" ? "% of pack" : "units"}
+      <span className="min-w-0 truncate text-[11px] text-ink-soft">
+        {line.flavors
+          .map((entry) => {
+            const name = flavors.find((f) => String(f.id) === entry.flavorId)?.name ?? "?";
+            return `${packed > 0 ? Math.round((entry.units / packed) * 100) : 0}% ${name}`;
+          })
+          .join(" · ")}
       </span>
-
-      <button
-        type="button"
-        aria-label={`Remove ${flavor?.name ?? "flavour"}`}
-        onClick={onRemove}
-        className="flex h-6 w-6 items-center justify-center rounded-full text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black hover:text-cream"
-      >
-        <X size={12} />
-      </button>
-    </div>
+    </>
   );
 }
 
 /**
- * Adding a flavour is a picker rather than the old always-visible list of
- * every flavour: that list is now repeated per package line, so showing
- * all of them would bury a two-flavour order in empty rows.
+ * Every flavour is listed, whether or not it's in the mix — the old
+ * "add flavour" picker meant two clicks and a menu to do what typing a
+ * number should. A flavour at zero is simply dim.
+ *
+ * Both the percentage and the unit count are always visible: percent is
+ * how the mix is usually described, units are what actually gets saved.
  */
-function AddFlavorButton({
-  flavors,
-  onPick,
+function FlavorRow({
+  flavor,
+  units,
+  packed,
+  mode,
+  remaining,
+  onChange,
 }: {
-  flavors: Flavor[];
-  onPick: (flavorId: number) => void;
+  flavor: Flavor;
+  units: number;
+  packed: number;
+  mode: DraftPackageLine["mode"];
+  remaining: number;
+  onChange: (units: number) => void;
 }) {
-  const [open, setOpen] = useState(false);
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-1 rounded-full border border-dashed border-line px-3 py-1 text-[11px] font-semibold text-ink-soft transition hover:border-ink hover:text-ink"
-      >
-        + Add flavour
-      </button>
-    );
-  }
+  const active = units > 0;
+  const percent = packed > 0 ? Math.round((units / packed) * 100) : 0;
 
   return (
-    <div className="mt-1 flex flex-wrap gap-1">
-      {flavors.map((flavor) => (
-        <button
-          key={flavor.id}
-          type="button"
-          onClick={() => {
-            onPick(flavor.id);
-            setOpen(false);
-          }}
-          className="flex items-center gap-1.5 rounded-full border border-line bg-card px-2 py-1 text-[11px] font-semibold text-ink transition hover:border-ink"
-        >
-          <span
-            className="h-3.5 w-3.5 rounded shadow-sm"
-            style={{ background: flavorGradient(flavor) }}
-            aria-hidden
-          />
-          {flavor.name}
-        </button>
-      ))}
+    <div
+      className={`group flex items-center gap-2 rounded-lg px-1 py-1 transition ${
+        active ? "" : "opacity-45 hover:opacity-90"
+      } hover:bg-cream/70`}
+    >
+      {/* Clicking the name adds the flavour at whatever is unassigned, so
+          a one-flavour tray is a single click. */}
       <button
         type="button"
-        onClick={() => setOpen(false)}
-        className="rounded-full px-2 py-1 text-[11px] font-semibold text-ink-soft hover:text-ink"
+        onClick={() => onChange(active ? 0 : Math.max(0, remaining))}
+        title={active ? `Remove ${flavor.name}` : `Fill the rest with ${flavor.name}`}
+        className="flex min-w-0 flex-1 items-center gap-2 text-left"
       >
-        Cancel
+        <span
+          className="h-5 w-5 shrink-0 rounded-md shadow-sm"
+          style={{ background: flavorGradient(flavor) }}
+          aria-hidden
+        />
+        <span className="min-w-0 truncate text-xs font-semibold text-ink">{flavor.name}</span>
       </button>
+
+      <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-ink-soft">
+        {active ? `${percent}%` : ""}
+      </span>
+
+      <input
+        type="number"
+        min={0}
+        aria-label={`${flavor.name} ${mode === "percent" ? "percent" : "units"}`}
+        value={mode === "percent" ? (active ? percent : "") : active ? units : ""}
+        placeholder="0"
+        onChange={(e) => {
+          const raw = Math.max(0, Number(e.target.value) || 0);
+          /*
+           * Floor, not round: a tray rarely divides evenly — 25% of a
+           * 50-cube tray is 12.5 — and rounding each share up made four
+           * equal quarters total 52, reporting the line "2 over" a tray
+           * that physically cannot hold them. Flooring leaves the
+           * remainder unassigned instead, which is both true and
+           * fixable by nudging one flavour up.
+           */
+          onChange(mode === "percent" ? Math.floor((raw / 100) * packed) : raw);
+        }}
+        className="w-14 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card"
+      />
+      <span className="w-8 shrink-0 text-[10px] text-ink-soft">{mode === "percent" ? "%" : "u"}</span>
     </div>
+  );
+}
+
+/** A number field with the +/- buttons beside it. Shared by quantity, guests and mirrors. */
+export function NumberStepper({
+  label,
+  value,
+  min = 0,
+  onChange,
+  allowEmpty = false,
+}: {
+  label: string;
+  value: number | null;
+  min?: number;
+  onChange: (value: number) => void;
+  allowEmpty?: boolean;
+}) {
+  const current = value ?? min;
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      <StepButton
+        label={`One less ${label}`}
+        disabled={current <= min}
+        onClick={() => onChange(Math.max(min, current - 1))}
+      >
+        <Minus size={13} />
+      </StepButton>
+      <input
+        type="number"
+        min={min}
+        aria-label={`Number of ${label}`}
+        value={allowEmpty && value === null ? "" : current}
+        placeholder={allowEmpty ? "—" : undefined}
+        onChange={(e) => onChange(Math.max(min, Number(e.target.value) || min))}
+        className="w-14 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+      />
+      <StepButton label={`One more ${label}`} onClick={() => onChange(current + 1)}>
+        <Plus size={13} />
+      </StepButton>
+    </span>
   );
 }
 

@@ -24,7 +24,7 @@ export function Modal({
       }}
     >
       <div
-        className={`max-h-[90vh] w-full ${wide ? "max-w-3xl" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
+        className={`max-h-[90vh] w-full ${wide ? "max-w-5xl" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
       >
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-ink">{title}</h2>

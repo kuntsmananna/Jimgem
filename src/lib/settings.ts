@@ -250,6 +250,73 @@ export async function archiveContentPreset(id: number): Promise<void> {
   await db.query("UPDATE content_presets SET archived_at = now() WHERE id = $1", [id]);
 }
 
+/**
+ * An event type with its chip colour. Orders reference it by *name*
+ * (orders.customer_type stays free text) so a Sheet import can never be
+ * rejected by an unknown value — see schema.sql's order_types.
+ */
+export interface OrderType {
+  id: number;
+  name: string;
+  color: string;
+}
+
+interface OrderTypeRow {
+  id: number;
+  name: string;
+  color: string;
+}
+
+export async function getOrderTypes(): Promise<OrderType[]> {
+  const db = getDb();
+  const { rows } = await db.query<OrderTypeRow>(
+    "SELECT id, name, color FROM order_types WHERE archived_at IS NULL ORDER BY position, id",
+  );
+  return rows.map((r) => ({ id: r.id, name: r.name, color: r.color }));
+}
+
+export async function createOrderType(input: { name: string; color: string }): Promise<OrderType> {
+  const db = getDb();
+  const { rows } = await db.query<OrderTypeRow>(
+    `INSERT INTO order_types (name, color, position)
+     VALUES ($1, $2, (SELECT coalesce(max(position), -1) + 1 FROM order_types))
+     RETURNING id, name, color`,
+    [input.name, input.color],
+  );
+  return { id: rows[0].id, name: rows[0].name, color: rows[0].color };
+}
+
+/**
+ * Renaming a type also renames it on every order that used it — orders
+ * match by name, so leaving them behind would silently untype them.
+ */
+export async function updateOrderType(
+  id: number,
+  input: { name: string; color: string },
+): Promise<OrderType> {
+  const db = getDb();
+  const { rows } = await db.query<OrderTypeRow>(
+    `WITH old AS (
+       SELECT name FROM order_types WHERE id = $3
+     ), renamed AS (
+       UPDATE orders SET customer_type = $1
+       WHERE customer_type = (SELECT name FROM old) AND $1 <> (SELECT name FROM old)
+       RETURNING 1
+     )
+     UPDATE order_types SET name = $1, color = $2
+     WHERE id = $3 AND (SELECT count(*) FROM renamed) >= 0
+     RETURNING id, name, color`,
+    [input.name, input.color, id],
+  );
+  return { id: rows[0].id, name: rows[0].name, color: rows[0].color };
+}
+
+/** Archived, not deleted: orders keep their text and simply lose the colour. */
+export async function archiveOrderType(id: number): Promise<void> {
+  const db = getDb();
+  await db.query("UPDATE order_types SET archived_at = now() WHERE id = $1", [id]);
+}
+
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   const db = getDb();
   const { rows } = await db.query<NamedRow>("SELECT * FROM payment_methods ORDER BY id");

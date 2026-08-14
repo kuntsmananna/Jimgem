@@ -34,6 +34,21 @@ CREATE TABLE IF NOT EXISTS payment_methods (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The kind of event an order is for. Was free text typed straight into
+-- the Sheet's "סוג לקוח" column, which is why orders.customer_type is
+-- still text: this table gives the owner a managed list with a colour
+-- each, and orders match it by name rather than by id, so a Sheet import
+-- can keep writing whatever the Sheet says without a foreign key
+-- rejecting it. An unrecognised value still shows, just uncoloured.
+CREATE TABLE IF NOT EXISTS order_types (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#e7dbcc',
+  position INTEGER NOT NULL DEFAULT 0,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS expense_categories (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,

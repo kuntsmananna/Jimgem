@@ -13,7 +13,9 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { Field, TextInput, SelectInput } from "@/components/Field";
+import { useOrderTypes } from "@/components/OrderTypesContext";
 import {
+  NumberStepper,
   PackageLineEditor,
   toDraftLines,
   toPackageLines,
@@ -95,6 +97,8 @@ export function OrderForm({
   cancelLabel?: string;
 }) {
   const isEdit = !!order;
+  // From the app-layout provider rather than a prop — see OrderTypesContext.
+  const orderTypes = useOrderTypes();
   // Built once, so the starting values and the baseline they're compared
   // against can't drift apart — draftFromOrder stamps today's date for a
   // new order, and calling it twice could straddle midnight.
@@ -106,6 +110,7 @@ export function OrderForm({
   const [draft, setDraft] = useState<OrderInput>(initial.draft);
   const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"details" | "content">("details");
 
   // Comparing what a save *would* send against what it started as makes
   // "dirty" mean "differs from the stored order" rather than "was
@@ -132,6 +137,7 @@ export function OrderForm({
     0,
   );
 
+  const totalUnits = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
   const canSave = draft.customer.trim().length > 0 && !busy;
 
   async function submit() {
@@ -149,7 +155,37 @@ export function OrderForm({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      {/*
+        Two tabs rather than one long scroll: the text fields and the
+        packing are separate jobs, usually done at different times — an
+        order is booked first and mixed later. The Content tab carries a
+        unit count so you can see it is filled in without switching.
+      */}
+      <div className="mb-4 flex gap-0.5 rounded-full bg-cream p-0.5">
+        {(["details", "content"] as const).map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={tab === id}
+            onClick={() => setTab(id)}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold capitalize transition ${
+              tab === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {id}
+            {id === "content" && totalUnits > 0 && (
+              <span className={tab === id ? "text-cream/70" : "text-ink-soft/70"}>
+                {nf.format(totalUnits)}u
+              </span>
+            )}
+            {id === "content" && unbalanced.length > 0 && (
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Some units have no flavour" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className={`grid grid-cols-2 gap-x-4 gap-y-2 ${tab === "details" ? "" : "hidden"}`}>
         <Field label="Date">
           <TextInput
             type="date"
@@ -164,10 +200,26 @@ export function OrderForm({
           />
         </Field>
         <Field label="Type">
-          <TextInput
+          {/*
+            A dropdown over the managed list now, not free text. The blank
+            option matters: an imported order can carry a type the owner
+            hasn't added yet, and it has to stay selectable so saving the
+            order doesn't silently retype it.
+          */}
+          <SelectInput
             value={draft.customerType}
             onChange={(e) => setDraft({ ...draft, customerType: e.target.value })}
-          />
+          >
+            <option value="">—</option>
+            {orderTypes.map((type) => (
+              <option key={type.id} value={type.name}>
+                {type.name}
+              </option>
+            ))}
+            {draft.customerType && !orderTypes.some((t) => t.name === draft.customerType) && (
+              <option value={draft.customerType}>{draft.customerType} (not on the list)</option>
+            )}
+          </SelectInput>
         </Field>
         <Field label="Location">
           <TextInput
@@ -175,28 +227,21 @@ export function OrderForm({
             onChange={(e) => setDraft({ ...draft, location: e.target.value })}
           />
         </Field>
+        {/* Counts, so they get the same stepper the package quantity has. */}
         <Field label="Guests">
-          <TextInput
-            type="number"
-            value={draft.guests ?? ""}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                guests: e.target.value ? Number(e.target.value) : null,
-              })
-            }
+          <NumberStepper
+            label="guests"
+            value={draft.guests}
+            allowEmpty
+            onChange={(guests) => setDraft({ ...draft, guests })}
           />
         </Field>
         <Field label="Mirrors">
-          <TextInput
-            type="number"
-            value={draft.mirrors ?? ""}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                mirrors: e.target.value ? Number(e.target.value) : null,
-              })
-            }
+          <NumberStepper
+            label="mirrors"
+            value={draft.mirrors}
+            allowEmpty
+            onChange={(mirrors) => setDraft({ ...draft, mirrors })}
           />
         </Field>
         <Field label="Delivery ₪">
@@ -265,10 +310,11 @@ export function OrderForm({
       </div>
 
       {/*
-        Content is set apart from the text fields above on purpose: it is
-        picked and dragged, not typed.
+        Kept mounted while hidden, not unmounted: switching tabs would
+        otherwise throw away which package line was open and any
+        half-typed number in it.
       */}
-      <div className="mt-6">
+      <div className={tab === "content" ? "" : "hidden"}>
         <PackageLineEditor
           lines={lines}
           onChange={setLines}

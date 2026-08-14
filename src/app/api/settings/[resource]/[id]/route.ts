@@ -7,6 +7,8 @@ import {
   updateExpenseCategory,
   updateContentPreset,
   archiveContentPreset,
+  updateOrderType,
+  archiveOrderType,
 } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -49,6 +51,14 @@ export async function PATCH(
       case "expense-categories": {
         const category = await updateExpenseCategory(numericId, body.name);
         return NextResponse.json(category);
+      }
+      case "order-types": {
+        if (body.archive) {
+          await archiveOrderType(numericId);
+          return NextResponse.json({ ok: true });
+        }
+        const type = await updateOrderType(numericId, { name: body.name, color: body.color });
+        return NextResponse.json(type);
       }
       case "presets": {
         if (body.archive) {

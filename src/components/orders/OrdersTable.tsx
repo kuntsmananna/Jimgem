@@ -5,7 +5,7 @@ import type { Flavor, PackageType } from "@/lib/settings";
 import { ContentChips } from "./ContentChips";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
-import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
+import { PaymentStatusSelect, ProductionStatusPill } from "./StatusSelects";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
@@ -78,7 +78,8 @@ export function OrdersTable({
             <th className="bg-card px-3 py-2">Amount</th>
             <th className="bg-card px-3 py-2">Deposit</th>
             <th className="bg-card px-3 py-2">Payment</th>
-            <th className="bg-card px-3 py-2">Production</th>
+            {/* Narrow now: the pill advances on click instead of opening a dropdown. */}
+            <th className="bg-card px-3 py-2">Stage</th>
           </tr>
         </thead>
         {/*
@@ -219,7 +220,7 @@ export function OrdersTable({
                   <PaymentStatusSelect order={order} onChanged={onChanged} />
                 </td>
                 <td className="px-3 py-2">
-                  <ProductionStatusSelect order={order} onChanged={onChanged} />
+                  <ProductionStatusPill order={order} onChanged={onChanged} />
                 </td>
               </tr>
             );

@@ -10,10 +10,14 @@ import { EventTypeChip } from "./EventTypeChip";
 import { OrderForm } from "./OrderForm";
 
 /**
- * Right-side sheet holding the full, editable order — opened by clicking
- * a row on the Orders table or the Dashboard's Latest orders list. Wraps
- * the same OrderForm the Add-order modal uses, so editing behaves
- * identically wherever you start from.
+ * Right-side sheet holding the full, editable order.
+ *
+ * **Currently unused.** Adding and editing both go through
+ * OrderFormModal now, so there is one way to edit an order rather than
+ * two that had to be kept in step. Kept rather than deleted because the
+ * sheet layout may earn its place back for a side-by-side view — it is
+ * wired for the same props and the same unsaved-changes guard, so
+ * routing to it again is a one-line change in OrdersClient.
  */
 export function OrderDetailsPane({
   order,

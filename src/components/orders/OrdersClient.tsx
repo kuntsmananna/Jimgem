@@ -8,14 +8,12 @@ import {
   PRODUCTION_STATUS_LABEL,
   type Order,
   type PaymentStatus,
-  type ProductionStatus,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
-import { OrderDetailsPane } from "./OrderDetailsPane";
 import { FilterDropdown, type FilterOption } from "./FilterDropdown";
 
 type View = "table" | "kanban" | "calendar";
@@ -52,7 +50,9 @@ export function OrdersClient({
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>("table");
   const [paymentFilter, setPaymentFilter] = useState<Set<PaymentStatus>>(new Set());
-  const [productionFilter, setProductionFilter] = useState<Set<ProductionStatus>>(new Set());
+  // Off by default: 60 of 73 orders are delivered, so the page is about
+  // what still needs doing unless you ask for the archive.
+  const [showDelivered, setShowDelivered] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   // The Dashboard's Latest orders list links here with ?order=<key> to
@@ -62,13 +62,22 @@ export function OrdersClient({
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchNote, setBatchNote] = useState<string | null>(null);
 
-  const filtered = useMemo(
-    () =>
-      orders
-        .filter((o) => paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus))
-        .filter((o) => productionFilter.size === 0 || productionFilter.has(o.productionStatus)),
-    [orders, paymentFilter, productionFilter],
+  const byPayment = useMemo(
+    () => orders.filter((o) => paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus)),
+    [orders, paymentFilter],
   );
+
+  /**
+   * Table and calendar hide delivered orders unless asked. Kanban does
+   * not use this: it *is* the production board, and emptying its
+   * Delivered column would leave the board unable to show finished work.
+   */
+  const filtered = useMemo(
+    () => (showDelivered ? byPayment : byPayment.filter((o) => o.productionStatus !== "delivered")),
+    [byPayment, showDelivered],
+  );
+
+  const deliveredCount = byPayment.length - byPayment.filter((o) => o.productionStatus !== "delivered").length;
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
 
@@ -77,14 +86,6 @@ export function OrdersClient({
       optionsWithCounts(
         PAYMENT_STATUS_LABEL,
         orders.map((o) => o.paymentStatus),
-      ),
-    [orders],
-  );
-  const productionOptions = useMemo(
-    () =>
-      optionsWithCounts(
-        PRODUCTION_STATUS_LABEL,
-        orders.map((o) => o.productionStatus),
       ),
     [orders],
   );
@@ -158,12 +159,34 @@ export function OrdersClient({
             selected={paymentFilter}
             onChange={setPaymentFilter}
           />
-          <FilterDropdown
-            label="Production"
-            options={productionOptions}
-            selected={productionFilter}
-            onChange={setProductionFilter}
-          />
+          <button
+            type="button"
+            aria-pressed={showDelivered}
+            onClick={() => setShowDelivered((v) => !v)}
+            title="Delivered orders are hidden by default"
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+              showDelivered
+                ? "border-ink bg-black text-cream"
+                : "border-line bg-card text-ink-soft hover:text-ink"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
+                showDelivered ? "bg-cream/30" : "bg-black/10"
+              }`}
+            >
+              <span
+                className={`h-3 w-3 rounded-full bg-current transition-transform ${
+                  showDelivered ? "translate-x-3" : ""
+                }`}
+              />
+            </span>
+            Show delivered
+            {deliveredCount > 0 && (
+              <span className={showDelivered ? "text-cream/70" : "text-ink-soft/70"}>{deliveredCount}</span>
+            )}
+          </button>
         </div>
 
         <div className="flex items-center gap-1 rounded-full bg-card p-1">
@@ -214,8 +237,13 @@ export function OrdersClient({
         />
       )}
 
+      {/*
+        One popup for both adding and editing — the side pane it replaced
+        is still in the tree (OrderDetailsPane) but nothing routes to it,
+        so editing behaves identically wherever you start from.
+      */}
       {openOrder && (
-        <OrderDetailsPane
+        <OrderFormModal
           order={openOrder}
           flavors={flavors}
           packageTypes={packageTypes}
@@ -243,7 +271,7 @@ export function OrdersClient({
       )}
       {view === "kanban" && (
         <OrdersKanban
-          orders={filtered}
+          orders={byPayment}
           flavors={flavors}
           packageTypes={packageTypes}
           onChanged={refresh}
@@ -266,10 +294,10 @@ export function OrdersClient({
       */}
       {selectedKeys.size > 0 && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-6">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2 shadow-2xl">
-            <span className="text-sm font-semibold text-ink">{selectedKeys.size} selected</span>
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-black px-4 py-2 text-cream shadow-2xl">
+            <span className="text-sm font-semibold">{selectedKeys.size} selected</span>
 
-            <span className="mx-1 h-5 w-px bg-line" />
+            <span className="mx-1 h-5 w-px bg-cream/25" />
             <BatchSelect
               label="Payment"
               disabled={batchBusy}
@@ -283,11 +311,11 @@ export function OrdersClient({
               onPick={(status) => runBatch({ action: "productionStatus", status }, "updated")}
             />
 
-            <span className="mx-1 h-5 w-px bg-line" />
+            <span className="mx-1 h-5 w-px bg-cream/25" />
             <button
               disabled={batchBusy}
               onClick={() => runBatch({ action: "duplicate" }, "duplicated")}
-              className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink hover:bg-black/5 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-full border border-cream/30 px-3 py-1 text-xs font-semibold text-cream transition hover:bg-cream hover:text-ink disabled:opacity-50"
             >
               <Copy size={13} />
               Duplicate
@@ -295,7 +323,7 @@ export function OrdersClient({
             <button
               disabled={batchBusy}
               onClick={batchDelete}
-              className="flex items-center gap-1.5 rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-full border border-red-400/50 px-3 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
             >
               <Trash2 size={13} />
               Delete
@@ -304,7 +332,7 @@ export function OrdersClient({
             <button
               onClick={() => setSelectedKeys(new Set())}
               aria-label="Clear selection"
-              className="ml-1 rounded-full p-1 text-ink-soft hover:bg-black/5 hover:text-ink"
+              className="ml-1 rounded-full p-1 text-cream/70 transition hover:bg-cream/20 hover:text-cream"
             >
               <X size={15} />
             </button>
@@ -331,7 +359,7 @@ function BatchSelect<T extends string>({
       disabled={disabled}
       value=""
       onChange={(e) => e.target.value && onPick(e.target.value as T)}
-      className="rounded-full border border-line bg-cream px-3 py-1 text-xs font-semibold text-ink outline-none disabled:opacity-50"
+      className="rounded-full border border-cream/30 bg-transparent px-3 py-1 text-xs font-semibold text-cream outline-none disabled:opacity-50 [&>option]:text-ink"
     >
       <option value="">{label}…</option>
       {(Object.keys(options) as T[]).map((value) => (

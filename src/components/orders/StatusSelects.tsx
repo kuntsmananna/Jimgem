@@ -58,13 +58,13 @@ export function PaymentStatusSelect({
   );
 }
 
-export function ProductionStatusSelect({
-  order,
-  onChanged,
-}: {
-  order: Order;
-  onChanged: () => void;
-}) {
+/**
+ * The full picker, kept for the Kanban card: there you are moving a card
+ * to a named column, sometimes backwards, so being able to jump straight
+ * to any status matters more than saving a click. The table uses the
+ * cycling pill below instead.
+ */
+export function ProductionStatusSelect({ order, onChanged }: { order: Order; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
 
   async function handleChange(status: ProductionStatus) {
@@ -91,5 +91,53 @@ export function ProductionStatusSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+/** Queue → Preparing → Delivered → Queue. Production only ever moves forward in practice. */
+const PRODUCTION_ORDER: ProductionStatus[] = ["queue", "preparing", "delivered"];
+
+const PRODUCTION_DOT: Record<ProductionStatus, string> = {
+  queue: "bg-ink-soft/40",
+  preparing: "bg-tile-peach",
+  delivered: "bg-accent",
+};
+
+/**
+ * A compact click-to-advance pill, replacing the full-width dropdown that
+ * used to have its own column. Marking an order delivered is one click on
+ * the row you're already looking at, and the column stops eating the
+ * width the content chips needed.
+ *
+ * It cycles rather than opening a menu: with three states in a fixed
+ * order, a menu is two interactions to do what one click can.
+ */
+export function ProductionStatusPill({ order, onChanged }: { order: Order; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const current = order.productionStatus;
+  const next = PRODUCTION_ORDER[(PRODUCTION_ORDER.indexOf(current) + 1) % PRODUCTION_ORDER.length];
+
+  async function advance() {
+    setBusy(true);
+    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "patch", productionStatus: next }),
+    });
+    setBusy(false);
+    onChanged();
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={advance}
+      title={`${PRODUCTION_STATUS_LABEL[current]} — click to mark ${PRODUCTION_STATUS_LABEL[next]}`}
+      className="chip-neutral flex w-fit items-center gap-1.5 rounded-full bg-black/[0.06] px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-ink transition disabled:opacity-50"
+    >
+      <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${PRODUCTION_DOT[current]}`} />
+      {PRODUCTION_STATUS_LABEL[current]}
+    </button>
   );
 }

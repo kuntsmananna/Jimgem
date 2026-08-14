@@ -26,3 +26,12 @@ export function flavorGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase" | 
 export function flavorBarGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase" | "colorShadow">): string {
   return `linear-gradient(180deg, ${flavor.colorGlow} 0%, ${flavor.colorBase} 55%, ${flavor.colorShadow} 100%)`;
 }
+
+/**
+ * A single jelly cube in the tray preview. Lit from the top-left corner
+ * rather than outside it: at a dozen pixels square the radial version's
+ * off-canvas light source never lands, leaving every cube flat.
+ */
+export function flavorCubeGradient(flavor: Pick<Flavor, "colorGlow" | "colorBase" | "colorShadow">): string {
+  return `linear-gradient(145deg, ${flavor.colorGlow} 0%, ${flavor.colorBase} 55%, ${flavor.colorShadow} 100%)`;
+}

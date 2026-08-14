@@ -58,12 +58,15 @@ something here isn't obvious.
   subfolder per page for its Client Components. Settings is split into
   tabs (`SettingsTabs`) rather than one stacked screen — the flavor grid
   alone filled it and pushed the five smaller lists below the fold.
-- `src/components/FlavorSplitBar.tsx` sits at the top level rather than
-  under `orders/` because two pages share it: the order form edits a
-  package line's units with it, and Settings' `PresetsPanel` edits a
-  recipe's percentages with it against a total of 100. They are the same
-  control over a different denominator — worth one implementation rather
-  than two drag handlers that drift.
+- `src/components/FlavorSplitBar.tsx` is the draggable split bar, now used
+  **only** by Settings' `PresetsPanel`, where a recipe is percentages
+  against a total of 100 and there is no tray to draw. The order form
+  replaced it with `orders/TrayPreview.tsx` — a grid of jelly cubes
+  showing the actual packed tray, which the bar could never do.
+- `src/components/OrderTypesContext.tsx` provides order-type colours (and
+  the list itself) from the app layout. Context rather than props because
+  `EventTypeChip` appears in five unrelated trees; threading a colour
+  lookup to all of them would touch a dozen components.
 - `src/proxy.ts` — session-cookie auth gate, redirects to `/login`
 - Import alias `@/*` → `src/*`
 
@@ -107,6 +110,11 @@ iteration (not guessed) — define these as `@theme` tokens in
   with the class. The CSS is written as overrides of an outlined base, so
   a field that can't be classified stays visible rather than invisible.
   `/login` deliberately opts out by not using `.input` at all.
+- **One overlay for orders.** Adding and editing both use
+  `OrderFormModal`; `OrderDetailsPane` is kept but unused (see its
+  header). The form is split into Details and Content tabs, and both are
+  kept mounted while hidden so switching tabs doesn't discard a
+  half-typed line.
 - Overlays (`Modal`, `OrderDetailsPane`) share `useOverlayDismiss` for
   Escape-to-close and a reference-counted body scroll lock. They nest —
   the details pane hosts a form that can open a modal — so the count is
@@ -236,6 +244,13 @@ iteration (not guessed) — define these as `@theme` tokens in
   an input mode in the form (see `PackageLineEditor`), resolved to units
   at entry time so a saved order's meaning doesn't shift when a package
   type's `units_per_package` is later edited.
+- `order_types` is the owner's list of event types with a colour each,
+  edited in Settings → Lists. Orders reference it by **name**
+  (`orders.customer_type` stays free text) so a Sheet import can never be
+  rejected by a value not on the list — an unrecognised type still shows,
+  just uncoloured. Renaming a type renames it on every order that used
+  it, or those orders would silently lose their type.
+  `scripts/migrate-005-order-types.mjs` seeded the 7 types already in use.
 - `content_presets` + `content_preset_flavors` are the owner's saved
   "package + recipe" combinations ("Mix small"), managed in Settings and
   offered as one-click chips in the order form. A recipe is stored as
@@ -293,6 +308,11 @@ One-off data migrations live beside them as numbered scripts
 creates the tables they need. Each is idempotent — re-running one is a
 no-op, not a duplicate — so a script stays runnable against a database
 that has already had it applied.
+
+The Orders table hides `delivered` orders unless "Show delivered" is on
+(60 of 73 are delivered, so it is otherwise all archive). Kanban ignores
+that toggle — it *is* the production board, and emptying its Delivered
+column would break it.
 
 `migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
 a SQL comment truncates the statement after it** — keep comments in that

@@ -2,7 +2,6 @@ import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
 import { getOrders, orderMonth, orderDay, orderUnits, orderFlavorUnits } from "@/lib/orders";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
-import { APP_VERSION_LABEL } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +24,11 @@ export default async function DashboardPage() {
     }));
   });
 
+  // Delivered orders are finished business — the Dashboard list is about
+  // what still needs doing, and with 60 of 73 delivered they otherwise
+  // fill it entirely. The financial totals above still count them.
   const orderPreviews: OrderPreview[] = orders
+    .filter((order) => order.productionStatus !== "delivered")
     .map((order) => {
       const month = orderMonth(order);
       const day = orderDay(order);
@@ -45,19 +48,17 @@ export default async function DashboardPage() {
     .filter((o): o is OrderPreview & { month: number } => o.month !== null)
     .sort((a, b) => b.month - a.month || (b.day ?? 0) - (a.day ?? 0));
 
+  // No version footer here any more — it sits in the nav, on every page.
   return (
-    <>
-      <DashboardClient
-        financials={financials}
-        flavors={flavors.map((f) => ({
-          id: f.id,
-          name: f.name,
-          colorBase: f.colorBase,
-        }))}
-        flavorLines={flavorLines}
-        orders={orderPreviews}
-      />
-      <p className="mt-6 text-right text-xs text-ink-soft/60">{APP_VERSION_LABEL}</p>
-    </>
+    <DashboardClient
+      financials={financials}
+      flavors={flavors.map((f) => ({
+        id: f.id,
+        name: f.name,
+        colorBase: f.colorBase,
+      }))}
+      flavorLines={flavorLines}
+      orders={orderPreviews}
+    />
   );
 }
