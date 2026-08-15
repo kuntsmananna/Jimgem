@@ -169,12 +169,22 @@ iteration (not guessed) — define these as `@theme` tokens in
     A line with no flavours yet is called out rather than left blank.
     **No `TrayPreview` here**: the picture belongs in the order form, where
     you are deciding the mix — in a tooltip it crowded out the numbers.
-- The Orders table passes `showFlavors={false}` to `ContentChips`, so the
-  Content column carries the quantity alone (`5× Small tray`) and the
-  flavour split lives in the hover card. A four-flavour line used to spend
-  the whole column on chips that then truncated, pushing the quantity —
-  the thing being scanned for — out of sight. Kanban and calendar keep the
-  flavour chips; they have the width and no hover-side table to lean on.
+- The Orders table's old Content column is now **Units**: one number
+  (`UnitsCell`), dotted-underlined to say the packages and flavours are a
+  hover away. `ContentChips` truncated there on anything with more than a
+  line or two, and the total — the thing the column is scanned for — was
+  what got pushed out. Kanban and calendar still use `ContentChips`; they
+  have the width and no hover-side table to lean on.
+- The Orders table's **Type** cell edits as a dropdown over the owner's
+  order types (`EditableCell`'s `options`), not free text: a typed variant
+  would render uncoloured and quietly become a type of its own. A value
+  already on an order but missing from the list stays selectable, so
+  opening the cell and closing it can't retype the order.
+- The calendar **opens on today**, with today's cell tinted, ringed and
+  its date in a filled accent circle. It used to open on the newest
+  order's month, which could be one nobody had asked about; a calendar is
+  read as "where am I now", and a single accent hairline in a grid of
+  hairlines was too easy to miss.
 - Flavor colors are per-flavor 3-stop same-hue `radial-gradient`s
   (`color_glow` → `color_base` → `color_shadow`, light source at
   `circle at -15% -15%`) meant to read as glowing translucent jelly —

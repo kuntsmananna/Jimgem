@@ -1,8 +1,9 @@
 "use client";
 
-import { formatOrderDate, type Order, type OrderInput } from "@/lib/orderTypes";
+import { formatOrderDate, orderUnits, type Order, type OrderInput } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
-import { ContentChips } from "./ContentChips";
+import { UnitsIcon } from "@/lib/icons";
+import { useOrderTypes } from "@/components/OrderTypesContext";
 import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
@@ -36,6 +37,9 @@ export function OrdersTable({
   onChanged: () => void;
   onOpen: (key: string) => void;
 }) {
+  // From the app-layout provider rather than a prop — see OrderTypesContext.
+  const orderTypes = useOrderTypes();
+  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {
@@ -73,7 +77,7 @@ export function OrdersTable({
             <th className="bg-card px-3 py-2">Type</th>
             <th className="bg-card px-3 py-2">Location</th>
             <th className="bg-card px-3 py-2">Guests</th>
-            <th className="bg-card px-3 py-2">Content</th>
+            <th className="bg-card px-3 py-2">Units</th>
             <th className="bg-card px-3 py-2">Mirrors</th>
             <th className="bg-card px-3 py-2">Delivery</th>
             <th className="bg-card px-3 py-2">Amount</th>
@@ -152,6 +156,10 @@ export function OrdersTable({
                       order.customerType.trim() ? <EventTypeChip value={order.customerType} /> : "—"
                     }
                     editValue={order.customerType}
+                    // The owner's list from Settings, not free text: a typed
+                    // variant would render uncoloured and silently become a
+                    // type of its own.
+                    options={orderTypes.map((type) => ({ value: type.name, label: type.name }))}
                     onSave={(raw) => saveField(order, { customerType: raw })}
                   />
                 </td>
@@ -175,17 +183,17 @@ export function OrdersTable({
                   />
                 </td>
                 <td className="px-3 py-2">
+                  {/* The count is the scannable number; the packages and
+                      their flavours are a hover away. The dotted underline
+                      is what says so — a row of bare numerals gives no
+                      reason to point at one. */}
                   <ContentHoverCard
                     lines={order.packageLines}
                     flavors={flavors}
                     packageTypes={packageTypes}
+                    className="w-fit"
                   >
-                    <ContentChips
-                      lines={order.packageLines}
-                      flavors={flavors}
-                      packageTypes={packageTypes}
-                      showFlavors={false}
-                    />
+                    <UnitsCell units={orderUnits(order.packageLines, unitsPerPackage)} />
                   </ContentHoverCard>
                 </td>
                 <td className="px-3 py-2">
@@ -247,5 +255,28 @@ export function OrdersTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * The order's size as one number, standing in for the package-and-flavour
+ * chips that used to fill this column. Those chips truncated on anything
+ * with more than a line or two, and the total — the thing the column is
+ * scanned for — was the part that got pushed out.
+ *
+ * The dotted underline is the affordance: `ContentHoverCard` wraps this
+ * and spells the packages out, but a bare numeral gives no reason to point
+ * at it. Nothing is underlined when there is nothing to elaborate on.
+ */
+function UnitsCell({ units }: { units: number }) {
+  if (units <= 0) return <span className="text-ink-soft">—</span>;
+  return (
+    <span
+      title="Hover for packages and flavours"
+      className="flex w-fit cursor-help items-center gap-1.5 border-b border-dotted border-ink-soft/60 pb-px font-semibold tabular-nums"
+    >
+      <UnitsIcon size={12} className="shrink-0 text-ink-soft" />
+      {nf.format(units)}
+    </span>
   );
 }

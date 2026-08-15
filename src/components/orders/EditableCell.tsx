@@ -1,27 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { TextInput } from "@/components/Field";
+import { TextInput, SelectInput } from "@/components/Field";
 
 /**
- * Click-to-edit table cell. Both the display button and the edit input
+ * Click-to-edit table cell. Both the display button and the edit control
  * are interactive elements, which is how the Orders table's row-click
  * guard knows to leave them alone (see OrdersTable's INTERACTIVE).
+ *
+ * Pass `options` for a field whose values come from a list the owner
+ * manages, and the cell edits as a dropdown instead of free text.
  */
 export function EditableCell({
   displayValue,
   editValue,
   type = "text",
+  options,
   onSave,
 }: {
   displayValue: React.ReactNode;
   editValue: string;
   type?: "text" | "number" | "date";
+  options?: { value: string; label: string }[];
   onSave: (raw: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(editValue);
   const [busy, setBusy] = useState(false);
+
+  async function save(raw: string) {
+    setBusy(true);
+    await onSave(raw);
+    setBusy(false);
+    setEditing(false);
+  }
 
   if (!editing) {
     return (
@@ -37,11 +49,39 @@ export function EditableCell({
     );
   }
 
-  async function save() {
-    setBusy(true);
-    await onSave(value);
-    setBusy(false);
-    setEditing(false);
+  if (options) {
+    return (
+      <SelectInput
+        autoFocus
+        value={value}
+        disabled={busy}
+        className="w-full"
+        // Saved on pick rather than on blur: choosing from a list is the
+        // whole edit, and waiting for a blur left the cell looking changed
+        // while nothing had been written yet.
+        onChange={(e) => {
+          setValue(e.target.value);
+          void save(e.target.value);
+        }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setEditing(false);
+        }}
+      >
+        <option value="">—</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+        {/* An imported order can carry a value the owner hasn't added to
+            the list. It stays selectable so opening the cell and closing it
+            again can't silently retype the order. */}
+        {editValue && !options.some((option) => option.value === editValue) && (
+          <option value={editValue}>{editValue} (not on the list)</option>
+        )}
+      </SelectInput>
+    );
   }
 
   return (
@@ -52,7 +92,7 @@ export function EditableCell({
       disabled={busy}
       className="w-full"
       onChange={(e) => setValue(e.target.value)}
-      onBlur={save}
+      onBlur={() => save(value)}
       onKeyDown={(e) => {
         if (e.key === "Enter") e.currentTarget.blur();
         if (e.key === "Escape") setEditing(false);

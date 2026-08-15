@@ -109,22 +109,16 @@ export function OrdersCalendar({
     [orders],
   );
 
-  /**
-   * Opens on the most recent order rather than on today: the Sheet's
-   * orders run months ahead, and landing on an empty current week reads
-   * as "no orders" rather than "look elsewhere".
-   */
-  const initialAnchor = useMemo(() => {
-    const mostRecent = dated.reduce<Date | null>(
-      (latest, o) => (latest === null || o.date > latest ? o.date : latest),
-      null,
-    );
-    return mostRecent ?? new Date();
-  }, [dated]);
-
   const [mode, setMode] = useState<CalendarMode>("month");
-  // One anchor for both modes, so switching keeps you where you were.
-  const [anchor, setAnchor] = useState(initialAnchor);
+  /**
+   * Opens on today. A calendar is read as "where am I now", and the month
+   * of the newest order — which it used to open on — could be one nobody
+   * had asked about. Today's cell is marked hard enough to find at a
+   * glance, and Prev/Next reach the rest.
+   *
+   * One anchor for both modes, so switching keeps you where you were.
+   */
+  const [anchor, setAnchor] = useState(() => new Date());
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const today = new Date();
 
@@ -208,12 +202,24 @@ export function OrdersCalendar({
                   return (
                     <div
                       key={key}
+                      // Today gets a tinted ground and a ring on top of the
+                      // border: a single accent hairline sitting in a grid of
+                      // hairlines was easy to miss, and finding today is the
+                      // first thing the view is used for.
                       className={`min-h-[104px] rounded-xl border p-1.5 ${
-                        isToday ? "border-accent" : "border-line"
+                        isToday
+                          ? "border-accent bg-accent/[0.07] ring-1 ring-accent"
+                          : "border-line"
                       } ${outside ? "opacity-40" : ""}`}
                     >
-                      <p className={`px-0.5 text-xs font-bold ${isToday ? "text-accent" : "text-ink-soft"}`}>
-                        {day.getDate()}
+                      <p className="px-0.5 text-xs font-bold text-ink-soft">
+                        {isToday ? (
+                          <span className="-mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-cream">
+                            {day.getDate()}
+                          </span>
+                        ) : (
+                          day.getDate()
+                        )}
                       </p>
                       <div className="mt-1 flex flex-col gap-1">
                         {visible.map(({ order }) => (
@@ -252,12 +258,18 @@ export function OrdersCalendar({
               <div
                 key={i}
                 className={`min-h-[420px] rounded-xl border p-2 ${
-                  isToday ? "border-accent" : "border-line"
+                  isToday ? "border-accent bg-accent/[0.07] ring-1 ring-accent" : "border-line"
                 }`}
               >
-                <p className="text-xs font-bold text-ink-soft">
+                <p className="flex items-center gap-1.5 text-xs font-bold text-ink-soft">
                   {WEEKDAY_LABELS[i]}{" "}
-                  <span className={isToday ? "text-accent" : ""}>{day.getDate()}</span>
+                  {isToday ? (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-cream">
+                      {day.getDate()}
+                    </span>
+                  ) : (
+                    <span>{day.getDate()}</span>
+                  )}
                 </p>
                 <div className="mt-1.5 flex flex-col gap-1.5">
                   {dayOrders.map(({ order }) => {
