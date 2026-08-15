@@ -239,13 +239,19 @@ export function OrdersTable({
                   />
                 </td>
                 <td className="px-3 py-2">
+                  {/* Whether there is delivery, not what it costs — the
+                      price lives with the other extras on the order
+                      sheet's money side. */}
                   <EditableCell
-                    type="number"
-                    displayValue={order.deliveryCost !== null ? currency(order.deliveryCost) : "—"}
-                    editValue={order.deliveryCost?.toString() ?? ""}
+                    displayValue={order.deliveryCost !== null ? "Yes" : "No"}
+                    editValue={order.deliveryCost !== null ? "yes" : "no"}
+                    options={[
+                      { value: "no", label: "No" },
+                      { value: "yes", label: "Yes" },
+                    ]}
                     onSave={(raw) =>
                       saveField(order, {
-                        deliveryCost: raw === "" ? null : Number(raw),
+                        deliveryCost: raw === "yes" ? (order.deliveryCost ?? 0) : null,
                       })
                     }
                   />

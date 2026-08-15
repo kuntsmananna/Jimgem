@@ -175,6 +175,16 @@ export function OrderDetailsPanel({
           <SheetRow label="Kosher">
             <YesNo value={draft.kosher} onChange={(kosher) => set({ kosher })} label="Kosher" />
           </SheetRow>
+          <SheetRow label="Delivery">
+            {/* Turning it on opens the cost row at zero rather than
+                guessing a price — an order can be booked for delivery
+                before anyone has said what it costs. */}
+            <YesNo
+              value={draft.deliveryCost !== null}
+              onChange={(on) => set({ deliveryCost: on ? (draft.deliveryCost ?? 0) : null })}
+              label="Delivery"
+            />
+          </SheetRow>
           <SheetRow label="Units ordered">
             {/* Packed on the Content tab, so this reads it rather than
                 editing it — and offers the trip there instead. */}

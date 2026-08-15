@@ -300,12 +300,13 @@ export interface OrderInput {
  */
 export const ORDER_EXTRAS = [
   {
-    // Always charged for, so unlike the others there is no count gating
-    // it — the cost field *is* whether the order has delivery.
+    // Gated like the rest, on the cost being set at all rather than on a
+    // separate flag: null is "no delivery", and 0 is "we deliver, no
+    // charge" — which is a real case and a different answer.
     id: "delivery",
     label: "Delivery",
     cost: "deliveryCost",
-    applies: () => true,
+    applies: (order: Pick<OrderInput, "deliveryCost">) => order.deliveryCost !== null,
   },
   {
     id: "mirrors",

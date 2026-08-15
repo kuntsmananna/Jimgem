@@ -293,10 +293,12 @@ iteration (not guessed) — define these as `@theme` tokens in
   own price column, and `orderTotal` in `orderTypes.ts` adds the ones that
   apply. Balance due is `orderTotal − deposit`, derived and never stored.
   `ORDER_EXTRAS` declares the four in one place, each with the field that
-  gates it (`mirrors > 0`, `waitresses > 0`, `kosher`), so a cost box only
-  appears once the order actually has that thing — delivery is the
-  exception and always applies, since its cost *is* whether there is
-  delivery. **This changed meaning for 3 imported orders** that carry a
+  gates it (`mirrors > 0`, `waitresses > 0`, `kosher`, and for delivery
+  `deliveryCost !== null`), so a cost box only appears once the order
+  actually has that thing. Delivery is therefore **yes/no** in the table
+  and on the order sheet, with the price beside the other extras: `null`
+  is no delivery and `0` is "we deliver, no charge", which is a real case
+  and a different answer. **This changed meaning for 3 imported orders** that carry a
   `delivery_cost`: their total is now that much higher. If the Sheet's
   amount already included delivery, clear the delivery field on those.
   `scripts/migrate-007-order-extras.mjs` adds the columns and lists them.
