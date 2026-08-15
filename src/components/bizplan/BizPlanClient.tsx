@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
+import { SERIES_COLORS } from "@/lib/chartPalette";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
@@ -44,9 +45,9 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
             <LineChart
               xLabels={financials.map((m) => m.monthLabel)}
               series={[
-                { label: "Revenue", color: "#4f6f52", values: financials.map((m) => m.revenue) },
-                { label: "Expenses", color: "#C97B4A", values: financials.map((m) => m.expenses) },
-                { label: "Profit", color: "#201d19", values: financials.map((m) => m.profit) },
+                { label: "Revenue", color: SERIES_COLORS.sage, values: financials.map((m) => m.revenue) },
+                { label: "Expenses", color: SERIES_COLORS.jasmine, values: financials.map((m) => m.expenses) },
+                { label: "Profit", color: SERIES_COLORS.berry, values: financials.map((m) => m.profit) },
               ]}
             />
           </div>
@@ -60,8 +61,8 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
               valueFormat={(v) => nf.format(v)}
               xLabels={financials.map((m) => m.monthLabel)}
               series={[
-                { label: "Units sold", color: "#B8A6D9", values: financials.map((m) => m.unitsSold) },
-                { label: "Orders", color: "#4f6f52", values: financials.map((m) => m.orderCount) },
+                { label: "Units sold", color: SERIES_COLORS.royale, values: financials.map((m) => m.unitsSold) },
+                { label: "Orders", color: SERIES_COLORS.sage, values: financials.map((m) => m.orderCount) },
               ]}
             />
           </div>

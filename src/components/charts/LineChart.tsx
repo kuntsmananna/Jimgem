@@ -1,10 +1,12 @@
 "use client";
 
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
+import type { SeriesColor } from "@/lib/chartPalette";
+import { flavorCubeGradient } from "@/lib/flavorStyle";
 
 export interface LineSeries {
   label: string;
-  color: string;
+  color: SeriesColor;
   values: number[];
 }
 
@@ -35,7 +37,30 @@ function smoothPath(points: Point[]): string {
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 /** Stroke weight in px. Non-scaling, so it stays constant however wide the chart renders. */
-const LINE_WIDTH = 2.75;
+const LINE_WIDTH = 4;
+
+/**
+ * Peak opacity of the area beneath a line, by position in the series list.
+ *
+ * Every series gets a fill — that is the look — but only the first at full
+ * strength. Two fills at equal weight blend where they cross into a third
+ * colour that reads as a series nobody plotted; keeping the later ones
+ * faint makes the overlap read as shade instead.
+ */
+const AREA_OPACITY = [0.3, 0.14, 0.1];
+
+/**
+ * How far down the fill has faded to a third of its peak.
+ *
+ * Ramping straight to zero at the baseline leaves real colour across the
+ * whole lower half, and three of those stacked came out a flat grey. Dying
+ * back this quickly keeps each fill a glow under its own line, which is
+ * where it reads as belonging to that line at all.
+ */
+const AREA_FALLOFF = "55%";
+
+/** Peak fill opacity for the nth series, holding the last value for any beyond the list. */
+const areaOpacity = (i: number) => AREA_OPACITY[i] ?? AREA_OPACITY[AREA_OPACITY.length - 1];
 
 /**
  * Horizontal inset for the tooltip card, as a fraction of chart width.
@@ -79,10 +104,11 @@ export function LineChart({
       y: padTop + chartHeight - (v / maxFor(s)) * chartHeight,
     }));
 
+  /** The line closed down to the baseline, so the gradient beneath it has something to fill. */
+  const areaPath = (points: Point[]) =>
+    `${smoothPath(points)} L ${points[points.length - 1].x} ${padTop + chartHeight} L ${points[0].x} ${padTop + chartHeight} Z`;
+
   const activeIndex = hoverIndex ?? highlightIndex;
-  // Only the first series gets an area fill. Two overlapping gradients
-  // would blend into a third colour where they cross, which reads as a
-  // series that isn't there.
   const primary = series[0];
   const primaryPoints = primary ? pointsFor(primary) : [];
   const activePoint = activeIndex !== null ? primaryPoints[activeIndex] : undefined;
@@ -105,28 +131,55 @@ export function LineChart({
           onMouseLeave={() => setHoverIndex(null)}
         >
           <defs>
-            {primary && (
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={primary.color} stopOpacity={0.32} />
-                <stop offset="100%" stopColor={primary.color} stopOpacity={0.02} />
-              </linearGradient>
-            )}
+            {series.map((s, i) => (
+              <Fragment key={s.label}>
+                {/*
+                  The stroke ramp is laid across the whole plot in user
+                  space, not along each path's own bounding box: a flat
+                  series would otherwise compress the full glow→shadow
+                  range into a few pixels of height and come out banded,
+                  and two series would be lit from different directions.
+                  Top-left to bottom-right is the flavour gradient's own
+                  light source (see flavorStyle.ts), so a line and a
+                  jelly cube are lit the same way.
+                */}
+                <linearGradient
+                  id={`${gradientId}-line-${i}`}
+                  gradientUnits="userSpaceOnUse"
+                  x1={0}
+                  y1={padTop}
+                  x2={width}
+                  y2={padTop + chartHeight}
+                >
+                  <stop offset="0%" stopColor={s.color.colorGlow} />
+                  <stop offset="55%" stopColor={s.color.colorBase} />
+                  <stop offset="100%" stopColor={s.color.colorShadow} />
+                </linearGradient>
+                <linearGradient id={`${gradientId}-area-${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={s.color.colorBase} stopOpacity={areaOpacity(i)} />
+                  <stop offset={AREA_FALLOFF} stopColor={s.color.colorBase} stopOpacity={areaOpacity(i) / 3} />
+                  <stop offset="100%" stopColor={s.color.colorBase} stopOpacity={0} />
+                </linearGradient>
+              </Fragment>
+            ))}
           </defs>
 
-          {primary && primaryPoints.length > 1 && (
-            <path
-              d={`${smoothPath(primaryPoints)} L ${primaryPoints[primaryPoints.length - 1].x} ${padTop + chartHeight} L ${primaryPoints[0].x} ${padTop + chartHeight} Z`}
-              fill={`url(#${gradientId})`}
-              stroke="none"
-            />
-          )}
+          {/* Every fill first, then every stroke — otherwise a later
+              series' area washes over the line drawn before it. */}
+          {series.map((s, i) => {
+            const points = pointsFor(s);
+            if (points.length < 2) return null;
+            return (
+              <path key={s.label} d={areaPath(points)} fill={`url(#${gradientId}-area-${i})`} stroke="none" />
+            );
+          })}
 
-          {series.map((s) => (
+          {series.map((s, i) => (
             <path
               key={s.label}
               d={smoothPath(pointsFor(s))}
               fill="none"
-              stroke={s.color}
+              stroke={`url(#${gradientId}-line-${i})`}
               strokeWidth={LINE_WIDTH}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -140,7 +193,7 @@ export function LineChart({
               y1={activePoint.y}
               x2={activePoint.x}
               y2={padTop + chartHeight}
-              stroke={primary.color}
+              stroke={primary.color.colorBase}
               strokeWidth={1.5}
               strokeDasharray="3 3"
               strokeOpacity={0.55}
@@ -173,10 +226,16 @@ export function LineChart({
             const p = pointsFor(s)[activeIndex];
             if (!p) return null;
             return (
+              // A ring rather than a filled dot: on a line this thick a
+              // solid dot of the same colour just reads as a bulge.
               <span
                 key={s.label}
-                className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
-                style={{ background: s.color, left: `${activeFraction * 100}%`, top: `${(p.y / height) * 100}%` }}
+                className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card shadow-sm"
+                style={{
+                  border: `2.5px solid ${s.color.colorBase}`,
+                  left: `${activeFraction * 100}%`,
+                  top: `${(p.y / height) * 100}%`,
+                }}
               />
             );
           })}
@@ -193,7 +252,10 @@ export function LineChart({
             <p className="text-[10px] font-semibold tracking-wide text-ink-soft uppercase">{xLabels[activeIndex]}</p>
             {series.map((s) => (
               <p key={s.label} className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: flavorCubeGradient(s.color) }}
+                />
                 <span className="text-[11px] text-ink-soft">{s.label}</span>
                 <span className="font-display text-sm font-bold text-ink">
                   {valueFormat(s.values[activeIndex] ?? 0)}
@@ -214,7 +276,9 @@ export function LineChart({
       <div className="mt-2 flex gap-4">
         {series.map((s) => (
           <span key={s.label} className="flex items-center gap-1.5 text-xs text-ink-soft">
-            <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+            {/* The same jelly recipe the flavour swatches use — the ramp
+                these colours came from, at swatch size. */}
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: flavorCubeGradient(s.color) }} />
             {s.label}
           </span>
         ))}

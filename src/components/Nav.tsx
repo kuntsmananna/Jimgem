@@ -53,10 +53,10 @@ export function Nav({ name, version }: { name: string; version: string }) {
         </nav>
       </div>
       <div className="flex items-center gap-3">
-        {/* Build identity, on every page rather than just the Dashboard —
-            it's how you tell which deploy you're looking at. */}
+        {/* On every page rather than just the Dashboard — it's how you tell
+            which version you're looking at. */}
         <span
-          title="App version and the commit it was built from"
+          title="App version"
           className="font-mono text-[11px] text-ink-soft/70 tabular-nums"
         >
           {version}

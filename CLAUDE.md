@@ -58,6 +58,21 @@ something here isn't obvious.
   subfolder per page for its Client Components. Settings is split into
   tabs (`SettingsTabs`) rather than one stacked screen — the flavor grid
   alone filled it and pushed the five smaller lists below the fold.
+- **Every line chart takes its colours from `SERIES_COLORS` in
+  `src/lib/chartPalette.ts`**, never a hex literal at the call site. A
+  series colour is the same three-stop shape as a flavour
+  (`colorGlow`/`colorBase`/`colorShadow`), and the ramps *are* the product's
+  flavour colours — Vodka Berry, Jasmine, Kir Royale — plus a `sage` ramp
+  built from the house accent, which stays on whichever series is the
+  subject of its chart. `LineChart` runs the ramp across the plot in user
+  space as the stroke (top-left to bottom-right, the same light source
+  `flavorStyle.ts` uses, so a chart line and a jelly cube are lit alike),
+  fades `colorBase` out beneath it, and hands the legend and hover dots to
+  `flavorCubeGradient` — the same recipe as the Settings swatches.
+  **Every series gets an area fill**, but only the first at full strength
+  and each one dies back to a third by `AREA_FALLOFF`: equal-weight fills
+  blend where they cross into a colour nobody plotted, and three of them
+  stacked came out flat grey.
 - `src/components/orders/TrayPreview.tsx` draws a package as its actual
   grid of jelly cubes, assorted at random rather than sorted into blocks.
   Shared by the order form's Content tab and Settings' `PresetsPanel`, so
@@ -380,6 +395,21 @@ iteration (not guessed) — define these as `@theme` tokens in
 | `GOOGLE_SHEETS_DEFAULT_RANGE` | Default A1 range for `/api/sheets` | no |
 | `DATABASE_URL` | Postgres connection string | yes |
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
+
+## Versioning
+
+The nav shows `v<package.json version>` and nothing else — the build's
+commit hash was dropped, because it answered "which build" for whoever
+deployed while the version answers "which app" for everyone.
+
+**Bump `package.json` on every change that ships**, as part of that
+change's own commit: patch for a fix or a tweak, minor for a new
+capability or a visible redesign. `npm version <x.y.z> --no-git-tag-version`
+keeps `package-lock.json` in step.
+
+**Stay below 1.0.0 until the owner says otherwise.** 1.0 means the team
+has stopped using the Google Sheet and runs on this instead — a call about
+the business, not about the code, so don't reach for it on your own.
 
 ## Commands
 

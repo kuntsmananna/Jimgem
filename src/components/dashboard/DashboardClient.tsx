@@ -7,7 +7,7 @@ import { UnitsIcon } from "@/lib/icons";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
-import { EXPENSE_PALETTE } from "@/lib/chartPalette";
+import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 
 export interface FlavorLine {
@@ -242,8 +242,8 @@ export function DashboardClient({
                 xLabels={financials.map((m) => m.monthLabel)}
                 highlightIndex={highlightIndex}
                 series={[
-                  { label: "Revenue", color: "#4f6f52", values: financials.map((m) => m.revenue) },
-                  { label: "Profit", color: "#201d19", values: financials.map((m) => m.profit) },
+                  { label: "Revenue", color: SERIES_COLORS.sage, values: financials.map((m) => m.revenue) },
+                  { label: "Profit", color: SERIES_COLORS.berry, values: financials.map((m) => m.profit) },
                 ]}
               />
             </div>
