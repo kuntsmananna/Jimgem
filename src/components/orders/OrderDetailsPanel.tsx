@@ -58,8 +58,20 @@ export function OrderDetailsPanel({
 
   return (
     <div className="flex flex-col">
-      <header className="flex items-end justify-between gap-5 border-b border-line pb-3.5">
-        <div className="min-w-0 flex-1">
+      {/*
+        Three columns, each reading straight down: what the order *is*,
+        how big the event is, and what it is worth. The customer used to
+        head a full-width band above the other two, which spent a row on a
+        name and left Notes a second row of its own at the bottom — both
+        now live in the first column.
+
+        No rules between the columns: with a headed rule under each title
+        the grouping is already stated, and vertical hairlines through an
+        already ruled panel read as a table.
+      */}
+      <div className="grid grid-cols-[1.15fr_0.85fr_1fr] gap-x-7">
+        <section className="flex min-w-0 flex-col">
+          <GroupLabel>Details</GroupLabel>
           {/*
             The name is the headline, not a field: it is how you know which
             order is open, and at 14px in a grid cell it never read that way.
@@ -69,9 +81,10 @@ export function OrderDetailsPanel({
             onChange={(e) => set({ customer: e.target.value })}
             placeholder="Customer name"
             aria-label="Customer"
-            className="w-full border-b border-transparent bg-transparent font-display text-[32px] leading-none font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
+            className="mt-1 w-full border-b border-transparent bg-transparent font-display text-[26px] leading-tight font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
           />
-          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-ink-soft">
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <PillSelect
               value={draft.customerType}
               onChange={(value) => set({ customerType: value })}
@@ -92,61 +105,76 @@ export function OrderDetailsPanel({
                 <option value={draft.customerType}>{draft.customerType} (not on the list)</option>
               )}
             </PillSelect>
-            <Dot />
-            <TextInput
-              type="date"
-              value={draft.date}
-              onChange={(e) => set({ date: e.target.value })}
-              aria-label="Date"
-              className="w-[8.5rem] text-[13px] tabular-nums"
-            />
-            <Dot />
-            <TextInput
-              value={draft.location}
-              onChange={(e) => set({ location: e.target.value })}
-              placeholder="Location"
-              aria-label="Location"
-              className="w-44 text-[13px]"
+            <PillSelect
+              value={draft.paymentStatus}
+              onChange={(value) => set({ paymentStatus: value as PaymentStatus })}
+              aria-label="Payment status"
+              className={PAYMENT_BADGE_CLASS[draft.paymentStatus]}
+            >
+              {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => (
+                <option key={s} value={s}>
+                  {PAYMENT_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </PillSelect>
+            <PillSelect
+              value={draft.productionStatus}
+              onChange={(value) => set({ productionStatus: value as ProductionStatus })}
+              aria-label="Production status"
+              className="border border-line bg-cream text-ink"
+              icon={
+                <span
+                  aria-hidden
+                  className={`h-2 w-2 rounded-full ${PRODUCTION_DOT[draft.productionStatus]}`}
+                />
+              }
+            >
+              {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((s) => (
+                <option key={s} value={s}>
+                  {PRODUCTION_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </PillSelect>
+          </div>
+
+          <div className="mt-1.5">
+            <SheetRow label="Date">
+              <TextInput
+                type="date"
+                value={draft.date}
+                onChange={(e) => set({ date: e.target.value })}
+                aria-label="Date"
+                className="w-[8.5rem] text-sm tabular-nums"
+              />
+            </SheetRow>
+            <SheetRow label="Location">
+              <TextInput
+                value={draft.location}
+                onChange={(e) => set({ location: e.target.value })}
+                placeholder="Location"
+                aria-label="Location"
+                className="w-40 text-sm"
+              />
+            </SheetRow>
+          </div>
+
+          <div className="mt-3">
+            <GroupLabel>Notes</GroupLabel>
+            {/* Keeps its box whether filled or not, unlike the single-line
+                fields: an unbordered block of text has nothing to say where
+                the writing area ends. */}
+            <TextArea
+              rows={3}
+              value={draft.notes}
+              onChange={(e) => set({ notes: e.target.value })}
+              aria-label="Notes"
+              placeholder="Anything worth remembering about this order"
+              className="mt-1.5 w-full border-line bg-cream/40 px-2.5 py-2 text-sm"
             />
           </div>
-        </div>
+        </section>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          <PillSelect
-            value={draft.paymentStatus}
-            onChange={(value) => set({ paymentStatus: value as PaymentStatus })}
-            aria-label="Payment status"
-            className={PAYMENT_BADGE_CLASS[draft.paymentStatus]}
-          >
-            {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {PAYMENT_STATUS_LABEL[s]}
-              </option>
-            ))}
-          </PillSelect>
-          <PillSelect
-            value={draft.productionStatus}
-            onChange={(value) => set({ productionStatus: value as ProductionStatus })}
-            aria-label="Production status"
-            className="border border-line bg-cream text-ink"
-            icon={
-              <span aria-hidden className={`h-2 w-2 rounded-full ${PRODUCTION_DOT[draft.productionStatus]}`} />
-            }
-          >
-            {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {PRODUCTION_STATUS_LABEL[s]}
-              </option>
-            ))}
-          </PillSelect>
-        </div>
-      </header>
-
-      {/* Two statements, hairline between them: how big the event is, and
-          what it is worth. The 1px column is the rule itself, so it spans
-          whichever of the two happens to be taller. */}
-      <div className="grid grid-cols-[1fr_1px_1fr] gap-x-7 pt-4">
-        <section className="flex flex-col">
+        <section className="flex min-w-0 flex-col">
           <GroupLabel>The event</GroupLabel>
           <SheetRow label="Guests">
             <NumberStepper
@@ -199,9 +227,7 @@ export function OrderDetailsPanel({
           </SheetRow>
         </section>
 
-        <div aria-hidden className="bg-line" />
-
-        <section className="flex flex-col">
+        <section className="flex min-w-0 flex-col">
           <GroupLabel>The money</GroupLabel>
           <SheetRow label="Order amount">
             <MoneyInput
@@ -242,20 +268,6 @@ export function OrderDetailsPanel({
         </section>
       </div>
 
-      <div className="mt-5">
-        <GroupLabel>Notes</GroupLabel>
-        {/* Keeps its box whether filled or not, unlike the single-line
-            fields: an unbordered block of text has nothing to say where
-            the writing area ends, and this one is three lines tall. */}
-        <TextArea
-          rows={3}
-          value={draft.notes}
-          onChange={(e) => set({ notes: e.target.value })}
-          aria-label="Notes"
-          placeholder="Anything worth remembering about this order"
-          className="mt-1.5 w-full border-line bg-cream/40 px-2.5 py-2 text-sm"
-        />
-      </div>
     </div>
   );
 }
@@ -297,14 +309,17 @@ function YesNo({
   );
 }
 
+/**
+ * A column heading with the rule under it. That rule is what separates
+ * the three columns now — vertical hairlines between them read as a table
+ * once every group already has a headed line of its own.
+ */
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">{children}</span>
+    <span className="block border-b border-line pb-1.5 text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
+      {children}
+    </span>
   );
-}
-
-function Dot() {
-  return <span aria-hidden className="h-[3px] w-[3px] shrink-0 rounded-full bg-line" />;
 }
 
 /**

@@ -130,10 +130,14 @@ iteration (not guessed) — define these as `@theme` tokens in
 - **The Details tab is an order sheet, not a form** (`OrderDetailsPanel`).
   It replaced twelve identical label-and-box pairs in a flat 3×4 grid,
   which spent a 976×416 panel saying every field mattered equally and left
-  the bottom third empty. Now the customer is a headline, what the event
-  *is* sits under it as a meta line, and two short statements — *The
-  event* and *The money* — sit either side of a hairline, with Notes (a
-  `TextArea`, not the single-line input it was) full width beneath. Money
+  the bottom third empty. It is now **three columns, each reading straight
+  down**: *Details* (the customer as a headline, then type and both status
+  pills, date, location and Notes), *The event* (the counts and yes/nos),
+  and *The money*. A ruled `GroupLabel` heads each column and is what
+  separates them — there are deliberately no vertical hairlines, which
+  read as a table once every group already carries a line of its own.
+  The customer used to head a full-width band above the other two, which
+  spent a row on a name and left Notes a second row at the bottom. Money
   is formatted at rest and bare while focused, because `type="number"`
   rejects both the ₪ and the thousands separator; zero renders blank so an
   unfilled amount keeps its empty-field outline. Balance due is derived
