@@ -122,7 +122,11 @@ iteration (not guessed) — define these as `@theme` tokens in
   `OrderFormModal`; `OrderDetailsPane` is kept but unused (see its
   header). The form is split into Details and Content tabs, and both are
   kept mounted while hidden so switching tabs doesn't discard a
-  half-typed line.
+  half-typed line. The tabs sit **in the dialog's title row**, centred:
+  `Modal` offers its title-row middle through `useModalHeaderSlot`, and
+  `OrderForm` portals the tab strip into it, which buys back a whole row
+  in a popup already tall enough to crowd a laptop. The slot is null
+  outside a `Modal`, so the form falls back to rendering them inline.
 - **The Details tab is an order sheet, not a form** (`OrderDetailsPanel`).
   It replaced twelve identical label-and-box pairs in a flat 3×4 grid,
   which spent a 976×416 panel saying every field mattered equally and left

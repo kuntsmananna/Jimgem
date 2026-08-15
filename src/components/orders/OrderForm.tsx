@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type Order,
   type OrderInput,
@@ -8,6 +9,7 @@ import {
   linePackedUnits,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import { useModalHeaderSlot } from "@/components/Modal";
 import { OrderDetailsPanel } from "./OrderDetailsPanel";
 import {
   PackageLineEditor,
@@ -142,6 +144,37 @@ export function OrderForm({
   const totalUnits = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
   const canSave = draft.customer.trim().length > 0 && !busy;
 
+  const headerSlot = useModalHeaderSlot();
+  // A segmented pill rather than folder tabs: at the title's own height,
+  // beside it, the joined-baseline treatment had no panel edge left to
+  // sit on and read as two loose buttons.
+  const tabs = (
+    <div role="tablist" className="flex items-center gap-0.5 rounded-full bg-cream p-0.5">
+      {(["details", "content"] as const).map((id) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={tab === id}
+          onClick={() => setTab(id)}
+          className={`flex items-center gap-1.5 rounded-full px-4 py-1 text-xs font-bold capitalize transition ${
+            tab === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+          }`}
+        >
+          {id}
+          {id === "content" && totalUnits > 0 && (
+            <span className={`font-semibold ${tab === id ? "text-cream/70" : "text-ink-soft"}`}>
+              {nf.format(totalUnits)}u
+            </span>
+          )}
+          {id === "content" && unbalanced.length > 0 && (
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Some units have no flavour" />
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
   async function submit() {
     if (!canSave) return;
     setBusy(true);
@@ -162,34 +195,13 @@ export function OrderForm({
         packing are separate jobs, usually done at different times — an
         order is booked first and mixed later. The Content tab carries a
         unit count so you can see it is filled in without switching.
+
+        They ride in the dialog's title row when there is one, which buys
+        back the whole row plus its rule — worth having in a popup already
+        tall enough to crowd a laptop. Rendered inline when there is no
+        modal around them, so the form still works on its own.
       */}
-      {/* Real tabs: joined along a shared baseline, the active one sitting
-          on the panel below it. The pill pair they replaced read as two
-          separate buttons rather than one control with a body. */}
-      <div role="tablist" className="-mx-6 mb-4 flex gap-1 border-b border-line px-6">
-        {(["details", "content"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={`-mb-px flex items-center gap-2 rounded-t-lg border border-b-0 px-5 py-2 text-xs font-bold capitalize transition ${
-              tab === id
-                ? "border-line bg-card text-ink"
-                : "border-transparent bg-transparent text-ink-soft hover:text-ink"
-            }`}
-          >
-            {id}
-            {id === "content" && totalUnits > 0 && (
-              <span className="font-semibold text-ink-soft">{nf.format(totalUnits)}u</span>
-            )}
-            {id === "content" && unbalanced.length > 0 && (
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Some units have no flavour" />
-            )}
-          </button>
-        ))}
-      </div>
+      {headerSlot ? createPortal(tabs, headerSlot) : <div className="mb-4">{tabs}</div>}
 
       {/*
         One fixed-height, scrolling body holding both panels, so the popup
