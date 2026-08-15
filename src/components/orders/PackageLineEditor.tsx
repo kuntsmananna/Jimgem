@@ -143,20 +143,15 @@ export function PackageLineEditor({
   }
 
   return (
+    /*
+      No heading and no unit total: the tab this sits in is already called
+      Content and already carries the count. An empty order is then exactly
+      its two ways in — add a package, or start from a preset — with nothing
+      else to read first.
+    */
     <div className="rounded-card bg-cream/60 p-4">
-      <div className="flex items-baseline justify-between">
-        <h3 className="font-display text-sm font-bold text-ink">Content</h3>
-        <p className="text-xs font-semibold text-ink-soft">
-          {nf.format(lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0))} units
-        </p>
-      </div>
-
-      {lines.length === 0 ? (
-        <p className="mt-2 text-xs text-ink-soft">
-          Nothing yet — add a tray below, or start from a preset.
-        </p>
-      ) : (
-        <div className="mt-2 flex flex-col gap-2">
+      {lines.length > 0 && (
+        <div className="mb-3 flex flex-col gap-2">
           {lines.map((line) => (
             <LineCard
               key={line.uid}
@@ -174,7 +169,7 @@ export function PackageLineEditor({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={addBlankLine}
@@ -182,7 +177,6 @@ export function PackageLineEditor({
         >
           + Add package
         </button>
-        {presets.length > 0 && <span className="text-xs text-ink-soft">or start from a preset:</span>}
         {presets.map((preset) => (
           <button
             key={preset.id}
