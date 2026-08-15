@@ -445,10 +445,17 @@ card.
 
 Settings is four tabs: **Flavors** (flavour cards *and* presets — a preset
 is a package plus a recipe of these flavours, so keeping them apart meant
-switching tabs to build one), **Settings** (every owner-managed list,
+switching tabs to build one), **Lists** (every owner-managed list,
 including package types), **Team**, **Data**. Flavour cards are a fixed
 180px in a single `ScrollStrip` row rather than a wrapping grid, so adding
 a flavour never pushes the presets further down the page.
+
+**Lists lays its four panes out in CSS columns**, not a 3-column grid.
+The panes are wildly different heights — seven order types against two
+payment methods — so a grid would align them into rows and leave a hole
+under every short one; multi-column packs by height instead, and the tab
+ends up as tall as its tallest pane. Each card needs `break-inside-avoid`
+or a list splits across two columns mid-row.
 
 `OrdersSummary` is the rail beside the table and the board (not the
 calendar, which would then carry two different windows at once). It

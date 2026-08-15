@@ -50,28 +50,27 @@ export default async function SettingsPage() {
         },
         {
           id: "lists",
-          label: "Settings",
+          label: "Lists",
           icon: <ListChecks size={14} />,
-          // Everything the owner keeps a list of. Order types and package
-          // types keep their own rows — both have a taller row than a
-          // plain name list, so pairing either with one left a column
-          // ragged. The two short value lists do share a row.
+          // Everything the owner keeps a list of, three panes across.
+          //
+          // CSS columns rather than a 3-column grid: these four are wildly
+          // different heights (seven order types against two payment
+          // methods), and a grid would align them into rows and leave a
+          // hole under every short one. Multi-column packs by height
+          // instead, so the tab is as tall as its tallest pane and no
+          // taller. `break-inside-avoid` is what keeps a card whole —
+          // without it a list splits across two columns mid-row.
           content: (
-            <div className="flex min-w-0 flex-col gap-6">
-              <div className="max-w-xl">
-                <OrderTypesPanel items={orderTypes} />
-              </div>
-              <div className="max-w-xl">
-                <PackageTypesPanel items={packageTypes} />
-              </div>
-              <div className="grid min-w-0 grid-cols-2 items-start gap-6">
-                <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />
-                <NameListPanel
-                  title="Expense categories"
-                  resource="expense-categories"
-                  items={expenseCategories}
-                />
-              </div>
+            <div className="columns-3 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
+              <OrderTypesPanel items={orderTypes} />
+              <PackageTypesPanel items={packageTypes} />
+              <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />
+              <NameListPanel
+                title="Expense categories"
+                resource="expense-categories"
+                items={expenseCategories}
+              />
             </div>
           ),
         },
