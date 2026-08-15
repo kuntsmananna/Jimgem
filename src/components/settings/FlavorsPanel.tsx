@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import type { Flavor } from "@/lib/settings";
 import { flavorGradient } from "@/lib/flavorStyle";
 import { Modal } from "@/components/Modal";
+import { ScrollStrip } from "@/components/ScrollStrip";
 
 interface Draft {
   name: string;
@@ -163,12 +164,13 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
         />
       )}
 
-      {/* Six across on a wide screen: the panel owns the full page width
-          now that Settings is tabbed, and 8-12 flavors then fit in two
-          rows without shrinking the swatches. */}
-      <div className="mt-4 grid grid-cols-4 gap-3 xl:grid-cols-6">
+      {/* One row, scrolled sideways, rather than a wrapping grid: the
+          flavour list is browsed end to end, and a second row pushed the
+          presets below it further down every time a flavour was added. */}
+      <div className="mt-4">
+        <ScrollStrip label="flavors" itemWidth={180}>
         {flavors.map((f) => (
-          <div key={f.id} className="rounded-xl border border-line p-3">
+          <div key={f.id} className="w-[180px] shrink-0 rounded-xl border border-line p-3">
             <button className="block w-full" onClick={() => setEditing(f)}>
               <div className="h-16 w-full rounded-lg" style={{ background: flavorGradient(f) }} />
             </button>
@@ -188,6 +190,7 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
             </div>
           </div>
         ))}
+        </ScrollStrip>
       </div>
     </section>
   );

@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  */
 type UpdateBody =
   | ({ mode: "replace" } & OrderInput)
-  | ({ mode: "patch" } & Partial<Record<EditableField, string | number | null>>);
+  | ({ mode: "patch" } & Partial<Record<EditableField, string | number | boolean | null>>);
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const { id } = await ctx.params;

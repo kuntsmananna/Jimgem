@@ -42,17 +42,22 @@ export function OrdersSummary({
     <div className="flex flex-col gap-2">
       <p className="px-1 text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">{scopeLabel}</p>
       {tiles.map((tile) => (
-        <section key={tile.key} className="rounded-2xl border border-line bg-card p-3">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
+        <section key={tile.key} className="rounded-2xl border border-line bg-card p-3 text-right">
+          {/* Label left, figure right: a column of right-aligned numbers
+              can be compared down the rail, which is the whole point of
+              stacking them. The change sits under its own number. */}
+          <p className="flex items-center gap-1.5 text-left text-[11px] font-semibold text-ink-soft">
             <span className="text-ink-soft">{tile.icon}</span>
             {tile.label}
           </p>
-          <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
-            <span className="font-display text-2xl leading-none font-extrabold tabular-nums text-ink">
-              {tile.value}
-            </span>
-            {comparable && <Delta current={totals[tile.key]} previous={previous[tile.key]} />}
-          </div>
+          <p className="mt-1 font-display text-2xl leading-none font-extrabold tabular-nums text-ink">
+            {tile.value}
+          </p>
+          {comparable && (
+            <div className="mt-1 flex justify-end">
+              <Delta current={totals[tile.key]} previous={previous[tile.key]} />
+            </div>
+          )}
         </section>
       ))}
     </div>

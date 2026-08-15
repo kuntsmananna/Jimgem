@@ -16,7 +16,7 @@ const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  * roomier day column instead. Adding a time to orders is what would
  * unlock a true hour axis.
  */
-type CalendarMode = "month" | "week";
+export type CalendarMode = "month" | "week";
 
 /** How many orders a month cell shows before collapsing the rest behind "+N more". */
 const MONTH_CELL_PILLS = 3;
@@ -89,11 +89,19 @@ export function OrdersCalendar({
   orders,
   flavors,
   packageTypes,
+  mode,
   onOpen,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
+  /**
+   * Monthly or weekly, owned by the page toolbar: on this view the
+   * toolbar's left slot has no time scope to show (the calendar navigates
+   * itself), so the two live there instead of being a second switcher
+   * inside the card.
+   */
+  mode: CalendarMode;
   onOpen: (key: string) => void;
 }) {
   const unitsPerPackage = useMemo(
@@ -109,7 +117,6 @@ export function OrdersCalendar({
     [orders],
   );
 
-  const [mode, setMode] = useState<CalendarMode>("month");
   /**
    * Opens on today. A calendar is read as "where am I now", and the month
    * of the newest order — which it used to open on — could be one nobody
@@ -142,27 +149,7 @@ export function OrdersCalendar({
   return (
     <section className="rounded-card border border-line bg-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h2 className="font-display text-lg font-bold text-ink">{label}</h2>
-          <div className="flex gap-0.5 rounded-full bg-cream p-0.5">
-            {(["month", "week"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={mode === option}
-                onClick={() => {
-                  setMode(option);
-                  setExpandedDay(null);
-                }}
-                className={`rounded-full px-3 py-1 text-xs font-bold capitalize transition ${
-                  mode === option ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
+        <h2 className="font-display text-lg font-bold text-ink">{label}</h2>
 
         <div className="flex items-center gap-2">
           <NavButton onClick={() => step(-1)}>← Prev {mode}</NavButton>

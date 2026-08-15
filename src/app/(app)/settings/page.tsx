@@ -1,4 +1,4 @@
-import { Blend, Boxes, Cloud, ListChecks, Palette, Users } from "lucide-react";
+import { Cloud, ListChecks, Palette, Users } from "lucide-react";
 import {
   getContentPresets,
   getOrderTypes,
@@ -34,39 +34,35 @@ export default async function SettingsPage() {
   return (
     <SettingsTabs
       tabs={[
-        { id: "flavors", label: "Flavors", icon: <Palette size={14} />, content: <FlavorsPanel flavors={flavors} /> },
         {
-          id: "packaging",
-          label: "Packaging",
-          icon: <Boxes size={14} />,
-          // Short lists are capped rather than stretched — a three-row
-          // panel spanning the full desktop width reads as broken.
+          // Flavours and presets are one job: a preset is a package plus a
+          // recipe of these flavours, and keeping them a tab apart meant
+          // switching back and forth to build one.
+          id: "flavors",
+          label: "Flavors",
+          icon: <Palette size={14} />,
           content: (
-            <div className="max-w-xl">
-              <PackageTypesPanel items={packageTypes} />
+            <div className="flex min-w-0 flex-col gap-6">
+              <FlavorsPanel flavors={flavors} />
+              <PresetsPanel presets={presets} flavors={flavors} packageTypes={packageTypes} />
             </div>
           ),
         },
         {
-          id: "presets",
-          label: "Presets",
-          icon: <Blend size={14} />,
-          content: (
-            <PresetsPanel presets={presets} flavors={flavors} packageTypes={packageTypes} />
-          ),
-        },
-        {
           id: "lists",
-          label: "Lists",
+          label: "Settings",
           icon: <ListChecks size={14} />,
-          // The two short value lists share a row — either alone would be
-          // a nearly empty tab. Order types keep their own row above them:
-          // the colour swatch makes each of its rows taller, so pairing it
-          // with a plain name list left one column ragged.
+          // Everything the owner keeps a list of. Order types and package
+          // types keep their own rows — both have a taller row than a
+          // plain name list, so pairing either with one left a column
+          // ragged. The two short value lists do share a row.
           content: (
             <div className="flex min-w-0 flex-col gap-6">
               <div className="max-w-xl">
                 <OrderTypesPanel items={orderTypes} />
+              </div>
+              <div className="max-w-xl">
+                <PackageTypesPanel items={packageTypes} />
               </div>
               <div className="grid min-w-0 grid-cols-2 items-start gap-6">
                 <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />

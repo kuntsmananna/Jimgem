@@ -14,7 +14,7 @@ import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } fro
 import { OrdersSummary } from "./OrdersSummary";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
-import { OrdersCalendar } from "./OrdersCalendar";
+import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, type FilterOption } from "./FilterDropdown";
 
@@ -24,6 +24,11 @@ const VIEWS: { value: View; label: string; Icon: LucideIcon }[] = [
   { value: "table", label: "Table", Icon: Table2 },
   { value: "kanban", label: "Kanban", Icon: Columns3 },
   { value: "calendar", label: "Calendar", Icon: CalendarDays },
+];
+
+const CALENDAR_MODES: { id: CalendarMode; label: string }[] = [
+  { id: "month", label: "Monthly" },
+  { id: "week", label: "Weekly" },
 ];
 
 /** Dropdown options with a live count of how many orders carry each value. */
@@ -55,6 +60,9 @@ export function OrdersClient({
   // The next fortnight by default: the page is a work queue first and an
   // archive second, and 74 orders spanning a year buries the ones due.
   const [scope, setScope] = useState<ScopeId>("14d");
+  // The calendar navigates by its own month, so on that view the left slot
+  // shows how to read the grid instead of which orders are in play.
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   // Off by default: 60 of 73 orders are delivered, so the page is about
   // what still needs doing unless you ask for the archive.
   const [showDelivered, setShowDelivered] = useState(false);
@@ -187,22 +195,38 @@ export function OrdersClient({
       */}
       <div className="flex flex-wrap items-center gap-3">
         {/* When, on the left: the first question is which orders are even in
-            play. What kind, on the right, narrows that down. */}
+            play. What kind, on the right, narrows that down. The calendar
+            has no time scope — it navigates itself — so this slot switches
+            to how its grid is drawn. */}
         <div className="flex flex-1 items-center">
           <div className="flex items-center gap-1 rounded-full bg-card p-1">
-            {SCOPES.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={scope === id}
-                onClick={() => setScope(id)}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
-                  scope === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            {view === "calendar"
+              ? CALENDAR_MODES.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={calendarMode === id}
+                    onClick={() => setCalendarMode(id)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
+                      calendarMode === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))
+              : SCOPES.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={scope === id}
+                    onClick={() => setScope(id)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
+                      scope === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
           </div>
         </div>
 
@@ -346,6 +370,7 @@ export function OrdersClient({
               orders={filtered}
               flavors={flavors}
               packageTypes={packageTypes}
+              mode={calendarMode}
               onOpen={setOpenKey}
             />
           )}

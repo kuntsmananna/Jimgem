@@ -86,6 +86,16 @@ CREATE TABLE IF NOT EXISTS orders (
 -- created in the dashboard. details/needs_review carry the Sheet's
 -- free-text פירוט column and the best-effort parser's confidence flag
 -- (see flavorParser.ts) so nothing is lost at import time.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS waitresses INTEGER;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher BOOLEAN NOT NULL DEFAULT false;
+
+-- What the extras are charged for. Each is nullable and separate from the
+-- count beside it, because how many waitresses an event needs and what
+-- they cost are two different decisions, often made at different times.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS waitress_cost NUMERIC(10, 2);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS mirrors_cost NUMERIC(10, 2);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS needs_review BOOLEAN NOT NULL DEFAULT false;

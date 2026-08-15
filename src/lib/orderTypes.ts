@@ -247,10 +247,19 @@ export interface Order {
    */
   details: string;
   guests: number | null;
-  deliveryCost: number | null;
   mirrors: number | null;
+  waitresses: number | null;
+  kosher: boolean;
   packageLines: OrderPackageLine[];
+  /**
+   * What the jelly itself costs. The extras below are charged on top —
+   * see `orderTotal`, which is what the order is actually worth.
+   */
   totalAmount: number;
+  deliveryCost: number | null;
+  mirrorsCost: number | null;
+  waitressCost: number | null;
+  kosherCost: number | null;
   deposit: number;
   paymentStatus: PaymentStatus;
   /** Never null: `orders.production_status` is NOT NULL DEFAULT 'queue'. */
@@ -266,14 +275,80 @@ export interface OrderInput {
   customerType: string;
   location: string;
   guests: number | null;
-  deliveryCost: number | null;
   mirrors: number | null;
+  waitresses: number | null;
+  kosher: boolean;
   packageLines: OrderPackageLine[];
   totalAmount: number;
+  deliveryCost: number | null;
+  mirrorsCost: number | null;
+  waitressCost: number | null;
+  kosherCost: number | null;
   deposit: number;
   paymentStatus: PaymentStatus;
   productionStatus: ProductionStatus;
   notes: string;
+}
+
+/**
+ * The extras an order can be charged for, each paired with the field that
+ * says whether it applies at all. Declared once so the order sheet, the
+ * total and any future consumer can't disagree about what counts.
+ *
+ * `applies` is the gate: a cost box only appears once the thing itself is
+ * on the order, so an order with no mirrors never shows a mirrors price.
+ */
+export const ORDER_EXTRAS = [
+  {
+    // Always charged for, so unlike the others there is no count gating
+    // it — the cost field *is* whether the order has delivery.
+    id: "delivery",
+    label: "Delivery",
+    cost: "deliveryCost",
+    applies: () => true,
+  },
+  {
+    id: "mirrors",
+    label: "Mirrors",
+    cost: "mirrorsCost",
+    applies: (order: Pick<OrderInput, "mirrors">) => (order.mirrors ?? 0) > 0,
+  },
+  {
+    id: "waitress",
+    label: "Waitressing",
+    cost: "waitressCost",
+    applies: (order: Pick<OrderInput, "waitresses">) => (order.waitresses ?? 0) > 0,
+  },
+  {
+    id: "kosher",
+    label: "Kosher",
+    cost: "kosherCost",
+    applies: (order: Pick<OrderInput, "kosher">) => order.kosher,
+  },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  cost: keyof OrderInput;
+  applies: (order: OrderInput) => boolean;
+}[];
+
+/**
+ * What the order is worth: the jelly plus every extra that applies.
+ *
+ * An extra is only counted when the thing itself is on the order, so
+ * clearing the mirror count also drops its price rather than leaving a
+ * charge for something no longer being supplied.
+ */
+export function orderTotal(order: OrderInput | Order): number {
+  return ORDER_EXTRAS.reduce(
+    (sum, extra) => sum + (extra.applies(order) ? (order[extra.cost] ?? 0) : 0),
+    order.totalAmount,
+  );
+}
+
+/** Still owed once the deposit is taken off the full total. */
+export function orderBalance(order: OrderInput | Order): number {
+  return orderTotal(order) - order.deposit;
 }
 
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {

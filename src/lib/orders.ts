@@ -37,8 +37,13 @@ export type EditableField =
   | "customerType"
   | "location"
   | "guests"
-  | "deliveryCost"
   | "mirrors"
+  | "waitresses"
+  | "kosher"
+  | "deliveryCost"
+  | "mirrorsCost"
+  | "waitressCost"
+  | "kosherCost"
   | "totalAmount"
   | "deposit"
   | "paymentStatus"
@@ -51,8 +56,13 @@ const COLUMN_FOR_FIELD: Record<EditableField, string> = {
   customerType: "customer_type",
   location: "location",
   guests: "guests",
-  deliveryCost: "delivery_cost",
   mirrors: "mirrors",
+  waitresses: "waitresses",
+  kosher: "kosher",
+  deliveryCost: "delivery_cost",
+  mirrorsCost: "mirrors_cost",
+  waitressCost: "waitress_cost",
+  kosherCost: "kosher_cost",
   totalAmount: "total_amount",
   deposit: "deposit",
   paymentStatus: "payment_status",
@@ -63,9 +73,9 @@ const COLUMN_FOR_FIELD: Record<EditableField, string> = {
 /** Patches individual fields on one order, leaving its content lines untouched. */
 export async function updateOrderFields(
   id: number,
-  patch: Partial<Record<EditableField, string | number | null>>,
+  patch: Partial<Record<EditableField, string | number | boolean | null>>,
 ): Promise<void> {
-  const entries = (Object.entries(patch) as [EditableField, string | number | null][]).filter(
+  const entries = (Object.entries(patch) as [EditableField, string | number | boolean | null][]).filter(
     ([field]) => field in COLUMN_FOR_FIELD,
   );
   if (entries.length === 0) return;
@@ -85,8 +95,13 @@ interface DbOrderRow {
   customer_type: string | null;
   location: string | null;
   guests: number | null;
-  delivery_cost: string | null;
   mirrors: number | null;
+  waitresses: number | null;
+  kosher: boolean;
+  delivery_cost: string | null;
+  mirrors_cost: string | null;
+  waitress_cost: string | null;
+  kosher_cost: string | null;
   total_amount: string;
   deposit: string;
   payment_status: PaymentStatus;
@@ -140,6 +155,11 @@ function nestPackageLines(
   return linesByOrder;
 }
 
+/** NUMERIC arrives as a string, and an unset cost stays null rather than becoming 0. */
+function money(value: string | null): number | null {
+  return value !== null ? Number(value) : null;
+}
+
 function mapDbOrder(row: DbOrderRow, packageLines: OrderPackageLine[]): Order {
   return {
     key: String(row.id),
@@ -150,10 +170,15 @@ function mapDbOrder(row: DbOrderRow, packageLines: OrderPackageLine[]): Order {
     location: row.location ?? "",
     details: row.details ?? "",
     guests: row.guests,
-    deliveryCost: row.delivery_cost !== null ? Number(row.delivery_cost) : null,
     mirrors: row.mirrors,
+    waitresses: row.waitresses,
+    kosher: row.kosher ?? false,
     packageLines,
     totalAmount: Number(row.total_amount),
+    deliveryCost: money(row.delivery_cost),
+    mirrorsCost: money(row.mirrors_cost),
+    waitressCost: money(row.waitress_cost),
+    kosherCost: money(row.kosher_cost),
     deposit: Number(row.deposit),
     paymentStatus: row.payment_status,
     productionStatus: row.production_status,
@@ -232,9 +257,11 @@ function toLineArrays(lines: OrderPackageLine[]) {
   };
 }
 
-const ORDER_COLUMNS = `date, customer, customer_type, location, guests, delivery_cost, mirrors,
+const ORDER_COLUMNS = `date, customer, customer_type, location, guests, mirrors, waitresses,
+          kosher, delivery_cost, mirrors_cost, waitress_cost, kosher_cost,
           total_amount, deposit, payment_status, production_status, notes`;
 
+/** Order matches ORDER_COLUMNS and the UPDATE below — keep all three in step. */
 function orderValues(input: OrderInput) {
   return [
     input.date,
@@ -242,8 +269,13 @@ function orderValues(input: OrderInput) {
     input.customerType,
     input.location,
     input.guests,
-    input.deliveryCost,
     input.mirrors,
+    input.waitresses,
+    input.kosher,
+    input.deliveryCost,
+    input.mirrorsCost,
+    input.waitressCost,
+    input.kosherCost,
     input.totalAmount,
     input.deposit,
     input.paymentStatus,
@@ -252,6 +284,17 @@ function orderValues(input: OrderInput) {
   ];
 }
 
+/**
+ * How many placeholders `orderValues` occupies. The line and flavour
+ * arrays are numbered from it rather than written out, so adding a column
+ * to an order can't silently shift them onto the wrong parameter — which
+ * is a bug SQL happily runs.
+ */
+const ORDER_VALUE_COUNT = 17;
+const ORDER_PLACEHOLDERS = Array.from({ length: ORDER_VALUE_COUNT }, (_, i) => `$${i + 1}`).join(", ");
+/** `after(1)` is the first placeholder past the order's own values. */
+const after = (offset: number) => `$${ORDER_VALUE_COUNT + offset}`;
+
 export async function createOrder(input: OrderInput): Promise<Order> {
   const db = getDb();
   const arrays = toLineArrays(input.packageLines);
@@ -259,17 +302,17 @@ export async function createOrder(input: OrderInput): Promise<Order> {
   const { rows } = await db.query<DbOrderRow>(
     `WITH new_order AS (
        INSERT INTO orders (${ORDER_COLUMNS})
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       VALUES (${ORDER_PLACEHOLDERS})
        RETURNING *
      ), new_lines AS (
        INSERT INTO order_package_lines (order_id, package_type_id, quantity, position)
        SELECT new_order.id, t.pkg, t.qty, t.pos
-       FROM new_order, unnest($13::int[], $14::int[], $15::int[]) AS t(pkg, qty, pos)
+       FROM new_order, unnest(${after(1)}::int[], ${after(2)}::int[], ${after(3)}::int[]) AS t(pkg, qty, pos)
        RETURNING id, position
      ), new_flavors AS (
        INSERT INTO order_package_line_flavors (line_id, flavor_id, units, position)
        SELECT new_lines.id, f.flavor_id, f.units, f.pos
-       FROM unnest($16::int[], $17::int[], $18::int[], $19::int[]) AS f(line_pos, flavor_id, units, pos)
+       FROM unnest(${after(4)}::int[], ${after(5)}::int[], ${after(6)}::int[], ${after(7)}::int[]) AS f(line_pos, flavor_id, units, pos)
        JOIN new_lines ON new_lines.position = f.line_pos
        RETURNING 1
      )
@@ -296,18 +339,20 @@ export async function updateOrder(id: number, input: OrderInput): Promise<Order>
     `WITH updated_order AS (
        UPDATE orders SET
          date = $1, customer = $2, customer_type = $3, location = $4, guests = $5,
-         delivery_cost = $6, mirrors = $7, total_amount = $8, deposit = $9,
-         payment_status = $10, production_status = $11, notes = $12
-       WHERE id = $13
+         mirrors = $6, waitresses = $7, kosher = $8, delivery_cost = $9,
+         mirrors_cost = $10, waitress_cost = $11, kosher_cost = $12,
+         total_amount = $13, deposit = $14, payment_status = $15,
+         production_status = $16, notes = $17
+       WHERE id = ${after(1)}
        RETURNING *
      ), deleted_lines AS (
        -- Flavour rows go with them, via ON DELETE CASCADE.
-       DELETE FROM order_package_lines WHERE order_id = $13
+       DELETE FROM order_package_lines WHERE order_id = ${after(1)}
        RETURNING 1
      ), new_lines AS (
        INSERT INTO order_package_lines (order_id, package_type_id, quantity, position)
-       SELECT $13, t.pkg, t.qty, t.pos
-       FROM unnest($14::int[], $15::int[], $16::int[]) AS t(pkg, qty, pos)
+       SELECT ${after(1)}, t.pkg, t.qty, t.pos
+       FROM unnest(${after(2)}::int[], ${after(3)}::int[], ${after(4)}::int[]) AS t(pkg, qty, pos)
        -- always-true condition on deleted_lines: CTEs with no data dependency
        -- between them run in an unspecified order, so this forces the delete
        -- to happen before the insert (otherwise it could wipe out the new rows)
@@ -318,7 +363,7 @@ export async function updateOrder(id: number, input: OrderInput): Promise<Order>
        -- dependency, so this cannot run before the lines exist.
        INSERT INTO order_package_line_flavors (line_id, flavor_id, units, position)
        SELECT new_lines.id, f.flavor_id, f.units, f.pos
-       FROM unnest($17::int[], $18::int[], $19::int[], $20::int[]) AS f(line_pos, flavor_id, units, pos)
+       FROM unnest(${after(5)}::int[], ${after(6)}::int[], ${after(7)}::int[], ${after(8)}::int[]) AS f(line_pos, flavor_id, units, pos)
        JOIN new_lines ON new_lines.position = f.line_pos
        RETURNING 1
      )
@@ -364,10 +409,15 @@ export async function duplicateOrder(id: number): Promise<Order> {
     customerType: source.customer_type ?? "",
     location: source.location ?? "",
     guests: source.guests,
-    deliveryCost: source.delivery_cost !== null ? Number(source.delivery_cost) : null,
     mirrors: source.mirrors,
+    waitresses: source.waitresses,
+    kosher: source.kosher ?? false,
     packageLines: nestPackageLines(lineRows, flavorRows).get(id) ?? [],
     totalAmount: Number(source.total_amount),
+    deliveryCost: money(source.delivery_cost),
+    mirrorsCost: money(source.mirrors_cost),
+    waitressCost: money(source.waitress_cost),
+    kosherCost: money(source.kosher_cost),
     deposit: Number(source.deposit),
     paymentStatus: source.payment_status,
     productionStatus: source.production_status,

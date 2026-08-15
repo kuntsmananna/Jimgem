@@ -288,6 +288,18 @@ iteration (not guessed) — define these as `@theme` tokens in
   routinely mixes them — two small trays of one flavour beside one big
   tray of a four-way mix — which the old one-split-per-order shape could
   not express.
+- **`orders.total_amount` is what the jelly costs, not the grand total.**
+  The extras — delivery, mirrors, waitressing, kosher — each carry their
+  own price column, and `orderTotal` in `orderTypes.ts` adds the ones that
+  apply. Balance due is `orderTotal − deposit`, derived and never stored.
+  `ORDER_EXTRAS` declares the four in one place, each with the field that
+  gates it (`mirrors > 0`, `waitresses > 0`, `kosher`), so a cost box only
+  appears once the order actually has that thing — delivery is the
+  exception and always applies, since its cost *is* whether there is
+  delivery. **This changed meaning for 3 imported orders** that carry a
+  `delivery_cost`: their total is now that much higher. If the Sheet's
+  amount already included delivery, clear the delivery field on those.
+  `scripts/migrate-007-order-extras.mjs` adds the columns and lists them.
 - **Flavour amounts are stored in units, never percentages.** Percent is
   an input mode in the form (see `PackageLineEditor`), resolved to units
   at entry time so a saved order's meaning doesn't shift when a package
@@ -386,6 +398,18 @@ than an archive — which means it can legitimately open empty, and the
 table's empty row names the scope instead of saying "no matches".
 Calendar ignores the scope: it navigates by its own month.
 
+On the calendar the toolbar's left slot swaps the time scope for
+Monthly/Weekly — the calendar navigates by its own month, so it has no
+scope to show, and the switcher used to be a second control inside the
+card.
+
+Settings is four tabs: **Flavors** (flavour cards *and* presets — a preset
+is a package plus a recipe of these flavours, so keeping them apart meant
+switching tabs to build one), **Settings** (every owner-managed list,
+including package types), **Team**, **Data**. Flavour cards are a fixed
+180px in a single `ScrollStrip` row rather than a wrapping grid, so adding
+a flavour never pushes the presets further down the page.
+
 `OrdersSummary` is the rail beside the table and the board (not the
 calendar, which would then carry two different windows at once). It
 totals **exactly the list on screen** — units, orders, mirrors, income —
@@ -401,6 +425,12 @@ hover card still draw the chips.
 **Every popup puts its buttons bottom-right, Save last.** The order form
 keeps its status text ("Unsaved changes", "Add a customer name to save")
 on the left of that row.
+
+`orders.ts` numbers its line and flavour array placeholders from
+`ORDER_VALUE_COUNT` rather than writing `$14`, `$15`… by hand. Adding a
+column to an order shifts every parameter after it, and SQL runs a
+mis-numbered statement perfectly happily — writing a quantity into a
+flavour id and saying nothing.
 
 In the order popup's Content tab, an open package line has a **Save
 package** button that folds it back to its summary — it writes nothing,

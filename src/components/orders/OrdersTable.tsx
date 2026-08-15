@@ -82,6 +82,8 @@ export function OrdersTable({
             <th className="bg-card px-3 py-2">Guests</th>
             <th className="bg-card px-3 py-2">Units</th>
             <th className="bg-card px-3 py-2">Mirrors</th>
+            <th className="bg-card px-3 py-2">Waitress</th>
+            <th className="bg-card px-3 py-2">Kosher</th>
             <th className="bg-card px-3 py-2">Delivery</th>
             <th className="bg-card px-3 py-2">Amount</th>
             <th className="bg-card px-3 py-2">Deposit</th>
@@ -214,6 +216,31 @@ export function OrdersTable({
                 <td className="px-3 py-2">
                   <EditableCell
                     type="number"
+                    displayValue={order.waitresses ?? "—"}
+                    editValue={order.waitresses?.toString() ?? ""}
+                    onSave={(raw) =>
+                      saveField(order, {
+                        waitresses: raw === "" ? null : Number(raw),
+                      })
+                    }
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  {/* Yes/No rather than a tick: "no" and "nobody has asked
+                      yet" look identical in a checkbox column. */}
+                  <EditableCell
+                    displayValue={order.kosher ? "Yes" : "No"}
+                    editValue={order.kosher ? "yes" : "no"}
+                    options={[
+                      { value: "no", label: "No" },
+                      { value: "yes", label: "Yes" },
+                    ]}
+                    onSave={(raw) => saveField(order, { kosher: raw === "yes" })}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <EditableCell
+                    type="number"
                     displayValue={order.deliveryCost !== null ? currency(order.deliveryCost) : "—"}
                     editValue={order.deliveryCost?.toString() ?? ""}
                     onSave={(raw) =>
@@ -253,7 +280,7 @@ export function OrdersTable({
               {/* Names the window rather than saying "no matches": the
                   default scope is the next fortnight, and a quiet season
                   otherwise reads as the page being broken. */}
-              <td colSpan={13} className="px-3 py-8 text-center text-sm text-ink-soft">
+              <td colSpan={15} className="px-3 py-8 text-center text-sm text-ink-soft">
                 {emptyNote}
               </td>
             </tr>

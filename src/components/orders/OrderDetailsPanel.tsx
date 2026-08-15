@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
+  ORDER_EXTRAS,
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
+  orderBalance,
+  orderTotal,
   type OrderInput,
   type PaymentStatus,
   type ProductionStatus,
@@ -46,10 +49,12 @@ export function OrderDetailsPanel({
   const type = orderTypes.find((t) => t.name === draft.customerType);
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
 
-  // What is still owed. Delivery is deliberately not in this sum: nothing
-  // in the data says whether it is included in the total or charged on top,
-  // so it stays a field rather than a line in the statement.
-  const balance = draft.totalAmount - draft.deposit;
+  // The jelly plus every extra that applies, less what has been paid.
+  const total = orderTotal(draft);
+  const balance = orderBalance(draft);
+  // Only the extras this order actually has. A price for mirrors nobody
+  // ordered is a charge waiting to be forgotten about.
+  const extras = ORDER_EXTRAS.filter((extra) => extra.applies(draft));
 
   return (
     <div className="flex flex-col">
@@ -159,12 +164,16 @@ export function OrderDetailsPanel({
               onChange={(mirrors) => set({ mirrors })}
             />
           </SheetRow>
-          <SheetRow label="Delivery">
-            <MoneyInput
-              label="Delivery cost"
-              value={draft.deliveryCost}
-              onChange={(deliveryCost) => set({ deliveryCost })}
+          <SheetRow label="Waitresses">
+            <NumberStepper
+              label="waitresses"
+              value={draft.waitresses}
+              allowEmpty
+              onChange={(waitresses) => set({ waitresses })}
             />
+          </SheetRow>
+          <SheetRow label="Kosher">
+            <YesNo value={draft.kosher} onChange={(kosher) => set({ kosher })} label="Kosher" />
           </SheetRow>
           <SheetRow label="Units ordered">
             {/* Packed on the Content tab, so this reads it rather than
@@ -190,6 +199,23 @@ export function OrderDetailsPanel({
               value={draft.totalAmount}
               onChange={(totalAmount) => set({ totalAmount: totalAmount ?? 0 })}
             />
+          </SheetRow>
+
+          {/* One row per extra the order actually has, so the statement
+              grows with the event rather than listing charges for things
+              nobody asked for. */}
+          {extras.map((extra) => (
+            <SheetRow key={extra.id} label={extra.label}>
+              <MoneyInput
+                label={`${extra.label} cost`}
+                value={draft[extra.cost]}
+                onChange={(value) => set({ [extra.cost]: value } as Partial<OrderInput>)}
+              />
+            </SheetRow>
+          ))}
+
+          <SheetRow label="Total">
+            <span className="pr-2 text-sm font-bold tabular-nums text-ink">{money(total)}</span>
           </SheetRow>
           <SheetRow label="Deposit received">
             <MoneyInput
@@ -221,6 +247,43 @@ export function OrderDetailsPanel({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * A two-state switch for a field that is simply on or off. A checkbox
+ * reads as "tick if true" and leaves "no" and "not answered yet" looking
+ * identical, which matters here because kosher is a question someone is
+ * asked rather than a default.
+ */
+function YesNo({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+}) {
+  return (
+    <span role="group" aria-label={label} className="flex items-center gap-1 rounded-full bg-black/[0.05] p-0.5">
+      {[
+        { on: false, text: "No" },
+        { on: true, text: "Yes" },
+      ].map((option) => (
+        <button
+          key={option.text}
+          type="button"
+          aria-pressed={value === option.on}
+          onClick={() => onChange(option.on)}
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
+            value === option.on ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+          }`}
+        >
+          {option.text}
+        </button>
+      ))}
+    </span>
   );
 }
 
