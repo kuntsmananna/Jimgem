@@ -8,7 +8,7 @@
  * order and no timezone can shift a boundary.
  */
 
-import { linePackedUnits, type Order } from "./orderTypes";
+import { orderTotal, orderUnits, type Order } from "./orderTypes";
 
 export type ScopeId = "14d" | "month" | "nextMonth" | "all";
 
@@ -64,20 +64,18 @@ export function scopeRange(id: ScopeId, today: Date): DateRange | null {
 
 /**
  * The window immediately before the scope, for the summary's change
- * figures — the 14 days just gone, last month, this month. Null when
- * there is nothing comparable to measure against.
+ * figures — the 14 days just gone, last month, this month.
+ *
+ * The same scope measured from one window earlier, rather than a second
+ * switch that has to be kept in step with the first. Null for "all time",
+ * which has nothing before it. Anchoring the month cases to the 1st is
+ * safe because `monthRange` only reads the year and month.
  */
 export function previousRange(id: ScopeId, today: Date): DateRange | null {
-  switch (id) {
-    case "14d":
-      return { from: iso(addDays(today, -14)), to: iso(addDays(today, -1)) };
-    case "month":
-      return monthRange(today, -1);
-    case "nextMonth":
-      return monthRange(today, 0);
-    case "all":
-      return null;
-  }
+  if (id === "all") return null;
+  const oneWindowBack =
+    id === "14d" ? addDays(today, -14) : new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  return scopeRange(id, oneWindowBack);
 }
 
 /** A null range means unbounded, so everything is in it. */
@@ -95,12 +93,13 @@ export interface OrderTotals {
 export function totalOf(orders: Order[], unitsPerPackage: Map<number, number>): OrderTotals {
   return orders.reduce<OrderTotals>(
     (totals, order) => ({
-      units:
-        totals.units +
-        order.packageLines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0),
+      units: totals.units + orderUnits(order.packageLines, unitsPerPackage),
       orders: totals.orders + 1,
       mirrors: totals.mirrors + (order.mirrors ?? 0),
-      income: totals.income + order.totalAmount,
+      // What the order is worth, extras included — the same figure the
+      // order sheet calls Total. Summing the bare `total_amount` column
+      // made the rail disagree with the popup it links to.
+      income: totals.income + orderTotal(order),
     }),
     { units: 0, orders: 0, mirrors: 0, income: 0 },
   );

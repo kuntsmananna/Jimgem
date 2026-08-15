@@ -1,6 +1,14 @@
 "use client";
 
-import { formatOrderDate, orderUnits, type Order, type OrderInput } from "@/lib/orderTypes";
+import {
+  formatOrderDate,
+  hasDelivery,
+  orderUnits,
+  unitsPerPackageMap,
+  withDelivery,
+  type Order,
+  type OrderInput,
+} from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
@@ -42,7 +50,10 @@ export function OrdersTable({
 }) {
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
-  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  // Built once rather than per row: the list is the same for all 74 of
+  // them, and a fresh array per row also denies the cell any reuse.
+  const typeOptions = orderTypes.map((type) => ({ value: type.name, label: type.name }));
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {
@@ -164,7 +175,7 @@ export function OrdersTable({
                     // The owner's list from Settings, not free text: a typed
                     // variant would render uncoloured and silently become a
                     // type of its own.
-                    options={orderTypes.map((type) => ({ value: type.name, label: type.name }))}
+                    options={typeOptions}
                     onSave={(raw) => saveField(order, { customerType: raw })}
                   />
                 </td>
@@ -226,34 +237,15 @@ export function OrdersTable({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  {/* Yes/No rather than a tick: "no" and "nobody has asked
-                      yet" look identical in a checkbox column. */}
-                  <EditableCell
-                    displayValue={order.kosher ? "Yes" : "No"}
-                    editValue={order.kosher ? "yes" : "no"}
-                    options={[
-                      { value: "no", label: "No" },
-                      { value: "yes", label: "Yes" },
-                    ]}
-                    onSave={(raw) => saveField(order, { kosher: raw === "yes" })}
-                  />
+                  <YesNoCell value={order.kosher} onSave={(kosher) => saveField(order, { kosher })} />
                 </td>
                 <td className="px-3 py-2">
                   {/* Whether there is delivery, not what it costs — the
                       price lives with the other extras on the order
                       sheet's money side. */}
-                  <EditableCell
-                    displayValue={order.deliveryCost !== null ? "Yes" : "No"}
-                    editValue={order.deliveryCost !== null ? "yes" : "no"}
-                    options={[
-                      { value: "no", label: "No" },
-                      { value: "yes", label: "Yes" },
-                    ]}
-                    onSave={(raw) =>
-                      saveField(order, {
-                        deliveryCost: raw === "yes" ? (order.deliveryCost ?? 0) : null,
-                      })
-                    }
+                  <YesNoCell
+                    value={hasDelivery(order)}
+                    onSave={(on) => saveField(order, withDelivery(order, on))}
                   />
                 </td>
                 <td className="px-3 py-2 font-semibold">
@@ -294,6 +286,30 @@ export function OrdersTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * A yes/no column, editing as a dropdown.
+ *
+ * `EditableCell` speaks strings, so the boolean has to be encoded
+ * somewhere — here, once, rather than at each column that needs one.
+ * Yes/No rather than a tick, because in a checkbox column "no" and
+ * "nobody has asked yet" look identical.
+ */
+const YES_NO = [
+  { value: "no", label: "No" },
+  { value: "yes", label: "Yes" },
+];
+
+function YesNoCell({ value, onSave }: { value: boolean; onSave: (value: boolean) => Promise<void> }) {
+  return (
+    <EditableCell
+      displayValue={value ? "Yes" : "No"}
+      editValue={value ? "yes" : "no"}
+      options={YES_NO}
+      onSave={(raw) => onSave(raw === "yes")}
+    />
   );
 }
 

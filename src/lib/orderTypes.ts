@@ -184,6 +184,16 @@ export function expandMixFlavors(entries: OrderLineFlavor[], flavors: Flavor[]):
   return [...totals].map(([flavorId, units]) => ({ flavorId, units }));
 }
 
+/**
+ * The `id → unitsPerPackage` lookup every unit calculation needs. Built
+ * identically at a dozen call sites before this existed.
+ */
+export function unitsPerPackageMap(
+  packageTypes: { id: number; unitsPerPackage: number }[],
+): Map<number, number> {
+  return new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+}
+
 /** Units this line packs: its package count times that package's size. */
 export function linePackedUnits(line: OrderPackageLine, unitsPerPackage: Map<number, number>): number {
   return line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0);
@@ -298,6 +308,22 @@ export interface OrderInput {
  * `applies` is the gate: a cost box only appears once the thing itself is
  * on the order, so an order with no mirrors never shows a mirrors price.
  */
+/**
+ * Delivery is stored as a nullable cost rather than a flag: `null` is no
+ * delivery, and `0` is "we deliver, no charge" — a real case and a
+ * different answer. These two say so once, so no caller has to remember
+ * that a 0 written for "no" silently promises free delivery.
+ */
+export function hasDelivery(order: Pick<OrderInput, "deliveryCost">): boolean {
+  return order.deliveryCost !== null;
+}
+
+export function withDelivery<T extends Pick<OrderInput, "deliveryCost">>(order: T, on: boolean): T {
+  // Keeps a price already agreed when toggling back on, and opens at zero
+  // rather than guessing one.
+  return { ...order, deliveryCost: on ? (order.deliveryCost ?? 0) : null };
+}
+
 export const ORDER_EXTRAS = [
   {
     // Gated like the rest, on the cost being set at all rather than on a
@@ -306,25 +332,25 @@ export const ORDER_EXTRAS = [
     id: "delivery",
     label: "Delivery",
     cost: "deliveryCost",
-    applies: (order: Pick<OrderInput, "deliveryCost">) => order.deliveryCost !== null,
+    applies: (order: OrderInput) => hasDelivery(order),
   },
   {
     id: "mirrors",
     label: "Mirrors",
     cost: "mirrorsCost",
-    applies: (order: Pick<OrderInput, "mirrors">) => (order.mirrors ?? 0) > 0,
+    applies: (order: OrderInput) => (order.mirrors ?? 0) > 0,
   },
   {
     id: "waitress",
     label: "Waitressing",
     cost: "waitressCost",
-    applies: (order: Pick<OrderInput, "waitresses">) => (order.waitresses ?? 0) > 0,
+    applies: (order: OrderInput) => (order.waitresses ?? 0) > 0,
   },
   {
     id: "kosher",
     label: "Kosher",
     cost: "kosherCost",
-    applies: (order: Pick<OrderInput, "kosher">) => order.kosher,
+    applies: (order: OrderInput) => order.kosher,
   },
 ] as const satisfies readonly {
   id: string;

@@ -6,7 +6,9 @@ import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
   formatOrderDate,
+  orderTotal,
   orderUnits,
+  unitsPerPackageMap,
   type Order,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
@@ -45,14 +47,16 @@ export function OrderHoverCard({
   className?: string;
   children: ReactNode;
 }) {
-  const units = orderUnits(order.packageLines, new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage])));
-
   return (
     <HoverCard
       width={CARD_WIDTH}
       height={CARD_HEIGHT}
       className={className}
-      render={() => (
+      render={() => {
+        // Inside render, so the ~70 cards that are merely mounted don't
+        // each build a lookup map for a card nobody is looking at.
+        const units = orderUnits(order.packageLines, unitsPerPackageMap(packageTypes));
+        return (
         <>
             <div className="flex items-baseline justify-between gap-2">
               <p className="truncate font-display text-sm font-bold text-ink">
@@ -105,15 +109,18 @@ export function OrderHoverCard({
               <ContentChips lines={order.packageLines} flavors={flavors} packageTypes={packageTypes} />
             </div>
 
+            {/* The order's worth with its extras in, matching the order
+                sheet's Total — delivery no longer needs calling out beside
+                it, because it is part of the figure now. */}
             <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">
-              <span className="text-sm font-semibold text-ink">{currency(order.totalAmount)}</span>
+              <span className="text-sm font-semibold text-ink">{currency(orderTotal(order))}</span>
               <span className="text-xs text-ink-soft">
                 {order.deposit > 0 ? `${currency(order.deposit)} deposit` : "no deposit"}
-                {order.deliveryCost !== null && ` · ${currency(order.deliveryCost)} delivery`}
               </span>
             </div>
         </>
-      )}
+        );
+      }}
     >
       {children}
     </HoverCard>

@@ -3,7 +3,9 @@
 import {
   PRODUCTION_STATUS_LABEL,
   formatOrderDate,
+  orderTotal,
   orderUnits,
+  unitsPerPackageMap,
   type Order,
   type ProductionStatus,
 } from "@/lib/orderTypes";
@@ -32,7 +34,7 @@ export function OrdersKanban({
   onChanged: () => void;
   onOpen: (key: string) => void;
 }) {
-  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  const unitsPerPackage = unitsPerPackageMap(packageTypes);
 
   return (
     <div className="grid grid-cols-3 gap-4">
@@ -50,7 +52,9 @@ export function OrdersKanban({
                 used to expand it in place on hover, which reflowed the
                 whole column. They live in the hover card now.
               */}
-              {columnOrders.map((order) => (
+              {columnOrders.map((order) => {
+                const units = orderUnits(order.packageLines, unitsPerPackage);
+                return (
                 <OrderHoverCard
                   key={order.key}
                   order={order}
@@ -72,16 +76,17 @@ export function OrdersKanban({
                       hover card this sits inside carries the breakdown. */}
                   <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
                     <UnitsIcon size={12} />
-                    {orderUnits(order.packageLines, unitsPerPackage) > 0
-                      ? `${nf.format(orderUnits(order.packageLines, unitsPerPackage))} units`
-                      : "No packages yet"}
+                    {units > 0 ? `${nf.format(units)} units` : "No packages yet"}
                   </p>
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-ink">{currency(order.totalAmount)}</p>
+                    {/* What the order is worth, extras included — the same
+                        figure the order sheet calls Total. */}
+                    <p className="text-sm font-semibold text-ink">{currency(orderTotal(order))}</p>
                     <ProductionStatusSelect order={order} onChanged={onChanged} />
                   </div>
                 </OrderHoverCard>
-              ))}
+                );
+              })}
             </div>
           </div>
         );

@@ -14,20 +14,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
  * The arrows only appear when there is something in that direction, so a
  * short list looks like a plain row rather than like a broken carousel.
  */
-export function ScrollStrip({
-  children,
-  step = 3,
-  itemWidth = 180,
-  gap = 12,
-  label,
-}: {
-  children: ReactNode;
-  /** Items to move per arrow press. */
-  step?: number;
-  itemWidth?: number;
-  gap?: number;
-  label: string;
-}) {
+/** Card width and the gap between them, matching the flavour cards. */
+const ITEM_WIDTH = 180;
+const GAP = 12;
+/** Items moved per arrow press. */
+const STEP = 3;
+
+export function ScrollStrip({ children, label }: { children: ReactNode; label: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   // Both false until measured, so the arrows can't flash on a list that
   // doesn't overflow.
@@ -38,27 +31,28 @@ export function ScrollStrip({
     if (!el) return;
     // A pixel of slack: fractional layout widths leave scrollLeft a hair
     // short of the end, which would keep the forward arrow lit forever.
-    setCanScroll({
-      back: el.scrollLeft > 1,
-      forward: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
-    });
+    const back = el.scrollLeft > 1;
+    const forward = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    // Same object every time nothing changed, or scrolling would re-render
+    // the strip on every frame of a swipe to set identical booleans.
+    setCanScroll((prev) => (prev.back === back && prev.forward === forward ? prev : { back, forward }));
   }, []);
 
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
     sync();
-    // Both matter: the container resizing, and items being added or
-    // removed while it stays the same size.
+    // The container only. Items added or removed re-run this effect
+    // anyway (`children` is a dependency), and a fixed-width card never
+    // resizes itself.
     const observer = new ResizeObserver(sync);
     observer.observe(el);
-    for (const child of el.children) observer.observe(child);
     return () => observer.disconnect();
   }, [sync, children]);
 
   function scrollBy(direction: -1 | 1) {
     scroller.current?.scrollBy({
-      left: direction * step * (itemWidth + gap),
+      left: direction * STEP * (ITEM_WIDTH + GAP),
       behavior: "smooth",
     });
   }
@@ -71,7 +65,7 @@ export function ScrollStrip({
         // `scroll-smooth` is on the element rather than the call so a
         // trackpad swipe isn't animated on top of its own momentum.
         className="flex overflow-x-auto scroll-smooth pb-1"
-        style={{ gap, scrollbarWidth: "thin" }}
+        style={{ gap: GAP, scrollbarWidth: "thin" }}
       >
         {children}
       </div>

@@ -168,7 +168,7 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
           flavour list is browsed end to end, and a second row pushed the
           presets below it further down every time a flavour was added. */}
       <div className="mt-4">
-        <ScrollStrip label="flavors" itemWidth={180}>
+        <ScrollStrip label="flavors">
         {flavors.map((f) => (
           <div key={f.id} className="w-[180px] shrink-0 rounded-xl border border-line p-3">
             <button className="block w-full" onClick={() => setEditing(f)}>

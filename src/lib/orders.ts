@@ -257,43 +257,46 @@ function toLineArrays(lines: OrderPackageLine[]) {
   };
 }
 
-const ORDER_COLUMNS = `date, customer, customer_type, location, guests, mirrors, waitresses,
-          kosher, delivery_cost, mirrors_cost, waitress_cost, kosher_cost,
-          total_amount, deposit, payment_status, production_status, notes`;
+/**
+ * Every column an order writes, paired with where its value comes from.
+ *
+ * One list, because everything below is derived from it: the INSERT's
+ * column list, its `$n` placeholders, the UPDATE's `SET col = $n` clause,
+ * the values array, and the offset the line and flavour arrays start at.
+ * Adding a column used to mean editing four of those in exact agreement,
+ * and SQL runs a mis-numbered statement perfectly happily — writing a
+ * quantity into a flavour id and saying nothing.
+ */
+const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] = [
+  { column: "date", value: (i) => i.date },
+  { column: "customer", value: (i) => i.customer },
+  { column: "customer_type", value: (i) => i.customerType },
+  { column: "location", value: (i) => i.location },
+  { column: "guests", value: (i) => i.guests },
+  { column: "mirrors", value: (i) => i.mirrors },
+  { column: "waitresses", value: (i) => i.waitresses },
+  { column: "kosher", value: (i) => i.kosher },
+  { column: "delivery_cost", value: (i) => i.deliveryCost },
+  { column: "mirrors_cost", value: (i) => i.mirrorsCost },
+  { column: "waitress_cost", value: (i) => i.waitressCost },
+  { column: "kosher_cost", value: (i) => i.kosherCost },
+  { column: "total_amount", value: (i) => i.totalAmount },
+  { column: "deposit", value: (i) => i.deposit },
+  { column: "payment_status", value: (i) => i.paymentStatus },
+  { column: "production_status", value: (i) => i.productionStatus },
+  { column: "notes", value: (i) => i.notes },
+];
 
-/** Order matches ORDER_COLUMNS and the UPDATE below — keep all three in step. */
+const ORDER_COLUMNS = ORDER_FIELDS.map((f) => f.column).join(", ");
+const ORDER_PLACEHOLDERS = ORDER_FIELDS.map((_, i) => `$${i + 1}`).join(", ");
+const ORDER_ASSIGNMENTS = ORDER_FIELDS.map((f, i) => `${f.column} = $${i + 1}`).join(", ");
+
 function orderValues(input: OrderInput) {
-  return [
-    input.date,
-    input.customer,
-    input.customerType,
-    input.location,
-    input.guests,
-    input.mirrors,
-    input.waitresses,
-    input.kosher,
-    input.deliveryCost,
-    input.mirrorsCost,
-    input.waitressCost,
-    input.kosherCost,
-    input.totalAmount,
-    input.deposit,
-    input.paymentStatus,
-    input.productionStatus,
-    input.notes,
-  ];
+  return ORDER_FIELDS.map((f) => f.value(input));
 }
 
-/**
- * How many placeholders `orderValues` occupies. The line and flavour
- * arrays are numbered from it rather than written out, so adding a column
- * to an order can't silently shift them onto the wrong parameter — which
- * is a bug SQL happily runs.
- */
-const ORDER_VALUE_COUNT = 17;
-const ORDER_PLACEHOLDERS = Array.from({ length: ORDER_VALUE_COUNT }, (_, i) => `$${i + 1}`).join(", ");
 /** `after(1)` is the first placeholder past the order's own values. */
-const after = (offset: number) => `$${ORDER_VALUE_COUNT + offset}`;
+const after = (offset: number) => `$${ORDER_FIELDS.length + offset}`;
 
 export async function createOrder(input: OrderInput): Promise<Order> {
   const db = getDb();
@@ -337,12 +340,7 @@ export async function updateOrder(id: number, input: OrderInput): Promise<Order>
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH updated_order AS (
-       UPDATE orders SET
-         date = $1, customer = $2, customer_type = $3, location = $4, guests = $5,
-         mirrors = $6, waitresses = $7, kosher = $8, delivery_cost = $9,
-         mirrors_cost = $10, waitress_cost = $11, kosher_cost = $12,
-         total_amount = $13, deposit = $14, payment_status = $15,
-         production_status = $16, notes = $17
+       UPDATE orders SET ${ORDER_ASSIGNMENTS}
        WHERE id = ${after(1)}
        RETURNING *
      ), deleted_lines AS (

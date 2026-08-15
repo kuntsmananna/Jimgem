@@ -436,9 +436,11 @@ hover card still draw the chips.
 keeps its status text ("Unsaved changes", "Add a customer name to save")
 on the left of that row.
 
-`orders.ts` numbers its line and flavour array placeholders from
-`ORDER_VALUE_COUNT` rather than writing `$14`, `$15`… by hand. Adding a
-column to an order shifts every parameter after it, and SQL runs a
+`orders.ts` derives everything an order's INSERT and UPDATE need — the
+column list, the `$n` placeholders, the `SET col = $n` clause, the values
+array, and the offset the line/flavour arrays start at — from one
+`ORDER_FIELDS` table. Adding a column is one entry there. It used to be
+four hand-maintained lists that had to agree exactly, and SQL runs a
 mis-numbered statement perfectly happily — writing a quantity into a
 flavour id and saying nothing.
 

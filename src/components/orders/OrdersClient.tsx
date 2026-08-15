@@ -6,6 +6,7 @@ import { CalendarDays, Columns3, Copy, Plus, Table2, Trash2, X, type LucideIcon 
 import {
   PAYMENT_STATUS_LABEL,
   PRODUCTION_STATUS_LABEL,
+  unitsPerPackageMap,
   type Order,
   type PaymentStatus,
 } from "@/lib/orderTypes";
@@ -20,16 +21,50 @@ import { FilterDropdown, type FilterOption } from "./FilterDropdown";
 
 type View = "table" | "kanban" | "calendar";
 
-const VIEWS: { value: View; label: string; Icon: LucideIcon }[] = [
-  { value: "table", label: "Table", Icon: Table2 },
-  { value: "kanban", label: "Kanban", Icon: Columns3 },
-  { value: "calendar", label: "Calendar", Icon: CalendarDays },
+const VIEWS: { id: View; label: string; Icon: LucideIcon }[] = [
+  { id: "table", label: "Table", Icon: Table2 },
+  { id: "kanban", label: "Kanban", Icon: Columns3 },
+  { id: "calendar", label: "Calendar", Icon: CalendarDays },
 ];
 
 const CALENDAR_MODES: { id: CalendarMode; label: string }[] = [
   { id: "month", label: "Monthly" },
   { id: "week", label: "Weekly" },
 ];
+
+/**
+ * The toolbar's segmented pills — time scope, calendar mode, view — which
+ * were three copies of the same markup differing only in which state they
+ * read. An `icon` is optional because only the view switcher carries one.
+ */
+function PillGroup<T extends string>({
+  items,
+  value,
+  onChange,
+}: {
+  items: readonly { id: T; label: string; Icon?: LucideIcon }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex w-fit items-center gap-1 rounded-full bg-card p-1">
+      {items.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={value === id}
+          onClick={() => onChange(id)}
+          className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
+            value === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+          }`}
+        >
+          {Icon && <Icon size={14} />}
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Dropdown options with a live count of how many orders carry each value. */
 function optionsWithCounts<T extends string>(labels: Record<T, string>, values: T[]): FilterOption<T>[] {
@@ -102,21 +137,20 @@ export function OrdersClient({
   const scopeLabel = SCOPES.find((s) => s.id === scope)?.label ?? "";
 
   /**
-   * What each view shows once the scope is applied. Kanban keeps its
-   * Delivered column, so it scopes `byPayment` rather than `filtered` —
-   * that is the only difference between the two lists.
+   * What this view is working from, before the scope narrows it. Kanban
+   * keeps its Delivered column, which is the only difference between the
+   * two lists — so the choice is made once here rather than at each of
+   * the four places that used to repeat the ternary.
    */
-  const inScope = filtered.filter((o) => inRange(o.date, range));
-  const boardInScope = byPayment.filter((o) => inRange(o.date, range));
+  const source = view === "kanban" ? byPayment : filtered;
+  const inScope = source.filter((o) => inRange(o.date, range));
 
-  // The summary describes whichever list is on screen, and compares it
-  // against the same list one window back.
-  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
-  const totals = totalOf(view === "kanban" ? boardInScope : inScope, unitsPerPackage);
+  // The summary describes exactly the list on screen, against the same
+  // list one window back.
+  const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  const totals = totalOf(inScope, unitsPerPackage);
   const previousTotals = totalOf(
-    (view === "kanban" ? byPayment : filtered).filter(
-      (o) => previous !== null && inRange(o.date, previous),
-    ),
+    previous === null ? [] : source.filter((o) => inRange(o.date, previous)),
     unitsPerPackage,
   );
 
@@ -199,51 +233,14 @@ export function OrdersClient({
             has no time scope — it navigates itself — so this slot switches
             to how its grid is drawn. */}
         <div className="flex flex-1 items-center">
-          <div className="flex items-center gap-1 rounded-full bg-card p-1">
-            {view === "calendar"
-              ? CALENDAR_MODES.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={calendarMode === id}
-                    onClick={() => setCalendarMode(id)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
-                      calendarMode === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))
-              : SCOPES.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={scope === id}
-                    onClick={() => setScope(id)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
-                      scope === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-          </div>
+          {view === "calendar" ? (
+            <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
+          ) : (
+            <PillGroup items={SCOPES} value={scope} onChange={setScope} />
+          )}
         </div>
 
-        <div className="flex items-center gap-1 rounded-full bg-card p-1">
-          {VIEWS.map(({ value, label, Icon }) => (
-            <button
-              key={value}
-              onClick={() => setView(value)}
-              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-                view === value ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-              }`}
-            >
-              <Icon size={14} />
-              {label}
-            </button>
-          ))}
-        </div>
+        <PillGroup items={VIEWS} value={view} onChange={setView} />
 
         <div className="flex flex-1 items-center justify-end gap-2">
           <FilterDropdown
@@ -358,7 +355,7 @@ export function OrdersClient({
           )}
           {view === "kanban" && (
             <OrdersKanban
-              orders={boardInScope}
+              orders={inScope}
               flavors={flavors}
               packageTypes={packageTypes}
               onChanged={refresh}

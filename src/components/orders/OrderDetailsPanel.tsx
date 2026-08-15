@@ -5,6 +5,8 @@ import { ChevronDown } from "lucide-react";
 import {
   ORDER_EXTRAS,
   PAYMENT_STATUS_LABEL,
+  hasDelivery,
+  withDelivery,
   PRODUCTION_STATUS_LABEL,
   orderBalance,
   orderTotal,
@@ -57,7 +59,7 @@ export function OrderDetailsPanel({
   const extras = ORDER_EXTRAS.filter((extra) => extra.applies(draft));
 
   return (
-    <div className="flex flex-col">
+    <>
       {/*
         Three columns, each reading straight down: what the order *is*,
         how big the event is, and what it is worth. The customer used to
@@ -88,7 +90,7 @@ export function OrderDetailsPanel({
             <PillSelect
               value={draft.customerType}
               onChange={(value) => set({ customerType: value })}
-              aria-label="Order type"
+              label="Order type"
               className={type ? "text-ink" : "border border-line bg-black/[0.04] text-ink-soft"}
               style={type ? { background: type.color } : undefined}
               icon={type ? orderTypeIconElement(type.icon, 11) : undefined}
@@ -108,7 +110,7 @@ export function OrderDetailsPanel({
             <PillSelect
               value={draft.paymentStatus}
               onChange={(value) => set({ paymentStatus: value as PaymentStatus })}
-              aria-label="Payment status"
+              label="Payment status"
               className={PAYMENT_BADGE_CLASS[draft.paymentStatus]}
             >
               {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => (
@@ -120,7 +122,7 @@ export function OrderDetailsPanel({
             <PillSelect
               value={draft.productionStatus}
               onChange={(value) => set({ productionStatus: value as ProductionStatus })}
-              aria-label="Production status"
+              label="Production status"
               className="border border-line bg-cream text-ink"
               icon={
                 <span
@@ -207,11 +209,7 @@ export function OrderDetailsPanel({
             {/* Turning it on opens the cost row at zero rather than
                 guessing a price — an order can be booked for delivery
                 before anyone has said what it costs. */}
-            <YesNo
-              value={draft.deliveryCost !== null}
-              onChange={(on) => set({ deliveryCost: on ? (draft.deliveryCost ?? 0) : null })}
-              label="Delivery"
-            />
+            <YesNo value={hasDelivery(draft)} onChange={(on) => onChange(withDelivery(draft, on))} label="Delivery" />
           </SheetRow>
           <SheetRow label="Units ordered">
             {/* Packed on the Content tab, so this reads it rather than
@@ -267,8 +265,7 @@ export function OrderDetailsPanel({
           </SheetRow>
         </section>
       </div>
-
-    </div>
+    </>
   );
 }
 
@@ -399,26 +396,27 @@ function MoneyInput({
 function PillSelect({
   value,
   onChange,
+  label,
   className = "",
   style,
   icon,
   children,
-  ...props
 }: {
   value: string;
   onChange: (value: string) => void;
+  label: string;
   className?: string;
   style?: React.CSSProperties;
   icon?: React.ReactNode;
   children: React.ReactNode;
-} & Omit<React.ComponentProps<"select">, "value" | "onChange" | "style" | "className" | "children">) {
+}) {
   return (
     <span className="relative inline-flex shrink-0 items-center">
       {icon && (
         <span className="pointer-events-none absolute left-2.5 flex items-center text-ink">{icon}</span>
       )}
       <select
-        {...props}
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={style}

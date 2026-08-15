@@ -1,7 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { lineAssignedUnits, linePackedUnits, type OrderPackageLine } from "@/lib/orderTypes";
+import {
+  lineAssignedUnits,
+  linePackedUnits,
+  orderUnits,
+  unitsPerPackageMap,
+  type OrderPackageLine,
+} from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { flavorGradient } from "@/lib/flavorStyle";
 import { UnitsIcon } from "@/lib/icons";
@@ -10,9 +16,8 @@ import { HoverCard } from "@/components/HoverCard";
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 const CARD_WIDTH = 280;
-/** Header, plus a heading and a few flavour rows per package line. */
-const cardHeight = (lines: OrderPackageLine[]) =>
-  Math.min(520, 64 + lines.reduce((sum, line) => sum + 34 + (line.flavors.length + 1) * 22, 0));
+/** Enough for the tallest card, used only to keep it on screen. */
+const CARD_HEIGHT = 420;
 
 /**
  * The content column, spelled out on hover: what each package line packs
@@ -49,21 +54,22 @@ export function ContentHoverCard({
   // a glitch rather than as an answer.
   if (lines.length === 0) return <>{children}</>;
 
-  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
-  const total = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
-
   return (
     <HoverCard
       width={CARD_WIDTH}
-      height={cardHeight(lines)}
+      height={CARD_HEIGHT}
       className={className}
-      render={() => (
+      render={() => {
+        // Built here, not at mount: one card per table row is mounted and
+        // only the hovered one ever renders.
+        const unitsPerPackage = unitsPerPackageMap(packageTypes);
+        return (
         <>
           <div className="flex items-baseline justify-between gap-2 border-b border-line pb-2">
             <p className="font-display text-sm font-bold text-ink">Content</p>
             <p className="flex items-center gap-1 text-xs font-semibold text-ink-soft">
               <UnitsIcon size={12} />
-              {nf.format(total)} units
+              {nf.format(orderUnits(lines, unitsPerPackage))} units
             </p>
           </div>
 
@@ -73,12 +79,14 @@ export function ContentHoverCard({
                 key={i}
                 line={line}
                 flavors={flavors}
+                packed={linePackedUnits(line, unitsPerPackage)}
                 packageType={packageTypes.find((p) => String(p.id) === line.packageTypeId)}
               />
             ))}
           </div>
         </>
-      )}
+        );
+      }}
     >
       {children}
     </HoverCard>
@@ -88,13 +96,15 @@ export function ContentHoverCard({
 function LineDetail({
   line,
   flavors,
+  packed,
   packageType,
 }: {
   line: OrderPackageLine;
   flavors: Flavor[];
+  /** Units this line packs, from the parent's one lookup map. */
+  packed: number;
   packageType: PackageType | undefined;
 }) {
-  const packed = line.quantity * (packageType?.unitsPerPackage ?? 0);
   const missing = packed - lineAssignedUnits(line);
 
   return (
