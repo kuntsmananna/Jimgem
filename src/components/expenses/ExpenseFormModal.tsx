@@ -113,19 +113,20 @@ export function ExpenseFormModal({
         <Field label="Note">
           <TextInput value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
         </Field>
-        <div className="mt-2 flex gap-2">
+        {/* Right-aligned, Save last — the same corner every popup uses. */}
+        <div className="mt-2 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
+          >
+            Cancel
+          </button>
           <button
             onClick={submit}
             disabled={busy}
             className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
           >
             Save expense
-          </button>
-          <button
-            onClick={onClose}
-            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
-          >
-            Cancel
           </button>
         </div>
       </div>

@@ -223,24 +223,10 @@ export function OrderForm({
         </p>
       )}
 
+      {/* Actions right, status left: the buttons sit where the eye ends up
+          after reading the form, and every popup in the app puts them
+          there. Save is last, nearest the corner. */}
       <div className="mt-6 flex items-center gap-2">
-        <button
-          onClick={submit}
-          disabled={!canSave}
-          title={
-            draft.customer.trim().length === 0 ? "Give the order a customer name first" : undefined
-          }
-          className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-40"
-        >
-          {isEdit ? "Save changes" : "Save order"}
-        </button>
-        <button
-          onClick={onCancel}
-          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
-        >
-          {cancelLabel}
-        </button>
-
         {/* Nothing here saves as you type, so say so while it's still fixable. */}
         {dirty && (
           <span className="text-xs font-semibold text-amber-700" role="status">
@@ -254,6 +240,24 @@ export function OrderForm({
         {draft.customer.trim().length === 0 && (
           <span className="text-xs text-ink-soft">Add a customer name to save</span>
         )}
+
+        <span className="flex-1" />
+        <button
+          onClick={onCancel}
+          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
+        >
+          {cancelLabel}
+        </button>
+        <button
+          onClick={submit}
+          disabled={!canSave}
+          title={
+            draft.customer.trim().length === 0 ? "Give the order a customer name first" : undefined
+          }
+          className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-40"
+        >
+          {isEdit ? "Save changes" : "Save order"}
+        </button>
       </div>
     </>
   );

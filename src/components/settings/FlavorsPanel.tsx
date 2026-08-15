@@ -91,16 +91,17 @@ function FlavorFormModal({
           />
           Alcoholic
         </label>
-        <div className="flex gap-2">
+        {/* Right-aligned, Save last — the same corner every popup uses. */}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink">
+            Cancel
+          </button>
           <button
             onClick={submit}
             disabled={busy}
             className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
           >
             {isEdit ? "Save changes" : "Save flavor"}
-          </button>
-          <button onClick={onClose} className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink">
-            Cancel
           </button>
         </div>
       </div>

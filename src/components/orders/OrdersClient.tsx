@@ -10,6 +10,8 @@ import {
   type PaymentStatus,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
+import { OrdersSummary } from "./OrdersSummary";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar } from "./OrdersCalendar";
@@ -50,6 +52,9 @@ export function OrdersClient({
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>("table");
   const [paymentFilter, setPaymentFilter] = useState<Set<PaymentStatus>>(new Set());
+  // The next fortnight by default: the page is a work queue first and an
+  // archive second, and 74 orders spanning a year buries the ones due.
+  const [scope, setScope] = useState<ScopeId>("14d");
   // Off by default: 60 of 73 orders are delivered, so the page is about
   // what still needs doing unless you ask for the archive.
   const [showDelivered, setShowDelivered] = useState(false);
@@ -78,6 +83,34 @@ export function OrdersClient({
   );
 
   const deliveredCount = byPayment.length - byPayment.filter((o) => o.productionStatus !== "delivered").length;
+
+  /*
+    Read once per render rather than per call, so every scope boundary and
+    every total on this pass is measured from the same instant.
+  */
+  const today = new Date();
+  const range = scopeRange(scope, today);
+  const previous = previousRange(scope, today);
+  const scopeLabel = SCOPES.find((s) => s.id === scope)?.label ?? "";
+
+  /**
+   * What each view shows once the scope is applied. Kanban keeps its
+   * Delivered column, so it scopes `byPayment` rather than `filtered` —
+   * that is the only difference between the two lists.
+   */
+  const inScope = filtered.filter((o) => inRange(o.date, range));
+  const boardInScope = byPayment.filter((o) => inRange(o.date, range));
+
+  // The summary describes whichever list is on screen, and compares it
+  // against the same list one window back.
+  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  const totals = totalOf(view === "kanban" ? boardInScope : inScope, unitsPerPackage);
+  const previousTotals = totalOf(
+    (view === "kanban" ? byPayment : filtered).filter(
+      (o) => previous !== null && inRange(o.date, previous),
+    ),
+    unitsPerPackage,
+  );
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
 
@@ -109,9 +142,10 @@ export function OrdersClient({
     });
   }
 
+  /** Over what the table actually shows, so the scope can't select rows off screen. */
   function toggleAll() {
     setSelectedKeys((prev) =>
-      prev.size === filtered.length ? new Set() : new Set(filtered.map((o) => o.key)),
+      prev.size === inScope.length ? new Set() : new Set(inScope.map((o) => o.key)),
     );
   }
 
@@ -151,42 +185,25 @@ export function OrdersClient({
         — a switcher row plus ten filter pills — which cost a lot of
         vertical space above the table for controls used occasionally.
       */}
-      <div className="flex items-center gap-3">
-        <div className="flex flex-1 items-center gap-2">
-          <FilterDropdown
-            label="Payment"
-            options={paymentOptions}
-            selected={paymentFilter}
-            onChange={setPaymentFilter}
-          />
-          <button
-            type="button"
-            aria-pressed={showDelivered}
-            onClick={() => setShowDelivered((v) => !v)}
-            title="Delivered orders are hidden by default"
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-              showDelivered
-                ? "border-ink bg-black text-cream"
-                : "border-line bg-card text-ink-soft hover:text-ink"
-            }`}
-          >
-            <span
-              aria-hidden
-              className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
-                showDelivered ? "bg-cream/30" : "bg-black/10"
-              }`}
-            >
-              <span
-                className={`h-3 w-3 rounded-full bg-current transition-transform ${
-                  showDelivered ? "translate-x-3" : ""
+      <div className="flex flex-wrap items-center gap-3">
+        {/* When, on the left: the first question is which orders are even in
+            play. What kind, on the right, narrows that down. */}
+        <div className="flex flex-1 items-center">
+          <div className="flex items-center gap-1 rounded-full bg-card p-1">
+            {SCOPES.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={scope === id}
+                onClick={() => setScope(id)}
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
+                  scope === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
                 }`}
-              />
-            </span>
-            Show delivered
-            {deliveredCount > 0 && (
-              <span className={showDelivered ? "text-cream/70" : "text-ink-soft/70"}>{deliveredCount}</span>
-            )}
-          </button>
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-1 rounded-full bg-card p-1">
@@ -204,10 +221,44 @@ export function OrdersClient({
           ))}
         </div>
 
-        <div className="flex flex-1 justify-end">
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <FilterDropdown
+            label="Payment"
+            options={paymentOptions}
+            selected={paymentFilter}
+            onChange={setPaymentFilter}
+          />
+          <button
+            type="button"
+            aria-pressed={showDelivered}
+            onClick={() => setShowDelivered((v) => !v)}
+            title="Delivered orders are hidden by default"
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
+              showDelivered
+                ? "border-ink bg-black text-cream"
+                : "border-line bg-card text-ink-soft hover:text-ink"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
+                showDelivered ? "bg-cream/30" : "bg-black/10"
+              }`}
+            >
+              <span
+                className={`h-3 w-3 rounded-full bg-current transition-transform ${
+                  showDelivered ? "translate-x-3" : ""
+                }`}
+              />
+            </span>
+            Delivered
+            {deliveredCount > 0 && (
+              <span className={showDelivered ? "text-cream/70" : "text-ink-soft/70"}>{deliveredCount}</span>
+            )}
+          </button>
           <button
             onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold text-cream"
+            className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
           >
             <Plus size={15} />
             Add order
@@ -256,36 +307,61 @@ export function OrdersClient({
         />
       )}
 
-      {view === "table" && (
-        <OrdersTable
-          orders={filtered}
-          flavors={flavors}
-          packageTypes={packageTypes}
-          selectedKeys={selectedKeys}
-          openKey={openKey}
-          onToggleSelect={toggleSelect}
-          onToggleAll={toggleAll}
-          onChanged={refresh}
-          onOpen={setOpenKey}
-        />
-      )}
-      {view === "kanban" && (
-        <OrdersKanban
-          orders={byPayment}
-          flavors={flavors}
-          packageTypes={packageTypes}
-          onChanged={refresh}
-          onOpen={setOpenKey}
-        />
-      )}
-      {view === "calendar" && (
-        <OrdersCalendar
-          orders={filtered}
-          flavors={flavors}
-          packageTypes={packageTypes}
-          onOpen={setOpenKey}
-        />
-      )}
+      {/*
+        The summary rides beside the table and the board, not the calendar:
+        a calendar navigates by its own month, so a rail counting a
+        different window next to it would be two answers to one question.
+      */}
+      <div className="flex items-start gap-4">
+        <div className="min-w-0 flex-1">
+          {view === "table" && (
+            <OrdersTable
+              orders={inScope}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              selectedKeys={selectedKeys}
+              openKey={openKey}
+              onToggleSelect={toggleSelect}
+              onToggleAll={toggleAll}
+              onChanged={refresh}
+              onOpen={setOpenKey}
+              emptyNote={
+                filtered.length > 0
+                  ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
+                  : "No orders match these filters."
+              }
+            />
+          )}
+          {view === "kanban" && (
+            <OrdersKanban
+              orders={boardInScope}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              onChanged={refresh}
+              onOpen={setOpenKey}
+            />
+          )}
+          {view === "calendar" && (
+            <OrdersCalendar
+              orders={filtered}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              onOpen={setOpenKey}
+            />
+          )}
+        </div>
+
+        {view !== "calendar" && (
+          <aside className="w-[15%] min-w-[168px] shrink-0">
+            <OrdersSummary
+              totals={totals}
+              previous={previousTotals}
+              scopeLabel={scopeLabel}
+              comparable={previous !== null}
+            />
+          </aside>
+        )}
+      </div>
 
       {/*
         Floating rather than inline: an action bar that appears in the flow

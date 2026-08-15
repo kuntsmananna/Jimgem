@@ -1,8 +1,14 @@
 "use client";
 
-import { PRODUCTION_STATUS_LABEL, formatOrderDate, type Order, type ProductionStatus } from "@/lib/orderTypes";
+import {
+  PRODUCTION_STATUS_LABEL,
+  formatOrderDate,
+  orderUnits,
+  type Order,
+  type ProductionStatus,
+} from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
-import { ContentChips } from "./ContentChips";
+import { UnitsIcon } from "@/lib/icons";
 import { OrderHoverCard } from "./OrderHoverCard";
 import { ProductionStatusSelect } from "./StatusSelects";
 
@@ -26,6 +32,8 @@ export function OrdersKanban({
   onChanged: () => void;
   onOpen: (key: string) => void;
 }) {
+  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+
   return (
     <div className="grid grid-cols-3 gap-4">
       {COLUMNS.map((status) => {
@@ -59,9 +67,15 @@ export function OrdersKanban({
                     </button>
                     <p className="text-xs text-ink-soft">{formatOrderDate(order.date)}</p>
                   </div>
-                  <div className="mt-2">
-                    <ContentChips lines={order.packageLines} flavors={flavors} packageTypes={packageTypes} />
-                  </div>
+                  {/* Units, not flavour chips: a card is a summary, and the
+                      chips wrapped to three lines on a mixed order. The
+                      hover card this sits inside carries the breakdown. */}
+                  <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
+                    <UnitsIcon size={12} />
+                    {orderUnits(order.packageLines, unitsPerPackage) > 0
+                      ? `${nf.format(orderUnits(order.packageLines, unitsPerPackage))} units`
+                      : "No packages yet"}
+                  </p>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-sm font-semibold text-ink">{currency(order.totalAmount)}</p>
                     <ProductionStatusSelect order={order} onChanged={onChanged} />

@@ -25,6 +25,7 @@ export function OrdersTable({
   onToggleAll,
   onChanged,
   onOpen,
+  emptyNote,
 }: {
   orders: Order[];
   flavors: Flavor[];
@@ -36,6 +37,8 @@ export function OrdersTable({
   onToggleAll: () => void;
   onChanged: () => void;
   onOpen: (key: string) => void;
+  /** What to say when nothing is in view — names the active time scope. */
+  emptyNote: string;
 }) {
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
@@ -247,8 +250,11 @@ export function OrdersTable({
           })}
           {orders.length === 0 && (
             <tr>
+              {/* Names the window rather than saying "no matches": the
+                  default scope is the next fortnight, and a quiet season
+                  otherwise reads as the page being broken. */}
               <td colSpan={13} className="px-3 py-8 text-center text-sm text-ink-soft">
-                No orders match these filters.
+                {emptyNote}
               </td>
             </tr>
           )}

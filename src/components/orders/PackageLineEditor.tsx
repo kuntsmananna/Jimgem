@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Minus, Plus, Trash2 } from "lucide-react";
 import {
   type OrderPackageLine,
   evenSplit,
@@ -282,22 +282,39 @@ function LineCard({
 
   if (line.folded) {
     return (
-      <button
-        type="button"
-        onClick={onToggleFold}
-        className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left"
-      >
-        <ChevronRight size={14} className="shrink-0 text-ink-soft" />
-        <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink">
-          {packageTypeIconElement(packageType?.name ?? "", 12)}
-          {line.quantity}× {packageType?.name ?? "?"}
-        </span>
-        <FoldedMix line={line} flavors={flavors} packed={packed} />
-        <span className="flex-1" />
-        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">
-          {nf.format(packed)}u
-        </span>
-      </button>
+      // A div, not a button: the row opens on click but carries a delete
+      // control, and a button inside a button is invalid and swallows the
+      // inner click in some browsers.
+      <div className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left">
+        <button
+          type="button"
+          onClick={onToggleFold}
+          aria-label="Open this package"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <ChevronRight size={14} className="shrink-0 text-ink-soft" />
+          <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink">
+            {packageTypeIconElement(packageType?.name ?? "", 12)}
+            {line.quantity}× {packageType?.name ?? "?"}
+          </span>
+          <FoldedMix line={line} flavors={flavors} packed={packed} />
+          <span className="flex-1" />
+          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">
+            {nf.format(packed)}u
+          </span>
+        </button>
+        {/* Deleting a package you can see the summary of shouldn't mean
+            opening it first. */}
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${line.quantity}× ${packageType?.name ?? "package"}`}
+          title="Remove this package"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     );
   }
 
@@ -364,13 +381,26 @@ function LineCard({
 
         <ModeSwitch mode={line.mode} onChange={(mode) => onPatch({ mode })} />
 
+        {/* Done with this package. It doesn't write anything — the order
+            saves as a whole — it folds the line back to its summary so the
+            next one has the room. Named Save because that is what closing
+            a finished package feels like. */}
+        <button
+          type="button"
+          onClick={onToggleFold}
+          className="rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-cream transition hover:opacity-85"
+        >
+          Save package
+        </button>
+
         <button
           type="button"
           aria-label="Remove this package"
+          title="Remove this package"
           onClick={onRemove}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition hover:bg-black hover:text-cream"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
         >
-          <X size={14} />
+          <Trash2 size={14} />
         </button>
       </div>
 

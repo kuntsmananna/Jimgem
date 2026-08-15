@@ -377,6 +377,37 @@ The Orders table hides `delivered` orders unless "Show delivered" is on
 that toggle — it *is* the production board, and emptying its Delivered
 column would break it.
 
+The Orders toolbar reads **when on the left, what on the right**: the
+time scope (`src/lib/orderScope.ts` — 14 days / this month / next month /
+all time) picks which orders are in play at all, and Payment, Delivered
+and Add order narrow or add to that. The scope is forward-looking and
+defaults to the next 14 days, so the page opens as a work queue rather
+than an archive — which means it can legitimately open empty, and the
+table's empty row names the scope instead of saying "no matches".
+Calendar ignores the scope: it navigates by its own month.
+
+`OrdersSummary` is the rail beside the table and the board (not the
+calendar, which would then carry two different windows at once). It
+totals **exactly the list on screen** — units, orders, mirrors, income —
+and compares each against the same list one window back (the previous
+fortnight, last month, this month). No comparison exists for "all time",
+and a previous window of zero renders "—" rather than "+100%", which
+would state a comparison that was never made.
+
+Kanban cards and the Orders table both show **units, not flavour chips**
+— see the `ContentChips` notes above. Only Kanban and the calendar's
+hover card still draw the chips.
+
+**Every popup puts its buttons bottom-right, Save last.** The order form
+keeps its status text ("Unsaved changes", "Add a customer name to save")
+on the left of that row.
+
+In the order popup's Content tab, an open package line has a **Save
+package** button that folds it back to its summary — it writes nothing,
+the order saves as a whole, but closing a finished package is what it
+feels like. A folded line carries a trash icon, so deleting a package
+you can already see the summary of doesn't mean opening it first.
+
 `migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
 a SQL comment truncates the statement after it** — keep comments in that
 file semicolon-free.
