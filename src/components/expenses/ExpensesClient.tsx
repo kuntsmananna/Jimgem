@@ -1,13 +1,13 @@
 "use client";
 
-import { createElement, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Expense, ExpensePeriod } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE } from "@/lib/chartPalette";
 import { Plus, Trash2 } from "lucide-react";
-import { expenseCategoryIcon } from "@/lib/icons";
+import { expenseCategoryIconElement } from "@/lib/icons";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -131,23 +131,13 @@ export function ExpensesClient({
   );
 }
 
-/*
- * createElement rather than `const Icon = …; <Icon />`: the icon is
- * selected from a fixed lookup table, not constructed, but the JSX form
- * is indistinguishable from defining a component mid-render and trips
- * react-hooks/static-components.
- */
-function CategoryIcon({ name }: { name: string }) {
-  return createElement(expenseCategoryIcon(name), { size: 13, className: "shrink-0 text-ink-soft" });
-}
-
 function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void }) {
   return (
     <div className="hover-line group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
       <div className="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
         <span className="shrink-0 w-20 text-ink-soft">{entry.source === "db" ? entry.date : "—"}</span>
         <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink">
-          <CategoryIcon name={entry.categoryName} />
+          <span className="shrink-0 text-ink-soft">{expenseCategoryIconElement(entry.categoryName)}</span>
           {entry.categoryName}
         </span>
         {entry.paymentMethodName && <span className="shrink-0 text-xs text-ink-soft">{entry.paymentMethodName}</span>}

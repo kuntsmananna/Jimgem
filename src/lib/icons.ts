@@ -133,6 +133,11 @@ export function expenseCategoryIcon(categoryName: string): LucideIcon {
   return EXPENSE_CATEGORY_ICONS[categoryName.trim()] ?? Receipt;
 }
 
+/** The same lookup as an element — see `packageTypeIconElement` for why. */
+export function expenseCategoryIconElement(categoryName: string, size = 13): ReactElement {
+  return createElement(expenseCategoryIcon(categoryName), { size });
+}
+
 /**
  * Package types are owner-editable in Settings, so this is keyed by name
  * with a fallback, like the maps above. Trays read as grids of cubes at

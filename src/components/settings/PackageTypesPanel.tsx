@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PackageType } from "@/lib/settings";
+import { packageTypeIconElement } from "@/lib/icons";
 
 export function PackageTypesPanel({ items }: { items: PackageType[] }) {
   const router = useRouter();
@@ -77,14 +78,17 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
               </>
             ) : (
               <button
-                className="hover-line flex flex-1 items-center justify-between rounded-lg px-2 py-1 text-left text-ink"
+                className="hover-line flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
                 onClick={() => {
                   setEditing(item.id);
                   setEditDraft({ name: item.name, unitsPerPackage: String(item.unitsPerPackage) });
                 }}
               >
-                <span>{item.name}</span>
-                <span className="text-xs text-ink-soft">{item.unitsPerPackage} units</span>
+                {/* The same mark the order form and the presets use, so a
+                    package reads as the same thing wherever it appears. */}
+                <span className="shrink-0 text-ink-soft">{packageTypeIconElement(item.name, 14)}</span>
+                <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                <span className="shrink-0 text-xs text-ink-soft">{item.unitsPerPackage} units</span>
               </button>
             )}
           </li>

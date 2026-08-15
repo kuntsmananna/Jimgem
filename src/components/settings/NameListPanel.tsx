@@ -1,7 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
+import { expenseCategoryIconElement } from "@/lib/icons";
+
+type Resource = "payment-methods" | "expense-categories";
+
+/**
+ * The icon a row gets, by resource.
+ *
+ * Derived from `resource` rather than taken as a prop: this panel is
+ * rendered from a Server Component, and neither a lucide component nor a
+ * function returning one can cross that boundary (see CLAUDE.md). Keying
+ * it here also means the page can't pair a resource with the wrong
+ * vocabulary. Payment methods have no icon set and get none — inventing
+ * one for Cash and Credit card would be a guess, not a lookup.
+ */
+const ROW_ICON: Partial<Record<Resource, (name: string) => ReactElement>> = {
+  "expense-categories": (name) => expenseCategoryIconElement(name, 14),
+};
 
 export function NameListPanel({
   title,
@@ -9,9 +26,10 @@ export function NameListPanel({
   items,
 }: {
   title: string;
-  resource: "payment-methods" | "expense-categories";
+  resource: Resource;
   items: { id: number; name: string }[];
 }) {
+  const rowIcon = ROW_ICON[resource];
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
@@ -80,13 +98,14 @@ export function NameListPanel({
               </>
             ) : (
               <button
-                className="hover-line flex-1 rounded-lg px-2 py-1 text-left text-ink"
+                className="hover-line flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
                 onClick={() => {
                   setEditing(item.id);
                   setEditDraft(item.name);
                 }}
               >
-                {item.name}
+                {rowIcon && <span className="shrink-0 text-ink-soft">{rowIcon(item.name)}</span>}
+                <span className="min-w-0 truncate">{item.name}</span>
               </button>
             )}
           </li>
