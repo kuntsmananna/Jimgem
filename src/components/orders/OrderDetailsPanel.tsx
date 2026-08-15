@@ -310,10 +310,14 @@ function YesNo({
  * A column heading with the rule under it. That rule is what separates
  * the three columns now — vertical hairlines between them read as a table
  * once every group already has a headed line of its own.
+ *
+ * It carries its own air above and below, and draws heavier than a
+ * hairline: with the per-row rules gone this is the only line in the
+ * panel, so it has to hold three columns apart on its own.
  */
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="block border-b border-line pb-1.5 text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
+    <span className="mt-1.5 mb-3 block border-b-[1.5px] border-ink/20 pb-2 text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
       {children}
     </span>
   );
@@ -321,8 +325,13 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 /**
  * One line of a statement: what it is on the left, what it says on the
- * right. `total` turns off the dotted rule and draws the solid one a sum
- * sits under.
+ * right.
+ *
+ * No rule between rows — the row rhythm and the label column already say
+ * where one field ends, and a hairline under every one of them turned the
+ * three columns back into the ledger the sheet layout was meant to
+ * replace. `total` still draws the solid rule a sum sits under: that one
+ * is arithmetic, not a divider.
  */
 function SheetRow({
   label,
@@ -336,7 +345,7 @@ function SheetRow({
   return (
     <div
       className={`flex min-h-[34px] items-center justify-between gap-4 ${
-        total ? "mt-1.5 border-t-[1.5px] border-ink pt-2.5" : "border-b border-dotted border-line py-1"
+        total ? "mt-1.5 border-t-[1.5px] border-ink pt-2.5" : "py-1"
       }`}
     >
       <span className={total ? "text-xs font-bold text-ink" : "text-[12.5px] text-ink-soft"}>{label}</span>
@@ -383,7 +392,10 @@ function MoneyInput({
         onChange(digits === "" ? null : Number(digits));
       }}
       onBlur={() => setTyping(null)}
-      className="w-28 text-right text-sm tabular-nums"
+      // Widened as one, not per row: these sit in a column and read as a
+      // statement, so the delivery box being half again the size of the
+      // order amount above it would look like a different kind of field.
+      className="w-42 text-right text-sm tabular-nums"
     />
   );
 }

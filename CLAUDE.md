@@ -151,6 +151,11 @@ iteration (not guessed) — define these as `@theme` tokens in
   and *The money*. A ruled `GroupLabel` heads each column and is what
   separates them — there are deliberately no vertical hairlines, which
   read as a table once every group already carries a line of its own.
+  **That heading rule is the only line in the panel**: `SheetRow` used to
+  draw a dotted hairline under every field, which turned the three columns
+  back into the ledger this layout replaced. The row rhythm and the label
+  column already say where a field ends. The one survivor is the solid
+  rule above Balance due, which is arithmetic rather than a divider.
   The customer used to head a full-width band above the other two, which
   spent a row on a name and left Notes a second row at the bottom. Money
   is formatted at rest and bare while focused, because `type="number"`
