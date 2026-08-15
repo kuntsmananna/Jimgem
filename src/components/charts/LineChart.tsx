@@ -37,7 +37,7 @@ function smoothPath(points: Point[]): string {
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 /** Stroke weight in px. Non-scaling, so it stays constant however wide the chart renders. */
-const LINE_WIDTH = 4;
+const LINE_WIDTH = 5.5;
 
 /**
  * Peak opacity of the area beneath a line, by position in the series list.
@@ -47,7 +47,7 @@ const LINE_WIDTH = 4;
  * colour that reads as a series nobody plotted; keeping the later ones
  * faint makes the overlap read as shade instead.
  */
-const AREA_OPACITY = [0.3, 0.14, 0.1];
+const AREA_OPACITY = [0.44, 0.22, 0.15];
 
 /**
  * How far down the fill has faded to a third of its peak.
