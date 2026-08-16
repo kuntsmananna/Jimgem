@@ -74,14 +74,25 @@ something here isn't obvious.
   blend where they cross into a colour nobody plotted, and three of them
   stacked came out flat grey.
 - `src/components/orders/TrayPreview.tsx` draws a package as its actual
-  grid of jelly cubes, assorted at random rather than sorted into blocks.
-  Shared by the order form's Content tab and Settings' `PresetsPanel`, so
-  a preset previews as exactly the tray it produces. It replaced a
-  draggable split bar (deleted): the bar showed proportions accurately but
-  never showed the product being handed to a customer.
+  grid of jelly cubes, **laid out by column** — each flavour fills whole
+  columns and at most one partial one, top to bottom then left to right.
+  The grid itself fills row-major, so `cubeOrder` writes each flavour's
+  run into the positions `col`, `col + columns`, … rather than in order;
+  a partial last row makes the rightmost columns one cube shorter, which
+  is why it skips those slots without consuming from the run. Cubes used
+  to be shuffled into a random assortment (a deterministic PRNG kept it
+  stable across renders) — truer to a real mixed tray, but the split
+  could not be read back off a scattered picture, which is what the
+  preview is for. Unassigned cubes land in the last columns for the same
+  reason: what is still unspoken for reads as one block. Shared by the
+  order form's Content tab and Settings' `PresetsPanel`, so a preset
+  previews as exactly the tray it produces. It replaced a draggable split
+  bar (deleted): the bar showed proportions accurately but never showed
+  the product being handed to a customer.
 - **A flavour named `MIX` means "assorted"**, matched by name in
   `flavorStyle.ts`'s `isMixFlavor`. The preview expands it into an even
-  spread of every other flavour (`expandMix`) so a mixed tray looks mixed
+  spread of every other flavour (`expandMix`) so a mixed tray shows every
+  colour in it — a column each, since the change above
   — but the *saved* order keeps the single MIX line, because "a mix" is
   genuinely what was ordered and choosing the exact split is a kitchen
   decision. Renaming that flavour turns it back into an ordinary colour,
