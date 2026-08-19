@@ -35,6 +35,16 @@ export function OrdersSummary({
       label: "Income",
       value: `₪${nf.format(totals.income)}`,
       icon: <Receipt size={13} />,
+      /*
+       * Income counts bookings only, while the three counts above it
+       * include offers — an offer has units to make if it lands, but it is
+       * not money anyone has agreed to pay.
+       *
+       * Said out loud whenever the window holds one, because otherwise the
+       * gap between this figure and adding up the Amount column reads as
+       * an arithmetic bug rather than as a deliberate exclusion.
+       */
+      note: totals.offers > 0 ? `excl. ${nf.format(totals.offers)} offer${totals.offers > 1 ? "s" : ""}` : null,
     },
   ] as const;
 
@@ -53,6 +63,9 @@ export function OrdersSummary({
           <p className="mt-1 font-display text-2xl leading-none font-extrabold tabular-nums text-ink">
             {tile.value}
           </p>
+          {"note" in tile && tile.note && (
+            <p className="mt-1 text-[10px] font-semibold text-ink-soft">{tile.note}</p>
+          )}
           {comparable && (
             <div className="mt-1 flex justify-end">
               <Delta current={totals[tile.key]} previous={previous[tile.key]} />

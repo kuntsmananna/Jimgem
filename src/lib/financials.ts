@@ -1,4 +1,5 @@
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
+import { isBooked } from "./orderTypes";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories } from "./settings";
 
@@ -118,6 +119,13 @@ export interface MonthlyRevenue {
  * reflects orders with structured content lines (DB orders always have
  * them; Sheet orders' historical פירוט text isn't reliably parsed into
  * line items — see flavorParser.ts — so legacy months will undercount).
+ *
+ * **Offers are left out entirely**, not just out of the revenue figure.
+ * This is the financial report, and a quote is not a sale; counting one in
+ * `orderCount` while leaving its money out would quietly deflate the
+ * average order value the Biz Plan divides out of these two. The Orders
+ * page's rail makes the opposite choice on purpose — there the counts are
+ * an operational "what is in this window" — and says so where it does.
  */
 export async function getMonthlyRevenue(
   orders: Order[],
@@ -126,6 +134,7 @@ export async function getMonthlyRevenue(
   const byMonth = new Map<number, MonthlyRevenue>();
 
   for (const order of orders) {
+    if (!isBooked(order)) continue; // a quote is not a sale — see above
     const month = orderMonth(order);
     if (month === null) continue; // undated rows (e.g. early placeholder entries) excluded
     const existing = byMonth.get(month) ?? {

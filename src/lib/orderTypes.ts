@@ -422,6 +422,22 @@ export function repriceOrder(
   return priced;
 }
 
+/**
+ * Does this order count as money the business has made?
+ *
+ * An **offer** is a quote — it has a price on it, but nobody has agreed to
+ * pay it, so counting it as revenue would report work that may never
+ * happen. Every other stage is a booking, including one still in the
+ * queue: the customer has committed, and when it is delivered is a
+ * question about the kitchen, not about the money.
+ *
+ * Stated here rather than at each call site so the Orders rail, the
+ * Dashboard and the Biz Plan cannot drift on what a sale is.
+ */
+export function isBooked(order: Pick<Order, "productionStatus">): boolean {
+  return order.productionStatus !== "offer";
+}
+
 /** Still owed once the deposit is taken off the full total. */
 export function orderBalance(order: OrderInput | Order): number {
   return orderTotal(order) - order.deposit;

@@ -480,9 +480,23 @@ from `PRODUCTION_STATUS_LABEL` through an inline `gridTemplateColumns` —
 an interpolated `grid-cols-${n}` class would never be generated, since
 Tailwind only sees literal text.
 
-**An offer still counts in every total** — the summary rail's Income, the
-Dashboard, the Biz Plan. Excluding quotes from reported revenue is a call
-about the business, not the code, so it is flagged rather than decided.
+**An offer is not a sale.** `isBooked` in `orderTypes.ts` states that once
+— `productionStatus !== "offer"` — and the money paths all go through it,
+so the rail, the Dashboard and the Biz Plan cannot drift on what counts.
+A queued order *is* booked: the customer has committed, and when it ships
+is a question about the kitchen.
+
+The two surfaces then diverge deliberately. **`financials.ts` drops offers
+entirely** — revenue, order count and units sold — because it is the
+financial report, and counting a quote in `orderCount` while leaving its
+money out would quietly deflate the average order value the Biz Plan
+divides out of those two. The Dashboard's flavour donut drops them for the
+same reason: it shares a page with a units-sold KPI. **`totalOf` keeps
+them in the counts** and out of Income only — the rail's counts are
+operational ("an offer has units to make if it lands"), so it carries an
+`offers` tally and the Income tile prints "excl. N offers". Without that,
+the gap between Income and adding up the Amount column reads as an
+arithmetic bug.
 
 The Orders table hides `delivered` orders unless "Show delivered" is on
 (60 of 73 are delivered, so it is otherwise all archive). Kanban ignores

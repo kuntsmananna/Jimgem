@@ -1,5 +1,6 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
 import { getOrders, orderMonth, orderDay, orderUnits, orderFlavorUnits } from "@/lib/orders";
+import { isBooked } from "@/lib/orderTypes";
 import { getFlavors, getPackageTypes } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 
@@ -15,9 +16,13 @@ export default async function DashboardPage() {
 
   const unitsByPackageType = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
 
+  // Offers left out, matching getMonthlyRevenue: this chart is a share of
+  // units *sold*, and it sits on the same page as a units-sold KPI that
+  // already excludes them. Counting a quote in one and not the other would
+  // make the two disagree about the same number.
   const flavorLines: FlavorLine[] = orders.flatMap((order) => {
     const month = orderMonth(order);
-    if (month === null) return [];
+    if (month === null || !isBooked(order)) return [];
     return orderFlavorUnits(order.packageLines).map((line) => ({
       month,
       ...line,

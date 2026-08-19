@@ -8,7 +8,7 @@
  * order and no timezone can shift a boundary.
  */
 
-import { orderTotal, orderUnits, type Order } from "./orderTypes";
+import { isBooked, orderTotal, orderUnits, type Order } from "./orderTypes";
 
 export type ScopeId = "14d" | "month" | "nextMonth" | "all";
 
@@ -88,8 +88,22 @@ export interface OrderTotals {
   orders: number;
   mirrors: number;
   income: number;
+  /**
+   * How many of those orders are offers, so the rail can say why its
+   * income figure is lower than adding up the column would suggest.
+   * Without it the gap looks like an arithmetic bug.
+   */
+  offers: number;
 }
 
+/**
+ * The four figures for a list of orders.
+ *
+ * Counts include offers and income does not: the counts answer "what is in
+ * this window" — an offer has units to make and mirrors to hire if it
+ * lands — while income answers "what has been sold", and a quote has not
+ * been. `offers` is what lets the rail say so out loud.
+ */
 export function totalOf(orders: Order[], unitsPerPackage: Map<number, number>): OrderTotals {
   return orders.reduce<OrderTotals>(
     (totals, order) => ({
@@ -99,9 +113,10 @@ export function totalOf(orders: Order[], unitsPerPackage: Map<number, number>): 
       // What the order is worth, extras included — the same figure the
       // order sheet calls Total. Summing the bare `total_amount` column
       // made the rail disagree with the popup it links to.
-      income: totals.income + orderTotal(order),
+      income: totals.income + (isBooked(order) ? orderTotal(order) : 0),
+      offers: totals.offers + (isBooked(order) ? 0 : 1),
     }),
-    { units: 0, orders: 0, mirrors: 0, income: 0 },
+    { units: 0, orders: 0, mirrors: 0, income: 0, offers: 0 },
   );
 }
 
