@@ -3,8 +3,11 @@ import {
   updateFlavor,
   archiveFlavor,
   updatePackageType,
+  archivePackageType,
   updatePaymentMethod,
+  archivePaymentMethod,
   updateExpenseCategory,
+  archiveExpenseCategory,
   updateContentPreset,
   archiveContentPreset,
   updateOrderType,
@@ -38,6 +41,10 @@ export async function PATCH(
         return NextResponse.json(flavor);
       }
       case "package-types": {
+        if (body.archive) {
+          await archivePackageType(numericId);
+          return NextResponse.json({ ok: true });
+        }
         const packageType = await updatePackageType(numericId, {
           name: body.name,
           unitsPerPackage: Number(body.unitsPerPackage),
@@ -45,10 +52,18 @@ export async function PATCH(
         return NextResponse.json(packageType);
       }
       case "payment-methods": {
+        if (body.archive) {
+          await archivePaymentMethod(numericId);
+          return NextResponse.json({ ok: true });
+        }
         const method = await updatePaymentMethod(numericId, body.name);
         return NextResponse.json(method);
       }
       case "expense-categories": {
+        if (body.archive) {
+          await archiveExpenseCategory(numericId);
+          return NextResponse.json({ ok: true });
+        }
         const category = await updateExpenseCategory(numericId, body.name);
         return NextResponse.json(category);
       }

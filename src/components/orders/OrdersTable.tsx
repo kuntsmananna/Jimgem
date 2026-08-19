@@ -53,7 +53,11 @@ export function OrdersTable({
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   // Built once rather than per row: the list is the same for all 74 of
   // them, and a fresh array per row also denies the cell any reuse.
-  const typeOptions = orderTypes.map((type) => ({ value: type.name, label: type.name }));
+  const typeOptions = orderTypes
+    // Archived types stay out of the picker. A row already carrying one
+    // keeps it — `EditableCell` adds the current value when it is missing.
+    .filter((type) => !type.archivedAt)
+    .map((type) => ({ value: type.name, label: type.name }));
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {

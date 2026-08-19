@@ -16,16 +16,19 @@ export interface PackageType {
   id: number;
   name: string;
   unitsPerPackage: number;
+  archivedAt: string | null;
 }
 
 export interface PaymentMethod {
   id: number;
   name: string;
+  archivedAt: string | null;
 }
 
 export interface ExpenseCategory {
   id: number;
   name: string;
+  archivedAt: string | null;
 }
 
 export interface StaffAccount {
@@ -48,11 +51,47 @@ interface PackageTypeRow {
   id: number;
   name: string;
   units_per_package: number;
+  archived_at: string | null;
 }
 
 interface NamedRow {
   id: number;
   name: string;
+  archived_at: string | null;
+}
+
+/**
+ * Every owner-managed list archives rather than deletes.
+ *
+ * An order references its package type and an expense its category, so a
+ * hard delete would either orphan those rows or cascade and take real
+ * history with it. Archiving takes the value out of every picker and
+ * leaves what already used it exactly as recorded — which is why each
+ * getter takes `includeArchived`: a *lookup* resolving stored rows needs
+ * them, a *picker* offering a choice does not.
+ */
+function mapPackageType(row: PackageTypeRow): PackageType {
+  return {
+    id: row.id,
+    name: row.name,
+    unitsPerPackage: row.units_per_package,
+    archivedAt: row.archived_at,
+  };
+}
+
+function mapNamed(row: NamedRow): { id: number; name: string; archivedAt: string | null } {
+  return { id: row.id, name: row.name, archivedAt: row.archived_at };
+}
+
+/** `WHERE` clause hiding archived rows, or nothing at all. */
+function liveOnly(includeArchived: boolean): string {
+  return includeArchived ? "" : " WHERE archived_at IS NULL";
+}
+
+/** Marks one row archived. The table name is fixed by the caller, never user input. */
+async function archiveRow(table: string, id: number): Promise<void> {
+  const db = getDb();
+  await db.query(`UPDATE ${table} SET archived_at = now() WHERE id = $1`, [id]);
 }
 
 interface StaffRow {
@@ -114,14 +153,19 @@ export async function updateFlavor(
 
 /** Flavors archive, never hard-delete — existing orders/chips keep the original name and color. */
 export async function archiveFlavor(id: number): Promise<void> {
-  const db = getDb();
-  await db.query("UPDATE flavors SET archived_at = now() WHERE id = $1", [id]);
+  await archiveRow("flavors", id);
 }
 
-export async function getPackageTypes(): Promise<PackageType[]> {
+export async function getPackageTypes(includeArchived = false): Promise<PackageType[]> {
   const db = getDb();
-  const { rows } = await db.query<PackageTypeRow>("SELECT * FROM package_types ORDER BY id");
-  return rows.map((r) => ({ id: r.id, name: r.name, unitsPerPackage: r.units_per_package }));
+  const { rows } = await db.query<PackageTypeRow>(
+    `SELECT * FROM package_types${liveOnly(includeArchived)} ORDER BY id`,
+  );
+  return rows.map(mapPackageType);
+}
+
+export async function archivePackageType(id: number): Promise<void> {
+  await archiveRow("package_types", id);
 }
 
 export async function createPackageType(input: { name: string; unitsPerPackage: number }): Promise<PackageType> {
@@ -130,7 +174,7 @@ export async function createPackageType(input: { name: string; unitsPerPackage: 
     "INSERT INTO package_types (name, units_per_package) VALUES ($1, $2) RETURNING *",
     [input.name, input.unitsPerPackage],
   );
-  return { id: rows[0].id, name: rows[0].name, unitsPerPackage: rows[0].units_per_package };
+  return mapPackageType(rows[0]);
 }
 
 export async function updatePackageType(
@@ -142,7 +186,7 @@ export async function updatePackageType(
     "UPDATE package_types SET name = $1, units_per_package = $2 WHERE id = $3 RETURNING *",
     [input.name, input.unitsPerPackage, id],
   );
-  return { id: rows[0].id, name: rows[0].name, unitsPerPackage: rows[0].units_per_package };
+  return mapPackageType(rows[0]);
 }
 
 /**
@@ -247,8 +291,7 @@ export async function updateContentPreset(id: number, input: ContentPresetInput)
 
 /** Presets archive rather than delete, for the same reason flavors do. */
 export async function archiveContentPreset(id: number): Promise<void> {
-  const db = getDb();
-  await db.query("UPDATE content_presets SET archived_at = now() WHERE id = $1", [id]);
+  await archiveRow("content_presets", id);
 }
 
 /**
@@ -262,6 +305,12 @@ export interface OrderType {
   color: string;
   /** Key into lib/icons.ts's ORDER_TYPE_ICONS. Null falls back to a tag. */
   icon: string | null;
+  /**
+   * Set once archived. The app layout loads archived types too, so an
+   * order that already uses one keeps its colour and icon; the pickers
+   * filter them out so nobody can pick one again.
+   */
+  archivedAt: string | null;
 }
 
 interface OrderTypeRow {
@@ -269,6 +318,7 @@ interface OrderTypeRow {
   name: string;
   color: string;
   icon: string | null;
+  archived_at: string | null;
 }
 
 const mapOrderType = (r: OrderTypeRow): OrderType => ({
@@ -276,12 +326,13 @@ const mapOrderType = (r: OrderTypeRow): OrderType => ({
   name: r.name,
   color: r.color,
   icon: r.icon,
+  archivedAt: r.archived_at ?? null,
 });
 
-export async function getOrderTypes(): Promise<OrderType[]> {
+export async function getOrderTypes(includeArchived = false): Promise<OrderType[]> {
   const db = getDb();
   const { rows } = await db.query<OrderTypeRow>(
-    "SELECT id, name, color, icon FROM order_types WHERE archived_at IS NULL ORDER BY position, id",
+    `SELECT id, name, color, icon, archived_at FROM order_types${liveOnly(includeArchived)} ORDER BY position, id`,
   );
   return rows.map(mapOrderType);
 }
@@ -295,7 +346,7 @@ export async function createOrderType(input: {
   const { rows } = await db.query<OrderTypeRow>(
     `INSERT INTO order_types (name, color, icon, position)
      VALUES ($1, $2, $3, (SELECT coalesce(max(position), -1) + 1 FROM order_types))
-     RETURNING id, name, color, icon`,
+     RETURNING id, name, color, icon, archived_at`,
     [input.name, input.color, input.icon],
   );
   return mapOrderType(rows[0]);
@@ -320,7 +371,7 @@ export async function updateOrderType(
      )
      UPDATE order_types SET name = $1, color = $2, icon = $4
      WHERE id = $3 AND (SELECT count(*) FROM renamed) >= 0
-     RETURNING id, name, color, icon`,
+     RETURNING id, name, color, icon, archived_at`,
     [input.name, input.color, id, input.icon],
   );
   return mapOrderType(rows[0]);
@@ -328,44 +379,55 @@ export async function updateOrderType(
 
 /** Archived, not deleted: orders keep their text and simply lose the colour. */
 export async function archiveOrderType(id: number): Promise<void> {
-  const db = getDb();
-  await db.query("UPDATE order_types SET archived_at = now() WHERE id = $1", [id]);
+  await archiveRow("order_types", id);
 }
 
-export async function getPaymentMethods(): Promise<PaymentMethod[]> {
+export async function getPaymentMethods(includeArchived = false): Promise<PaymentMethod[]> {
   const db = getDb();
-  const { rows } = await db.query<NamedRow>("SELECT * FROM payment_methods ORDER BY id");
-  return rows.map((r) => ({ id: r.id, name: r.name }));
+  const { rows } = await db.query<NamedRow>(
+    `SELECT * FROM payment_methods${liveOnly(includeArchived)} ORDER BY id`,
+  );
+  return rows.map(mapNamed);
+}
+
+export async function archivePaymentMethod(id: number): Promise<void> {
+  await archiveRow("payment_methods", id);
 }
 
 export async function createPaymentMethod(name: string): Promise<PaymentMethod> {
   const db = getDb();
   const { rows } = await db.query<NamedRow>("INSERT INTO payment_methods (name) VALUES ($1) RETURNING *", [name]);
-  return { id: rows[0].id, name: rows[0].name };
+  return mapNamed(rows[0]);
 }
 
 export async function updatePaymentMethod(id: number, name: string): Promise<PaymentMethod> {
   const db = getDb();
   const { rows } = await db.query<NamedRow>("UPDATE payment_methods SET name = $1 WHERE id = $2 RETURNING *", [name, id]);
-  return { id: rows[0].id, name: rows[0].name };
+  return mapNamed(rows[0]);
 }
 
-export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
+export async function getExpenseCategories(includeArchived = false): Promise<ExpenseCategory[]> {
   const db = getDb();
-  const { rows } = await db.query<NamedRow>("SELECT * FROM expense_categories ORDER BY id");
-  return rows.map((r) => ({ id: r.id, name: r.name }));
+  const { rows } = await db.query<NamedRow>(
+    `SELECT * FROM expense_categories${liveOnly(includeArchived)} ORDER BY id`,
+  );
+  return rows.map(mapNamed);
+}
+
+export async function archiveExpenseCategory(id: number): Promise<void> {
+  await archiveRow("expense_categories", id);
 }
 
 export async function createExpenseCategory(name: string): Promise<ExpenseCategory> {
   const db = getDb();
   const { rows } = await db.query<NamedRow>("INSERT INTO expense_categories (name) VALUES ($1) RETURNING *", [name]);
-  return { id: rows[0].id, name: rows[0].name };
+  return mapNamed(rows[0]);
 }
 
 export async function updateExpenseCategory(id: number, name: string): Promise<ExpenseCategory> {
   const db = getDb();
   const { rows } = await db.query<NamedRow>("UPDATE expense_categories SET name = $1 WHERE id = $2 RETURNING *", [name, id]);
-  return { id: rows[0].id, name: rows[0].name };
+  return mapNamed(rows[0]);
 }
 
 export async function getStaff(): Promise<StaffAccount[]> {

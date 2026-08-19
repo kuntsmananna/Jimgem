@@ -3,8 +3,15 @@
 import { useState, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { expenseCategoryIconElement } from "@/lib/icons";
+import { ArchiveButton } from "./ArchiveButton";
 
 type Resource = "payment-methods" | "expense-categories";
+
+/** What one entry is called, for the archive confirmation. */
+const NOUN: Record<Resource, string> = {
+  "payment-methods": "payment method",
+  "expense-categories": "expense category",
+};
 
 /**
  * The icon a row gets, by resource.
@@ -78,7 +85,7 @@ export function NameListPanel({
 
       <ul className="mt-3 flex flex-col gap-1.5">
         {items.map((item) => (
-          <li key={item.id} className="flex items-center gap-2 text-sm">
+          <li key={item.id} className="group flex items-center gap-2 text-sm">
             {editing === item.id ? (
               <>
                 <input
@@ -107,6 +114,9 @@ export function NameListPanel({
                 {rowIcon && <span className="shrink-0 text-ink-soft">{rowIcon(item.name)}</span>}
                 <span className="min-w-0 truncate">{item.name}</span>
               </button>
+            )}
+            {editing !== item.id && (
+              <ArchiveButton resource={resource} id={item.id} name={item.name} noun={NOUN[resource]} />
             )}
           </li>
         ))}

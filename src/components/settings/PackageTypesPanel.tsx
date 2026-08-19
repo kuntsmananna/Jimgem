@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PackageType } from "@/lib/settings";
 import { packageTypeIconElement } from "@/lib/icons";
+import { ArchiveButton } from "./ArchiveButton";
 
 export function PackageTypesPanel({ items }: { items: PackageType[] }) {
   const router = useRouter();
@@ -53,7 +54,7 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
 
       <ul className="mt-3 flex flex-col gap-1.5">
         {items.map((item) => (
-          <li key={item.id} className="flex items-center gap-2 text-sm">
+          <li key={item.id} className="group flex items-center gap-2 text-sm">
             {editing === item.id ? (
               <>
                 <input
@@ -90,6 +91,9 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
                 <span className="min-w-0 flex-1 truncate">{item.name}</span>
                 <span className="shrink-0 text-xs text-ink-soft">{item.unitsPerPackage} units</span>
               </button>
+            )}
+            {editing !== item.id && (
+              <ArchiveButton resource="package-types" id={item.id} name={item.name} noun="package type" />
             )}
           </li>
         ))}

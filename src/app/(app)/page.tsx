@@ -11,7 +11,9 @@ export default async function DashboardPage() {
     getYearlyFinancials(),
     getOrders(),
     getFlavors(true),
-    getPackageTypes(),
+    // Archived included, like getFlavors(true) above: these resolve
+    // what stored orders packed, not what a new one may pick.
+    getPackageTypes(true),
   ]);
 
   const unitsByPackageType = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));

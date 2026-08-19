@@ -360,6 +360,26 @@ iteration (not guessed) — define these as `@theme` tokens in
   rest, so a deliberate 70/30 stays 7:3 instead of flattening to thirds.
   Adding a zero-unit flavour instead read as the click being ignored, and
   left you hand-reducing another flavour to make room.
+- **Every owner-managed list archives, never deletes** — flavors, order
+  types, package types, payment methods, expense categories and presets
+  all carry `archived_at`. An order references its package and event type,
+  an expense its category and payment method, so a hard delete would
+  either orphan those rows or cascade and take real history with it.
+  Staff are the exception, and deliberately have no removal at all.
+  `scripts/migrate-009-archive-value-lists.mjs` added the column to the
+  three lists that lacked it.
+- **Each getter takes `includeArchived`, and which value to pass is not a
+  detail.** A *picker* offering a choice wants live rows only; a *lookup*
+  resolving rows already stored needs the archived ones too, or archiving
+  a category silently drops its expenses from the report (`financials.ts`
+  drops any row whose category id it cannot resolve) and archiving a
+  package type zeroes the units of every order that used it. So
+  `expenses.ts`, `financials.ts`, both dashboard pages and the app layout
+  pass `true`; the Settings and Expenses pages do not. Components that
+  both resolve and offer — the order form's flavour and package pickers,
+  the Type cell — take the full list and filter with
+  `!archivedAt || alreadyThisValue`, so a retired value stays visible
+  exactly where it is already in use.
 - **Standard rates live in `prices`** (`key` → `amount`, five fixed keys:
   `unit`, `delivery`, `mirror`, `waitress`, `kosher`), edited in Settings →
   Lists → Prices. A fixed set rather than an owner-managed list, because

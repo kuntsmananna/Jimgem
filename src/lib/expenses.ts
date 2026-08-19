@@ -60,8 +60,10 @@ function mapExpense(
 
 async function getNameMaps() {
   const [categories, paymentMethods, staff] = await Promise.all([
-    getExpenseCategories(),
-    getPaymentMethods(),
+    // Archived included: these resolve the names of expenses already
+    // recorded, and archiving a category must not blank out its rows.
+    getExpenseCategories(true),
+    getPaymentMethods(true),
     getStaff(),
   ]);
   return {

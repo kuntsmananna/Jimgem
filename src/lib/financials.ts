@@ -161,7 +161,9 @@ interface DbExpenseForRollup {
 /** Dashboard-created expenses, grouped for folding into the Sheet's legacy monthly totals. */
 async function getDbExpensesForRollup(): Promise<DbExpenseForRollup[]> {
   const db = getDb();
-  const categories = await getExpenseCategories();
+  // Archived included — this map is what keeps an expense's category
+  // resolvable, and a row whose category is missing is dropped below.
+  const categories = await getExpenseCategories(true);
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
 
   const { rows } = await db.query<{
@@ -198,7 +200,9 @@ export async function getYearlyFinancials(): Promise<MonthlyFinancials[]> {
     getOrders(),
     getLegacyExpenseItems(),
     getDbExpensesForRollup(),
-    getPackageTypes(),
+    // Archived included: units sold is computed from stored package
+    // lines, which can reference a package type since retired.
+    getPackageTypes(true),
   ]);
   const packageUnitsById = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
   const revenue = await getMonthlyRevenue(orders, packageUnitsById);

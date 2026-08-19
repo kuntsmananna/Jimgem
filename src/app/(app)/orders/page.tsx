@@ -8,7 +8,9 @@ export default async function OrdersPage() {
   const [orders, flavors, packageTypes, presets, prices] = await Promise.all([
     getOrders(),
     getFlavors(true),
-    getPackageTypes(),
+    // Archived included so an existing line still resolves its size.
+    // The pickers filter them out themselves — see PackageLineEditor.
+    getPackageTypes(true),
     getContentPresets(),
     getPrices(),
   ]);

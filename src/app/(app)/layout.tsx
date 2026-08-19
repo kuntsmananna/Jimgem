@@ -5,7 +5,14 @@ import { Nav } from "@/components/Nav";
 import { OrderTypesProvider } from "@/components/OrderTypesContext";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const [session, orderTypes] = await Promise.all([getSession(), getOrderTypes()]);
+  /*
+   * Archived types included: this list feeds `EventTypeChip` everywhere,
+   * and an order booked under a type since retired should keep its colour
+   * and icon rather than falling back to a grey tag. The two places that
+   * *offer* a type — the order form's pill and the table's Type cell —
+   * filter the archived ones out themselves.
+   */
+  const [session, orderTypes] = await Promise.all([getSession(), getOrderTypes(true)]);
 
   return (
     <OrderTypesProvider types={orderTypes}>

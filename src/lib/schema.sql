@@ -25,12 +25,14 @@ CREATE TABLE IF NOT EXISTS package_types (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   units_per_package INTEGER NOT NULL,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS payment_methods (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -57,6 +59,7 @@ ALTER TABLE order_types ADD COLUMN IF NOT EXISTS icon TEXT;
 CREATE TABLE IF NOT EXISTS expense_categories (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

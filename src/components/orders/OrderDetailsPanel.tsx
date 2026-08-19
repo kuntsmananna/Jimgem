@@ -119,11 +119,16 @@ export function OrderDetailsPanel({
               icon={type ? orderTypeIconElement(type.icon, 11) : undefined}
             >
               <option value="">No type</option>
-              {orderTypes.map((t) => (
-                <option key={t.id} value={t.name}>
-                  {t.name}
-                </option>
-              ))}
+              {/* Archived types are offered only while this order still
+                  uses one, so retiring a type stops it being chosen again
+                  without silently retyping the orders that have it. */}
+              {orderTypes
+                .filter((t) => !t.archivedAt || t.name === draft.customerType)
+                .map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
               {/* An imported order can carry a type that isn't on the list.
                   It has to stay selectable, or saving would retype it. */}
               {draft.customerType && !type && (
