@@ -302,7 +302,7 @@ export function OrdersClient({
         a calendar navigates by its own month, so a rail counting a
         different window next to it would be two answers to one question.
       */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           {/*
             One toolbar row: filters, view switcher, add. Previously two rows
@@ -326,15 +326,9 @@ export function OrdersClient({
                 switcher in. */}
             <div className="flex flex-1 flex-wrap items-center gap-2">
               {view === "calendar" ? (
-                <SelectDropdown
-                  // Not "View": the switcher in the middle of this same
-                  // toolbar is the view, and two controls under one name
-                  // is one too many.
-                  label="Calendar"
-                  options={CALENDAR_MODES}
-                  value={calendarMode}
-                  onChange={setCalendarMode}
-                />
+                // Two options, both always worth seeing — a toggle says
+                // that at a glance where a dropdown hides half of it.
+                <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
               ) : (
                 <SelectDropdown
                   label="When"
@@ -414,7 +408,15 @@ export function OrdersClient({
         </div>
 
         {view !== "calendar" && (
-          <aside className="w-[15%] min-w-[168px] shrink-0">
+          <aside
+            /*
+             * A fixed 140px rather than a share of the page. It was 15%,
+             * which on a 13" laptop spent 180px on four short numbers and
+             * took them from the table beside it — the one thing on this
+             * page that genuinely needs the width.
+             */
+            className="w-[140px] shrink-0"
+          >
             <OrdersSummary
               totals={totals}
               previous={previousTotals}

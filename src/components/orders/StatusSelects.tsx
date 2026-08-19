@@ -47,7 +47,7 @@ export function PaymentStatusSelect({
       value={order.paymentStatus}
       disabled={busy}
       onChange={(e) => handleChange(e.target.value as PaymentStatus)}
-      className={`rounded-full border-0 px-2.5 py-1 text-xs font-semibold outline-none ${PAYMENT_BADGE_CLASS[order.paymentStatus]}`}
+      className={`rounded-full border-0 px-1.5 py-1 text-[11px] font-semibold outline-none ${PAYMENT_BADGE_CLASS[order.paymentStatus]}`}
     >
       {(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((status) => (
         <option key={status} value={status}>
@@ -86,7 +86,7 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
       value={order.productionStatus}
       disabled={busy}
       onChange={(e) => handleChange(e.target.value as ProductionStatus)}
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold outline-none ${PRODUCTION_BADGE_CLASS[order.productionStatus]}`}
+      className={`rounded-full px-1.5 py-1 text-[11px] font-semibold outline-none ${PRODUCTION_BADGE_CLASS[order.productionStatus]}`}
     >
       {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((status) => (
         <option key={status} value={status}>

@@ -547,8 +547,9 @@ show work it exists to track.
 On the calendar the toolbar's left slot swaps the time scope for
 Monthly/Weekly — the calendar navigates by its own month, so it has no
 scope to show, and the switcher used to be a second control inside the
-card. It is labelled "Calendar", not "View", because the switcher in the
-middle of the same toolbar already owns that word.
+card. It stays a **toggle** rather than becoming a dropdown like the
+scope beside it: with two options both worth seeing, a dropdown hides
+half the control.
 
 Settings is four tabs: **Flavors** (flavour cards *and* presets — a preset
 is a package plus a recipe of these flavours, so keeping them apart meant
@@ -564,8 +565,21 @@ under every short one; multi-column packs by height instead, and the tab
 ends up as tall as its tallest pane. Each card needs `break-inside-avoid`
 or a list splits across two columns mid-row.
 
+**The table fits a laptop without a horizontal scrollbar from ~1310px
+up**, where it used to need ~1600. Nothing was dropped to get there — the
+width came from `min-w-[1400px]` (a floor set well above what fifteen
+columns actually need, so it *was* the width), `px-3` gutters, a 220px
+notes line under each customer, 12px status selects whose intrinsic width
+is set by their longest option rather than the row's value, a 12px header
+row that half the columns take their width from, and a rail sized at 15%
+of the page. Each is small; together they were ~290px. If a narrower
+screen ever has to fit, the next move is folding a column into
+`ContentHoverCard` rather than shaving pixels further.
+
 `OrdersSummary` is the rail beside the table and the board (not the
-calendar, which would then carry two different windows at once). It
+calendar, which would then carry two different windows at once). It is a
+fixed 140px rather than a share of the page — 15% spent 180px of a 13"
+laptop on four short numbers, taken from the table that needs them. It
 totals **exactly the list on screen** — units, orders, mirrors, income —
 and compares each against the same list one window back (the previous
 fortnight, last month, this month). No comparison exists for "all time",

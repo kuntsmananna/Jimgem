@@ -84,26 +84,33 @@ export function OrdersTable({
 
   return (
     <div className="max-h-[70vh] overflow-auto rounded-card border border-line bg-card">
-      <table className="w-full min-w-[1400px] text-left text-sm">
+      {/*
+        1100px is just under what these fifteen columns actually need, so
+        the floor only catches the empty-state row rather than quietly
+        setting the table's width. It used to be 1400, which forced a
+        horizontal scrollbar on any laptop under ~1600px wide even though
+        the columns fit in far less.
+      */}
+      <table className="w-full min-w-[1100px] text-left text-sm">
         <thead className="sticky top-0 z-10 bg-card">
-          <tr className="border-b border-line text-xs font-semibold text-ink-soft">
-            <th className="w-8 bg-card px-3 py-2">
+          <tr className="border-b border-line text-[11px] font-semibold text-ink-soft">
+            <th className="w-6 bg-card px-2 py-2">
               <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
             </th>
-            <th className="bg-card px-3 py-2">Date</th>
-            <th className="bg-card px-3 py-2">Customer</th>
-            <th className="bg-card px-3 py-2">Type</th>
-            <th className="bg-card px-3 py-2">Location</th>
-            <th className="bg-card px-3 py-2">Guests</th>
-            <th className="bg-card px-3 py-2">Units</th>
-            <th className="bg-card px-3 py-2">Mirrors</th>
-            <th className="bg-card px-3 py-2">Waitress</th>
-            <th className="bg-card px-3 py-2">Kosher</th>
-            <th className="bg-card px-3 py-2">Delivery</th>
-            <th className="bg-card px-3 py-2">Amount</th>
-            <th className="bg-card px-3 py-2">Deposit</th>
-            <th className="bg-card px-3 py-2">Payment</th>
-            <th className="bg-card px-3 py-2">Stage</th>
+            <th className="bg-card px-2 py-2">Date</th>
+            <th className="bg-card px-2 py-2">Customer</th>
+            <th className="bg-card px-2 py-2">Type</th>
+            <th className="bg-card px-2 py-2">Location</th>
+            <th className="bg-card px-2 py-2">Guests</th>
+            <th className="bg-card px-2 py-2">Units</th>
+            <th className="bg-card px-2 py-2">Mirrors</th>
+            <th className="bg-card px-2 py-2">Waitress</th>
+            <th className="bg-card px-2 py-2">Kosher</th>
+            <th className="bg-card px-2 py-2">Delivery</th>
+            <th className="bg-card px-2 py-2">Amount</th>
+            <th className="bg-card px-2 py-2">Deposit</th>
+            <th className="bg-card px-2 py-2">Payment</th>
+            <th className="bg-card px-2 py-2">Stage</th>
           </tr>
         </thead>
         {/*
@@ -128,7 +135,7 @@ export function OrdersTable({
                   order.productionStatus === "offer" ? "is-offer" : ""
                 }`}
               >
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -139,7 +146,7 @@ export function OrdersTable({
                     className={isSelected ? "" : "invisible group-hover:visible"}
                   />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-2 py-2 whitespace-nowrap">
                   <EditableCell
                     type="date"
                     displayValue={formatOrderDate(order.date)}
@@ -147,7 +154,7 @@ export function OrdersTable({
                     onSave={(raw) => saveField(order, { date: raw })}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <div className="flex items-center gap-1.5">
                     <EditableCell
                       displayValue={order.customer || "(no name)"}
@@ -171,10 +178,10 @@ export function OrdersTable({
                     the same text — editable from the order form.
                   */}
                   {order.notes && (
-                    <p className="mt-0.5 max-w-[220px] text-xs text-ink-soft">{order.notes}</p>
+                    <p className="mt-0.5 max-w-[150px] text-xs text-ink-soft">{order.notes}</p>
                   )}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <EditableCell
                     displayValue={
                       order.customerType.trim() ? <EventTypeChip value={order.customerType} /> : "—"
@@ -187,14 +194,14 @@ export function OrdersTable({
                     onSave={(raw) => saveField(order, { customerType: raw })}
                   />
                 </td>
-                <td className="max-w-[160px] px-3 py-2">
+                <td className="max-w-[130px] px-2 py-2">
                   <EditableCell
                     displayValue={order.location || "—"}
                     editValue={order.location}
                     onSave={(raw) => saveField(order, { location: raw })}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <EditableCell
                     type="number"
                     displayValue={order.guests ?? "—"}
@@ -206,7 +213,7 @@ export function OrdersTable({
                     }
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   {/* The count is the scannable number; the packages and
                       their flavours are a hover away. The dotted underline
                       is what says so — a row of bare numerals gives no
@@ -220,7 +227,7 @@ export function OrdersTable({
                     <UnitsCell units={orderUnits(order.packageLines, unitsPerPackage)} />
                   </ContentHoverCard>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <EditableCell
                     type="number"
                     displayValue={order.mirrors ?? "—"}
@@ -232,7 +239,7 @@ export function OrdersTable({
                     }
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <EditableCell
                     type="number"
                     displayValue={order.waitresses ?? "—"}
@@ -244,10 +251,10 @@ export function OrdersTable({
                     }
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <YesNoCell value={order.kosher} onSave={(kosher) => saveField(order, { kosher })} />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   {/* Whether there is delivery, not what it costs — the
                       price lives with the other extras on the order
                       sheet's money side. */}
@@ -256,7 +263,7 @@ export function OrdersTable({
                     onSave={(on) => saveField(order, withDelivery(order, on))}
                   />
                 </td>
-                <td className="px-3 py-2 font-semibold">
+                <td className="px-2 py-2 font-semibold">
                   <EditableCell
                     type="number"
                     displayValue={currency(order.totalAmount)}
@@ -264,7 +271,7 @@ export function OrdersTable({
                     onSave={(raw) => saveField(order, { totalAmount: Number(raw) || 0 })}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <EditableCell
                     type="number"
                     displayValue={currency(order.deposit)}
@@ -272,10 +279,10 @@ export function OrdersTable({
                     onSave={(raw) => saveField(order, { deposit: Number(raw) || 0 })}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <PaymentStatusSelect order={order} onChanged={onChanged} />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <ProductionStatusSelect order={order} onChanged={onChanged} />
                 </td>
               </tr>
@@ -286,7 +293,7 @@ export function OrdersTable({
               {/* Names the window rather than saying "no matches": the
                   default scope is the next fortnight, and a quiet season
                   otherwise reads as the page being broken. */}
-              <td colSpan={15} className="px-3 py-8 text-center text-sm text-ink-soft">
+              <td colSpan={15} className="px-2 py-8 text-center text-sm text-ink-soft">
                 {emptyNote}
               </td>
             </tr>
