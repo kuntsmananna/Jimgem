@@ -19,7 +19,7 @@ import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
-import { FilterDropdown, type FilterOption } from "./FilterDropdown";
+import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -318,12 +318,32 @@ export function OrdersClient({
             {/* When and what, together on the left: which orders are in play
                 at all, then which of those. The calendar has no time scope —
                 it navigates itself — so its first slot says how the grid is
-                drawn instead. */}
+                drawn instead.
+
+                All three are the same dropdown. The scope used to be four
+                pills, which spent most of the toolbar on a control changed
+                a few times a day and left nothing to centre the view
+                switcher in. */}
             <div className="flex flex-1 flex-wrap items-center gap-2">
               {view === "calendar" ? (
-                <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
+                <SelectDropdown
+                  // Not "View": the switcher in the middle of this same
+                  // toolbar is the view, and two controls under one name
+                  // is one too many.
+                  label="Calendar"
+                  options={CALENDAR_MODES}
+                  value={calendarMode}
+                  onChange={setCalendarMode}
+                />
               ) : (
-                <PillGroup items={SCOPES} value={scope} onChange={setScope} />
+                <SelectDropdown
+                  label="When"
+                  options={SCOPES}
+                  value={scope}
+                  onChange={setScope}
+                  // "All time" narrows nothing, so it reads as unset.
+                  active={scope !== "all"}
+                />
               )}
               <FilterDropdown
                 label="Payment"
@@ -339,15 +359,20 @@ export function OrdersClient({
               />
             </div>
 
+            {/* Centred between the two flanks, which both take an equal
+                share of the free space — the view is what the whole page
+                is, so it sits in the middle rather than in a corner. */}
             <PillGroup items={VIEWS} value={view} onChange={setView} />
 
-            <button
-              onClick={() => setAdding(true)}
-              className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
-            >
-              <Plus size={15} />
-              Add order
-            </button>
+            <div className="flex flex-1 justify-end">
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
+              >
+                <Plus size={15} />
+                Add order
+              </button>
+            </div>
           </div>
 
           {view === "table" && (

@@ -523,9 +523,14 @@ so the summary rail beside it starts at the very top rather than level
 with the table's first row. That also lands "Add order" on the table's
 right edge, where the rail begins.
 
-Its left group is **which orders**: the time scope
-(`src/lib/orderScope.ts` — 14 days / this month / next month / all time)
-picks what is in play at all, then Payment and Stage narrow it. The scope
+Its left group is **which orders**, as three matching dropdowns: the time
+scope (`src/lib/orderScope.ts` — 14 days / this month / next month / all
+time) picks what is in play at all, then Payment and Stage narrow it. The
+scope was four segmented pills, which spent most of the toolbar on a
+control changed a few times a day and left nothing to centre the view
+switcher in; `Dropdown.tsx` now holds the shared pill-and-popover shell,
+`SelectDropdown` for pick-one and `FilterDropdown` for pick-many. The view
+switcher sits between two `flex-1` flanks, so it is centred on the table. The scope
 is forward-looking and defaults to the next 14 days, so the page opens as
 a work queue rather than an archive — which means it can legitimately open
 empty, and the table's empty row names the scope instead of saying "no
@@ -542,7 +547,8 @@ show work it exists to track.
 On the calendar the toolbar's left slot swaps the time scope for
 Monthly/Weekly — the calendar navigates by its own month, so it has no
 scope to show, and the switcher used to be a second control inside the
-card.
+card. It is labelled "Calendar", not "View", because the switcher in the
+middle of the same toolbar already owns that word.
 
 Settings is four tabs: **Flavors** (flavour cards *and* presets — a preset
 is a package plus a recipe of these flavours, so keeping them apart meant
