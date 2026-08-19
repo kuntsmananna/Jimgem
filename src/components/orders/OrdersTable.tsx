@@ -3,12 +3,14 @@
 import {
   formatOrderDate,
   hasDelivery,
+  displayCount,
   isBooked,
   stageMap,
   orderUnits,
   unitsPerPackageMap,
   withDelivery,
   type Order,
+  type OrderDisplay,
   type OrderInput,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
@@ -249,16 +251,11 @@ export function OrdersTable({
                   </ContentHoverCard>
                 </td>
                 <td className="px-2 py-2">
-                  <EditableCell
-                    type="number"
-                    displayValue={order.mirrors ?? "—"}
-                    editValue={order.mirrors?.toString() ?? ""}
-                    onSave={(raw) =>
-                      saveField(order, {
-                        mirrors: raw === "" ? null : Number(raw),
-                      })
-                    }
-                  />
+                  {/* Read-only here, unlike the counts either side of it:
+                      an order can carry several display types at once, and
+                      one number in a cell has nowhere to say which. The
+                      order popup is where the split is set. */}
+                  <DisplayCell displays={order.displays} />
                 </td>
                 <td className="px-2 py-2">
                   <EditableCell
@@ -320,6 +317,18 @@ export function OrdersTable({
       </table>
     </div>
   );
+}
+
+/**
+ * How many display items an order carries, across every type.
+ *
+ * A total rather than a breakdown: the column is scanned for "is there
+ * anything to set up", and the popup answers which kinds.
+ */
+function DisplayCell({ displays }: { displays: OrderDisplay[] }) {
+  const count = displayCount(displays);
+  if (count === 0) return <span className="text-ink-soft">—</span>;
+  return <span className="font-semibold tabular-nums">{count}</span>;
 }
 
 /**

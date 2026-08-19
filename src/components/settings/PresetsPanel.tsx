@@ -30,6 +30,13 @@ interface PresetDraft {
   packageTypeId: string;
   flavors: OrderLineFlavor[];
   autoSplit: boolean;
+  /**
+   * Carried through untouched — the price is set in Settings' Jelly
+   * prices pane, not here. It still has to ride along because saving
+   * replaces the whole preset, so leaving it out would clear it every
+   * time someone adjusted a recipe.
+   */
+  price: number | null;
 }
 
 /** The package a draft is built against — its size drives every number below. */
@@ -43,6 +50,7 @@ function draftFrom(preset: ContentPreset, packageTypes: PackageType[]): PresetDr
     packageTypeId: String(preset.packageTypeId),
     flavors: presetUnits(preset.flavors, packed),
     autoSplit: false,
+    price: preset.price,
   };
 }
 
@@ -75,6 +83,7 @@ export function PresetsPanel({
       packageTypeId: String(packageTypes[0]?.id ?? ""),
       flavors: [],
       autoSplit: true,
+      price: null,
     });
   }
 
@@ -93,6 +102,7 @@ export function PresetsPanel({
       body: JSON.stringify({
         name: draft.name.trim(),
         packageTypeId: Number(draft.packageTypeId),
+        price: draft.price,
         // Back to proportions on the way out, which is what makes one
         // preset work for a tray of 50 and a tray of 150 alike.
         flavors: draft.flavors

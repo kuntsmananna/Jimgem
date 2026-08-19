@@ -9,6 +9,7 @@ import {
   getStaff,
   getPrices,
   getProductionStages,
+  getDisplayOptions,
 } from "@/lib/settings";
 import { FlavorsPanel } from "@/components/settings/FlavorsPanel";
 import { NameListPanel } from "@/components/settings/NameListPanel";
@@ -16,6 +17,8 @@ import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
 import { OrderTypesPanel } from "@/components/settings/OrderTypesPanel";
 import { PresetsPanel } from "@/components/settings/PresetsPanel";
 import { PricesPanel } from "@/components/settings/PricesPanel";
+import { JellyPricesPanel } from "@/components/settings/JellyPricesPanel";
+import { DisplayOptionsPanel } from "@/components/settings/DisplayOptionsPanel";
 import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
@@ -24,7 +27,7 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -35,6 +38,7 @@ export default async function SettingsPage() {
       getOrderTypes(),
       getPrices(),
       getProductionStages(),
+      getDisplayOptions(),
     ]);
 
   return (
@@ -71,7 +75,9 @@ export default async function SettingsPage() {
             <div className="columns-3 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <StagesPanel items={stages} />
               <OrderTypesPanel items={orderTypes} />
+              <JellyPricesPanel prices={prices} presets={presets} />
               <PricesPanel prices={prices} />
+              <DisplayOptionsPanel items={displayOptions} />
               <PackageTypesPanel items={packageTypes} />
               <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />
               <NameListPanel

@@ -52,6 +52,15 @@ export interface OrderPackageLine {
   /** Number of packages, not units. */
   quantity: number;
   flavors: OrderLineFlavor[];
+  /**
+   * A preset's price per package, copied when the preset was applied.
+   *
+   * Copied rather than looked up so repricing a preset cannot change an
+   * order already booked — the same reason the recipe itself is copied
+   * (see CLAUDE.md's note on content_presets). Null prices this line per
+   * unit from the quantity tiers instead.
+   */
+  packagePrice?: number | null;
 }
 
 /**
@@ -255,7 +264,13 @@ export interface Order {
    */
   details: string;
   guests: number | null;
+  /**
+   * Legacy and unread: displays became a list (see `displays`), and
+   * migration 012 folded every mirror count into an `order_displays` row.
+   * Kept so that fold-in stays auditable.
+   */
   mirrors: number | null;
+  displays: OrderDisplay[];
   waitresses: number | null;
   kosher: boolean;
   packageLines: OrderPackageLine[];
@@ -265,7 +280,9 @@ export interface Order {
    */
   totalAmount: number;
   deliveryCost: number | null;
+  /** Legacy, like `mirrors` above — `displayCost` replaced it. */
   mirrorsCost: number | null;
+  displayCost: number | null;
   waitressCost: number | null;
   kosherCost: number | null;
   deposit: number;
@@ -283,13 +300,21 @@ export interface OrderInput {
   customerType: string;
   location: string;
   guests: number | null;
+  /**
+   * Legacy and unread: displays became a list (see `displays`), and
+   * migration 012 folded every mirror count into an `order_displays` row.
+   * Kept so that fold-in stays auditable.
+   */
   mirrors: number | null;
+  displays: OrderDisplay[];
   waitresses: number | null;
   kosher: boolean;
   packageLines: OrderPackageLine[];
   totalAmount: number;
   deliveryCost: number | null;
+  /** Legacy, like `mirrors` above — `displayCost` replaced it. */
   mirrorsCost: number | null;
+  displayCost: number | null;
   waitressCost: number | null;
   kosherCost: number | null;
   deposit: number;
@@ -324,9 +349,9 @@ export function withDelivery<T extends Pick<OrderInput, "deliveryCost">>(order: 
 
 export const ORDER_EXTRAS = [
   {
-    // Gated like the rest, on the cost being set at all rather than on a
-    // separate flag: null is "no delivery", and 0 is "we deliver, no
-    // charge" — which is a real case and a different answer.
+    // Gated on the cost being set at all rather than on a separate flag:
+    // null is "no delivery", and 0 is "we deliver, no charge" — a real
+    // case and a different answer.
     id: "delivery",
     label: "Delivery",
     cost: "deliveryCost",
@@ -335,16 +360,25 @@ export const ORDER_EXTRAS = [
     // multiply the rate by.
     per: "flat",
     applies: (order: OrderInput) => hasDelivery(order),
-    quantity: () => 1,
+    standard: (order: OrderInput, rates: Rates) => rates.prices.delivery,
   },
   {
-    id: "mirrors",
-    label: "Mirrors",
-    cost: "mirrorsCost",
-    priceKey: "mirror",
-    per: "per mirror",
-    applies: (order: OrderInput) => (order.mirrors ?? 0) > 0,
-    quantity: (order: OrderInput) => order.mirrors ?? 0,
+    id: "display",
+    label: "Display",
+    cost: "displayCost",
+    // No flat rate of its own: each display option carries a price, and an
+    // order can hold several at once. This is why `standard` exists rather
+    // than a `priceKey` every extra multiplies — see `Rates`.
+    priceKey: null,
+    per: "per item",
+    applies: (order: OrderInput) => displayCount(order.displays) > 0,
+    standard: (order: OrderInput, rates: Rates) => {
+      const priceById = new Map(rates.displayOptions.map((o) => [o.id, o.price]));
+      return order.displays.reduce(
+        (sum, entry) => sum + (priceById.get(entry.optionId) ?? 0) * entry.quantity,
+        0,
+      );
+    },
   },
   {
     id: "waitress",
@@ -353,7 +387,7 @@ export const ORDER_EXTRAS = [
     priceKey: "waitress",
     per: "per waitress",
     applies: (order: OrderInput) => (order.waitresses ?? 0) > 0,
-    quantity: (order: OrderInput) => order.waitresses ?? 0,
+    standard: (order: OrderInput, rates: Rates) => rates.prices.waitress * (order.waitresses ?? 0),
   },
   {
     id: "kosher",
@@ -362,18 +396,23 @@ export const ORDER_EXTRAS = [
     priceKey: "kosher",
     per: "flat",
     applies: (order: OrderInput) => order.kosher,
-    quantity: () => 1,
+    standard: (order: OrderInput, rates: Rates) => rates.prices.kosher,
   },
 ] as const satisfies readonly {
   id: string;
   label: string;
   cost: keyof OrderInput;
-  priceKey: PriceKey;
-  /** How the rate is charged, for the Settings label. */
+  /** Null when the extra prices itself from a list rather than a flat rate. */
+  priceKey: PriceKey | null;
   per: string;
   applies: (order: OrderInput) => boolean;
-  quantity: (order: OrderInput) => number;
+  standard: (order: OrderInput, rates: Rates) => number;
 }[];
+
+/** How many display items an order carries in total, across its options. */
+export function displayCount(displays: OrderDisplay[]): number {
+  return displays.reduce((sum, entry) => sum + entry.quantity, 0);
+}
 
 /**
  * The owner's standard rates, kept in the `prices` table and edited in
@@ -384,22 +423,83 @@ export const ORDER_EXTRAS = [
  * nothing to price. `unit` is the odd one out — it multiplies the units
  * the Content tab packs rather than a count on the Details tab.
  */
-export type PriceKey = "unit" | "delivery" | "mirror" | "waitress" | "kosher";
+export type PriceKey = UnitTierKey | "delivery" | "waitress" | "kosher";
 
 export type Prices = Record<PriceKey, number>;
 
 /** Prices nothing. What a database with no `prices` rows would mean. */
-export const ZERO_PRICES: Prices = { unit: 0, delivery: 0, mirror: 0, waitress: 0, kosher: 0 };
+export const ZERO_PRICES: Prices = {
+  unit_100: 0,
+  unit_200: 0,
+  unit_500: 0,
+  unit_max: 0,
+  delivery: 0,
+  waitress: 0,
+  kosher: 0,
+};
+
+/** One thing an order can be displayed on, from the owner's list. */
+export interface DisplayOption {
+  id: number;
+  name: string;
+  price: number;
+  position: number;
+  archivedAt: string | null;
+}
+
+/** How many of one display option an order carries. */
+export interface OrderDisplay {
+  optionId: number;
+  quantity: number;
+}
 
 /**
- * Every rate with the words to describe it, for the Settings panel and
- * for the hint beside an auto-filled amount. Derived from ORDER_EXTRAS
- * where it can be, so adding an extra there gives it a rate here.
+ * Everything the standard rates are made of.
+ *
+ * Bundled rather than passed as two arguments because they travel
+ * together — every caller that prices an order needs both, and the next
+ * priced thing should be able to join without changing five signatures.
  */
-export const PRICE_FIELDS: { key: PriceKey; label: string; per: string }[] = [
-  { key: "unit", label: "Jelly", per: "per unit" },
-  ...ORDER_EXTRAS.map((extra) => ({ key: extra.priceKey as PriceKey, label: extra.label, per: extra.per })),
-];
+export interface Rates {
+  prices: Prices;
+  displayOptions: DisplayOption[];
+}
+
+export type UnitTierKey = "unit_100" | "unit_200" | "unit_500" | "unit_max";
+
+/**
+ * What a unit of jelly costs, by how many the order is for.
+ *
+ * Ordered smallest first and matched on the first tier the order fits in,
+ * so the boundaries read the way they are written: 100 units is priced at
+ * the "up to 100" rate, 101 at the next one up.
+ *
+ * Only lines with no price of their own use these — a line copied from a
+ * preset carries the preset's package price instead (see `jellyTotal`).
+ */
+export const UNIT_TIERS = [
+  { key: "unit_100", label: "Up to 100", upTo: 100 },
+  { key: "unit_200", label: "101 – 200", upTo: 200 },
+  { key: "unit_500", label: "201 – 500", upTo: 500 },
+  { key: "unit_max", label: "501 and up", upTo: Number.POSITIVE_INFINITY },
+] as const satisfies readonly { key: UnitTierKey; label: string; upTo: number }[];
+
+export function unitTierFor(units: number): UnitTierKey {
+  return (UNIT_TIERS.find((tier) => units <= tier.upTo) ?? UNIT_TIERS[UNIT_TIERS.length - 1]).key;
+}
+
+/**
+ * The add-on rates, for Settings' "Add-on prices" pane and the hint beside
+ * an auto-filled amount. Derived from ORDER_EXTRAS so declaring an extra
+ * there gives it a rate here.
+ *
+ * Jelly is not in this list: it is priced by quantity tier, which is its
+ * own pane (see `UNIT_TIERS`).
+ */
+export const PRICE_FIELDS: { key: PriceKey; label: string; per: string }[] = ORDER_EXTRAS.flatMap(
+  (extra) =>
+    extra.priceKey === null ? [] : [{ key: extra.priceKey, label: extra.label, per: extra.per }],
+);
 
 /**
  * What the order is worth: the jelly plus every extra that applies.
@@ -435,15 +535,15 @@ export function orderTotal(order: OrderInput | Order): number {
  */
 export function repriceOrder(
   order: OrderInput,
-  prices: Prices,
-  overridden: ReadonlySet<PriceKey>,
-  units: number,
+  rates: Rates,
+  overridden: ReadonlySet<AmountKey>,
+  jelly: number,
 ): OrderInput {
   const priced = { ...order };
-  if (!overridden.has("unit")) priced.totalAmount = Math.round(prices.unit * units);
+  if (!overridden.has("jelly")) priced.totalAmount = jelly;
   for (const extra of ORDER_EXTRAS) {
-    if (overridden.has(extra.priceKey) || !extra.applies(order)) continue;
-    priced[extra.cost] = Math.round(prices[extra.priceKey] * extra.quantity(order));
+    if (overridden.has(extra.id) || !extra.applies(order)) continue;
+    priced[extra.cost] = Math.round(extra.standard(order, rates));
   }
   return priced;
 }
@@ -471,6 +571,43 @@ export function isBooked(
 export function stageMap(stages: ProductionStage[]): Map<string, ProductionStage> {
   return new Map(stages.map((stage) => [stage.key, stage]));
 }
+
+/**
+ * What the jelly on an order comes to.
+ *
+ * A line copied from a preset carries that preset's price per package and
+ * is billed at `price × quantity`, whatever it holds. Every other line is
+ * billed per unit at the tier the **whole order** falls into, so a
+ * customer buying 600 units across three trays gets the 500-and-up rate
+ * on all of them rather than three separate small-order rates.
+ */
+export function jellyTotal(
+  lines: OrderPackageLine[],
+  unitsPerPackage: Map<number, number>,
+  prices: Prices,
+): number {
+  const unitRate = prices[unitTierFor(orderUnits(lines, unitsPerPackage))];
+  return Math.round(
+    lines.reduce(
+      (sum, line) =>
+        sum +
+        (line.packagePrice !== null && line.packagePrice !== undefined
+          ? line.packagePrice * line.quantity
+          : unitRate * linePackedUnits(line, unitsPerPackage)),
+      0,
+    ),
+  );
+}
+
+/**
+ * What can be typed over on the money side: the jelly amount, or one of
+ * the extras by id.
+ *
+ * Keyed by the *amount* rather than by a rate key, because the two do not
+ * line up — jelly has four rates and one amount, and Display has a whole
+ * list of rates behind one amount.
+ */
+export type AmountKey = "jelly" | (typeof ORDER_EXTRAS)[number]["id"];
 
 /** Still owed once the deposit is taken off the full total. */
 export function orderBalance(order: OrderInput | Order): number {

@@ -90,6 +90,26 @@ INSERT INTO production_stages (key, label, position, counts_as_income, is_final,
   ('delivered', 'Delivered', 3, true, true, '#cfe0bc')
 ON CONFLICT (key) DO NOTHING;
 
+-- What an order can be displayed on or in, each with its own price. It
+-- replaced a plain `mirrors` count on the order: there is more than one
+-- kind of display and they do not cost the same, and an order can carry
+-- several at once
+CREATE TABLE IF NOT EXISTS display_options (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  position INTEGER NOT NULL DEFAULT 0,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS order_displays (
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  display_option_id INTEGER NOT NULL REFERENCES display_options(id),
+  quantity INTEGER NOT NULL,
+  PRIMARY KEY (order_id, display_option_id)
+);
+
 -- The owner's standard rates, one row per priced thing, used to fill an
 -- order's money side as it is typed. A fixed set of keys rather than a
 -- list the owner adds to, because each key is wired to a specific field
@@ -103,7 +123,8 @@ CREATE TABLE IF NOT EXISTS prices (
 );
 
 INSERT INTO prices (key, amount) VALUES
-  ('unit', 0), ('delivery', 0), ('mirror', 0), ('waitress', 0), ('kosher', 0)
+  ('unit_100', 0), ('unit_200', 0), ('unit_500', 0), ('unit_max', 0),
+  ('delivery', 0), ('waitress', 0), ('kosher', 0)
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -139,6 +160,11 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher BOOLEAN NOT NULL DEFAULT fals
 -- they cost are two different decisions, often made at different times.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS waitress_cost NUMERIC(10, 2);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS mirrors_cost NUMERIC(10, 2);
+
+-- `mirrors` and `mirrors_cost` are legacy and unread since displays became
+-- a list -- migration 012 folded each order's mirror count into an
+-- order_displays row. Kept, not dropped, so that fold-in stays auditable
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS display_cost NUMERIC(10, 2);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
@@ -184,11 +210,15 @@ ALTER TABLE order_content_lines ADD CONSTRAINT order_content_lines_one_axis
 -- the form (see PackageLineEditor), and resolving it to units at entry
 -- time keeps a saved order's meaning fixed when a package type's
 -- units_per_package is later edited.
+-- `package_price` is a preset's price, copied at the moment the preset
+-- was applied. NULL means price this line per unit from the quantity
+-- tiers in `prices` instead
 CREATE TABLE IF NOT EXISTS order_package_lines (
   id SERIAL PRIMARY KEY,
   order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   package_type_id INTEGER NOT NULL REFERENCES package_types(id),
   quantity INTEGER NOT NULL,
+  package_price NUMERIC(10, 2),
   -- Display order within the order, so a re-read returns the lines in the
   -- sequence they were entered rather than by insertion id.
   position INTEGER NOT NULL DEFAULT 0
@@ -212,10 +242,14 @@ CREATE INDEX IF NOT EXISTS order_package_line_flavors_line_idx ON order_package_
 -- preset serve any quantity. Applying a preset copies it into ordinary
 -- editable order lines — it is a starting point, never a live link, so
 -- editing a preset afterwards cannot rewrite orders already booked.
+-- `price` is what one package of this preset costs. An order that uses
+-- the preset copies the number onto its line, so repricing a preset never
+-- changes an order already booked
 CREATE TABLE IF NOT EXISTS content_presets (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   package_type_id INTEGER NOT NULL REFERENCES package_types(id),
+  price NUMERIC(10, 2),
   archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

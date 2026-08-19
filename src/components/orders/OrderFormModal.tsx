@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { Order, Prices } from "@/lib/orderTypes";
+import type { Order, Rates } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { Modal } from "@/components/Modal";
 import { OrderForm } from "./OrderForm";
@@ -12,7 +12,7 @@ export function OrderFormModal({
   flavors,
   packageTypes,
   presets,
-  prices,
+  rates,
   onSaved,
   onClose,
 }: {
@@ -21,7 +21,7 @@ export function OrderFormModal({
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
-  prices: Prices;
+  rates: Rates;
   onSaved: () => void;
   onClose: () => void;
 }) {
@@ -40,7 +40,7 @@ export function OrderFormModal({
         flavors={flavors}
         packageTypes={packageTypes}
         presets={presets}
-        prices={prices}
+        rates={rates}
         onSaved={onSaved}
         onCancel={requestClose}
         onDirtyChange={setDirty}

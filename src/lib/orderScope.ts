@@ -8,7 +8,14 @@
  * order and no timezone can shift a boundary.
  */
 
-import { isBooked, orderTotal, orderUnits, type Order, type ProductionStage } from "./orderTypes";
+import {
+  displayCount,
+  isBooked,
+  orderTotal,
+  orderUnits,
+  type Order,
+  type ProductionStage,
+} from "./orderTypes";
 
 export type ScopeId = "14d" | "month" | "nextMonth" | "all";
 
@@ -86,7 +93,8 @@ export function inRange(date: string, range: DateRange | null): boolean {
 export interface OrderTotals {
   units: number;
   orders: number;
-  mirrors: number;
+  /** Display items across every type — see `displayCount`. */
+  displays: number;
   income: number;
   /**
    * How many of those orders are offers, so the rail can say why its
@@ -100,7 +108,7 @@ export interface OrderTotals {
  * The four figures for a list of orders.
  *
  * Counts include offers and income does not: the counts answer "what is in
- * this window" — an offer has units to make and mirrors to hire if it
+ * this window" — an offer has units to make and displays to hire if it
  * lands — while income answers "what has been sold", and a quote has not
  * been. `offers` is what lets the rail say so out loud.
  */
@@ -113,14 +121,14 @@ export function totalOf(
     (totals, order) => ({
       units: totals.units + orderUnits(order.packageLines, unitsPerPackage),
       orders: totals.orders + 1,
-      mirrors: totals.mirrors + (order.mirrors ?? 0),
+      displays: totals.displays + displayCount(order.displays),
       // What the order is worth, extras included — the same figure the
       // order sheet calls Total. Summing the bare `total_amount` column
       // made the rail disagree with the popup it links to.
       income: totals.income + (isBooked(order, stages) ? orderTotal(order) : 0),
       offers: totals.offers + (isBooked(order, stages) ? 0 : 1),
     }),
-    { units: 0, orders: 0, mirrors: 0, income: 0, offers: 0 },
+    { units: 0, orders: 0, displays: 0, income: 0, offers: 0 },
   );
 }
 

@@ -29,7 +29,7 @@ export function OrdersSummary({
   const tiles = [
     { key: "units", label: "Units", value: nf.format(totals.units), icon: <UnitsIcon size={13} /> },
     { key: "orders", label: "Orders", value: nf.format(totals.orders), icon: <Package size={13} /> },
-    { key: "mirrors", label: "Mirrors", value: nf.format(totals.mirrors), icon: <Sparkles size={13} /> },
+    { key: "displays", label: "Display", value: nf.format(totals.displays), icon: <Sparkles size={13} /> },
     {
       key: "income",
       label: "Income",

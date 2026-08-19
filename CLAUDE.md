@@ -380,13 +380,36 @@ iteration (not guessed) — define these as `@theme` tokens in
   the Type cell — take the full list and filter with
   `!archivedAt || alreadyThisValue`, so a retired value stays visible
   exactly where it is already in use.
-- **Standard rates live in `prices`** (`key` → `amount`, five fixed keys:
-  `unit`, `delivery`, `mirror`, `waitress`, `kosher`), edited in Settings →
-  Lists → Prices. A fixed set rather than an owner-managed list, because
-  each key is wired to a specific field on the order — a sixth would have
-  nothing to price. `scripts/migrate-008-prices-and-offer.mjs` creates and
-  seeds it **at zero**: an invented rate would silently start pricing real
-  orders, and zero prices nothing until the owner fills it in.
+- **Jelly is priced per unit in four quantity tiers** (`UNIT_TIERS` —
+  up to 100 / 101-200 / 201-500 / 501 and up, keys `unit_100`…`unit_max`
+  in `prices`), edited in Settings → Lists → **Jelly prices**. The tier is
+  chosen by the order's *total* units, not per line, so 600 units across
+  three trays gets the 500-and-up rate on all of them rather than three
+  small-order rates.
+- **A preset can carry a price per package**, set in the same pane.
+  Applying the preset **copies** that number onto the order line
+  (`order_package_lines.package_price`) rather than linking to it, so
+  repricing a preset never changes an order already booked — the same
+  copy-not-link rule its recipe follows. A line with no copied price falls
+  back to the tiers. `jellyTotal` is where the two meet.
+- **`display_options` replaced the mirror count.** There is more than one
+  kind of display, they do not cost the same, and an order can carry
+  several at once (`order_displays`), so the price is the sum of what the
+  order holds rather than one rate. `orders.mirrors` and `mirrors_cost`
+  are legacy and unread — `scripts/migrate-012-display-options.mjs` folded
+  every mirror count into an `order_displays` row against a seeded
+  "Mirror" option.
+- **The add-on rates** (`delivery`, `waitress`, `kosher`) live in
+  Settings → Lists → **Add-on prices**. A fixed set, because each key is
+  wired to a specific field on the order.
+- **Every extra prices itself.** `ORDER_EXTRAS` gives each one a
+  `standard(order, rates)` rather than a single rate key to multiply,
+  which is what lets Display compute from its own list while the other
+  three read a flat rate. `Rates` bundles `prices` + `displayOptions` so
+  the next priced thing can join without changing five signatures.
+  Overrides are keyed by `AmountKey` — the *amount* being typed over —
+  because rates and amounts do not line up: jelly has four rates and one
+  amount, Display a whole list behind one.
 - **The order form's money side is derived, not stored state.**
   `repriceOrder` (pure, in `orderTypes.ts`) returns the draft with every
   un-overridden amount filled in from the rates; `OrderForm` computes it as

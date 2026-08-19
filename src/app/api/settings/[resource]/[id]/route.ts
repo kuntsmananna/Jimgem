@@ -14,6 +14,8 @@ import {
   archiveOrderType,
   updateProductionStage,
   archiveProductionStage,
+  updateDisplayOption,
+  archiveDisplayOption,
 } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -90,6 +92,17 @@ export async function PATCH(
         });
         return NextResponse.json(stage);
       }
+      case "displays": {
+        if (body.archive) {
+          await archiveDisplayOption(numericId);
+          return NextResponse.json({ ok: true });
+        }
+        const option = await updateDisplayOption(numericId, {
+          name: body.name,
+          price: Number(body.price) || 0,
+        });
+        return NextResponse.json(option);
+      }
       case "presets": {
         if (body.archive) {
           await archiveContentPreset(numericId);
@@ -98,6 +111,10 @@ export async function PATCH(
         const preset = await updateContentPreset(numericId, {
           name: body.name,
           packageTypeId: Number(body.packageTypeId),
+          price:
+            body.price === null || body.price === undefined || body.price === ""
+              ? null
+              : Number(body.price),
           flavors: (body.flavors ?? []).map(
             (f: { flavorId: number | string; share: number | string }) => ({
               flavorId: Number(f.flavorId),

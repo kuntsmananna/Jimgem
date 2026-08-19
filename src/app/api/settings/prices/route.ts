@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updatePrice } from "@/lib/settings";
-import { PRICE_FIELDS, type PriceKey } from "@/lib/orderTypes";
+import { ZERO_PRICES, type PriceKey } from "@/lib/orderTypes";
 
 export const runtime = "nodejs";
 
-const KEYS = new Set<string>(PRICE_FIELDS.map((field) => field.key));
+/**
+ * Every rate key there is, taken from the `Prices` shape itself rather
+ * than from a list of fields.
+ *
+ * It was built from PRICE_FIELDS, which is only the *add-on* rates — so
+ * the moment jelly moved to its own pane the route started rejecting the
+ * quantity tiers as unknown keys, silently. `ZERO_PRICES` is the one
+ * place the full set is spelled out, and a key can only exist by being in
+ * it.
+ */
+const KEYS = new Set<string>(Object.keys(ZERO_PRICES));
 
 /**
  * Its own route rather than a case in `[resource]`: prices are a fixed

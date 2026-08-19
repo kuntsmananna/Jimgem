@@ -61,22 +61,32 @@ export function toDraftLines(lines: OrderPackageLine[]): DraftPackageLine[] {
 }
 
 export function toPackageLines(draft: DraftPackageLine[]): OrderPackageLine[] {
-  return draft.map(({ packageTypeId, quantity, flavors }) => ({
+  return draft.map(({ packageTypeId, quantity, flavors, packagePrice }) => ({
     packageTypeId,
     quantity,
+    packagePrice: packagePrice ?? null,
     // A flavour dragged to nothing is a removal the user hasn't committed
     // yet: keep the row on screen, but don't save an empty allocation.
     flavors: flavors.filter((entry) => entry.units > 0),
   }));
 }
 
-/** Turns a preset's proportions into a concrete one-package line (see presetUnits). */
+/**
+ * Turns a preset's proportions into a concrete one-package line.
+ *
+ * The preset's **price is copied onto the line**, not linked: repricing a
+ * preset must never change an order already booked, which is the same
+ * rule its recipe follows (see CLAUDE.md on content_presets). A preset
+ * with no price leaves the line null, and it falls back to per-unit tier
+ * pricing like any hand-built package.
+ */
 export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[]): DraftPackageLine {
   const packed = packageTypes.find((p) => p.id === preset.packageTypeId)?.unitsPerPackage ?? 0;
   const flavors = presetUnits(preset.flavors, packed);
   return {
     uid: nextUid++,
     packageTypeId: String(preset.packageTypeId),
+    packagePrice: preset.price,
     quantity: 1,
     mode: "units",
     folded: false,

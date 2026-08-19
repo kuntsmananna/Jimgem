@@ -1,99 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { PRICE_FIELDS, type PriceKey, type Prices } from "@/lib/orderTypes";
+import { PRICE_FIELDS, type Prices } from "@/lib/orderTypes";
+import { RateList, patchRate } from "./RateList";
 
 /**
- * Settings → Lists → Prices. The owner's standard rates, which fill an
+ * Settings → Lists → Add-on prices. What the extras cost, which fills an
  * order's money side as it is typed (see `repriceOrder`).
  *
- * No add or remove: the keys are fixed in code because each one is wired
- * to a field on the order, so this is five amounts rather than a list.
- * That is also why it edits in place with no "+ Add" button — the panel
- * is only ever the same five rows.
+ * No add or remove: each key is wired to a specific field on the order,
+ * so a sixth would have nothing to price. Display is not here — it prices
+ * itself from its own list of options, which is why `ORDER_EXTRAS` gives
+ * each extra a `standard` rather than a single rate key.
  */
 export function PricesPanel({ prices }: { prices: Prices }) {
-  const router = useRouter();
-  // Only the row being typed into is held locally; everything else reads
-  // from the server value, so a save landing elsewhere isn't overwritten.
-  const [editing, setEditing] = useState<PriceKey | null>(null);
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function save(key: PriceKey) {
-    const amount = Number(draft);
-    setEditing(null);
-    // An unparseable or negative entry is dropped rather than sent: the
-    // route rejects it anyway, and reverting on screen says so faster.
-    if (!Number.isFinite(amount) || amount < 0 || amount === prices[key]) return;
-    setBusy(true);
-    await fetch("/api/settings/prices", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, amount }),
-    });
-    setBusy(false);
-    router.refresh();
-  }
-
   return (
     <section className="rounded-card border border-line bg-card p-6">
       <div>
-        <h2 className="font-display text-base font-bold text-ink">Prices</h2>
+        <h2 className="font-display text-base font-bold text-ink">Add-on prices</h2>
         <p className="mt-0.5 text-xs text-ink-soft">
           Standard rates. Every order starts from these and can still be changed on the order itself.
         </p>
       </div>
 
-      <ul className="mt-3 flex flex-col gap-1.5">
-        {PRICE_FIELDS.map((field) => (
-          <li key={field.key} className="flex items-center gap-2 text-sm">
-            {/*
-              One row shape whether reading or editing: name, how it is
-              charged, then the amount. Only the last cell swaps, and the
-              box is the width of the figure it replaces — an edit control
-              wider than that squeezed the name and the "per mirror" out of
-              a column that is a third of the tab.
-            */}
-            <span className="min-w-0 flex-1 truncate px-2 text-ink">{field.label}</span>
-            <span className="shrink-0 text-xs text-ink-soft">{field.per}</span>
-            {editing === field.key ? (
-              <input
-                autoFocus
-                type="number"
-                min={0}
-                aria-label={`${field.label} price`}
-                className="w-16 shrink-0 rounded-lg border border-line px-1.5 py-0.5 text-right text-sm tabular-nums"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={() => save(field.key)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") save(field.key);
-                  // Escape has to clear `editing` without saving, so it
-                  // cannot just let the blur handler run.
-                  if (e.key === "Escape") setEditing(null);
-                }}
-              />
-            ) : (
-              <button
-                disabled={busy}
-                aria-label={`Edit ${field.label} price`}
-                className="w-16 shrink-0 rounded-lg px-1.5 py-0.5 text-right font-semibold tabular-nums text-ink hover:bg-black/[0.05] disabled:opacity-50"
-                onClick={() => {
-                  setEditing(field.key);
-                  setDraft(String(prices[field.key]));
-                }}
-              >
-                {/* A rate of zero is left blank rather than shown as ₪0:
-                    nothing has been set, and "₪0" claims it is free. */}
-                {prices[field.key] > 0 ? `₪${prices[field.key].toLocaleString()}` : "—"}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-
+      <RateList
+        rows={PRICE_FIELDS.map((field) => ({
+          id: field.key,
+          label: field.label,
+          hint: field.per,
+          amount: prices[field.key],
+          save: (amount) => patchRate("/api/settings/prices", { key: field.key, amount }),
+        }))}
+      />
     </section>
   );
 }

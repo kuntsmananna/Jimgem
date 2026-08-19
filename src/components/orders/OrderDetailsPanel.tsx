@@ -9,10 +9,12 @@ import {
   withDelivery,
   orderBalance,
   orderTotal,
+  unitTierFor,
+  type OrderDisplay,
   type OrderInput,
   type PaymentStatus,
-  type PriceKey,
-  type Prices,
+  type AmountKey,
+  type Rates,
 } from "@/lib/orderTypes";
 import { TextInput, TextArea } from "@/components/Field";
 import { useOrderTypes } from "@/components/OrderTypesContext";
@@ -40,7 +42,7 @@ export function OrderDetailsPanel({
   draft,
   onChange,
   totalUnits,
-  prices,
+  rates,
   manual,
   onManualChange,
   onOpenContent,
@@ -50,10 +52,10 @@ export function OrderDetailsPanel({
   /** Units the Content tab packs, shown here so the two tabs agree. */
   totalUnits: number;
   /** The owner's standard rates, for the "auto" hint and the way back to it. */
-  prices: Prices;
+  rates: Rates;
   /** Amounts typed over the standard rate — see OrderForm's `manual`. */
-  manual: ReadonlySet<PriceKey>;
-  onManualChange: (manual: ReadonlySet<PriceKey>) => void;
+  manual: ReadonlySet<AmountKey>;
+  onManualChange: (manual: ReadonlySet<AmountKey>) => void;
   onOpenContent: () => void;
 }) {
   const orderTypes = useOrderTypes();
@@ -68,7 +70,7 @@ export function OrderDetailsPanel({
    * rather than anything stored, so an amount can move between the two as
    * often as someone changes their mind.
    */
-  const setManual = (key: PriceKey, on: boolean) => {
+  const setManual = (key: AmountKey, on: boolean) => {
     const next = new Set(manual);
     if (on) next.add(key);
     else next.delete(key);
@@ -217,14 +219,21 @@ export function OrderDetailsPanel({
               onChange={(guests) => set({ guests })}
             />
           </SheetRow>
-          <SheetRow label="Mirrors">
-            <NumberStepper
-              label="mirrors"
-              value={draft.mirrors}
-              allowEmpty
-              onChange={(mirrors) => set({ mirrors })}
-            />
-          </SheetRow>
+          {/* One row per display option rather than a single count: an
+              order can carry several kinds at once, and they do not cost
+              the same. Archived options appear only while this order still
+              has some, so a retired one can be cleared but not added. */}
+          {rates.displayOptions
+            .filter((option) => !option.archivedAt || quantityOf(draft.displays, option.id) > 0)
+            .map((option) => (
+              <SheetRow key={option.id} label={option.name}>
+                <NumberStepper
+                  label={option.name.toLowerCase()}
+                  value={quantityOf(draft.displays, option.id)}
+                  onChange={(quantity) => set({ displays: withDisplay(draft.displays, option.id, quantity) })}
+                />
+              </SheetRow>
+            ))}
           <SheetRow label="Waitresses">
             <NumberStepper
               label="waitresses"
@@ -263,10 +272,12 @@ export function OrderDetailsPanel({
               label="Order amount"
               value={draft.totalAmount}
               onChange={(totalAmount) => set({ totalAmount: totalAmount ?? 0 })}
-              rate={prices.unit}
-              manual={manual.has("unit")}
-              onRelease={() => setManual("unit", false)}
-              onTyped={() => setManual("unit", true)}
+              // The tier the order's own size falls into, so the hint
+              // beside the box names the rate actually being applied.
+              rate={rates.prices[unitTierFor(totalUnits)]}
+              manual={manual.has("jelly")}
+              onRelease={() => setManual("jelly", false)}
+              onTyped={() => setManual("jelly", true)}
             />
           </SheetRow>
 
@@ -279,10 +290,13 @@ export function OrderDetailsPanel({
                 label={`${extra.label} cost`}
                 value={draft[extra.cost]}
                 onChange={(value) => set({ [extra.cost]: value } as Partial<OrderInput>)}
-                rate={prices[extra.priceKey]}
-                manual={manual.has(extra.priceKey)}
-                onRelease={() => setManual(extra.priceKey, false)}
-                onTyped={() => setManual(extra.priceKey, true)}
+                // Display has no flat rate of its own — it prices itself
+                // from the options the order carries — so it shows the
+                // standard amount rather than a per-item figure.
+                rate={extra.priceKey === null ? extra.standard(draft, rates) : rates.prices[extra.priceKey]}
+                manual={manual.has(extra.id)}
+                onRelease={() => setManual(extra.id, false)}
+                onTyped={() => setManual(extra.id, true)}
               />
             </SheetRow>
           ))}
@@ -391,6 +405,23 @@ function SheetRow({
       {children}
     </div>
   );
+}
+
+/** How many of one display option this order carries. */
+function quantityOf(displays: OrderDisplay[], optionId: number): number {
+  return displays.find((entry) => entry.optionId === optionId)?.quantity ?? 0;
+}
+
+/**
+ * Sets one option's quantity, dropping the row at zero.
+ *
+ * Zero rows are not stored: "none of this" and "never asked about this"
+ * are the same thing for a display, and keeping the row would put an
+ * empty line in every order that ever touched the stepper.
+ */
+function withDisplay(displays: OrderDisplay[], optionId: number, quantity: number): OrderDisplay[] {
+  const rest = displays.filter((entry) => entry.optionId !== optionId);
+  return quantity > 0 ? [...rest, { optionId, quantity }] : rest;
 }
 
 /**

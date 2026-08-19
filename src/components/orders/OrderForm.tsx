@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import {
   type Order,
   type OrderInput,
-  type PriceKey,
-  type Prices,
+  type AmountKey,
+  type Rates,
   ORDER_EXTRAS,
+  jellyTotal,
   lineAssignedUnits,
   linePackedUnits,
   repriceOrder,
@@ -34,12 +35,14 @@ function draftFromOrder(order?: Order): OrderInput {
       location: "",
       guests: null,
       mirrors: null,
+      displays: [],
       waitresses: null,
       kosher: false,
       packageLines: [],
       totalAmount: 0,
       deliveryCost: null,
       mirrorsCost: null,
+      displayCost: null,
       waitressCost: null,
       kosherCost: null,
       deposit: 0,
@@ -55,12 +58,14 @@ function draftFromOrder(order?: Order): OrderInput {
     location: order.location,
     guests: order.guests,
     mirrors: order.mirrors,
+    displays: order.displays,
     waitresses: order.waitresses,
     kosher: order.kosher,
     packageLines: order.packageLines,
     totalAmount: order.totalAmount,
     deliveryCost: order.deliveryCost,
     mirrorsCost: order.mirrorsCost,
+    displayCost: order.displayCost,
     waitressCost: order.waitressCost,
     kosherCost: order.kosherCost,
     deposit: order.deposit,
@@ -83,13 +88,13 @@ function draftFromOrder(order?: Order): OrderInput {
  * A new order starts with nothing overridden: it has no amounts yet, so
  * there is nothing for the rates to disagree with.
  */
-function manualAmounts(draft: OrderInput, prices: Prices, units: number): Set<PriceKey> {
-  const auto = repriceOrder(draft, prices, new Set(), units);
-  const manual = new Set<PriceKey>();
-  if (draft.totalAmount !== auto.totalAmount) manual.add("unit");
+function manualAmounts(draft: OrderInput, rates: Rates, jelly: number): Set<AmountKey> {
+  const auto = repriceOrder(draft, rates, new Set(), jelly);
+  const manual = new Set<AmountKey>();
+  if (draft.totalAmount !== auto.totalAmount) manual.add("jelly");
   for (const extra of ORDER_EXTRAS) {
     if (extra.applies(draft) && (draft[extra.cost] ?? 0) !== (auto[extra.cost] ?? 0)) {
-      manual.add(extra.priceKey);
+      manual.add(extra.id);
     }
   }
   return manual;
@@ -110,7 +115,7 @@ export function OrderForm({
   flavors,
   packageTypes,
   presets,
-  prices,
+  rates,
   onSaved,
   onCancel,
   onDirtyChange,
@@ -122,7 +127,7 @@ export function OrderForm({
   packageTypes: PackageType[];
   presets: ContentPreset[];
   /** The owner's standard rates — see `priced` below for how they apply. */
-  prices: Prices;
+  rates: Rates;
   onSaved: () => void;
   onCancel: () => void;
   /**
@@ -143,14 +148,14 @@ export function OrderForm({
     const draft = draftFromOrder(order);
     const lines = toDraftLines(order?.packageLines ?? []);
     const packed = unitsPerPackageMap(packageTypes);
-    const units = lines.reduce((sum, line) => sum + linePackedUnits(line, packed), 0);
-    return { draft, lines, payload: serialize(draft, lines), manual: manualAmounts(draft, prices, units) };
+    const jelly = jellyTotal(toPackageLines(lines), packed, rates.prices);
+    return { draft, lines, payload: serialize(draft, lines), manual: manualAmounts(draft, rates, jelly) };
   });
   const [draft, setDraft] = useState<OrderInput>(initial.draft);
   // Grows as amounts are typed over, and shrinks when one is handed back
   // to the rate. Held here rather than in `draft` because it describes how
   // the draft is being edited, not anything the order stores.
-  const [manual, setManual] = useState<ReadonlySet<PriceKey>>(initial.manual);
+  const [manual, setManual] = useState<ReadonlySet<AmountKey>>(initial.manual);
   const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"details" | "content">("details");
@@ -184,7 +189,7 @@ export function OrderForm({
    * mean the two could be briefly out of step, and every path that touches
    * a line would have to remember to reprice.
    */
-  const priced = repriceOrder(draft, prices, manual, totalUnits);
+  const priced = repriceOrder(draft, rates, manual, jellyTotal(toPackageLines(lines), unitsPerPackage, rates.prices));
 
   // Comparing what a save *would* send against what it started as makes
   // "dirty" mean "differs from the stored order" rather than "was
@@ -269,7 +274,7 @@ export function OrderForm({
           draft={priced}
           onChange={setDraft}
           totalUnits={totalUnits}
-          prices={prices}
+          rates={rates}
           manual={manual}
           onManualChange={setManual}
           onOpenContent={() => setTab("content")}

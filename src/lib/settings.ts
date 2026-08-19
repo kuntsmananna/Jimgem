@@ -1,6 +1,12 @@
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
-import { ZERO_PRICES, type PriceKey, type Prices, type ProductionStage } from "./orderTypes";
+import {
+  ZERO_PRICES,
+  type DisplayOption,
+  type PriceKey,
+  type Prices,
+  type ProductionStage,
+} from "./orderTypes";
 
 export interface Flavor {
   id: number;
@@ -200,6 +206,12 @@ export interface ContentPreset {
   name: string;
   packageTypeId: number;
   flavors: { flavorId: number; share: number }[];
+  /**
+   * What one package of this costs. Copied onto an order line when the
+   * preset is applied, so changing it here never reprices an order that
+   * is already booked. Null prices that line per unit instead.
+   */
+  price: number | null;
 }
 
 export type ContentPresetInput = Omit<ContentPreset, "id">;
@@ -208,6 +220,7 @@ interface PresetRow {
   id: number;
   name: string;
   package_type_id: number;
+  price: string | null;
 }
 
 interface PresetFlavorRow {
@@ -229,6 +242,7 @@ function nestPresets(presetRows: PresetRow[], flavorRows: PresetFlavorRow[]): Co
     id: row.id,
     name: row.name,
     packageTypeId: row.package_type_id,
+    price: row.price === null ? null : Number(row.price),
     flavors: byPreset.get(row.id) ?? [],
   }));
 }
@@ -254,39 +268,39 @@ export async function createContentPreset(input: ContentPresetInput): Promise<Co
   const db = getDb();
   const { rows } = await db.query<PresetRow>(
     `WITH new_preset AS (
-       INSERT INTO content_presets (name, package_type_id) VALUES ($1, $2) RETURNING *
+       INSERT INTO content_presets (name, package_type_id, price) VALUES ($1, $2, $3) RETURNING *
      ), new_flavors AS (
        INSERT INTO content_preset_flavors (preset_id, flavor_id, share, position)
        SELECT new_preset.id, t.flavor_id, t.share, t.pos
-       FROM new_preset, unnest($3::int[], $4::numeric[], $5::int[]) AS t(flavor_id, share, pos)
+       FROM new_preset, unnest($4::int[], $5::numeric[], $6::int[]) AS t(flavor_id, share, pos)
        RETURNING 1
      )
      SELECT * FROM new_preset`,
-    [input.name, input.packageTypeId, ...toPresetFlavorArrays(input.flavors)],
+    [input.name, input.packageTypeId, input.price, ...toPresetFlavorArrays(input.flavors)],
   );
-  return { id: rows[0].id, name: rows[0].name, packageTypeId: rows[0].package_type_id, flavors: input.flavors };
+  return { ...input, id: rows[0].id };
 }
 
 export async function updateContentPreset(id: number, input: ContentPresetInput): Promise<ContentPreset> {
   const db = getDb();
   const { rows } = await db.query<PresetRow>(
     `WITH updated_preset AS (
-       UPDATE content_presets SET name = $1, package_type_id = $2 WHERE id = $3 RETURNING *
+       UPDATE content_presets SET name = $1, package_type_id = $2, price = $4 WHERE id = $3 RETURNING *
      ), deleted_flavors AS (
        DELETE FROM content_preset_flavors WHERE preset_id = $3 RETURNING 1
      ), new_flavors AS (
        INSERT INTO content_preset_flavors (preset_id, flavor_id, share, position)
        SELECT $3, t.flavor_id, t.share, t.pos
-       FROM unnest($4::int[], $5::numeric[], $6::int[]) AS t(flavor_id, share, pos)
+       FROM unnest($5::int[], $6::numeric[], $7::int[]) AS t(flavor_id, share, pos)
        -- Forces the delete to run first, same reasoning as orders.ts's
        -- updateOrder: unrelated data-modifying CTEs have no defined order.
        WHERE (SELECT count(*) FROM deleted_flavors) >= 0
        RETURNING 1
      )
      SELECT * FROM updated_preset`,
-    [input.name, input.packageTypeId, id, ...toPresetFlavorArrays(input.flavors)],
+    [input.name, input.packageTypeId, id, input.price, ...toPresetFlavorArrays(input.flavors)],
   );
-  return { id: rows[0].id, name: rows[0].name, packageTypeId: rows[0].package_type_id, flavors: input.flavors };
+  return { ...input, id: rows[0].id };
 }
 
 /** Presets archive rather than delete, for the same reason flavors do. */
@@ -580,4 +594,62 @@ export async function updateProductionStage(
 
 export async function archiveProductionStage(id: number): Promise<void> {
   await archiveRow("production_stages", id);
+}
+
+interface DisplayOptionRow {
+  id: number;
+  name: string;
+  price: string;
+  position: number;
+  archived_at: string | null;
+}
+
+const mapDisplayOption = (r: DisplayOptionRow): DisplayOption => ({
+  id: r.id,
+  name: r.name,
+  price: Number(r.price),
+  position: r.position,
+  archivedAt: r.archived_at,
+});
+
+/**
+ * What an order can be displayed on, each with its own price.
+ *
+ * Archived included where displays already on an order are being read —
+ * the order still owes for them — and excluded where one is being picked,
+ * same rule as every other list here.
+ */
+export async function getDisplayOptions(includeArchived = false): Promise<DisplayOption[]> {
+  const db = getDb();
+  const { rows } = await db.query<DisplayOptionRow>(
+    `SELECT * FROM display_options${liveOnly(includeArchived)} ORDER BY position, id`,
+  );
+  return rows.map(mapDisplayOption);
+}
+
+export async function createDisplayOption(input: { name: string; price: number }): Promise<DisplayOption> {
+  const db = getDb();
+  const { rows } = await db.query<DisplayOptionRow>(
+    `INSERT INTO display_options (name, price, position)
+     VALUES ($1, $2, (SELECT coalesce(max(position), -1) + 1 FROM display_options))
+     RETURNING *`,
+    [input.name, input.price],
+  );
+  return mapDisplayOption(rows[0]);
+}
+
+export async function updateDisplayOption(
+  id: number,
+  input: { name: string; price: number },
+): Promise<DisplayOption> {
+  const db = getDb();
+  const { rows } = await db.query<DisplayOptionRow>(
+    "UPDATE display_options SET name = $1, price = $2 WHERE id = $3 RETURNING *",
+    [input.name, input.price, id],
+  );
+  return mapDisplayOption(rows[0]);
+}
+
+export async function archiveDisplayOption(id: number): Promise<void> {
+  await archiveRow("display_options", id);
 }

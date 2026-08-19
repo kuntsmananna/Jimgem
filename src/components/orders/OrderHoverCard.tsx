@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { MapPin, StickyNote, Users } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
+  displayCount,
   formatOrderDate,
   orderTotal,
   orderUnits,
@@ -93,7 +94,9 @@ export function OrderHoverCard({
                     {nf.format(units)} units
                   </span>
                 )}
-                {order.mirrors !== null && <span>{nf.format(order.mirrors)} mirrors</span>}
+                {displayCount(order.displays) > 0 && (
+                  <span>{nf.format(displayCount(order.displays))} display</span>
+                )}
               </div>
               {order.notes && (
                 <div className="flex items-start gap-1.5">

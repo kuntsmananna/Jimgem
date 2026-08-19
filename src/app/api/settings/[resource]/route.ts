@@ -7,6 +7,7 @@ import {
   createContentPreset,
   createOrderType,
   createProductionStage,
+  createDisplayOption,
   type ContentPresetInput,
 } from "@/lib/settings";
 
@@ -14,11 +15,15 @@ import {
 function presetInput(body: {
   name: string;
   packageTypeId: number | string;
+  price?: number | string | null;
   flavors?: { flavorId: number | string; share: number | string }[];
 }): ContentPresetInput {
   return {
     name: body.name,
     packageTypeId: Number(body.packageTypeId),
+    // An empty price means "no set price", not free — the line falls back
+    // to per-unit tier pricing.
+    price: body.price === null || body.price === undefined || body.price === "" ? null : Number(body.price),
     flavors: (body.flavors ?? []).map((f) => ({
       flavorId: Number(f.flavorId),
       share: Number(f.share),
@@ -71,6 +76,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/setting
           isFinal: !!body.isFinal,
         });
         return NextResponse.json(stage, { status: 201 });
+      }
+      case "displays": {
+        const option = await createDisplayOption({ name: body.name, price: Number(body.price) || 0 });
+        return NextResponse.json(option, { status: 201 });
       }
       case "presets": {
         const preset = await createContentPreset(presetInput(body));
