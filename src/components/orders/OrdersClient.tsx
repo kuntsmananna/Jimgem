@@ -10,6 +10,7 @@ import {
   type Order,
   type PaymentStatus,
   type Prices,
+  type ProductionStatus,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
@@ -67,6 +68,17 @@ function PillGroup<T extends string>({
   );
 }
 
+/**
+ * The stages the page opens on: everything except Delivered.
+ *
+ * Derived from the label map rather than listed out, so a stage added
+ * later is visible by default — an order sitting in a stage nobody has
+ * heard of should show up, not hide.
+ */
+const ACTIVE_STAGES = (Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).filter(
+  (stage) => stage !== "delivered",
+);
+
 /** Dropdown options with a live count of how many orders carry each value. */
 function optionsWithCounts<T extends string>(labels: Record<T, string>, values: T[]): FilterOption<T>[] {
   const counts = new Map<T, number>();
@@ -101,9 +113,18 @@ export function OrdersClient({
   // The calendar navigates by its own month, so on that view the left slot
   // shows how to read the grid instead of which orders are in play.
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
-  // Off by default: 60 of 73 orders are delivered, so the page is about
-  // what still needs doing unless you ask for the archive.
-  const [showDelivered, setShowDelivered] = useState(false);
+  /**
+   * Which stages are in play. Starts on everything except Delivered
+   * rather than empty, because 62 of 79 orders are delivered and the page
+   * is about what still needs doing until you ask for the archive.
+   *
+   * That default used to be a Delivered on/off toggle, which could only
+   * ever answer one question. As a filter it answers all of them — show
+   * me the offers, show me what is being prepared — for the same width.
+   */
+  const [stageFilter, setStageFilter] = useState<Set<ProductionStatus>>(
+    () => new Set(ACTIVE_STAGES),
+  );
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   // The Dashboard's Latest orders list links here with ?order=<key> to
@@ -119,16 +140,15 @@ export function OrdersClient({
   );
 
   /**
-   * Table and calendar hide delivered orders unless asked. Kanban does
-   * not use this: it *is* the production board, and emptying its
-   * Delivered column would leave the board unable to show finished work.
+   * Table and calendar narrow to the chosen stages. Kanban does not use
+   * this: it *is* the production board, its columns already are the
+   * stages, and hiding one would leave the board unable to show work it
+   * is meant to be tracking.
    */
   const filtered = useMemo(
-    () => (showDelivered ? byPayment : byPayment.filter((o) => o.productionStatus !== "delivered")),
-    [byPayment, showDelivered],
+    () => byPayment.filter((o) => stageFilter.size === 0 || stageFilter.has(o.productionStatus)),
+    [byPayment, stageFilter],
   );
-
-  const deliveredCount = byPayment.length - byPayment.filter((o) => o.productionStatus !== "delivered").length;
 
   /*
     Read once per render rather than per call, so every scope boundary and
@@ -164,6 +184,15 @@ export function OrdersClient({
       optionsWithCounts(
         PAYMENT_STATUS_LABEL,
         orders.map((o) => o.paymentStatus),
+      ),
+    [orders],
+  );
+
+  const stageOptions = useMemo(
+    () =>
+      optionsWithCounts(
+        PRODUCTION_STATUS_LABEL,
+        orders.map((o) => o.productionStatus),
       ),
     [orders],
   );
@@ -225,71 +254,6 @@ export function OrdersClient({
 
   return (
     <div className="flex flex-col gap-5">
-      {/*
-        One toolbar row: filters, view switcher, add. Previously two rows
-        — a switcher row plus ten filter pills — which cost a lot of
-        vertical space above the table for controls used occasionally.
-      */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* When, on the left: the first question is which orders are even in
-            play. What kind, on the right, narrows that down. The calendar
-            has no time scope — it navigates itself — so this slot switches
-            to how its grid is drawn. */}
-        <div className="flex flex-1 items-center">
-          {view === "calendar" ? (
-            <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
-          ) : (
-            <PillGroup items={SCOPES} value={scope} onChange={setScope} />
-          )}
-        </div>
-
-        <PillGroup items={VIEWS} value={view} onChange={setView} />
-
-        <div className="flex flex-1 items-center justify-end gap-2">
-          <FilterDropdown
-            label="Payment"
-            options={paymentOptions}
-            selected={paymentFilter}
-            onChange={setPaymentFilter}
-          />
-          <button
-            type="button"
-            aria-pressed={showDelivered}
-            onClick={() => setShowDelivered((v) => !v)}
-            title="Delivered orders are hidden by default"
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition ${
-              showDelivered
-                ? "border-ink bg-black text-cream"
-                : "border-line bg-card text-ink-soft hover:text-ink"
-            }`}
-          >
-            <span
-              aria-hidden
-              className={`flex h-4 w-7 items-center rounded-full p-0.5 transition ${
-                showDelivered ? "bg-cream/30" : "bg-black/10"
-              }`}
-            >
-              <span
-                className={`h-3 w-3 rounded-full bg-current transition-transform ${
-                  showDelivered ? "translate-x-3" : ""
-                }`}
-              />
-            </span>
-            Delivered
-            {deliveredCount > 0 && (
-              <span className={showDelivered ? "text-cream/70" : "text-ink-soft/70"}>{deliveredCount}</span>
-            )}
-          </button>
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
-          >
-            <Plus size={15} />
-            Add order
-          </button>
-        </div>
-      </div>
-
       {batchNote && (
         <p className="text-xs font-semibold text-ink-soft">
           {batchNote}{" "}
@@ -339,7 +303,53 @@ export function OrdersClient({
         different window next to it would be two answers to one question.
       */}
       <div className="flex items-start gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          {/*
+            One toolbar row: filters, view switcher, add. Previously two rows
+            — a switcher row plus ten filter pills — which cost a lot of
+            vertical space above the table for controls used occasionally.
+
+            It rides inside the table column rather than spanning the page, so
+            the summary rail beside it starts at the very top instead of at the
+            table's first row. That also puts "Add order" on the table's right
+            edge, where the rail begins.
+          */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* When and what, together on the left: which orders are in play
+                at all, then which of those. The calendar has no time scope —
+                it navigates itself — so its first slot says how the grid is
+                drawn instead. */}
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              {view === "calendar" ? (
+                <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
+              ) : (
+                <PillGroup items={SCOPES} value={scope} onChange={setScope} />
+              )}
+              <FilterDropdown
+                label="Payment"
+                options={paymentOptions}
+                selected={paymentFilter}
+                onChange={setPaymentFilter}
+              />
+              <FilterDropdown
+                label="Stage"
+                options={stageOptions}
+                selected={stageFilter}
+                onChange={setStageFilter}
+              />
+            </div>
+
+            <PillGroup items={VIEWS} value={view} onChange={setView} />
+
+            <button
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
+            >
+              <Plus size={15} />
+              Add order
+            </button>
+          </div>
+
           {view === "table" && (
             <OrdersTable
               orders={inScope}

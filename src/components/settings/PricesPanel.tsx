@@ -49,47 +49,51 @@ export function PricesPanel({ prices }: { prices: Prices }) {
       <ul className="mt-3 flex flex-col gap-1.5">
         {PRICE_FIELDS.map((field) => (
           <li key={field.key} className="flex items-center gap-2 text-sm">
+            {/*
+              One row shape whether reading or editing: name, how it is
+              charged, then the amount. Only the last cell swaps, and the
+              box is the width of the figure it replaces — an edit control
+              wider than that squeezed the name and the "per mirror" out of
+              a column that is a third of the tab.
+            */}
+            <span className="min-w-0 flex-1 truncate px-2 text-ink">{field.label}</span>
+            <span className="shrink-0 text-xs text-ink-soft">{field.per}</span>
             {editing === field.key ? (
-              <>
-                <span className="flex-1 px-2 text-ink">{field.label}</span>
-                <input
-                  autoFocus
-                  type="number"
-                  min={0}
-                  aria-label={`${field.label} price`}
-                  className="w-24 rounded-lg border border-line px-2 py-1 text-right text-sm tabular-nums"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={() => save(field.key)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") save(field.key);
-                    // Escape has to clear `editing` without saving, so it
-                    // cannot just let the blur handler run.
-                    if (e.key === "Escape") setEditing(null);
-                  }}
-                />
-              </>
+              <input
+                autoFocus
+                type="number"
+                min={0}
+                aria-label={`${field.label} price`}
+                className="w-16 shrink-0 rounded-lg border border-line px-1.5 py-0.5 text-right text-sm tabular-nums"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => save(field.key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") save(field.key);
+                  // Escape has to clear `editing` without saving, so it
+                  // cannot just let the blur handler run.
+                  if (e.key === "Escape") setEditing(null);
+                }}
+              />
             ) : (
               <button
                 disabled={busy}
-                className="hover-line flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink disabled:opacity-50"
+                aria-label={`Edit ${field.label} price`}
+                className="w-16 shrink-0 rounded-lg px-1.5 py-0.5 text-right font-semibold tabular-nums text-ink hover:bg-black/[0.05] disabled:opacity-50"
                 onClick={() => {
                   setEditing(field.key);
                   setDraft(String(prices[field.key]));
                 }}
               >
-                <span className="min-w-0 flex-1 truncate">{field.label}</span>
-                <span className="shrink-0 text-xs text-ink-soft">{field.per}</span>
                 {/* A rate of zero is left blank rather than shown as ₪0:
                     nothing has been set, and "₪0" claims it is free. */}
-                <span className="w-16 shrink-0 text-right font-semibold tabular-nums">
-                  {prices[field.key] > 0 ? `₪${prices[field.key].toLocaleString()}` : "—"}
-                </span>
+                {prices[field.key] > 0 ? `₪${prices[field.key].toLocaleString()}` : "—"}
               </button>
             )}
           </li>
         ))}
       </ul>
+
     </section>
   );
 }

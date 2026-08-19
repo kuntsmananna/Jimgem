@@ -498,19 +498,26 @@ operational ("an offer has units to make if it lands"), so it carries an
 the gap between Income and adding up the Amount column reads as an
 arithmetic bug.
 
-The Orders table hides `delivered` orders unless "Show delivered" is on
-(60 of 73 are delivered, so it is otherwise all archive). Kanban ignores
-that toggle — it *is* the production board, and emptying its Delivered
-column would break it.
+**The Orders toolbar rides inside the table column**, not across the page,
+so the summary rail beside it starts at the very top rather than level
+with the table's first row. That also lands "Add order" on the table's
+right edge, where the rail begins.
 
-The Orders toolbar reads **when on the left, what on the right**: the
-time scope (`src/lib/orderScope.ts` — 14 days / this month / next month /
-all time) picks which orders are in play at all, and Payment, Delivered
-and Add order narrow or add to that. The scope is forward-looking and
-defaults to the next 14 days, so the page opens as a work queue rather
-than an archive — which means it can legitimately open empty, and the
-table's empty row names the scope instead of saying "no matches".
-Calendar ignores the scope: it navigates by its own month.
+Its left group is **which orders**: the time scope
+(`src/lib/orderScope.ts` — 14 days / this month / next month / all time)
+picks what is in play at all, then Payment and Stage narrow it. The scope
+is forward-looking and defaults to the next 14 days, so the page opens as
+a work queue rather than an archive — which means it can legitimately open
+empty, and the table's empty row names the scope instead of saying "no
+matches". Calendar ignores the scope: it navigates by its own month.
+
+**Stage is a filter, not a Delivered toggle.** It defaults to
+`ACTIVE_STAGES` — every stage except Delivered, derived from
+`PRODUCTION_STATUS_LABEL` so a stage added later shows up rather than
+hiding — which keeps the old default (62 of 79 orders are delivered)
+while also answering "show me the offers". Kanban ignores it: its columns
+already *are* the stages, and hiding one would leave the board unable to
+show work it exists to track.
 
 On the calendar the toolbar's left slot swaps the time scope for
 Monthly/Weekly — the calendar navigates by its own month, so it has no
