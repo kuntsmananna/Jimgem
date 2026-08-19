@@ -6,6 +6,7 @@ import {
   createExpenseCategory,
   createContentPreset,
   createOrderType,
+  createProductionStage,
   type ContentPresetInput,
 } from "@/lib/settings";
 
@@ -61,6 +62,15 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/setting
       case "order-types": {
         const type = await createOrderType({ name: body.name, color: body.color, icon: body.icon ?? null });
         return NextResponse.json(type, { status: 201 });
+      }
+      case "stages": {
+        const stage = await createProductionStage({
+          label: body.label,
+          color: body.color,
+          countsAsIncome: !!body.countsAsIncome,
+          isFinal: !!body.isFinal,
+        });
+        return NextResponse.json(stage, { status: 201 });
       }
       case "presets": {
         const preset = await createContentPreset(presetInput(body));

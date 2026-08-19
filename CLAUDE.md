@@ -488,17 +488,34 @@ creates the tables they need. Each is idempotent — re-running one is a
 no-op, not a duplicate — so a script stays runnable against a database
 that has already had it applied.
 
-**`offer` is the first production stage** — quoted, not booked. The table
-marks its rows with `.is-offer` (dashed left edge plus a faint fill, both
-in `globals.css` outside every layer so the edge survives the row turning
-black on hover), and the stage badge is dashed for the same reason. The
-table's stage cell is now the same dropdown the Kanban card uses: it was a
-click-to-advance pill, which worked while the stages were a strict forward
-march, but an offer is accepted or dropped and cycling through Preparing to
-get back is not a sequence anyone means. Kanban derives its column count
-from `PRODUCTION_STATUS_LABEL` through an inline `gridTemplateColumns` —
-an interpolated `grid-cols-${n}` class would never be generated, since
-Tailwind only sees literal text.
+**Production stages are an owner-managed list** (`production_stages`),
+not a fixed union. Orders store a stage's `key`, fixed at creation, so
+renaming one is free and cannot retype the orders using it — the opposite
+trade from `order_types`, which orders reference by name. Two flags on the
+row carry what used to be hardcoded against the words "offer" and
+"delivered": `counts_as_income` (false for a quote) and `is_final` (left
+out of the Orders table's default stage filter). `ProductionStatus` is
+therefore just `string`, and `PRODUCTION_STATUS_LABEL` is gone;
+`ProductionStagesContext` provides the list from the app layout the same
+way order types are provided, and `isBooked(order, stages)` takes the
+lookup. An unknown key **counts as income** — a stage row that has gone
+missing is a data problem, and silently dropping the order's money would
+hide it. `scripts/migrate-010-production-stages.mjs` seeds the four in use
+and drops the CHECK constraint.
+
+**Status is the table's first column**, drawn as a squared chip in the
+stage's own colour — deliberately not a pill, so it reads as the row's
+state rather than as another of its values, and not the same shape as the
+payment badge or the event-type chip. It was the last column, where it sat
+past the fold on a laptop. A stage whose `counts_as_income` is false gets a
+dashed outline, and its row gets `.is-offer` (dashed left edge plus a faint
+fill, both in `globals.css` outside every layer so the edge survives the
+row turning black on hover).
+
+**The order's note is behind an (i) icon**, not a line under the customer
+name. As a second line it set the row's height off the longest note in
+view — three lines for one order pushed every other row apart — and it is
+a detail you go looking for rather than one you scan.
 
 **An offer is not a sale.** `isBooked` in `orderTypes.ts` states that once
 — `productionStatus !== "offer"` — and the money paths all go through it,

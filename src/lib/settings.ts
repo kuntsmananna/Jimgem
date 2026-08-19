@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
-import { ZERO_PRICES, type PriceKey, type Prices } from "./orderTypes";
+import { ZERO_PRICES, type PriceKey, type Prices, type ProductionStage } from "./orderTypes";
 
 export interface Flavor {
   id: number;
@@ -491,4 +491,93 @@ export async function updatePrice(key: PriceKey, amount: number): Promise<void> 
      ON CONFLICT (key) DO UPDATE SET amount = EXCLUDED.amount, updated_at = now()`,
     [key, amount],
   );
+}
+
+interface StageRow {
+  id: number;
+  key: string;
+  label: string;
+  position: number;
+  counts_as_income: boolean;
+  is_final: boolean;
+  color: string;
+  archived_at: string | null;
+}
+
+const mapStage = (r: StageRow): ProductionStage => ({
+  id: r.id,
+  key: r.key,
+  label: r.label,
+  position: r.position,
+  countsAsIncome: r.counts_as_income,
+  isFinal: r.is_final,
+  color: r.color,
+  archivedAt: r.archived_at,
+});
+
+/**
+ * The owner's production stages, in board order.
+ *
+ * Archived included where orders are being *resolved* — an order sitting
+ * in a stage since retired still has to render its label — and excluded
+ * where a stage is being *offered*, same rule as every other list here.
+ */
+export async function getProductionStages(includeArchived = false): Promise<ProductionStage[]> {
+  const db = getDb();
+  const { rows } = await db.query<StageRow>(
+    `SELECT * FROM production_stages${liveOnly(includeArchived)} ORDER BY position, id`,
+  );
+  return rows.map(mapStage);
+}
+
+/**
+ * Adds a stage at the end of the board.
+ *
+ * The key is derived from the name once, at creation, and never changes —
+ * that is what makes renaming a stage free, where order types (which
+ * orders reference by name) have to rewrite every order that used one.
+ * A collision gets a numeric suffix rather than being rejected: two
+ * stages can reasonably want the same word.
+ */
+export async function createProductionStage(input: {
+  label: string;
+  countsAsIncome: boolean;
+  isFinal: boolean;
+  color: string;
+}): Promise<ProductionStage> {
+  const db = getDb();
+  const base = input.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "stage";
+  const { rows: taken } = await db.query<{ key: string }>(
+    "SELECT key FROM production_stages WHERE key = $1 OR key LIKE $2",
+    [base, `${base}-%`],
+  );
+  const used = new Set(taken.map((r) => r.key));
+  let key = base;
+  for (let n = 2; used.has(key); n++) key = `${base}-${n}`;
+
+  const { rows } = await db.query<StageRow>(
+    `INSERT INTO production_stages (key, label, position, counts_as_income, is_final, color)
+     VALUES ($1, $2, (SELECT coalesce(max(position), -1) + 1 FROM production_stages), $3, $4, $5)
+     RETURNING *`,
+    [key, input.label, input.countsAsIncome, input.isFinal, input.color],
+  );
+  return mapStage(rows[0]);
+}
+
+export async function updateProductionStage(
+  id: number,
+  input: { label: string; countsAsIncome: boolean; isFinal: boolean; color: string },
+): Promise<ProductionStage> {
+  const db = getDb();
+  const { rows } = await db.query<StageRow>(
+    `UPDATE production_stages
+     SET label = $1, counts_as_income = $2, is_final = $3, color = $4
+     WHERE id = $5 RETURNING *`,
+    [input.label, input.countsAsIncome, input.isFinal, input.color, id],
+  );
+  return mapStage(rows[0]);
+}
+
+export async function archiveProductionStage(id: number): Promise<void> {
+  await archiveRow("production_stages", id);
 }

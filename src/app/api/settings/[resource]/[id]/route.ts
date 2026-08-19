@@ -12,6 +12,8 @@ import {
   archiveContentPreset,
   updateOrderType,
   archiveOrderType,
+  updateProductionStage,
+  archiveProductionStage,
 } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -74,6 +76,19 @@ export async function PATCH(
         }
         const type = await updateOrderType(numericId, { name: body.name, color: body.color, icon: body.icon ?? null });
         return NextResponse.json(type);
+      }
+      case "stages": {
+        if (body.archive) {
+          await archiveProductionStage(numericId);
+          return NextResponse.json({ ok: true });
+        }
+        const stage = await updateProductionStage(numericId, {
+          label: body.label,
+          color: body.color,
+          countsAsIncome: !!body.countsAsIncome,
+          isFinal: !!body.isFinal,
+        });
+        return NextResponse.json(stage);
       }
       case "presets": {
         if (body.archive) {

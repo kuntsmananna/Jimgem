@@ -3,6 +3,8 @@
 import {
   formatOrderDate,
   hasDelivery,
+  isBooked,
+  stageMap,
   orderUnits,
   unitsPerPackageMap,
   withDelivery,
@@ -10,8 +12,11 @@ import {
   type OrderInput,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
+import { Info } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
+import { useStages } from "@/components/ProductionStagesContext";
+import { HoverCard } from "@/components/HoverCard";
 import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
@@ -50,6 +55,10 @@ export function OrdersTable({
 }) {
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
+  // A row is provisional when its stage says it is not income yet — the
+  // owner's flag, not the word "offer", so a second quote-like stage gets
+  // the same treatment without another special case here.
+  const stageIndex = stageMap(useStages());
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   // Built once rather than per row: the list is the same for all 74 of
   // them, and a fresh array per row also denies the cell any reuse.
@@ -97,6 +106,7 @@ export function OrdersTable({
             <th className="w-6 bg-card px-2 py-2">
               <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
             </th>
+            <th className="bg-card px-2 py-2">Status</th>
             <th className="bg-card px-2 py-2">Date</th>
             <th className="bg-card px-2 py-2">Customer</th>
             <th className="bg-card px-2 py-2">Type</th>
@@ -110,7 +120,6 @@ export function OrdersTable({
             <th className="bg-card px-2 py-2">Amount</th>
             <th className="bg-card px-2 py-2">Deposit</th>
             <th className="bg-card px-2 py-2">Payment</th>
-            <th className="bg-card px-2 py-2">Stage</th>
           </tr>
         </thead>
         {/*
@@ -132,7 +141,7 @@ export function OrdersTable({
                 // globals.css for the dashed edge that says so, which has
                 // to survive the row turning black on hover.
                 className={`group cursor-pointer border-b border-line/60 align-top ${isOpen ? "is-open" : ""} ${
-                  order.productionStatus === "offer" ? "is-offer" : ""
+                  isBooked(order, stageIndex) ? "" : "is-offer"
                 }`}
               >
                 <td className="px-2 py-2">
@@ -145,6 +154,15 @@ export function OrdersTable({
                     // controls — but a ticked box always stays visible.
                     className={isSelected ? "" : "invisible group-hover:visible"}
                   />
+                </td>
+                {/* Status leads the row: it is what the table is scanned
+                    by, and as the last column it sat past the fold on a
+                    laptop. It is the one cell that is neither a pill nor
+                    plain text — a squared chip in the stage's own colour,
+                    so it reads as the row's state rather than as another
+                    of its values. */}
+                <td className="px-2 py-2">
+                  <ProductionStatusSelect order={order} onChanged={onChanged} />
                 </td>
                 <td className="px-2 py-2 whitespace-nowrap">
                   <EditableCell
@@ -161,6 +179,18 @@ export function OrdersTable({
                       editValue={order.customer}
                       onSave={(raw) => saveField(order, { customer: raw })}
                     />
+                    {/*
+                      The note lives behind an icon rather than under the
+                      name. As a second line it set the row's height off the
+                      longest note in view — three lines for one order pushed
+                      every other row apart — and it is a detail you go
+                      looking for, not one you scan.
+
+                      Notes, not the Sheet's raw `details`: migration 004
+                      folded those together, so this is the same text the
+                      order form edits.
+                    */}
+                    {order.notes && <NoteHint note={order.notes} />}
                     {order.needsReview && (
                       <span
                         title="Best-effort parsed from legacy notes — please review"
@@ -170,16 +200,7 @@ export function OrdersTable({
                       </span>
                     )}
                   </div>
-                  {/*
-                    Notes, not the Sheet's raw `details`: the two used to be
-                    separate free-text fields with only one of them editable,
-                    which read as an unlabelled mystery line under the name.
-                    Migration 004 folded details into notes, so this is now
-                    the same text — editable from the order form.
-                  */}
-                  {order.notes && (
-                    <p className="mt-0.5 max-w-[150px] text-xs text-ink-soft">{order.notes}</p>
-                  )}
+
                 </td>
                 <td className="px-2 py-2">
                   <EditableCell
@@ -282,9 +303,6 @@ export function OrdersTable({
                 <td className="px-2 py-2">
                   <PaymentStatusSelect order={order} onChanged={onChanged} />
                 </td>
-                <td className="px-2 py-2">
-                  <ProductionStatusSelect order={order} onChanged={onChanged} />
-                </td>
               </tr>
             );
           })}
@@ -301,6 +319,27 @@ export function OrdersTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * The order's note, one hover away.
+ *
+ * `cursor-help` and the outlined icon are the whole affordance: a filled
+ * mark would read as a status, and this is neither good news nor bad.
+ */
+function NoteHint({ note }: { note: string }) {
+  return (
+    <HoverCard
+      width={260}
+      height={160}
+      className="shrink-0"
+      render={() => (
+        <p className="text-xs leading-relaxed whitespace-pre-wrap text-ink">{note}</p>
+      )}
+    >
+      <Info size={13} className="cursor-help text-ink-soft" aria-label="Has a note" />
+    </HoverCard>
   );
 }
 

@@ -6,7 +6,33 @@
 
 
 export type PaymentStatus = "unpaid" | "deposit" | "paid" | "comp" | "net40";
-export type ProductionStatus = "offer" | "queue" | "preparing" | "delivered";
+/**
+ * A key into the owner's `production_stages` list, not a fixed set.
+ *
+ * It stays a bare string because the stages are editable: what a stage
+ * *means* now lives on its row (`countsAsIncome`, `isFinal`) rather than
+ * in a union the code can switch on.
+ */
+export type ProductionStatus = string;
+
+/** One owner-managed production stage. Mirrors the `production_stages` row. */
+export interface ProductionStage {
+  id: number;
+  /** Stored on every order. Fixed at creation, so renaming is free. */
+  key: string;
+  label: string;
+  position: number;
+  /**
+   * False for a quote. Revenue, the Dashboard and the Biz Plan all skip
+   * an order whose stage says this, so "an offer is not a sale" is a
+   * property of the stage rather than a name the code tests for.
+   */
+  countsAsIncome: boolean;
+  /** End of the line. The table's stage filter leaves these out by default. */
+  isFinal: boolean;
+  color: string;
+  archivedAt: string | null;
+}
 
 /** How many units of one flavour sit inside one package line. */
 export interface OrderLineFlavor {
@@ -425,17 +451,25 @@ export function repriceOrder(
 /**
  * Does this order count as money the business has made?
  *
- * An **offer** is a quote — it has a price on it, but nobody has agreed to
- * pay it, so counting it as revenue would report work that may never
- * happen. Every other stage is a booking, including one still in the
- * queue: the customer has committed, and when it is delivered is a
- * question about the kitchen, not about the money.
+ * Answered by the order's *stage*, not by its name: a quote has a price on
+ * it but nobody has agreed to pay it, and which stages mean that is the
+ * owner's call now. Stated here rather than at each call site so the
+ * Orders rail, the Dashboard and the Biz Plan cannot drift on what a sale
+ * is.
  *
- * Stated here rather than at each call site so the Orders rail, the
- * Dashboard and the Biz Plan cannot drift on what a sale is.
+ * An unknown stage counts. A stage key with no row is a data problem, and
+ * quietly dropping the order's money would hide it.
  */
-export function isBooked(order: Pick<Order, "productionStatus">): boolean {
-  return order.productionStatus !== "offer";
+export function isBooked(
+  order: Pick<Order, "productionStatus">,
+  stages: Map<string, ProductionStage>,
+): boolean {
+  return stages.get(order.productionStatus)?.countsAsIncome ?? true;
+}
+
+/** `key → stage`, for the lookups above. */
+export function stageMap(stages: ProductionStage[]): Map<string, ProductionStage> {
+  return new Map(stages.map((stage) => [stage.key, stage]));
 }
 
 /** Still owed once the deposit is taken off the full total. */
@@ -451,17 +485,6 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   net40: "Net+40 days",
 };
 
-export const PRODUCTION_STATUS_LABEL: Record<ProductionStatus, string> = {
-  /**
-   * Quoted, not booked. It sits before Queue because that is the order
-   * work actually happens in, and everything downstream — the Kanban
-   * columns, the table's dropdown — takes its order from this object.
-   */
-  offer: "Offer",
-  queue: "Queue",
-  preparing: "Preparing",
-  delivered: "Delivered",
-};
 
 /**
  * Every order date is "YYYY-MM-DD" (see db.ts's DATE type parser

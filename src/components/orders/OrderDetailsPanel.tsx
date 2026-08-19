@@ -7,20 +7,19 @@ import {
   PAYMENT_STATUS_LABEL,
   hasDelivery,
   withDelivery,
-  PRODUCTION_STATUS_LABEL,
   orderBalance,
   orderTotal,
   type OrderInput,
   type PaymentStatus,
   type PriceKey,
   type Prices,
-  type ProductionStatus,
 } from "@/lib/orderTypes";
 import { TextInput, TextArea } from "@/components/Field";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { orderTypeIconElement } from "@/lib/icons";
 import { NumberStepper } from "./PackageLineEditor";
-import { PAYMENT_BADGE_CLASS, PRODUCTION_DOT } from "./StatusSelects";
+import { PAYMENT_BADGE_CLASS } from "./StatusSelects";
+import { useStages } from "@/components/ProductionStagesContext";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const money = (amount: number) => `₪${nf.format(amount)}`;
@@ -58,6 +57,8 @@ export function OrderDetailsPanel({
   onOpenContent: () => void;
 }) {
   const orderTypes = useOrderTypes();
+  const stages = useStages();
+  const stage = stages.find((s) => s.key === draft.productionStatus);
   const type = orderTypes.find((t) => t.name === draft.customerType);
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
 
@@ -149,21 +150,23 @@ export function OrderDetailsPanel({
             </PillSelect>
             <PillSelect
               value={draft.productionStatus}
-              onChange={(value) => set({ productionStatus: value as ProductionStatus })}
-              label="Production status"
-              className="border border-line bg-cream text-ink"
-              icon={
-                <span
-                  aria-hidden
-                  className={`h-2 w-2 rounded-full ${PRODUCTION_DOT[draft.productionStatus]}`}
-                />
-              }
+              onChange={(value) => set({ productionStatus: value })}
+              label="Status"
+              // The stage's own colour, like the table's Status cell — the
+              // two are the same control in two places.
+              className="keeps-color text-ink"
+              style={stage ? { background: stage.color } : undefined}
             >
-              {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((s) => (
-                <option key={s} value={s}>
-                  {PRODUCTION_STATUS_LABEL[s]}
-                </option>
-              ))}
+              {stages
+                .filter((s) => !s.archivedAt || s.key === draft.productionStatus)
+                .map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              {!stage && (
+                <option value={draft.productionStatus}>{draft.productionStatus}</option>
+              )}
             </PillSelect>
           </div>
 

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, Columns3, Copy, Plus, Table2, Trash2, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
-  PRODUCTION_STATUS_LABEL,
+  stageMap,
   unitsPerPackageMap,
   type Order,
   type PaymentStatus,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
+import { useStages } from "@/components/ProductionStagesContext";
 import { OrdersSummary } from "./OrdersSummary";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
@@ -68,17 +69,6 @@ function PillGroup<T extends string>({
   );
 }
 
-/**
- * The stages the page opens on: everything except Delivered.
- *
- * Derived from the label map rather than listed out, so a stage added
- * later is visible by default — an order sitting in a stage nobody has
- * heard of should show up, not hide.
- */
-const ACTIVE_STAGES = (Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).filter(
-  (stage) => stage !== "delivered",
-);
-
 /** Dropdown options with a live count of how many orders carry each value. */
 function optionsWithCounts<T extends string>(labels: Record<T, string>, values: T[]): FilterOption<T>[] {
   const counts = new Map<T, number>();
@@ -105,6 +95,7 @@ export function OrdersClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const stages = useStages();
   const [view, setView] = useState<View>("table");
   const [paymentFilter, setPaymentFilter] = useState<Set<PaymentStatus>>(new Set());
   // The next fortnight by default: the page is a work queue first and an
@@ -114,16 +105,15 @@ export function OrdersClient({
   // shows how to read the grid instead of which orders are in play.
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   /**
-   * Which stages are in play. Starts on everything except Delivered
-   * rather than empty, because 62 of 79 orders are delivered and the page
-   * is about what still needs doing until you ask for the archive.
+   * Which stages are in play. Starts on every stage the owner has *not*
+   * marked final, because 62 of 79 orders are delivered and the page is
+   * about what still needs doing until you ask for the archive.
    *
-   * That default used to be a Delivered on/off toggle, which could only
-   * ever answer one question. As a filter it answers all of them — show
-   * me the offers, show me what is being prepared — for the same width.
+   * Read from the stage list once, at mount: changing it later would
+   * silently reset a filter someone had set by hand.
    */
   const [stageFilter, setStageFilter] = useState<Set<ProductionStatus>>(
-    () => new Set(ACTIVE_STAGES),
+    () => new Set(stages.filter((stage) => !stage.isFinal).map((stage) => stage.key)),
   );
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
@@ -171,10 +161,12 @@ export function OrdersClient({
   // The summary describes exactly the list on screen, against the same
   // list one window back.
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
-  const totals = totalOf(inScope, unitsPerPackage);
+  const stageIndex = stageMap(stages);
+  const totals = totalOf(inScope, unitsPerPackage, stageIndex);
   const previousTotals = totalOf(
     previous === null ? [] : source.filter((o) => inRange(o.date, previous)),
     unitsPerPackage,
+    stageIndex,
   );
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
@@ -188,14 +180,18 @@ export function OrdersClient({
     [orders],
   );
 
-  const stageOptions = useMemo(
-    () =>
-      optionsWithCounts(
-        PRODUCTION_STATUS_LABEL,
-        orders.map((o) => o.productionStatus),
-      ),
-    [orders],
-  );
+  const stageOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const order of orders) {
+      counts.set(order.productionStatus, (counts.get(order.productionStatus) ?? 0) + 1);
+    }
+    // Only live stages are offered, but one still holding orders stays on
+    // the list so those rows can be found rather than filtered into
+    // nowhere.
+    return stages
+      .filter((stage) => !stage.archivedAt || (counts.get(stage.key) ?? 0) > 0)
+      .map((stage) => ({ value: stage.key, label: stage.label, count: counts.get(stage.key) ?? 0 }));
+  }, [orders, stages]);
 
   function refresh() {
     router.refresh();
@@ -445,9 +441,11 @@ export function OrdersClient({
               onPick={(status) => runBatch({ action: "paymentStatus", status }, "updated")}
             />
             <BatchSelect
-              label="Production"
+              label="Status"
               disabled={batchBusy}
-              options={PRODUCTION_STATUS_LABEL}
+              options={Object.fromEntries(
+                stages.filter((stage) => !stage.archivedAt).map((stage) => [stage.key, stage.label]),
+              )}
               onPick={(status) => runBatch({ action: "productionStatus", status }, "updated")}
             />
 

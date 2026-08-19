@@ -1,7 +1,7 @@
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
-import { isBooked } from "./orderTypes";
+import { isBooked, stageMap } from "./orderTypes";
 import { getDb } from "./db";
-import { getPackageTypes, getExpenseCategories } from "./settings";
+import { getPackageTypes, getExpenseCategories, getProductionStages } from "./settings";
 
 /** Month labels as the Sheet writes them — used by the importer to find month blocks. */
 export const MONTH_NAMES_HE = [
@@ -131,10 +131,13 @@ export async function getMonthlyRevenue(
   orders: Order[],
   packageUnitsById: Map<number, number>,
 ): Promise<MonthlyRevenue[]> {
+  // Archived stages included: an order can sit in a stage since retired,
+  // and it still has to be classified as a sale or a quote.
+  const stages = stageMap(await getProductionStages(true));
   const byMonth = new Map<number, MonthlyRevenue>();
 
   for (const order of orders) {
-    if (!isBooked(order)) continue; // a quote is not a sale — see above
+    if (!isBooked(order, stages)) continue; // a quote is not a sale — see above
     const month = orderMonth(order);
     if (month === null) continue; // undated rows (e.g. early placeholder entries) excluded
     const existing = byMonth.get(month) ?? {

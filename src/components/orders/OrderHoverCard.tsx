@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { MapPin, StickyNote, Users } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
-  PRODUCTION_STATUS_LABEL,
   formatOrderDate,
   orderTotal,
   orderUnits,
@@ -14,6 +13,7 @@ import {
 import type { Flavor, PackageType } from "@/lib/settings";
 import { UnitsIcon } from "@/lib/icons";
 import { HoverCard } from "@/components/HoverCard";
+import { StageChip } from "./StageChip";
 import { EventTypeChip } from "./EventTypeChip";
 import { ContentChips } from "./ContentChips";
 
@@ -67,9 +67,7 @@ export function OrderHoverCard({
 
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <EventTypeChip value={order.customerType} />
-              <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold text-ink">
-                {PRODUCTION_STATUS_LABEL[order.productionStatus]}
-              </span>
+              <StageChip stageKey={order.productionStatus} />
               <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold text-ink">
                 {PAYMENT_STATUS_LABEL[order.paymentStatus]}
               </span>

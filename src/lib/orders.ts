@@ -15,7 +15,6 @@ import {
 export type { PaymentStatus, ProductionStatus, OrderLineFlavor, OrderPackageLine, Order, OrderInput };
 export {
   PAYMENT_STATUS_LABEL,
-  PRODUCTION_STATUS_LABEL,
   orderMonth,
   orderDay,
   orderUnits,

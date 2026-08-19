@@ -63,6 +63,33 @@ CREATE TABLE IF NOT EXISTS expense_categories (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The production stages an order moves through, owner-editable in
+-- Settings. Orders store the stage's `key`, not its label, so renaming a
+-- stage costs nothing and cannot retype the orders that use it.
+-- Two flags carry the behaviour that used to be hardcoded against the
+-- names 'offer' and 'delivered'
+--   counts_as_income  a quote is not a sale, so it stays out of revenue
+--   is_final          finished work is archive, so the table's default
+--                     stage filter leaves it out
+CREATE TABLE IF NOT EXISTS production_stages (
+  id SERIAL PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  counts_as_income BOOLEAN NOT NULL DEFAULT true,
+  is_final BOOLEAN NOT NULL DEFAULT false,
+  color TEXT NOT NULL DEFAULT '#e7dbcc',
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO production_stages (key, label, position, counts_as_income, is_final, color) VALUES
+  ('offer', 'Offer', 0, false, false, '#efe7dd'),
+  ('queue', 'Queue', 1, true, false, '#e4e9f2'),
+  ('preparing', 'Preparing', 2, true, false, '#f6d9a8'),
+  ('delivered', 'Delivered', 3, true, true, '#cfe0bc')
+ON CONFLICT (key) DO NOTHING;
+
 -- The owner's standard rates, one row per priced thing, used to fill an
 -- order's money side as it is typed. A fixed set of keys rather than a
 -- list the owner adds to, because each key is wired to a specific field
@@ -92,8 +119,7 @@ CREATE TABLE IF NOT EXISTS orders (
   deposit NUMERIC(10, 2) NOT NULL DEFAULT 0,
   payment_status TEXT NOT NULL DEFAULT 'unpaid'
     CHECK (payment_status IN ('unpaid', 'deposit', 'paid', 'comp', 'net40')),
-  production_status TEXT NOT NULL DEFAULT 'queue'
-    CHECK (production_status IN ('offer', 'queue', 'preparing', 'delivered')),
+  production_status TEXT NOT NULL DEFAULT 'queue',
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

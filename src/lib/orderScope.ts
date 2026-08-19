@@ -8,7 +8,7 @@
  * order and no timezone can shift a boundary.
  */
 
-import { isBooked, orderTotal, orderUnits, type Order } from "./orderTypes";
+import { isBooked, orderTotal, orderUnits, type Order, type ProductionStage } from "./orderTypes";
 
 export type ScopeId = "14d" | "month" | "nextMonth" | "all";
 
@@ -104,7 +104,11 @@ export interface OrderTotals {
  * lands — while income answers "what has been sold", and a quote has not
  * been. `offers` is what lets the rail say so out loud.
  */
-export function totalOf(orders: Order[], unitsPerPackage: Map<number, number>): OrderTotals {
+export function totalOf(
+  orders: Order[],
+  unitsPerPackage: Map<number, number>,
+  stages: Map<string, ProductionStage>,
+): OrderTotals {
   return orders.reduce<OrderTotals>(
     (totals, order) => ({
       units: totals.units + orderUnits(order.packageLines, unitsPerPackage),
@@ -113,8 +117,8 @@ export function totalOf(orders: Order[], unitsPerPackage: Map<number, number>): 
       // What the order is worth, extras included — the same figure the
       // order sheet calls Total. Summing the bare `total_amount` column
       // made the rail disagree with the popup it links to.
-      income: totals.income + (isBooked(order) ? orderTotal(order) : 0),
-      offers: totals.offers + (isBooked(order) ? 0 : 1),
+      income: totals.income + (isBooked(order, stages) ? orderTotal(order) : 0),
+      offers: totals.offers + (isBooked(order, stages) ? 0 : 1),
     }),
     { units: 0, orders: 0, mirrors: 0, income: 0, offers: 0 },
   );

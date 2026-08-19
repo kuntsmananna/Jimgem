@@ -8,6 +8,7 @@ import {
   getExpenseCategories,
   getStaff,
   getPrices,
+  getProductionStages,
 } from "@/lib/settings";
 import { FlavorsPanel } from "@/components/settings/FlavorsPanel";
 import { NameListPanel } from "@/components/settings/NameListPanel";
@@ -15,6 +16,7 @@ import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
 import { OrderTypesPanel } from "@/components/settings/OrderTypesPanel";
 import { PresetsPanel } from "@/components/settings/PresetsPanel";
 import { PricesPanel } from "@/components/settings/PricesPanel";
+import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
@@ -22,7 +24,7 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -32,6 +34,7 @@ export default async function SettingsPage() {
       getContentPresets(),
       getOrderTypes(),
       getPrices(),
+      getProductionStages(),
     ]);
 
   return (
@@ -66,6 +69,7 @@ export default async function SettingsPage() {
           // without it a list splits across two columns mid-row.
           content: (
             <div className="columns-3 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
+              <StagesPanel items={stages} />
               <OrderTypesPanel items={orderTypes} />
               <PricesPanel prices={prices} />
               <PackageTypesPanel items={packageTypes} />

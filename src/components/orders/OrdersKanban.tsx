@@ -1,25 +1,20 @@
 "use client";
 
 import {
-  PRODUCTION_STATUS_LABEL,
   formatOrderDate,
   orderTotal,
   orderUnits,
   unitsPerPackageMap,
   type Order,
-  type ProductionStatus,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { UnitsIcon } from "@/lib/icons";
+import { useStages } from "@/components/ProductionStagesContext";
 import { OrderHoverCard } from "./OrderHoverCard";
 import { ProductionStatusSelect } from "./StatusSelects";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
-
-// Every order has a production status (the column is NOT NULL), so there
-// is no "not tracked" bucket to show.
-const COLUMNS = Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[];
 
 export function OrdersKanban({
   orders,
@@ -35,6 +30,13 @@ export function OrdersKanban({
   onOpen: (key: string) => void;
 }) {
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  /*
+   * One column per live stage, in the owner's order. Archived stages are
+   * left out — the board is where work is moved *to*, and a retired stage
+   * is not a destination. An order still sitting in one shows up nowhere
+   * on the board, which is the signal that it needs moving.
+   */
+  const columns = useStages().filter((stage) => !stage.archivedAt);
 
   return (
     /* One column per stage, as an inline template rather than a
@@ -43,14 +45,15 @@ export function OrdersKanban({
        an interpolated one would produce no columns at all. */
     <div
       className="grid gap-4"
-      style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
     >
-      {COLUMNS.map((status) => {
-        const columnOrders = orders.filter((o) => o.productionStatus === status);
+      {columns.map((stage) => {
+        const columnOrders = orders.filter((o) => o.productionStatus === stage.key);
         return (
-          <div key={status} className="rounded-card border border-line bg-card/60 p-3">
-            <h3 className="px-1 text-sm font-bold text-ink">
-              {PRODUCTION_STATUS_LABEL[status]}{" "}
+          <div key={stage.key} className="rounded-card border border-line bg-card/60 p-3">
+            <h3 className="flex items-center gap-1.5 px-1 text-sm font-bold text-ink">
+              <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: stage.color }} />
+              {stage.label}{" "}
               <span className="font-normal text-ink-soft">({columnOrders.length})</span>
             </h3>
             <div className="mt-3 flex flex-col gap-2">

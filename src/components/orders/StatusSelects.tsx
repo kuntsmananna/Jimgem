@@ -3,11 +3,11 @@
 import { useState } from "react";
 import {
   PAYMENT_STATUS_LABEL,
-  PRODUCTION_STATUS_LABEL,
   type Order,
   type PaymentStatus,
   type ProductionStatus,
 } from "@/lib/orderTypes";
+import { useStage, useStages } from "@/components/ProductionStagesContext";
 
 /**
  * `keeps-color` on the coloured badges, `chip-neutral` on the one that is
@@ -59,16 +59,19 @@ export function PaymentStatusSelect({
 }
 
 /**
- * The stage picker, used by both the table and the Kanban card.
+ * The stage picker, used by the table's Status column and the Kanban card.
  *
- * The table used to carry a click-to-advance pill instead, which was one
- * click to mark an order delivered. That worked while the stages were a
- * strict forward march; with Offer in front of Queue they are not — an
- * offer is accepted or it is dropped, and cycling through Preparing to
- * get back is not a sequence anyone means.
+ * The options come from the owner's list rather than a fixed set, and the
+ * pill wears the stage's own colour — which is what makes Status read as a
+ * different kind of thing from the payment badge beside it.
+ *
+ * A stage already on an order stays selectable even once archived, so
+ * opening the control and closing it cannot retype the order.
  */
 export function ProductionStatusSelect({ order, onChanged }: { order: Order; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
+  const stages = useStages();
+  const current = useStage(order.productionStatus);
 
   async function handleChange(status: ProductionStatus) {
     setBusy(true);
@@ -85,40 +88,24 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
     <select
       value={order.productionStatus}
       disabled={busy}
-      onChange={(e) => handleChange(e.target.value as ProductionStatus)}
-      className={`rounded-full px-1.5 py-1 text-[11px] font-semibold outline-none ${PRODUCTION_BADGE_CLASS[order.productionStatus]}`}
+      onChange={(e) => handleChange(e.target.value)}
+      // `keeps-color` because the fill *is* the information here — a stage
+      // given the row's cream text on hover would simply vanish.
+      className={`keeps-color rounded-md border-0 px-1.5 py-1 text-[11px] font-bold text-ink outline-none ${
+        current?.countsAsIncome === false ? "outline-1 outline-dashed outline-ink/35" : ""
+      }`}
+      style={{ background: current?.color ?? "var(--color-line)" }}
     >
-      {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((status) => (
-        <option key={status} value={status}>
-          {PRODUCTION_STATUS_LABEL[status]}
-        </option>
-      ))}
+      {stages
+        .filter((stage) => !stage.archivedAt || stage.key === order.productionStatus)
+        .map((stage) => (
+          <option key={stage.key} value={stage.key}>
+            {stage.label}
+          </option>
+        ))}
+      {/* A stage removed from the list entirely still has to hold its
+          place, or saving the row would move the order somewhere else. */}
+      {!current && <option value={order.productionStatus}>{order.productionStatus}</option>}
     </select>
   );
 }
-
-/**
- * A hollow dot for Offer, filling in as the order becomes real: nothing is
- * committed yet, and a solid dot beside Queue's said the two were the same
- * kind of thing.
- */
-export const PRODUCTION_DOT: Record<ProductionStatus, string> = {
-  offer: "bg-transparent ring-1 ring-inset ring-ink-soft/60",
-  queue: "bg-ink-soft/40",
-  preparing: "bg-tile-peach",
-  delivered: "bg-accent",
-};
-
-/**
- * `chip-neutral` on all four: each is a tint of the surface rather than a
- * colour of its own, so they have to invert with a hovered black row —
- * see globals.css. Offer's dashed edge is what marks it as not yet a
- * booking, and it survives the inversion because the border is drawn from
- * `currentColor`.
- */
-export const PRODUCTION_BADGE_CLASS: Record<ProductionStatus, string> = {
-  offer: "chip-neutral border border-dashed border-current bg-black/[0.03] text-ink-soft",
-  queue: "chip-neutral border border-line bg-black/[0.04] text-ink",
-  preparing: "chip-neutral border border-line bg-black/[0.04] text-ink",
-  delivered: "chip-neutral border border-line bg-black/[0.04] text-ink",
-};

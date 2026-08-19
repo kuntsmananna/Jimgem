@@ -1,22 +1,24 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
 import { getOrders, orderMonth, orderDay, orderUnits, orderFlavorUnits } from "@/lib/orders";
-import { isBooked } from "@/lib/orderTypes";
-import { getFlavors, getPackageTypes } from "@/lib/settings";
+import { isBooked, stageMap } from "@/lib/orderTypes";
+import { getFlavors, getPackageTypes, getProductionStages } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [financials, orders, flavors, packageTypes] = await Promise.all([
+  const [financials, orders, flavors, packageTypes, stages] = await Promise.all([
     getYearlyFinancials(),
     getOrders(),
     getFlavors(true),
     // Archived included, like getFlavors(true) above: these resolve
     // what stored orders packed, not what a new one may pick.
     getPackageTypes(true),
+    getProductionStages(true),
   ]);
 
   const unitsByPackageType = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  const stageIndex = stageMap(stages);
 
   // Offers left out, matching getMonthlyRevenue: this chart is a share of
   // units *sold*, and it sits on the same page as a units-sold KPI that
@@ -24,7 +26,7 @@ export default async function DashboardPage() {
   // make the two disagree about the same number.
   const flavorLines: FlavorLine[] = orders.flatMap((order) => {
     const month = orderMonth(order);
-    if (month === null || !isBooked(order)) return [];
+    if (month === null || !isBooked(order, stageIndex)) return [];
     return orderFlavorUnits(order.packageLines).map((line) => ({
       month,
       ...line,
