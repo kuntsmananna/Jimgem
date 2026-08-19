@@ -80,23 +80,28 @@ something here isn't obvious.
   run into the positions `col`, `col + columns`, … rather than in order;
   a partial last row makes the rightmost columns one cube shorter, which
   is why it skips those slots without consuming from the run. Cubes used
-  to be shuffled into a random assortment (a deterministic PRNG kept it
-  stable across renders) — truer to a real mixed tray, but the split
-  could not be read back off a scattered picture, which is what the
-  preview is for. Unassigned cubes land in the last columns for the same
-  reason: what is still unspoken for reads as one block. Shared by the
-  order form's Content tab and Settings' `PresetsPanel`, so a preset
+  to be shuffled into a single assortment — truer to a real mixed tray,
+  but the split could not be read back off a scattered picture, which is
+  what the preview is for. The scatter survives only where the order
+  genuinely *is* assorted — see the MIX note below. Unassigned cubes land
+  in the last columns for the same reason: what is still unspoken for
+  reads as one block. Shared by the order form's Content tab and Settings' `PresetsPanel`, so a preset
   previews as exactly the tray it produces. It replaced a draggable split
   bar (deleted): the bar showed proportions accurately but never showed
   the product being handed to a customer.
 - **A flavour named `MIX` means "assorted"**, matched by name in
   `flavorStyle.ts`'s `isMixFlavor`. The preview expands it into an even
-  spread of every other flavour (`expandMix`) so a mixed tray shows every
-  colour in it — a column each, since the change above
-  — but the *saved* order keeps the single MIX line, because "a mix" is
-  genuinely what was ordered and choosing the exact split is a kitchen
-  decision. Renaming that flavour turns it back into an ordinary colour,
-  at which point the fix is a flag on the row rather than a name match.
+  spread of every other flavour and **shuffles that spread**, so a mix
+  reads as genuinely assorted. It is the one exception to the column
+  layout above: the mix still occupies its own contiguous columns, but
+  scatters within them — assorted inside, blocked outside, which is what
+  "one tray, part of it mixed" actually looks like. The shuffle is
+  deterministic (`mulberry32`) so it survives a re-render instead of
+  flickering on every keystroke. The *saved* order keeps the single MIX
+  line either way, because "a mix" is genuinely what was ordered and
+  choosing the exact split is a kitchen decision. Renaming that flavour
+  turns it back into an ordinary colour, at which point the fix is a flag
+  on the row rather than a name match.
 - `src/components/OrderTypesContext.tsx` provides the order types (colour
   and icon) from the app layout. Context rather than props because
   `EventTypeChip` appears in five unrelated trees; threading a colour
@@ -355,6 +360,29 @@ iteration (not guessed) — define these as `@theme` tokens in
   rest, so a deliberate 70/30 stays 7:3 instead of flattening to thirds.
   Adding a zero-unit flavour instead read as the click being ignored, and
   left you hand-reducing another flavour to make room.
+- **Standard rates live in `prices`** (`key` → `amount`, five fixed keys:
+  `unit`, `delivery`, `mirror`, `waitress`, `kosher`), edited in Settings →
+  Lists → Prices. A fixed set rather than an owner-managed list, because
+  each key is wired to a specific field on the order — a sixth would have
+  nothing to price. `scripts/migrate-008-prices-and-offer.mjs` creates and
+  seeds it **at zero**: an invented rate would silently start pricing real
+  orders, and zero prices nothing until the owner fills it in.
+- **The order form's money side is derived, not stored state.**
+  `repriceOrder` (pure, in `orderTypes.ts`) returns the draft with every
+  un-overridden amount filled in from the rates; `OrderForm` computes it as
+  `priced` on each render and it is `priced` — never `draft` — that the
+  panel shows, that `dirty` compares, and that submit sends. Deriving it is
+  what keeps the money right when the *Content* tab changes the unit count,
+  which is a different tab and a different piece of state; an effect
+  writing the price into `draft` would let the two drift and would make
+  every path that touches a package line responsible for repricing.
+- **Which amounts are manual is inferred, not recorded.** `manualAmounts`
+  asks what the rates *would* have produced and treats every disagreement
+  as hand-set. So opening an order never rewrites its money — an agreed
+  price survives — while an amount that matches the standard rate still
+  follows a change to the thing it prices. No column, no migration, and it
+  degrades correctly on a database whose rates are all zero: every existing
+  amount reads as manual, which is exactly right.
 - `order_types` is the owner's list of event types with a colour each,
   edited in Settings → Lists. Orders reference it by **name**
   (`orders.customer_type` stays free text) so a Sheet import can never be
@@ -439,6 +467,22 @@ One-off data migrations live beside them as numbered scripts
 creates the tables they need. Each is idempotent — re-running one is a
 no-op, not a duplicate — so a script stays runnable against a database
 that has already had it applied.
+
+**`offer` is the first production stage** — quoted, not booked. The table
+marks its rows with `.is-offer` (dashed left edge plus a faint fill, both
+in `globals.css` outside every layer so the edge survives the row turning
+black on hover), and the stage badge is dashed for the same reason. The
+table's stage cell is now the same dropdown the Kanban card uses: it was a
+click-to-advance pill, which worked while the stages were a strict forward
+march, but an offer is accepted or dropped and cycling through Preparing to
+get back is not a sequence anyone means. Kanban derives its column count
+from `PRODUCTION_STATUS_LABEL` through an inline `gridTemplateColumns` —
+an interpolated `grid-cols-${n}` class would never be generated, since
+Tailwind only sees literal text.
+
+**An offer still counts in every total** — the summary rail's Income, the
+Dashboard, the Biz Plan. Excluding quotes from reported revenue is a call
+about the business, not the code, so it is flagged rather than decided.
 
 The Orders table hides `delivered` orders unless "Show delivered" is on
 (60 of 73 are delivered, so it is otherwise all archive). Kanban ignores

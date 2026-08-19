@@ -59,10 +59,13 @@ export function PaymentStatusSelect({
 }
 
 /**
- * The full picker, kept for the Kanban card: there you are moving a card
- * to a named column, sometimes backwards, so being able to jump straight
- * to any status matters more than saving a click. The table uses the
- * cycling pill below instead.
+ * The stage picker, used by both the table and the Kanban card.
+ *
+ * The table used to carry a click-to-advance pill instead, which was one
+ * click to mark an order delivered. That worked while the stages were a
+ * strict forward march; with Offer in front of Queue they are not — an
+ * offer is accepted or it is dropped, and cycling through Preparing to
+ * get back is not a sequence anyone means.
  */
 export function ProductionStatusSelect({ order, onChanged }: { order: Order; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -83,7 +86,7 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
       value={order.productionStatus}
       disabled={busy}
       onChange={(e) => handleChange(e.target.value as ProductionStatus)}
-      className="keeps-color rounded-full border border-line bg-cream px-2.5 py-1 text-xs font-semibold text-ink outline-none"
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold outline-none ${PRODUCTION_BADGE_CLASS[order.productionStatus]}`}
     >
       {(Object.keys(PRODUCTION_STATUS_LABEL) as ProductionStatus[]).map((status) => (
         <option key={status} value={status}>
@@ -94,50 +97,28 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
   );
 }
 
-/** Queue → Preparing → Delivered → Queue. Production only ever moves forward in practice. */
-const PRODUCTION_ORDER: ProductionStatus[] = ["queue", "preparing", "delivered"];
-
+/**
+ * A hollow dot for Offer, filling in as the order becomes real: nothing is
+ * committed yet, and a solid dot beside Queue's said the two were the same
+ * kind of thing.
+ */
 export const PRODUCTION_DOT: Record<ProductionStatus, string> = {
+  offer: "bg-transparent ring-1 ring-inset ring-ink-soft/60",
   queue: "bg-ink-soft/40",
   preparing: "bg-tile-peach",
   delivered: "bg-accent",
 };
 
 /**
- * A compact click-to-advance pill, replacing the full-width dropdown that
- * used to have its own column. Marking an order delivered is one click on
- * the row you're already looking at, and the column stops eating the
- * width the content chips needed.
- *
- * It cycles rather than opening a menu: with three states in a fixed
- * order, a menu is two interactions to do what one click can.
+ * `chip-neutral` on all four: each is a tint of the surface rather than a
+ * colour of its own, so they have to invert with a hovered black row —
+ * see globals.css. Offer's dashed edge is what marks it as not yet a
+ * booking, and it survives the inversion because the border is drawn from
+ * `currentColor`.
  */
-export function ProductionStatusPill({ order, onChanged }: { order: Order; onChanged: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const current = order.productionStatus;
-  const next = PRODUCTION_ORDER[(PRODUCTION_ORDER.indexOf(current) + 1) % PRODUCTION_ORDER.length];
-
-  async function advance() {
-    setBusy(true);
-    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "patch", productionStatus: next }),
-    });
-    setBusy(false);
-    onChanged();
-  }
-
-  return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={advance}
-      title={`${PRODUCTION_STATUS_LABEL[current]} — click to mark ${PRODUCTION_STATUS_LABEL[next]}`}
-      className="chip-neutral flex w-fit items-center gap-1.5 rounded-full bg-black/[0.06] px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-ink transition disabled:opacity-50"
-    >
-      <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${PRODUCTION_DOT[current]}`} />
-      {PRODUCTION_STATUS_LABEL[current]}
-    </button>
-  );
-}
+export const PRODUCTION_BADGE_CLASS: Record<ProductionStatus, string> = {
+  offer: "chip-neutral border border-dashed border-current bg-black/[0.03] text-ink-soft",
+  queue: "chip-neutral border border-line bg-black/[0.04] text-ink",
+  preparing: "chip-neutral border border-line bg-black/[0.04] text-ink",
+  delivered: "chip-neutral border border-line bg-black/[0.04] text-ink",
+};

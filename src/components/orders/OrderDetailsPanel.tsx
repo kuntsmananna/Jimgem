@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import {
   ORDER_EXTRAS,
   PAYMENT_STATUS_LABEL,
@@ -12,6 +12,8 @@ import {
   orderTotal,
   type OrderInput,
   type PaymentStatus,
+  type PriceKey,
+  type Prices,
   type ProductionStatus,
 } from "@/lib/orderTypes";
 import { TextInput, TextArea } from "@/components/Field";
@@ -39,17 +41,38 @@ export function OrderDetailsPanel({
   draft,
   onChange,
   totalUnits,
+  prices,
+  manual,
+  onManualChange,
   onOpenContent,
 }: {
   draft: OrderInput;
   onChange: (draft: OrderInput) => void;
   /** Units the Content tab packs, shown here so the two tabs agree. */
   totalUnits: number;
+  /** The owner's standard rates, for the "auto" hint and the way back to it. */
+  prices: Prices;
+  /** Amounts typed over the standard rate — see OrderForm's `manual`. */
+  manual: ReadonlySet<PriceKey>;
+  onManualChange: (manual: ReadonlySet<PriceKey>) => void;
   onOpenContent: () => void;
 }) {
   const orderTypes = useOrderTypes();
   const type = orderTypes.find((t) => t.name === draft.customerType);
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
+
+  /**
+   * Typing an amount takes it off the standard rate; the arrow beside it
+   * hands it back. Both are one-line set operations on the parent's state
+   * rather than anything stored, so an amount can move between the two as
+   * often as someone changes their mind.
+   */
+  const setManual = (key: PriceKey, on: boolean) => {
+    const next = new Set(manual);
+    if (on) next.add(key);
+    else next.delete(key);
+    onManualChange(next);
+  };
 
   // The jelly plus every extra that applies, less what has been paid.
   const total = orderTotal(draft);
@@ -228,10 +251,14 @@ export function OrderDetailsPanel({
         <section className="flex min-w-0 flex-col">
           <GroupLabel>The money</GroupLabel>
           <SheetRow label="Order amount">
-            <MoneyInput
+            <PricedAmount
               label="Order amount"
               value={draft.totalAmount}
               onChange={(totalAmount) => set({ totalAmount: totalAmount ?? 0 })}
+              rate={prices.unit}
+              manual={manual.has("unit")}
+              onRelease={() => setManual("unit", false)}
+              onTyped={() => setManual("unit", true)}
             />
           </SheetRow>
 
@@ -240,10 +267,14 @@ export function OrderDetailsPanel({
               nobody asked for. */}
           {extras.map((extra) => (
             <SheetRow key={extra.id} label={extra.label}>
-              <MoneyInput
+              <PricedAmount
                 label={`${extra.label} cost`}
                 value={draft[extra.cost]}
                 onChange={(value) => set({ [extra.cost]: value } as Partial<OrderInput>)}
+                rate={prices[extra.priceKey]}
+                manual={manual.has(extra.priceKey)}
+                onRelease={() => setManual(extra.priceKey, false)}
+                onTyped={() => setManual(extra.priceKey, true)}
               />
             </SheetRow>
           ))}
@@ -351,6 +382,67 @@ function SheetRow({
       <span className={total ? "text-xs font-bold text-ink" : "text-[12.5px] text-ink-soft"}>{label}</span>
       {children}
     </div>
+  );
+}
+
+/**
+ * A money field that knows where its number came from.
+ *
+ * With a standard rate set, an untouched amount is filled in from it and
+ * says "auto"; typing takes the amount off the rate, and the arrow hands
+ * it back. Both states share one slot to the left of the box, so the
+ * column keeps its alignment either way.
+ *
+ * The two only appear once there *is* a rate: with the rate at zero,
+ * "auto" would be claiming a calculation nobody set up, and the way back
+ * would just zero the amount.
+ */
+function PricedAmount({
+  label,
+  value,
+  onChange,
+  rate,
+  manual,
+  onTyped,
+  onRelease,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+  rate: number;
+  manual: boolean;
+  onTyped: () => void;
+  onRelease: () => void;
+}) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {rate > 0 &&
+        (manual ? (
+          <button
+            type="button"
+            onClick={onRelease}
+            title={`Back to the standard rate (${money(rate)})`}
+            className="rounded-full p-0.5 text-ink-soft transition hover:bg-black/[0.06] hover:text-ink"
+          >
+            <RotateCcw size={12} />
+          </button>
+        ) : (
+          <span
+            title={`Calculated from the standard rate (${money(rate)})`}
+            className="text-[10px] font-bold tracking-wide text-ink-soft/70 uppercase"
+          >
+            auto
+          </span>
+        ))}
+      <MoneyInput
+        label={label}
+        value={value}
+        onChange={(next) => {
+          onTyped();
+          onChange(next);
+        }}
+      />
+    </span>
   );
 }
 

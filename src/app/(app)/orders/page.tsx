@@ -1,18 +1,25 @@
 import { getOrders } from "@/lib/orders";
-import { getContentPresets, getFlavors, getPackageTypes } from "@/lib/settings";
+import { getContentPresets, getFlavors, getPackageTypes, getPrices } from "@/lib/settings";
 import { OrdersClient } from "@/components/orders/OrdersClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [orders, flavors, packageTypes, presets] = await Promise.all([
+  const [orders, flavors, packageTypes, presets, prices] = await Promise.all([
     getOrders(),
     getFlavors(true),
     getPackageTypes(),
     getContentPresets(),
+    getPrices(),
   ]);
 
   return (
-    <OrdersClient orders={orders} flavors={flavors} packageTypes={packageTypes} presets={presets} />
+    <OrdersClient
+      orders={orders}
+      flavors={flavors}
+      packageTypes={packageTypes}
+      presets={presets}
+      prices={prices}
+    />
   );
 }

@@ -7,12 +7,14 @@ import {
   getPaymentMethods,
   getExpenseCategories,
   getStaff,
+  getPrices,
 } from "@/lib/settings";
 import { FlavorsPanel } from "@/components/settings/FlavorsPanel";
 import { NameListPanel } from "@/components/settings/NameListPanel";
 import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
 import { OrderTypesPanel } from "@/components/settings/OrderTypesPanel";
 import { PresetsPanel } from "@/components/settings/PresetsPanel";
+import { PricesPanel } from "@/components/settings/PricesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
@@ -20,7 +22,7 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -29,6 +31,7 @@ export default async function SettingsPage() {
       getStaff(),
       getContentPresets(),
       getOrderTypes(),
+      getPrices(),
     ]);
 
   return (
@@ -64,6 +67,7 @@ export default async function SettingsPage() {
           content: (
             <div className="columns-3 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <OrderTypesPanel items={orderTypes} />
+              <PricesPanel prices={prices} />
               <PackageTypesPanel items={packageTypes} />
               <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />
               <NameListPanel

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
+import { ZERO_PRICES, type PriceKey, type Prices } from "./orderTypes";
 
 export interface Flavor {
   id: number;
@@ -397,4 +398,35 @@ export async function updateStaffName(id: number, name: string): Promise<StaffAc
     id,
   ]);
   return { id: rows[0].id, name: rows[0].name, username: rows[0].username };
+}
+
+/**
+ * The owner's standard rates, as a complete map.
+ *
+ * Missing keys fall back to zero rather than being absent, so callers
+ * never have to check — a rate nobody has set prices nothing, which is
+ * the honest answer and keeps `repriceOrder` total.
+ */
+export async function getPrices(): Promise<Prices> {
+  const db = getDb();
+  const { rows } = await db.query<{ key: string; amount: string }>("SELECT key, amount FROM prices");
+  const prices = { ...ZERO_PRICES };
+  for (const row of rows) {
+    if (row.key in prices) prices[row.key as PriceKey] = Number(row.amount);
+  }
+  return prices;
+}
+
+/**
+ * Upserts one rate. The key set is fixed in code (see `PriceKey`), so the
+ * insert half only ever fires on a database seeded before that key
+ * existed.
+ */
+export async function updatePrice(key: PriceKey, amount: number): Promise<void> {
+  const db = getDb();
+  await db.query(
+    `INSERT INTO prices (key, amount, updated_at) VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET amount = EXCLUDED.amount, updated_at = now()`,
+    [key, amount],
+  );
 }

@@ -37,7 +37,14 @@ export function OrdersKanban({
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    /* One column per stage, as an inline template rather than a
+       `grid-cols-N` class: the count comes from PRODUCTION_STATUS_LABEL,
+       and Tailwind only generates classes it can find as literal text —
+       an interpolated one would produce no columns at all. */
+    <div
+      className="grid gap-4"
+      style={{ gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))` }}
+    >
       {COLUMNS.map((status) => {
         const columnOrders = orders.filter((o) => o.productionStatus === status);
         return (

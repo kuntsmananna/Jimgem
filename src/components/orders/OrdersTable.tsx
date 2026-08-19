@@ -15,7 +15,7 @@ import { useOrderTypes } from "@/components/OrderTypesContext";
 import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
-import { PaymentStatusSelect, ProductionStatusPill } from "./StatusSelects";
+import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
@@ -99,7 +99,6 @@ export function OrdersTable({
             <th className="bg-card px-3 py-2">Amount</th>
             <th className="bg-card px-3 py-2">Deposit</th>
             <th className="bg-card px-3 py-2">Payment</th>
-            {/* Narrow now: the pill advances on click instead of opening a dropdown. */}
             <th className="bg-card px-3 py-2">Stage</th>
           </tr>
         </thead>
@@ -118,7 +117,12 @@ export function OrdersTable({
               <tr
                 key={order.key}
                 onClick={(e) => handleRowClick(e, order.key)}
-                className={`group cursor-pointer border-b border-line/60 align-top ${isOpen ? "is-open" : ""}`}
+                // `is-offer` marks a quote rather than a booking — see
+                // globals.css for the dashed edge that says so, which has
+                // to survive the row turning black on hover.
+                className={`group cursor-pointer border-b border-line/60 align-top ${isOpen ? "is-open" : ""} ${
+                  order.productionStatus === "offer" ? "is-offer" : ""
+                }`}
               >
                 <td className="px-3 py-2">
                   <input
@@ -268,7 +272,7 @@ export function OrdersTable({
                   <PaymentStatusSelect order={order} onChanged={onChanged} />
                 </td>
                 <td className="px-3 py-2">
-                  <ProductionStatusPill order={order} onChanged={onChanged} />
+                  <ProductionStatusSelect order={order} onChanged={onChanged} />
                 </td>
               </tr>
             );

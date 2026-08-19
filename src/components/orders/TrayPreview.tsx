@@ -1,9 +1,9 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { expandMixFlavors, type OrderLineFlavor } from "@/lib/orderTypes";
+import { evenSplit, type OrderLineFlavor } from "@/lib/orderTypes";
 import type { Flavor } from "@/lib/settings";
-import { flavorCubeGradient } from "@/lib/flavorStyle";
+import { flavorCubeGradient, isMixFlavor } from "@/lib/flavorStyle";
 
 /**
  * Above this many units a literal grid stops being readable — cubes drop
@@ -21,27 +21,78 @@ export function trayColumns(unitsPerPackage: number): number {
 }
 
 /**
+ * Deterministic PRNG, used only for the scatter inside a MIX. The result
+ * has to survive a re-render — reshuffling on every keystroke would make
+ * the preview flicker and stop reading as "this is the tray".
+ */
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The cubes in the order they were ordered, one flavour's worth at a time.
+ *
+ * A **MIX** line is the exception: it expands into an even spread of every
+ * other flavour and that spread is then shuffled, so the mix reads as
+ * genuinely assorted rather than as a row of neat sub-blocks. It still
+ * occupies one contiguous stretch of the run, so laying the run out by
+ * column puts the whole mix in its own columns — assorted within, blocked
+ * without, which is what "one tray, part of it mixed" actually looks like.
+ *
+ * The shuffle is confined to the mix's own cubes, so a named flavour beside
+ * it keeps its solid columns.
+ */
+function flavorRun(entries: OrderLineFlavor[], flavors: Flavor[], seed: number): string[] {
+  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => String(f.id)));
+  const spreadIds = flavors.filter((f) => !isMixFlavor(f) && !f.archivedAt).map((f) => String(f.id));
+  const random = mulberry32(seed);
+
+  const run: string[] = [];
+  for (const entry of entries) {
+    // With nothing to spread into, MIX stays a colour of its own rather
+    // than vanishing from a tray someone ordered.
+    if (!mixIds.has(entry.flavorId) || spreadIds.length === 0) {
+      for (let i = 0; i < entry.units; i++) run.push(entry.flavorId);
+      continue;
+    }
+    const mixed = evenSplit(spreadIds, entry.units).flatMap((part) =>
+      Array<string>(part.units).fill(part.flavorId),
+    );
+    for (let i = mixed.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [mixed[i], mixed[j]] = [mixed[j], mixed[i]];
+    }
+    run.push(...mixed);
+  }
+  return run;
+}
+
+/**
  * One entry per cube, laid out **by column**: each flavour takes whole
  * columns and at most one partial one, filling top to bottom then left to
  * right. `null` is a cube with no flavour assigned yet, which is how an
  * unbalanced line shows — and it lands in the last columns, so what is
  * still unspoken for is one block rather than gaps throughout.
  *
- * Cubes used to be shuffled into a random assortment, which is what a real
- * mixed tray looks like. It cost the thing the preview is for: with the
- * colours scattered you cannot read the split back off the picture, and
- * "is this roughly half and half" was a counting exercise.
+ * Every cube used to be shuffled into a single assortment. That is what a
+ * real mixed tray looks like, but it cost the thing the preview is for:
+ * with the colours scattered you cannot read the split back off the
+ * picture. Columns for the named flavours, scatter kept where the order
+ * genuinely *is* assorted (see `flavorRun`), gets both.
  *
  * The grid fills row-major, so a column's cubes are the positions
- * `col`, `col + columns`, `col + 2·columns`… and this writes each
- * flavour's run into those rather than in order.
+ * `col`, `col + columns`, `col + 2·columns`… and this writes the run into
+ * those rather than in order.
  */
-function cubeOrder(entries: OrderLineFlavor[], total: number, columns: number): (string | null)[] {
-  const run: (string | null)[] = [];
-  for (const entry of entries) {
-    for (let i = 0; i < entry.units && run.length < total; i++) run.push(entry.flavorId);
-  }
-  while (run.length < total) run.push(null);
+function cubeOrder(run: string[], total: number, columns: number): (string | null)[] {
+  const padded: (string | null)[] = run.slice(0, total);
+  while (padded.length < total) padded.push(null);
 
   const cubes: (string | null)[] = new Array(total).fill(null);
   const rows = Math.ceil(total / columns);
@@ -52,7 +103,7 @@ function cubeOrder(entries: OrderLineFlavor[], total: number, columns: number): 
       // A partial last row leaves the rightmost columns a cube shorter.
       // Skipping without consuming keeps every column taking exactly the
       // cubes it has room for, so nothing shifts by one.
-      if (index < total) cubes[index] = run[next++];
+      if (index < total) cubes[index] = padded[next++];
     }
   }
   return cubes;
@@ -92,9 +143,6 @@ export const TrayPreview = memo(function TrayPreview({
   }
 
   const assigned = entries.reduce((sum, e) => sum + e.units, 0);
-  // Everything below draws from the expanded copy; `entries` stays the
-  // source of truth for the unassigned count reported alongside it.
-  const drawn = expandMixFlavors(entries, flavors);
 
   // Loose units have no tray to divide into — draw the whole run at once.
   const loose = unitsPerPackage <= 1;
@@ -103,12 +151,16 @@ export const TrayPreview = memo(function TrayPreview({
   if (loose || sampled) {
     const shown = sampled ? SAMPLE_CUBES : totalUnits;
     const scale = totalUnits / shown;
-    const scaledEntries = drawn.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / scale) }));
+    // Scaled before the run is built, not after: a MIX line has to reach
+    // flavorRun still whole, or there is nothing left to recognise as one.
+    const scaled = sampled
+      ? entries.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / scale) }))
+      : entries;
     const columns = Math.min(25, Math.ceil(Math.sqrt(shown * 1.7)));
     return (
       <div className="flex flex-col gap-2">
         <Grid
-          cubes={cubeOrder(sampled ? scaledEntries : drawn, shown, columns)}
+          cubes={cubeOrder(flavorRun(scaled, flavors, shown * 7919 + entries.length), shown, columns)}
           columns={columns}
           colorFor={colorFor}
         />
@@ -128,13 +180,17 @@ export const TrayPreview = memo(function TrayPreview({
    * times the scrolling for no extra information — the count says the
    * rest.
    */
-  const perTray = drawn.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / quantity) }));
+  const perTray = entries.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / quantity) }));
   const columns = trayColumns(unitsPerPackage);
 
   return (
     <div className="flex flex-col gap-2">
       <Grid
-        cubes={cubeOrder(perTray, unitsPerPackage, columns)}
+        cubes={cubeOrder(
+          flavorRun(perTray, flavors, unitsPerPackage * 7919 + entries.length),
+          unitsPerPackage,
+          columns,
+        )}
         columns={columns}
         colorFor={colorFor}
       />

@@ -5,8 +5,13 @@ import { createPortal } from "react-dom";
 import {
   type Order,
   type OrderInput,
+  type PriceKey,
+  type Prices,
+  ORDER_EXTRAS,
   lineAssignedUnits,
   linePackedUnits,
+  repriceOrder,
+  unitsPerPackageMap,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { useModalHeaderSlot } from "@/components/Modal";
@@ -65,6 +70,31 @@ function draftFromOrder(order?: Order): OrderInput {
   };
 }
 
+/**
+ * Which amounts on a stored order were set by hand.
+ *
+ * Derived by asking what the rates *would* have produced and seeing where
+ * the order disagrees, rather than recorded in a column. That keeps
+ * opening an order from silently rewriting its money — an amount already
+ * agreed with a customer stays exactly as it is — while an amount that
+ * matches the standard rate is still free to follow a change to the thing
+ * it prices.
+ *
+ * A new order starts with nothing overridden: it has no amounts yet, so
+ * there is nothing for the rates to disagree with.
+ */
+function manualAmounts(draft: OrderInput, prices: Prices, units: number): Set<PriceKey> {
+  const auto = repriceOrder(draft, prices, new Set(), units);
+  const manual = new Set<PriceKey>();
+  if (draft.totalAmount !== auto.totalAmount) manual.add("unit");
+  for (const extra of ORDER_EXTRAS) {
+    if (extra.applies(draft) && (draft[extra.cost] ?? 0) !== (auto[extra.cost] ?? 0)) {
+      manual.add(extra.priceKey);
+    }
+  }
+  return manual;
+}
+
 /** Exactly what submit() sends, so "changed" means "would write something different". */
 function serialize(draft: OrderInput, lines: DraftPackageLine[]): string {
   return JSON.stringify({ ...draft, packageLines: toPackageLines(lines) });
@@ -80,6 +110,7 @@ export function OrderForm({
   flavors,
   packageTypes,
   presets,
+  prices,
   onSaved,
   onCancel,
   onDirtyChange,
@@ -90,6 +121,8 @@ export function OrderForm({
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
+  /** The owner's standard rates — see `priced` below for how they apply. */
+  prices: Prices;
   onSaved: () => void;
   onCancel: () => void;
   /**
@@ -109,23 +142,20 @@ export function OrderForm({
   const [initial] = useState(() => {
     const draft = draftFromOrder(order);
     const lines = toDraftLines(order?.packageLines ?? []);
-    return { draft, lines, payload: serialize(draft, lines) };
+    const packed = unitsPerPackageMap(packageTypes);
+    const units = lines.reduce((sum, line) => sum + linePackedUnits(line, packed), 0);
+    return { draft, lines, payload: serialize(draft, lines), manual: manualAmounts(draft, prices, units) };
   });
   const [draft, setDraft] = useState<OrderInput>(initial.draft);
+  // Grows as amounts are typed over, and shrinks when one is handed back
+  // to the rate. Held here rather than in `draft` because it describes how
+  // the draft is being edited, not anything the order stores.
+  const [manual, setManual] = useState<ReadonlySet<PriceKey>>(initial.manual);
   const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"details" | "content">("details");
 
-  // Comparing what a save *would* send against what it started as makes
-  // "dirty" mean "differs from the stored order" rather than "was
-  // touched", so typing a character and undoing it stops warning.
-  const dirty = serialize(draft, lines) !== initial.payload;
-
-  useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
-
-  const unitsPerPackage = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  const unitsPerPackage = unitsPerPackageMap(packageTypes);
   // Lines whose flavours don't add up to what they pack. Reported, not
   // enforced: plenty of orders are booked before anyone knows the mix,
   // and refusing to save one loses the booking to protect a total nobody
@@ -142,6 +172,30 @@ export function OrderForm({
   );
 
   const totalUnits = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
+
+  /*
+   * The draft with the standard rates applied — derived, never stored.
+   * `draft` stays what was typed; this is what the panel shows and what
+   * submit() sends.
+   *
+   * Deriving it is what makes the money side right when the *Content* tab
+   * changes the unit count, which is a different tab and a different piece
+   * of state. Writing the price into `draft` from an effect instead would
+   * mean the two could be briefly out of step, and every path that touches
+   * a line would have to remember to reprice.
+   */
+  const priced = repriceOrder(draft, prices, manual, totalUnits);
+
+  // Comparing what a save *would* send against what it started as makes
+  // "dirty" mean "differs from the stored order" rather than "was
+  // touched", so typing a character and undoing it stops warning. It
+  // compares the priced draft, because that is what a save writes.
+  const dirty = serialize(priced, lines) !== initial.payload;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
   const canSave = draft.customer.trim().length > 0 && !busy;
 
   const headerSlot = useModalHeaderSlot();
@@ -182,7 +236,7 @@ export function OrderForm({
     await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "replace", ...draft, packageLines: toPackageLines(lines) }),
+      body: JSON.stringify({ mode: "replace", ...priced, packageLines: toPackageLines(lines) }),
     });
     setBusy(false);
     onSaved();
@@ -212,9 +266,12 @@ export function OrderForm({
 
       <div role="tabpanel" className={tab === "details" ? "" : "hidden"}>
         <OrderDetailsPanel
-          draft={draft}
+          draft={priced}
           onChange={setDraft}
           totalUnits={totalUnits}
+          prices={prices}
+          manual={manual}
+          onManualChange={setManual}
           onOpenContent={() => setTab("content")}
         />
       </div>

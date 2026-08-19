@@ -193,3 +193,26 @@ body {
 .orders-rows > tr:hover button:hover {
   background-color: --alpha(var(--color-cream) / 12%);
 }
+
+/*
+ * An offer is a quote, not a booking. Its row keeps a dashed left edge and
+ * a faint fill so it reads as provisional while scanning the table.
+ *
+ * Both live outside every @layer alongside the hover block above, and the
+ * fill is guarded with :not(:hover) rather than left to specificity — the
+ * hover rule matches at the same weight, so whichever came last would win
+ * and the row would stop turning black. The edge is re-coloured on hover
+ * instead of dropped, because that is exactly when the fill is gone and
+ * the dash is all that is left to say the row is an offer.
+ */
+.orders-rows > tr.is-offer:not(:hover) {
+  background-color: --alpha(var(--color-ink) / 3.5%);
+}
+
+.orders-rows > tr.is-offer {
+  border-left: 2px dashed --alpha(var(--color-ink) / 40%);
+}
+
+.orders-rows > tr.is-offer:hover {
+  border-left-color: --alpha(var(--color-cream) / 60%);
+}

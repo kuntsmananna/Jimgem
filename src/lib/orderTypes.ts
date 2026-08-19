@@ -4,11 +4,9 @@
  * server-only dependencies (pg via db.ts, googleapis via googleSheets.ts).
  */
 
-import type { Flavor } from "./settings";
-import { isMixFlavor } from "./flavorStyle";
 
 export type PaymentStatus = "unpaid" | "deposit" | "paid" | "comp" | "net40";
-export type ProductionStatus = "queue" | "preparing" | "delivered";
+export type ProductionStatus = "offer" | "queue" | "preparing" | "delivered";
 
 /** How many units of one flavour sit inside one package line. */
 export interface OrderLineFlavor {
@@ -159,32 +157,6 @@ export function presetUnits(
 }
 
 /**
- * Turns "N units of MIX" into N units spread evenly over every real
- * flavour, so a mixed package reads as what it actually contains — an
- * assortment — rather than as a block of one invented colour.
- *
- * A view-time transform, never stored: the saved order keeps its single
- * MIX line, because "a mix" is genuinely what was ordered and choosing
- * the exact split is a kitchen decision. Lives here rather than inside
- * the preview so any surface that draws flavours can honour it.
- */
-export function expandMixFlavors(entries: OrderLineFlavor[], flavors: Flavor[]): OrderLineFlavor[] {
-  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => String(f.id)));
-  if (!entries.some((e) => mixIds.has(e.flavorId))) return entries;
-
-  const spreadIds = flavors.filter((f) => !isMixFlavor(f) && !f.archivedAt).map((f) => String(f.id));
-  if (spreadIds.length === 0) return entries;
-
-  const totals = new Map<string, number>();
-  for (const entry of entries.flatMap((entry) =>
-    mixIds.has(entry.flavorId) ? evenSplit(spreadIds, entry.units) : [entry],
-  )) {
-    totals.set(entry.flavorId, (totals.get(entry.flavorId) ?? 0) + entry.units);
-  }
-  return [...totals].map(([flavorId, units]) => ({ flavorId, units }));
-}
-
-/**
  * The `id → unitsPerPackage` lookup every unit calculation needs. Built
  * identically at a dozen call sites before this existed.
  */
@@ -332,32 +304,76 @@ export const ORDER_EXTRAS = [
     id: "delivery",
     label: "Delivery",
     cost: "deliveryCost",
+    priceKey: "delivery",
+    // Flat: an order is delivered or it isn't, so there is nothing to
+    // multiply the rate by.
+    per: "flat",
     applies: (order: OrderInput) => hasDelivery(order),
+    quantity: () => 1,
   },
   {
     id: "mirrors",
     label: "Mirrors",
     cost: "mirrorsCost",
+    priceKey: "mirror",
+    per: "per mirror",
     applies: (order: OrderInput) => (order.mirrors ?? 0) > 0,
+    quantity: (order: OrderInput) => order.mirrors ?? 0,
   },
   {
     id: "waitress",
     label: "Waitressing",
     cost: "waitressCost",
+    priceKey: "waitress",
+    per: "per waitress",
     applies: (order: OrderInput) => (order.waitresses ?? 0) > 0,
+    quantity: (order: OrderInput) => order.waitresses ?? 0,
   },
   {
     id: "kosher",
     label: "Kosher",
     cost: "kosherCost",
+    priceKey: "kosher",
+    per: "flat",
     applies: (order: OrderInput) => order.kosher,
+    quantity: () => 1,
   },
 ] as const satisfies readonly {
   id: string;
   label: string;
   cost: keyof OrderInput;
+  priceKey: PriceKey;
+  /** How the rate is charged, for the Settings label. */
+  per: string;
   applies: (order: OrderInput) => boolean;
+  quantity: (order: OrderInput) => number;
 }[];
+
+/**
+ * The owner's standard rates, kept in the `prices` table and edited in
+ * Settings → Lists.
+ *
+ * A fixed set of keys rather than a list the owner adds to: each one is
+ * wired to a specific field on the order, so a sixth key would have
+ * nothing to price. `unit` is the odd one out — it multiplies the units
+ * the Content tab packs rather than a count on the Details tab.
+ */
+export type PriceKey = "unit" | "delivery" | "mirror" | "waitress" | "kosher";
+
+export type Prices = Record<PriceKey, number>;
+
+/** Prices nothing. What a database with no `prices` rows would mean. */
+export const ZERO_PRICES: Prices = { unit: 0, delivery: 0, mirror: 0, waitress: 0, kosher: 0 };
+
+/**
+ * Every rate with the words to describe it, for the Settings panel and
+ * for the hint beside an auto-filled amount. Derived from ORDER_EXTRAS
+ * where it can be, so adding an extra there gives it a rate here.
+ */
+export const PRICE_FIELDS: { key: PriceKey; label: string; per: string }[] = [
+  { key: "unit", label: "Jelly", per: "per unit" },
+  ...ORDER_EXTRAS.map((extra) => ({ key: extra.priceKey as PriceKey, label: extra.label, per: extra.per })),
+];
 
 /**
  * What the order is worth: the jelly plus every extra that applies.
@@ -371,6 +387,39 @@ export function orderTotal(order: OrderInput | Order): number {
     (sum, extra) => sum + (extra.applies(order) ? (order[extra.cost] ?? 0) : 0),
     order.totalAmount,
   );
+}
+
+/**
+ * The order with every un-overridden amount filled in from the owner's
+ * standard rates: jelly at the unit price, and each extra at its rate
+ * times however many of it the order has.
+ *
+ * Pure, and applied as a *derived* value rather than written into the
+ * form's state — `draft` stays what was typed, and this is what gets
+ * shown and saved. That is what keeps the money side correct when the
+ * Content tab changes the unit count on a tab the user isn't looking at,
+ * with no effect to run and nothing to keep in step.
+ *
+ * `overridden` holds the keys someone has typed an amount into by hand.
+ * Those are left exactly as they are — a rate is a starting point, and an
+ * agreed price has to survive changing the guest count.
+ *
+ * An extra that doesn't apply is skipped rather than zeroed, so turning
+ * mirrors off and on again doesn't wipe a price that was agreed.
+ */
+export function repriceOrder(
+  order: OrderInput,
+  prices: Prices,
+  overridden: ReadonlySet<PriceKey>,
+  units: number,
+): OrderInput {
+  const priced = { ...order };
+  if (!overridden.has("unit")) priced.totalAmount = Math.round(prices.unit * units);
+  for (const extra of ORDER_EXTRAS) {
+    if (overridden.has(extra.priceKey) || !extra.applies(order)) continue;
+    priced[extra.cost] = Math.round(prices[extra.priceKey] * extra.quantity(order));
+  }
+  return priced;
 }
 
 /** Still owed once the deposit is taken off the full total. */
@@ -387,6 +436,12 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
 };
 
 export const PRODUCTION_STATUS_LABEL: Record<ProductionStatus, string> = {
+  /**
+   * Quoted, not booked. It sits before Queue because that is the order
+   * work actually happens in, and everything downstream — the Kanban
+   * columns, the table's dropdown — takes its order from this object.
+   */
+  offer: "Offer",
   queue: "Queue",
   preparing: "Preparing",
   delivered: "Delivered",

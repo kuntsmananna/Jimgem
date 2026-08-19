@@ -60,6 +60,22 @@ CREATE TABLE IF NOT EXISTS expense_categories (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- The owner's standard rates, one row per priced thing, used to fill an
+-- order's money side as it is typed. A fixed set of keys rather than a
+-- list the owner adds to, because each key is wired to a specific field
+-- on the order and a new one would have nothing to price.
+-- Every amount stays editable per order, so these are a starting point
+-- and never a constraint.
+CREATE TABLE IF NOT EXISTS prices (
+  key TEXT PRIMARY KEY,
+  amount NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO prices (key, amount) VALUES
+  ('unit', 0), ('delivery', 0), ('mirror', 0), ('waitress', 0), ('kosher', 0)
+ON CONFLICT (key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -74,7 +90,7 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_status TEXT NOT NULL DEFAULT 'unpaid'
     CHECK (payment_status IN ('unpaid', 'deposit', 'paid', 'comp', 'net40')),
   production_status TEXT NOT NULL DEFAULT 'queue'
-    CHECK (production_status IN ('queue', 'preparing', 'delivered')),
+    CHECK (production_status IN ('offer', 'queue', 'preparing', 'delivered')),
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

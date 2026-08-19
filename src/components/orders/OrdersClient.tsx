@@ -9,6 +9,7 @@ import {
   unitsPerPackageMap,
   type Order,
   type PaymentStatus,
+  type Prices,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
@@ -82,11 +83,13 @@ export function OrdersClient({
   flavors,
   packageTypes,
   presets,
+  prices,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
+  prices: Prices;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -301,6 +304,7 @@ export function OrdersClient({
           flavors={flavors}
           packageTypes={packageTypes}
           presets={presets}
+          prices={prices}
           onClose={() => setAdding(false)}
           onSaved={() => {
             setAdding(false);
@@ -320,6 +324,7 @@ export function OrdersClient({
           flavors={flavors}
           packageTypes={packageTypes}
           presets={presets}
+          prices={prices}
           onClose={closePane}
           onSaved={() => {
             closePane();
