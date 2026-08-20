@@ -342,7 +342,7 @@ export function OrdersClient({
                 onChange={setPaymentFilter}
               />
               <FilterDropdown
-                label="Stage"
+                label="Status"
                 options={stageOptions}
                 selected={stageFilter}
                 onChange={setStageFilter}

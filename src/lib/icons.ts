@@ -139,19 +139,34 @@ export function expenseCategoryIconElement(categoryName: string, size = 13): Rea
 }
 
 /**
- * Package types are owner-editable in Settings, so this is keyed by name
- * with a fallback, like the maps above. Trays read as grids of cubes at
- * two densities — a generic box for each was indistinguishable from the
- * single cube that means "Units".
+ * A package's mark, chosen by **how much it holds** rather than by its
+ * name.
+ *
+ * It was keyed by name — "Small tray", "Big tray", "Units" — which stopped
+ * resolving the moment the owner renamed the list to "9 units", "12
+ * units" and so on, leaving every package on the fallback box. Size is the
+ * thing the name was standing in for anyway, and it keeps working whatever
+ * a package ends up being called.
+ *
+ * Four steps of density, not a literal count: thirty cubes in a 14px icon
+ * is a smudge. The point is only that a bigger package looks busier than a
+ * smaller one, and that none of them look like the single cube meaning one
+ * unit.
  */
-const PACKAGE_ICONS: Record<string, LucideIcon> = {
-  "Small tray": Grid2x2,
-  "Big tray": Grid3x3,
-  Units: UnitsIcon,
-};
+const PACKAGE_DENSITY: { upTo: number; Icon: LucideIcon }[] = [
+  // One unit is one cube, the same mark UnitsIcon carries everywhere else.
+  { upTo: 1, Icon: UnitsIcon },
+  { upTo: 10, Icon: Grid2x2 },
+  { upTo: 24, Icon: Grid3x3 },
+  // Past a 3x3 the grid family has nowhere left to go — lucide stops
+  // there — so the biggest package becomes a stack instead of a denser
+  // grid, which is the one shape that still reads as "more than that".
+  { upTo: Number.POSITIVE_INFINITY, Icon: Boxes },
+];
 
-export function packageTypeIcon(packageName: string): LucideIcon {
-  return PACKAGE_ICONS[packageName.trim()] ?? Package;
+export function packageTypeIcon(unitsPerPackage: number): LucideIcon {
+  if (unitsPerPackage <= 0) return Package;
+  return (PACKAGE_DENSITY.find((step) => unitsPerPackage <= step.upTo) ?? PACKAGE_DENSITY[0]).Icon;
 }
 
 /**
@@ -160,6 +175,6 @@ export function packageTypeIcon(packageName: string): LucideIcon {
  * creating a component during render, so call sites take the element —
  * same approach as ExpensesClient's CategoryIcon.
  */
-export function packageTypeIconElement(packageName: string, size = 14): ReactElement {
-  return createElement(packageTypeIcon(packageName), { size });
+export function packageTypeIconElement(unitsPerPackage: number, size = 14): ReactElement {
+  return createElement(packageTypeIcon(unitsPerPackage), { size });
 }

@@ -237,7 +237,7 @@ const PresetCard = memo(function PresetCard({
         <div className="min-w-0">
           <h3 className="truncate font-display text-base font-bold text-ink">{preset.name}</h3>
           <span className="mt-1 flex w-fit items-center gap-1.5 rounded-full bg-tile-peach px-2 py-0.5 text-[10px] font-bold text-ink">
-            {packageTypeIconElement(packageType?.name ?? "", 10)}
+            {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 10)}
             {packageType?.name ?? "?"}
           </span>
         </div>

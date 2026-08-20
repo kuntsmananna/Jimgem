@@ -87,7 +87,7 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
               >
                 {/* The same mark the order form and the presets use, so a
                     package reads as the same thing wherever it appears. */}
-                <span className="shrink-0 text-ink-soft">{packageTypeIconElement(item.name, 14)}</span>
+                <span className="shrink-0 text-ink-soft">{packageTypeIconElement(item.unitsPerPackage, 14)}</span>
                 <span className="min-w-0 flex-1 truncate">{item.name}</span>
                 <span className="shrink-0 text-xs text-ink-soft">{item.unitsPerPackage} units</span>
               </button>

@@ -145,8 +145,15 @@ iteration (not guessed) — define these as `@theme` tokens in
   controls, so both maps fall back rather than assuming a closed set.
   `UnitsIcon` (a clean cube — a unit *is* one jelly cube) is exported
   from the same module so the KPI tile, the order form and the hover
-  cards can't drift onto different marks. Package types get grids of
-  increasing density, which is what keeps them distinct from it.
+  cards can't drift onto different marks. `packageTypeIcon` picks a
+  package's mark from **how much it holds**, not from its name: one cube
+  at 1 unit, then a 2x2 grid, a 3x3 grid, and a stack of boxes past what
+  a grid can show. Keyed by name it stopped resolving the moment the
+  owner renamed the list to "9 units"/"12 units"/"30 units" and every
+  package fell back to a plain box. Density, not a literal count — thirty
+  cubes in a 14px icon is a smudge; the point is only that a bigger
+  package looks busier, and that none of them look like the single cube
+  meaning one unit.
   A lucide component is a plain function and **cannot be passed from a
   Server Component to a Client Component** — pass the rendered element
   (`icon: <Palette size={14} />`) instead; see `settings/page.tsx`.
@@ -389,6 +396,11 @@ iteration (not guessed) — define these as `@theme` tokens in
   the Type cell — take the full list and filter with
   `!archivedAt || alreadyThisValue`, so a retired value stays visible
   exactly where it is already in use.
+- **Package types come back smallest first**, ordered by
+  `units_per_package` in `getPackageTypes` rather than by id, so the
+  Settings pane and every dropdown reading from it agree. By id the list
+  came back in creation order, which put "9 units" below "30 units" and
+  left a picker with no rule to scan by.
 - **Jelly is priced per unit in four quantity tiers** (`UNIT_TIERS` —
   up to 100 / 101-200 / 201-500 / 501 and up, keys `unit_100`…`unit_max`
   in `prices`), edited in Settings → Lists → **Jelly prices**. The tier is
@@ -619,7 +631,7 @@ right edge, where the rail begins.
 
 Its left group is **which orders**, as three matching dropdowns: the time
 scope (`src/lib/orderScope.ts` — 14 days / this month / next month / all
-time) picks what is in play at all, then Payment and Stage narrow it. The
+time) picks what is in play at all, then Payment and Status narrow it. The
 scope was four segmented pills, which spent most of the toolbar on a
 control changed a few times a day and left nothing to centre the view
 switcher in; `Dropdown.tsx` now holds the shared pill-and-popover shell,
@@ -630,8 +642,10 @@ a work queue rather than an archive — which means it can legitimately open
 empty, and the table's empty row names the scope instead of saying "no
 matches". Calendar ignores the scope: it navigates by its own month.
 
-**Stage is a filter, not a Delivered toggle.** It defaults to
-`ACTIVE_STAGES` — every stage except Delivered, derived from
+**Status is a filter, not a Delivered toggle.** It is called *Status*
+everywhere — the Settings pane, this filter and the table's column — after
+a spell where the same list answered to Status, Stage and Statuses on
+three different screens. It defaults to `ACTIVE_STAGES` — every stage except Delivered, derived from
 `PRODUCTION_STATUS_LABEL` so a stage added later shows up rather than
 hiding — which keeps the old default (62 of 79 orders are delivered)
 while also answering "show me the offers". Kanban ignores it: its columns

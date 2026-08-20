@@ -403,7 +403,7 @@ function LineCard({
         >
           <ChevronRight size={14} className="shrink-0 text-ink-soft" />
           <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink">
-            {packageTypeIconElement(packageType?.name ?? "", 12)}
+            {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 12)}
             {line.quantity}× {packageType?.name ?? "?"}
           </span>
           <FoldedMix line={line} flavors={flavors} packed={packed} />
@@ -440,7 +440,7 @@ function LineCard({
         </button>
 
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/[0.06] text-ink">
-          {packageTypeIconElement(packageType?.name ?? "", 16)}
+          {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 16)}
         </span>
 
         <select

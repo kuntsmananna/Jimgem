@@ -15,7 +15,7 @@ interface StageDraft {
 const BLANK: StageDraft = { label: "", color: "#e4e9f2", countsAsIncome: true, isFinal: false };
 
 /**
- * Settings → Lists → Statuses. The stages an order moves through, and the
+ * Settings → Lists → Status. The stages an order moves through, and the
  * Kanban board's columns, in the order they are listed here.
  *
  * Orders store a stage's *key*, fixed when it is created, so renaming one
@@ -54,7 +54,7 @@ export function StagesPanel({ items }: { items: ProductionStage[] }) {
     <section className="rounded-card border border-line bg-card p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-base font-bold text-ink">Statuses</h2>
+          <h2 className="font-display text-base font-bold text-ink">Status</h2>
           <p className="mt-0.5 text-xs text-ink-soft">Also the Kanban board&apos;s columns, in this order.</p>
         </div>
         <button

@@ -162,10 +162,17 @@ export async function archiveFlavor(id: number): Promise<void> {
   await archiveRow("flavors", id);
 }
 
+/**
+ * Smallest package first, always — on the Settings pane and in every
+ * dropdown that offers them, since both read from here. Ordered by id, the
+ * list came back in whatever sequence they were created in, so "9 units"
+ * could sit below "30 units" and a picker had no rule to scan by. Size is
+ * the only ordering the list has that means anything.
+ */
 export async function getPackageTypes(includeArchived = false): Promise<PackageType[]> {
   const db = getDb();
   const { rows } = await db.query<PackageTypeRow>(
-    `SELECT * FROM package_types${liveOnly(includeArchived)} ORDER BY id`,
+    `SELECT * FROM package_types${liveOnly(includeArchived)} ORDER BY units_per_package, id`,
   );
   return rows.map(mapPackageType);
 }
@@ -698,7 +705,7 @@ export interface ArchivedItem {
 const ARCHIVED_SOURCES: { resource: string; listName: string; table: string; labelColumn: string }[] = [
   { resource: "flavors", listName: "Flavors", table: "flavors", labelColumn: "name" },
   { resource: "presets", listName: "Presets", table: "content_presets", labelColumn: "name" },
-  { resource: "stages", listName: "Statuses", table: "production_stages", labelColumn: "label" },
+  { resource: "stages", listName: "Status", table: "production_stages", labelColumn: "label" },
   { resource: "order-types", listName: "Order types", table: "order_types", labelColumn: "name" },
   { resource: "package-types", listName: "Package types", table: "package_types", labelColumn: "name" },
   { resource: "displays", listName: "Display", table: "display_options", labelColumn: "name" },
