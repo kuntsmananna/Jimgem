@@ -392,6 +392,14 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **The order sheet folds the display types under one heading**
+  (`DisplayGroup`). They are kinds of one thing, so listing Mirror, Stand
+  and Tray flat beside Guests and Waitresses read as three unrelated
+  counts — and a new option would lengthen that column every time.
+  Folded by default because most orders have no display at all, with the
+  total in the summary so the common case is answered without opening it;
+  it opens itself when the order already has one, since something set but
+  invisible is worse than a row too many.
 - **`display_options` replaced the mirror count.** There is more than one
   kind of display, they do not cost the same, and an order can carry
   several at once (`order_displays`), so the price is the sum of what the

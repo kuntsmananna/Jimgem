@@ -10,6 +10,7 @@ import {
   orderBalance,
   orderTotal,
   unitTierFor,
+  type DisplayOption,
   type OrderDisplay,
   type OrderInput,
   type PaymentStatus,
@@ -219,21 +220,15 @@ export function OrderDetailsPanel({
               onChange={(guests) => set({ guests })}
             />
           </SheetRow>
-          {/* One row per display option rather than a single count: an
-              order can carry several kinds at once, and they do not cost
-              the same. Archived options appear only while this order still
-              has some, so a retired one can be cleared but not added. */}
-          {rates.displayOptions
-            .filter((option) => !option.archivedAt || quantityOf(draft.displays, option.id) > 0)
-            .map((option) => (
-              <SheetRow key={option.id} label={option.name}>
-                <NumberStepper
-                  label={option.name.toLowerCase()}
-                  value={quantityOf(draft.displays, option.id)}
-                  onChange={(quantity) => set({ displays: withDisplay(draft.displays, option.id, quantity) })}
-                />
-              </SheetRow>
-            ))}
+          {/* Archived options appear only while this order still has some,
+              so a retired one can be cleared but never added. */}
+          <DisplayGroup
+            options={rates.displayOptions.filter(
+              (option) => !option.archivedAt || quantityOf(draft.displays, option.id) > 0,
+            )}
+            displays={draft.displays}
+            onChange={(displays) => set({ displays })}
+          />
           <SheetRow label="Waitresses">
             <NumberStepper
               label="waitresses"
@@ -389,10 +384,13 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 function SheetRow({
   label,
   total = false,
+  indent = false,
   children,
 }: {
   label: string;
   total?: boolean;
+  /** Nudges the label right, for a row that belongs to the one above it. */
+  indent?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -401,9 +399,79 @@ function SheetRow({
         total ? "mt-1.5 border-t-[1.5px] border-ink pt-2.5" : "py-1"
       }`}
     >
-      <span className={total ? "text-xs font-bold text-ink" : "text-[12.5px] text-ink-soft"}>{label}</span>
+      <span
+        className={`${total ? "text-xs font-bold text-ink" : "text-[12.5px] text-ink-soft"} ${
+          indent ? "pl-4" : ""
+        }`}
+      >
+        {label}
+      </span>
       {children}
     </div>
+  );
+}
+
+/**
+ * The display types, gathered under one heading and folded away.
+ *
+ * They are kinds of the same thing, so listing Mirror, Stand and Tray flat
+ * beside Guests and Waitresses read as three unrelated counts and pushed
+ * the short column past everything else — and a new option would push it
+ * further every time.
+ *
+ * Folded by default, because most orders have no display at all. The
+ * summary carries the total, so the common case is answered without
+ * opening it, and it opens on its own when the order already has one:
+ * something set that you cannot see is worse than a row too many.
+ */
+function DisplayGroup({
+  options,
+  displays,
+  onChange,
+}: {
+  options: DisplayOption[];
+  displays: OrderDisplay[];
+  onChange: (displays: OrderDisplay[]) => void;
+}) {
+  const total = displays.reduce((sum, entry) => sum + entry.quantity, 0);
+  const [open, setOpen] = useState(total > 0);
+
+  if (options.length === 0) return null;
+
+  return (
+    <>
+      <SheetRow label="">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="-ml-2 flex w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-left text-[12.5px] text-ink-soft hover:bg-black/[0.04]"
+        >
+          <ChevronDown
+            size={12}
+            className={`shrink-0 transition-transform ${open ? "" : "-rotate-90"}`}
+          />
+          Display
+          <span className="flex-1" />
+          {/* The count only while folded: open, the steppers say it, and
+              two numbers for one thing invite reading them as different. */}
+          {!open && (
+            <span className="text-sm tabular-nums text-ink">{total > 0 ? total : "—"}</span>
+          )}
+        </button>
+      </SheetRow>
+
+      {open &&
+        options.map((option) => (
+          <SheetRow key={option.id} label={option.name} indent>
+            <NumberStepper
+              label={option.name.toLowerCase()}
+              value={quantityOf(displays, option.id)}
+              onChange={(quantity) => onChange(withDisplay(displays, option.id, quantity))}
+            />
+          </SheetRow>
+        ))}
+    </>
   );
 }
 
