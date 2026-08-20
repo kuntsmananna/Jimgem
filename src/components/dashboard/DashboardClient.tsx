@@ -144,10 +144,10 @@ export function DashboardClient({
     });
   }, [flavorLines, flavors, selectedMonth]);
 
-  const previewOrders = (selectedMonth === "all" ? orders : orders.filter((o) => o.month === selectedMonth)).slice(
-    0,
-    8,
-  );
+  // Every order in the scope, not a top few: this list answers "what was
+  // in this period", which the period selector above already picked.
+  const previewOrders =
+    selectedMonth === "all" ? orders : orders.filter((o) => o.month === selectedMonth);
 
   const highlightIndex = selectedMonth === "all" ? null : financials.findIndex((m) => m.month === selectedMonth);
   const comparedTo = comparison ? `vs ${comparison.previous.monthLabel}` : null;
@@ -193,12 +193,18 @@ export function DashboardClient({
       <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6">
         <section className="min-w-0 rounded-card border border-line bg-card p-6">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-ink">Latest orders</h2>
+            <h2 className="font-display text-lg font-bold text-ink">
+              Orders{" "}
+              <span className="font-normal text-ink-soft">({nf.format(previewOrders.length)})</span>
+            </h2>
             <Link href="/orders" className="text-sm font-semibold text-accent hover:underline">
               View all →
             </Link>
           </div>
-          <ul className="mt-4 flex flex-col gap-2">
+          {/* Scrolls rather than growing: "All time" is 79 rows, and a
+              pane that long would leave the three charts beside it
+              stranded at the top of a mostly empty page. */}
+          <ul className="mt-4 flex max-h-[32rem] flex-col gap-2 overflow-y-auto pr-1">
             {previewOrders.map((order) => (
               <li key={order.key}>
                 <Link

@@ -1,6 +1,6 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
 import { getOrders, orderMonth, orderDay, orderUnits, orderFlavorUnits } from "@/lib/orders";
-import { isBooked, stageMap } from "@/lib/orderTypes";
+import { isBooked, orderTotal, stageMap } from "@/lib/orderTypes";
 import { getFlavors, getPackageTypes, getProductionStages } from "@/lib/settings";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 
@@ -33,11 +33,16 @@ export default async function DashboardPage() {
     }));
   });
 
-  // Delivered orders are finished business — the Dashboard list is about
-  // what still needs doing, and with 60 of 73 delivered they otherwise
-  // fill it entirely. The financial totals above still count them.
+  /*
+   * Every order, delivered included.
+   *
+   * The list used to be the *latest* few still needing work, so finished
+   * business was noise in it. It is now everything in the period the page
+   * is scoped to — which is a different question, and one that "all orders
+   * in May" would answer wrongly if it left out the month's delivered
+   * ones.
+   */
   const orderPreviews: OrderPreview[] = orders
-    .filter((order) => order.productionStatus !== "delivered")
     .map((order) => {
       const month = orderMonth(order);
       const day = orderDay(order);
@@ -50,7 +55,9 @@ export default async function DashboardPage() {
         customerType: order.customerType,
         location: order.location,
         guests: order.guests,
-        totalAmount: order.totalAmount,
+        // What the order is worth, extras and discount included — the
+        // same figure the KPI tiles above the list total up.
+        totalAmount: orderTotal(order),
         units: orderUnits(order.packageLines, unitsByPackageType),
       };
     })
