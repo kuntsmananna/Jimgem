@@ -192,6 +192,43 @@ export function presetUnits(
 }
 
 /**
+ * The preset a package line matches, if any — by what it holds, not by a
+ * stored link.
+ *
+ * Nothing records which preset an order came from: a preset is *copied*
+ * into ordinary lines when applied (see CLAUDE.md), and a stored id would
+ * go stale the moment either side was edited, leaving a line labelled as
+ * a recipe it no longer holds. Comparing the contents instead is always
+ * truthful — and it recognises orders booked before presets carried a
+ * name at all, which a stored id never could.
+ *
+ * A hand-built line that happens to equal a preset is labelled too. That
+ * is correct rather than a false positive: it genuinely *is* that mix.
+ *
+ * Structurally typed so this module stays free of a `settings.ts` import,
+ * which would pull server-only code into the browser bundle.
+ */
+export function matchingPreset<
+  T extends { packageTypeId: number; flavors: { flavorId: number; share: number }[] },
+>(line: OrderPackageLine, presets: T[], unitsPerPackage: Map<number, number>): T | undefined {
+  const packageId = Number(line.packageTypeId);
+  const packed = unitsPerPackage.get(packageId) ?? 0;
+  if (packed <= 0 || line.flavors.length === 0) return undefined;
+
+  const held = new Map(line.flavors.map((entry) => [entry.flavorId, entry.units]));
+  return presets.find((preset) => {
+    if (preset.packageTypeId !== packageId) return false;
+    // Through presetUnits, so the comparison sees exactly the numbers
+    // applying the preset would have produced — rounding drift included.
+    const recipe = presetUnits(preset.flavors, packed);
+    return (
+      recipe.length === held.size &&
+      recipe.every((entry) => held.get(entry.flavorId) === entry.units)
+    );
+  });
+}
+
+/**
  * The `id → unitsPerPackage` lookup every unit calculation needs. Built
  * identically at a dozen call sites before this existed.
  */

@@ -13,7 +13,7 @@ import {
   type OrderDisplay,
   type OrderInput,
 } from "@/lib/orderTypes";
-import type { Flavor, PackageType } from "@/lib/settings";
+import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { Info } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
@@ -34,6 +34,7 @@ export function OrdersTable({
   orders,
   flavors,
   packageTypes,
+  presets,
   selectedKeys,
   openKey,
   onToggleSelect,
@@ -45,6 +46,8 @@ export function OrdersTable({
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
+  /** Passed through to the content hover card, for naming a saved mix. */
+  presets: ContentPreset[];
   selectedKeys: Set<string>;
   /** Row whose details pane is open — stays highlighted so you don't lose your place. */
   openKey: string | null;
@@ -245,6 +248,7 @@ export function OrdersTable({
                     lines={order.packageLines}
                     flavors={flavors}
                     packageTypes={packageTypes}
+                    presets={presets}
                     className="w-fit"
                   >
                     <UnitsCell units={orderUnits(order.packageLines, unitsPerPackage)} />

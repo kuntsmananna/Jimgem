@@ -1,5 +1,5 @@
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
-import { isBooked, stageMap } from "./orderTypes";
+import { isBooked, orderTotal, stageMap } from "./orderTypes";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories, getProductionStages } from "./settings";
 
@@ -146,7 +146,12 @@ export async function getMonthlyRevenue(
       orderCount: 0,
       unitsSold: 0,
     };
-    existing.total += order.totalAmount;
+    // What the order is actually worth: jelly plus every extra it carries,
+    // less any discount. It summed the bare `total_amount` column, which
+    // is only the jelly — so revenue reported here disagreed with the
+    // figure the order sheet, the Kanban card and the summary rail all
+    // showed for the same order.
+    existing.total += orderTotal(order);
     existing.orderCount += 1;
     existing.unitsSold += orderUnits(order.packageLines, packageUnitsById);
     byMonth.set(month, existing);

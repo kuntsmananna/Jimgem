@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 import {
   lineAssignedUnits,
   linePackedUnits,
+  matchingPreset,
   orderUnits,
   unitsPerPackageMap,
   type OrderPackageLine,
 } from "@/lib/orderTypes";
-import type { Flavor, PackageType } from "@/lib/settings";
+import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { flavorGradient } from "@/lib/flavorStyle";
 import { UnitsIcon } from "@/lib/icons";
 import { HoverCard } from "@/components/HoverCard";
@@ -41,12 +42,15 @@ export function ContentHoverCard({
   lines,
   flavors,
   packageTypes,
+  presets,
   className = "",
   children,
 }: {
   lines: OrderPackageLine[];
   flavors: Flavor[];
   packageTypes: PackageType[];
+  /** For naming a line that holds one of the owner's saved mixes. */
+  presets: ContentPreset[];
   className?: string;
   children: ReactNode;
 }) {
@@ -81,6 +85,7 @@ export function ContentHoverCard({
                 flavors={flavors}
                 packed={linePackedUnits(line, unitsPerPackage)}
                 packageType={packageTypes.find((p) => String(p.id) === line.packageTypeId)}
+                preset={matchingPreset(line, presets, unitsPerPackage)}
               />
             ))}
           </div>
@@ -98,20 +103,31 @@ function LineDetail({
   flavors,
   packed,
   packageType,
+  preset,
 }: {
   line: OrderPackageLine;
   flavors: Flavor[];
   /** Units this line packs, from the parent's one lookup map. */
   packed: number;
   packageType: PackageType | undefined;
+  /** The saved mix this line holds, if it is one of them. */
+  preset: ContentPreset | undefined;
 }) {
   const missing = packed - lineAssignedUnits(line);
 
   return (
     <section>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="min-w-0 truncate text-xs font-bold text-ink">
+        <p className="flex min-w-0 items-baseline gap-1.5 truncate text-xs font-bold text-ink">
           {line.quantity}× {packageType?.name ?? "Unknown package"}
+          {/* Named when the line holds one of the saved mixes, so a
+              recognisable order reads as "2 × the usual" rather than as a
+              flavour list to decode. The rows below still spell it out. */}
+          {preset && (
+            <span className="shrink-0 rounded-full bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-bold text-ink-soft">
+              {preset.name}
+            </span>
+          )}
         </p>
         {packed > 0 && (
           <p className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">

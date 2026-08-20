@@ -370,6 +370,7 @@ export function OrdersClient({
               orders={inScope}
               flavors={flavors}
               packageTypes={packageTypes}
+              presets={presets}
               selectedKeys={selectedKeys}
               openKey={openKey}
               onToggleSelect={toggleSelect}
