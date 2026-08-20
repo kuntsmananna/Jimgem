@@ -401,6 +401,16 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **A discount comes off the whole order**, given either as a percentage
+  of it or as shekels off. Two columns (`discount`, `discount_is_percent`)
+  rather than one resolved amount: "10% off" and "₪10 off" are different
+  promises, and storing only the shekels would lose which was agreed the
+  moment anything else on the order changed. `orderSubtotal` is jelly plus
+  extras, `orderDiscount` resolves the percentage and caps it at the
+  subtotal, and **`orderTotal` is the discounted figure** — so the Kanban
+  card, the hover card and the rail's income all respect it without
+  knowing it exists. `scripts/migrate-013-order-discount.mjs` adds the
+  columns.
 - **The order sheet folds the display types under one heading**
   (`DisplayGroup`). They are kinds of one thing, so listing Mirror, Stand
   and Tray flat beside Guests and Waitresses read as three unrelated

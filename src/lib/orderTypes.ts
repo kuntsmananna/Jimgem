@@ -285,6 +285,16 @@ export interface Order {
   displayCost: number | null;
   waitressCost: number | null;
   kosherCost: number | null;
+  /**
+   * A discount off the whole order — a percentage of it when
+   * `discountIsPercent`, shekels otherwise. Zero means none.
+   *
+   * Two fields rather than one resolved amount: "10% off" and "₪10 off"
+   * are different promises, and keeping only the shekels would lose which
+   * was agreed the moment anything else on the order changed.
+   */
+  discount: number;
+  discountIsPercent: boolean;
   deposit: number;
   paymentStatus: PaymentStatus;
   /** Never null: `orders.production_status` is NOT NULL DEFAULT 'queue'. */
@@ -317,6 +327,9 @@ export interface OrderInput {
   displayCost: number | null;
   waitressCost: number | null;
   kosherCost: number | null;
+  /** See `Order.discount` — a percentage of the order, or shekels off it. */
+  discount: number;
+  discountIsPercent: boolean;
   deposit: number;
   paymentStatus: PaymentStatus;
   productionStatus: ProductionStatus;
@@ -502,17 +515,47 @@ export const PRICE_FIELDS: { key: PriceKey; label: string; per: string }[] = ORD
 );
 
 /**
- * What the order is worth: the jelly plus every extra that applies.
+ * The jelly plus every extra that applies, before any discount.
  *
  * An extra is only counted when the thing itself is on the order, so
- * clearing the mirror count also drops its price rather than leaving a
+ * clearing the display count also drops its price rather than leaving a
  * charge for something no longer being supplied.
  */
-export function orderTotal(order: OrderInput | Order): number {
+export function orderSubtotal(order: OrderInput | Order): number {
   return ORDER_EXTRAS.reduce(
     (sum, extra) => sum + (extra.applies(order) ? (order[extra.cost] ?? 0) : 0),
     order.totalAmount,
   );
+}
+
+/**
+ * What the discount comes to in shekels.
+ *
+ * A percentage is taken off the *whole* order rather than off the jelly
+ * alone — that is what "10% off" means when it is offered to a customer.
+ * Rounded here so the figure shown and the figure billed are the same
+ * number.
+ */
+export function orderDiscount(order: OrderInput | Order): number {
+  if (!order.discount) return 0;
+  const off = order.discountIsPercent
+    ? (orderSubtotal(order) * order.discount) / 100
+    : order.discount;
+  // Never more than the order is worth: a discount bigger than the total
+  // is a typo, and paying the customer back is not what was meant.
+  return Math.min(Math.round(off), orderSubtotal(order));
+}
+
+/**
+ * What the order is worth, discount applied.
+ *
+ * Every figure downstream — the Kanban card, the hover card, the summary
+ * rail's income, the Biz Plan's revenue — goes through this rather than
+ * adding the parts up itself, so a discount cannot be respected in one
+ * place and forgotten in another.
+ */
+export function orderTotal(order: OrderInput | Order): number {
+  return orderSubtotal(order) - orderDiscount(order);
 }
 
 /**

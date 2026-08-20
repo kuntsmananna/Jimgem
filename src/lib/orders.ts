@@ -103,6 +103,8 @@ interface DbOrderRow {
   display_cost: string | null;
   waitress_cost: string | null;
   kosher_cost: string | null;
+  discount: string;
+  discount_is_percent: boolean;
   total_amount: string;
   deposit: string;
   payment_status: PaymentStatus;
@@ -205,6 +207,8 @@ function mapDbOrder(
     displayCost: money(row.display_cost),
     waitressCost: money(row.waitress_cost),
     kosherCost: money(row.kosher_cost),
+    discount: Number(row.discount),
+    discountIsPercent: row.discount_is_percent,
     deposit: Number(row.deposit),
     paymentStatus: row.payment_status,
     productionStatus: row.production_status,
@@ -348,6 +352,8 @@ const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] 
   { column: "mirrors_cost", value: (i) => i.mirrorsCost },
   { column: "waitress_cost", value: (i) => i.waitressCost },
   { column: "kosher_cost", value: (i) => i.kosherCost },
+  { column: "discount", value: (i) => i.discount },
+  { column: "discount_is_percent", value: (i) => i.discountIsPercent },
   { column: "display_cost", value: (i) => i.displayCost },
   { column: "total_amount", value: (i) => i.totalAmount },
   { column: "deposit", value: (i) => i.deposit },
@@ -490,6 +496,8 @@ export async function duplicateOrder(id: number): Promise<Order> {
     mirrorsCost: money(source.mirrors_cost),
     waitressCost: money(source.waitress_cost),
     kosherCost: money(source.kosher_cost),
+    discount: Number(source.discount),
+    discountIsPercent: source.discount_is_percent,
     deposit: Number(source.deposit),
     paymentStatus: source.payment_status,
     productionStatus: source.production_status,

@@ -165,6 +165,11 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS mirrors_cost NUMERIC(10, 2);
 -- a list -- migration 012 folded each order's mirror count into an
 -- order_displays row. Kept, not dropped, so that fold-in stays auditable
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS display_cost NUMERIC(10, 2);
+
+-- A discount off the whole order. `discount` is read as a percentage when
+-- `discount_is_percent`, and as shekels otherwise -- zero means none
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount NUMERIC(10, 2) NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_is_percent BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;

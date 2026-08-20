@@ -8,6 +8,7 @@ import {
   hasDelivery,
   withDelivery,
   orderBalance,
+  orderDiscount,
   orderTotal,
   unitTierFor,
   type DisplayOption,
@@ -78,7 +79,9 @@ export function OrderDetailsPanel({
     onManualChange(next);
   };
 
-  // The jelly plus every extra that applies, less what has been paid.
+  // The jelly plus every extra that applies, less the discount and then
+  // what has been paid.
+  const discount = orderDiscount(draft);
   const total = orderTotal(draft);
   const balance = orderBalance(draft);
   // Only the extras this order actually has. A price for mirrors nobody
@@ -296,6 +299,19 @@ export function OrderDetailsPanel({
             </SheetRow>
           ))}
 
+          {/* Always shown, unlike the extras above it: a discount is not
+              something the order "has" until it is entered, so there has
+              to be somewhere to enter it. The label carries what a
+              percentage comes to, since the box beside it only says the
+              rate. */}
+          <SheetRow label={discount > 0 && draft.discountIsPercent ? `Discount −${money(discount)}` : "Discount"}>
+            <DiscountInput
+              value={draft.discount}
+              isPercent={draft.discountIsPercent}
+              onChange={(discount, discountIsPercent) => set({ discount, discountIsPercent })}
+            />
+          </SheetRow>
+
           <SheetRow label="Total">
             <span className="pr-2 text-sm font-bold tabular-nums text-ink">{money(total)}</span>
           </SheetRow>
@@ -472,6 +488,62 @@ function DisplayGroup({
           </SheetRow>
         ))}
     </>
+  );
+}
+
+/**
+ * A discount, given either as a percentage of the order or as shekels
+ * off it.
+ *
+ * The unit is a two-state toggle rather than a dropdown: there are only
+ * two, and which one is in force changes what the number means — that is
+ * worth seeing without opening anything.
+ *
+ * Switching the unit keeps the number typed. "10% off" and "₪10 off" are
+ * different offers, and clearing the field on every toggle would make it
+ * impossible to compare them.
+ */
+function DiscountInput({
+  value,
+  isPercent,
+  onChange,
+}: {
+  value: number;
+  isPercent: boolean;
+  onChange: (value: number, isPercent: boolean) => void;
+}) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span role="group" aria-label="Discount unit" className="flex items-center rounded-full bg-black/[0.05] p-0.5">
+        {[
+          { percent: false, text: "₪" },
+          { percent: true, text: "%" },
+        ].map((option) => (
+          <button
+            key={option.text}
+            type="button"
+            aria-pressed={isPercent === option.percent}
+            onClick={() => onChange(value, option.percent)}
+            className={`rounded-full px-2 py-0.5 text-[11px] font-bold transition ${
+              isPercent === option.percent ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {option.text}
+          </button>
+        ))}
+      </span>
+      <TextInput
+        type="number"
+        min={0}
+        // Percentages stop at 100; shekels are capped against the order
+        // total in `orderDiscount` instead, where the total is known.
+        max={isPercent ? 100 : undefined}
+        aria-label="Discount"
+        value={value === 0 ? "" : String(value)}
+        onChange={(e) => onChange(Number(e.target.value) || 0, isPercent)}
+        className="w-20 text-right text-sm tabular-nums"
+      />
+    </span>
   );
 }
 
