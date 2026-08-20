@@ -395,6 +395,18 @@ iteration (not guessed) — define these as `@theme` tokens in
   chosen by the order's *total* units, not per line, so 600 units across
   three trays gets the 500-and-up rate on all of them rather than three
   small-order rates.
+- **A preset is quick setup, not something an order stores.** Applying one
+  copies its recipe into an ordinary line, and the line is then *locked* to
+  a quantity: the mix is a decision already made, so offering the flavour
+  editor beside it invites re-deciding it by accident. **Break apart** drops
+  the lock and leaves an ordinary line holding exactly what the preset put
+  there. Which lines are locked is not stored — `matchingPreset` recognises
+  a line by comparing its contents against each preset, which is always
+  truthful where a stored id would go stale, and recognises orders booked
+  before any of this existed. It compares against the line's *total* units
+  (`linePackedUnits`), not one package's worth, because a line's flavour
+  units are counted across every package on it. A preset since deleted stops
+  matching and the line simply unlocks.
 - **A preset can carry a price per package**, set in the same pane.
   Applying the preset **copies** that number onto the order line
   (`order_package_lines.package_price`) rather than linking to it, so

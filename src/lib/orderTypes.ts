@@ -212,7 +212,11 @@ export function matchingPreset<
   T extends { packageTypeId: number; flavors: { flavorId: number; share: number }[] },
 >(line: OrderPackageLine, presets: T[], unitsPerPackage: Map<number, number>): T | undefined {
   const packageId = Number(line.packageTypeId);
-  const packed = unitsPerPackage.get(packageId) ?? 0;
+  // The line's *total*, not one package's worth: a line's flavour units
+  // are counted across every package on it (see `linePackedUnits`), so
+  // three of a nine-unit preset hold 27 units of the recipe. Comparing
+  // against 9 matched only lines of quantity one.
+  const packed = linePackedUnits(line, unitsPerPackage);
   if (packed <= 0 || line.flavors.length === 0) return undefined;
 
   const held = new Map(line.flavors.map((entry) => [entry.flavorId, entry.units]));

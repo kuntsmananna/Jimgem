@@ -6,6 +6,7 @@ import {
   evenSplit,
   lineAssignedUnits,
   linePackedUnits,
+  matchingPreset,
   presetUnits,
   setFlavorUnits,
   toggleFlavorUnits,
@@ -40,11 +41,25 @@ export interface DraftPackageLine extends OrderPackageLine {
    * disturbing what was set by hand.
    */
   autoSplit: boolean;
+  /**
+   * The preset this line is currently *being* — the id of one of the
+   * owner's saved mixes, or null for a line built by hand.
+   *
+   * A preset is quick setup, not something the order stores (see
+   * `matchingPreset`): it is copied into an ordinary line. This only says
+   * how the line is being *edited* — locked to a quantity while it still
+   * matches the saved mix, or opened up and edited freely once broken.
+   */
+  presetId: number | null;
 }
 
 let nextUid = 1;
 
-export function toDraftLines(lines: OrderPackageLine[]): DraftPackageLine[] {
+export function toDraftLines(
+  lines: OrderPackageLine[],
+  presets: ContentPreset[],
+  unitsPerPackage: Map<number, number>,
+): DraftPackageLine[] {
   // Everything arrives folded on an existing order: you are usually
   // opening it to read, not to re-mix every tray.
   return lines.map((line) => ({
@@ -52,6 +67,9 @@ export function toDraftLines(lines: OrderPackageLine[]): DraftPackageLine[] {
     uid: nextUid++,
     mode: "units",
     folded: true,
+    // Recognised by contents, so a line booked from a saved mix comes
+    // back as that mix rather than as a flavour list to re-read.
+    presetId: matchingPreset(line, presets, unitsPerPackage)?.id ?? null,
     // Off once the line already carries a split, because those ratios were
     // decided before and re-splitting them the moment a flavour is added
     // would overwrite them. A line with no flavours yet has nothing to
@@ -87,9 +105,12 @@ export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[
     uid: nextUid++,
     packageTypeId: String(preset.packageTypeId),
     packagePrice: preset.price,
+    presetId: preset.id,
     quantity: 1,
     mode: "units",
-    folded: false,
+    // Closed on arrival: a preset is a decision already made, so there is
+    // nothing to edit but how many of them. Breaking it opens the editor.
+    folded: true,
     // A preset is a deliberate recipe, so picking another flavour after
     // applying one must not re-split it into equal shares.
     autoSplit: false,
@@ -135,7 +156,11 @@ export function PackageLineEditor({
   }
 
   function addLine(line: DraftPackageLine) {
-    openOnly(line.uid, [...lines, line]);
+    // A locked preset has no editor to open, so adding one folds the rest
+    // without unfolding it.
+    const next = [...lines, line];
+    if (line.presetId !== null) onChange(next.map((l) => ({ ...l, folded: true })));
+    else openOnly(line.uid, next);
   }
 
   function addBlankLine() {
@@ -163,6 +188,7 @@ export function PackageLineEditor({
       mode: "units",
       folded: false,
       autoSplit: true,
+      presetId: null,
       flavors: [],
     });
   }
@@ -183,6 +209,7 @@ export function PackageLineEditor({
               line={line}
               flavors={flavors}
               packageTypes={packageTypes}
+              preset={presets.find((p) => p.id === line.presetId)}
               unitsPerPackage={unitsPerPackage}
               onPatch={(patch) => updateLine(line.uid, patch)}
               onRemove={() => onChange(lines.filter((l) => l.uid !== line.uid))}
@@ -258,6 +285,7 @@ function LineCard({
   line,
   flavors,
   packageTypes,
+  preset,
   unitsPerPackage,
   onPatch,
   onRemove,
@@ -266,6 +294,8 @@ function LineCard({
   line: DraftPackageLine;
   flavors: Flavor[];
   packageTypes: PackageType[];
+  /** The saved mix this line is locked to, if any. */
+  preset: ContentPreset | undefined;
   unitsPerPackage: Map<number, number>;
   onPatch: (patch: Partial<DraftPackageLine>) => void;
   onRemove: () => void;
@@ -302,6 +332,60 @@ function LineCard({
       line.autoSplit
         ? { ...patch, flavors: evenSplit(line.flavors.map((f) => f.flavorId), nextPacked) }
         : patch,
+    );
+  }
+
+  /*
+   * A line locked to a preset: how many, and nothing else.
+   *
+   * The recipe is a decision already made, so offering the flavour editor
+   * beside it invites re-deciding it by accident. Breaking the line is the
+   * deliberate way in — it drops the lock and leaves an ordinary line
+   * holding exactly what the preset put there, editable like any other.
+   *
+   * A preset that has since been deleted simply stops resolving, and the
+   * line falls through to the ordinary card below: locking something that
+   * can no longer be named would be worse than unlocking it.
+   */
+  if (preset) {
+    return (
+      <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2">
+        <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-lavender px-2.5 py-0.5 text-[11px] font-bold text-ink">
+          <PresetSwatch preset={preset} flavors={flavors} className="h-3 w-6" />
+          {preset.name}
+        </span>
+
+        <NumberStepper
+          label="packages"
+          value={line.quantity}
+          min={1}
+          onChange={(quantity) => onPatch({ quantity: quantity, flavors: presetUnits(preset.flavors, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity) })}
+        />
+
+        <span className="text-xs text-ink-soft">
+          = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
+        </span>
+
+        <span className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => onPatch({ presetId: null, folded: false })}
+          title="Edit this package's own mix, leaving the preset behind"
+          className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-soft transition hover:border-ink hover:text-ink"
+        >
+          Break apart
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${preset.name}`}
+          title="Remove this package"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     );
   }
 
@@ -370,11 +454,18 @@ function LineCard({
           }
           className="rounded-full border border-line bg-cream px-3 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
         >
-          {packageTypes.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {p.name}
-            </option>
-          ))}
+          {/* Retired types stay out, unless this line already uses one —
+              then it has to remain selectable or opening the dropdown and
+              closing it would silently repackage the order. `packageTypes`
+              arrives with archived rows so existing lines can resolve
+              their size, which is why the filter belongs here. */}
+          {packageTypes
+            .filter((p) => !p.archivedAt || String(p.id) === line.packageTypeId)
+            .map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.name}
+              </option>
+            ))}
         </select>
 
         <NumberStepper

@@ -152,8 +152,8 @@ export function OrderForm({
   // new order, and calling it twice could straddle midnight.
   const [initial] = useState(() => {
     const draft = draftFromOrder(order);
-    const lines = toDraftLines(order?.packageLines ?? []);
     const packed = unitsPerPackageMap(packageTypes);
+    const lines = toDraftLines(order?.packageLines ?? [], presets, packed);
     const jelly = jellyTotal(toPackageLines(lines), packed, rates.prices);
     return { draft, lines, payload: serialize(draft, lines), manual: manualAmounts(draft, rates, jelly) };
   });
