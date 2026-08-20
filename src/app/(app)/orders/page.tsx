@@ -1,6 +1,7 @@
 import { getOrders } from "@/lib/orders";
 import {
   getContentPresets,
+  getDeliveryOptions,
   getDisplayOptions,
   getFlavors,
   getPackageTypes,
@@ -11,7 +12,8 @@ import { OrdersClient } from "@/components/orders/OrdersClient";
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [orders, flavors, packageTypes, presets, prices, displayOptions] = await Promise.all([
+  const [orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions] =
+    await Promise.all([
     getOrders(),
     getFlavors(true),
     // Archived included so an existing line still resolves its size.
@@ -22,6 +24,7 @@ export default async function OrdersPage() {
     // Archived included: an order can still owe for a display option
     // since retired, and the form filters them out of the picker itself.
     getDisplayOptions(true),
+    getDeliveryOptions(true),
   ]);
 
   return (
@@ -30,7 +33,7 @@ export default async function OrdersPage() {
       flavors={flavors}
       packageTypes={packageTypes}
       presets={presets}
-      rates={{ prices, displayOptions }}
+      rates={{ prices, displayOptions, deliveryOptions }}
     />
   );
 }

@@ -16,6 +16,8 @@ import {
   archiveProductionStage,
   updateDisplayOption,
   archiveDisplayOption,
+  updateDeliveryOption,
+  archiveDeliveryOption,
 } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -92,12 +94,14 @@ export async function PATCH(
         });
         return NextResponse.json(stage);
       }
-      case "displays": {
+      case "displays":
+      case "deliveries": {
+        const displays = resource === "displays";
         if (body.archive) {
-          await archiveDisplayOption(numericId);
+          await (displays ? archiveDisplayOption : archiveDeliveryOption)(numericId);
           return NextResponse.json({ ok: true });
         }
-        const option = await updateDisplayOption(numericId, {
+        const option = await (displays ? updateDisplayOption : updateDeliveryOption)(numericId, {
           name: body.name,
           price: Number(body.price) || 0,
         });

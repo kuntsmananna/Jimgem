@@ -99,6 +99,7 @@ interface DbOrderRow {
   waitresses: number | null;
   kosher: boolean;
   delivery_cost: string | null;
+  delivery_option_id: number | null;
   mirrors_cost: string | null;
   display_cost: string | null;
   waitress_cost: string | null;
@@ -203,6 +204,7 @@ function mapDbOrder(
     packageLines,
     totalAmount: Number(row.total_amount),
     deliveryCost: money(row.delivery_cost),
+    deliveryOptionId: row.delivery_option_id,
     mirrorsCost: money(row.mirrors_cost),
     displayCost: money(row.display_cost),
     waitressCost: money(row.waitress_cost),
@@ -349,6 +351,7 @@ const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] 
   { column: "waitresses", value: (i) => i.waitresses },
   { column: "kosher", value: (i) => i.kosher },
   { column: "delivery_cost", value: (i) => i.deliveryCost },
+  { column: "delivery_option_id", value: (i) => i.deliveryOptionId },
   { column: "mirrors_cost", value: (i) => i.mirrorsCost },
   { column: "waitress_cost", value: (i) => i.waitressCost },
   { column: "kosher_cost", value: (i) => i.kosherCost },
@@ -492,6 +495,7 @@ export async function duplicateOrder(id: number): Promise<Order> {
     packageLines: nestPackageLines(lineRows, flavorRows).get(id) ?? [],
     totalAmount: Number(source.total_amount),
     deliveryCost: money(source.delivery_cost),
+    deliveryOptionId: source.delivery_option_id,
     displayCost: money(source.display_cost),
     mirrorsCost: money(source.mirrors_cost),
     waitressCost: money(source.waitress_cost),

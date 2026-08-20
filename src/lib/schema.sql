@@ -103,6 +103,18 @@ CREATE TABLE IF NOT EXISTS display_options (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Where an order is delivered to, each with its own price. An order picks
+-- at most one, and can still be given a hand-typed amount instead -- see
+-- orders.delivery_option_id and delivery_cost
+CREATE TABLE IF NOT EXISTS delivery_options (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  position INTEGER NOT NULL DEFAULT 0,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS order_displays (
   order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   display_option_id INTEGER NOT NULL REFERENCES display_options(id),
@@ -170,6 +182,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS display_cost NUMERIC(10, 2);
 -- `discount_is_percent`, and as shekels otherwise -- zero means none
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount NUMERIC(10, 2) NOT NULL DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_is_percent BOOLEAN NOT NULL DEFAULT false;
+
+-- Which delivery option was chosen, if any. NULL with a non-null
+-- delivery_cost is a hand-typed amount
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_option_id INTEGER REFERENCES delivery_options(id);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;

@@ -426,6 +426,21 @@ iteration (not guessed) — define these as `@theme` tokens in
   are legacy and unread — `scripts/migrate-012-display-options.mjs` folded
   every mirror count into an `order_displays` row against a seeded
   "Mirror" option.
+- **Delivery is picked from `delivery_options`** — a named destination
+  with a price — or left as "Other" and given an amount by hand.
+  `orders.delivery_option_id` records which, and null with a non-null
+  `delivery_cost` *is* the hand-typed case. `delivery_options` and
+  `display_options` are the same shape (`PricedOption`), so they share the
+  Settings pane and the CRUD in `settings.ts`; the type aliases are what
+  make a call site say which list it means.
+- **Everything archived is recoverable from Settings → Data → Archived**,
+  with restore and a hard delete. One panel rather than a "show archived"
+  footer in each of the nine panes — archiving is rare and restoring
+  rarer, and it is the single place to look when something has vanished
+  from a dropdown, which is how the need actually presents itself. Delete
+  is only reachable for an already-archived row, and the database refuses
+  it while any order or expense still points at one; the route turns that
+  refusal into a sentence rather than a 500.
 - **The add-on rates** (`delivery`, `waitress`, `kosher`) live in
   Settings → Lists → **Add-on prices**. A fixed set, because each key is
   wired to a specific field on the order.

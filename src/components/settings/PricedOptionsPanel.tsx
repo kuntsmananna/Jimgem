@@ -2,21 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { DisplayOption } from "@/lib/orderTypes";
+import type { PricedOption } from "@/lib/orderTypes";
 import { ArchiveButton } from "./ArchiveButton";
 import { RateList, patchRate } from "./RateList";
 
 /**
- * Settings → Lists → Display. What an order can be shown on, each with
- * its own price.
+ * A list of named things with a price each — displays, and delivery
+ * destinations.
  *
- * It replaced a plain mirror count on the order: there is more than one
- * kind of display, they do not cost the same, and an order can carry
- * several at once. That is also why Display has no single rate in the
- * add-on prices pane — its price is the sum of what the order actually
- * holds.
+ * One component for both because they are recorded identically and read
+ * the same way: a price list you occasionally add a row to. Each is why
+ * its side of the order has no single rate in the add-on prices pane —
+ * the price is whichever row the order points at.
  */
-export function DisplayOptionsPanel({ items }: { items: DisplayOption[] }) {
+export function PricedOptionsPanel({
+  title,
+  description,
+  resource,
+  noun,
+  items,
+}: {
+  title: string;
+  description: string;
+  /** The `/api/settings/<resource>` segment, e.g. "displays". */
+  resource: string;
+  /** What one row is called, for the archive confirmation. */
+  noun: string;
+  items: PricedOption[];
+}) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ name: "", price: "" });
@@ -25,7 +38,7 @@ export function DisplayOptionsPanel({ items }: { items: DisplayOption[] }) {
   async function submitNew() {
     if (!draft.name.trim()) return;
     setBusy(true);
-    await fetch("/api/settings/displays", {
+    await fetch(`/api/settings/${resource}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft),
@@ -40,8 +53,8 @@ export function DisplayOptionsPanel({ items }: { items: DisplayOption[] }) {
     <section className="rounded-card border border-line bg-card p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-base font-bold text-ink">Display</h2>
-          <p className="mt-0.5 text-xs text-ink-soft">An order can carry several at once.</p>
+          <h2 className="font-display text-base font-bold text-ink">{title}</h2>
+          <p className="mt-0.5 text-xs text-ink-soft">{description}</p>
         </div>
         <button
           onClick={() => setAdding((v) => !v)}
@@ -59,10 +72,8 @@ export function DisplayOptionsPanel({ items }: { items: DisplayOption[] }) {
           label: item.name,
           hint: "each",
           amount: item.price,
-          save: (price) => patchRate(`/api/settings/displays/${item.id}`, { name: item.name, price }),
-          action: (
-            <ArchiveButton resource="displays" id={item.id} name={item.name} noun="display option" />
-          ),
+          save: (price) => patchRate(`/api/settings/${resource}/${item.id}`, { name: item.name, price }),
+          action: <ArchiveButton resource={resource} id={item.id} name={item.name} noun={noun} />,
         }))}
       />
 

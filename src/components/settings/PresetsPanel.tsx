@@ -166,11 +166,14 @@ export function PresetsPanel({
         </p>
       )}
 
+      {/* Four across, not three: a card is only as wide as its name, its
+          package chip and a tray preview capped at MAX_CUBE per column, so
+          a third of the page left most of each one empty. */}
       {presets.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-4 gap-3">
           {presets.map((preset) =>
             editing === preset.id && draft ? (
-              <div key={preset.id} className="col-span-3">
+              <div key={preset.id} className="col-span-2">
                 <PresetEditor
                   draft={draft}
                   onChange={setDraft}

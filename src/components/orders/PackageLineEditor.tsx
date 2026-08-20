@@ -139,11 +139,26 @@ export function PackageLineEditor({
   }
 
   function addBlankLine() {
-    const [first] = packageTypes;
-    if (!first) return;
+    /*
+     * The smallest live package, not simply the first one in the list.
+     *
+     * `packageTypes` arrives with archived rows included so existing lines
+     * can still resolve their size, so the first entry can easily be one
+     * that was retired — which is how a new package started out as a
+     * retired 100-unit box. Smallest because a new line should commit to
+     * as little as possible: scaling up is a keystroke, and noticing that
+     * a blank line already said 100 units is not.
+     */
+    const smallest = packageTypes
+      .filter((type) => !type.archivedAt)
+      .reduce<PackageType | null>(
+        (best, type) => (best === null || type.unitsPerPackage < best.unitsPerPackage ? type : best),
+        null,
+      );
+    if (!smallest) return;
     addLine({
       uid: nextUid++,
-      packageTypeId: String(first.id),
+      packageTypeId: String(smallest.id),
       quantity: 1,
       mode: "units",
       folded: false,

@@ -8,6 +8,7 @@ import {
   createOrderType,
   createProductionStage,
   createDisplayOption,
+  createDeliveryOption,
   type ContentPresetInput,
 } from "@/lib/settings";
 
@@ -77,8 +78,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/setting
         });
         return NextResponse.json(stage, { status: 201 });
       }
-      case "displays": {
-        const option = await createDisplayOption({ name: body.name, price: Number(body.price) || 0 });
+      case "displays":
+      case "deliveries": {
+        const create = resource === "displays" ? createDisplayOption : createDeliveryOption;
+        const option = await create({ name: body.name, price: Number(body.price) || 0 });
         return NextResponse.json(option, { status: 201 });
       }
       case "presets": {

@@ -244,10 +244,30 @@ export function OrderDetailsPanel({
             <YesNo value={draft.kosher} onChange={(kosher) => set({ kosher })} label="Kosher" />
           </SheetRow>
           <SheetRow label="Delivery">
-            {/* Turning it on opens the cost row at zero rather than
-                guessing a price — an order can be booked for delivery
-                before anyone has said what it costs. */}
-            <YesNo value={hasDelivery(draft)} onChange={(on) => onChange(withDelivery(draft, on))} label="Delivery" />
+            {/* A destination sets the price; "Other" turns delivery on with
+                none, which is the hand-typed case — an order can be booked
+                for delivery before anyone has said where or what it costs.
+                Archived destinations show only while this order uses one. */}
+            <PillSelect
+              value={hasDelivery(draft) ? String(draft.deliveryOptionId ?? "other") : "none"}
+              onChange={(value) =>
+                onChange(
+                  withDelivery(draft, value !== "none", value === "other" || value === "none" ? null : Number(value)),
+                )
+              }
+              label="Delivery"
+              className="border border-line bg-black/[0.04] text-ink"
+            >
+              <option value="none">No delivery</option>
+              {rates.deliveryOptions
+                .filter((option) => !option.archivedAt || option.id === draft.deliveryOptionId)
+                .map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              <option value="other">Other</option>
+            </PillSelect>
           </SheetRow>
           <SheetRow label="Units ordered">
             {/* Packed on the Content tab, so this reads it rather than

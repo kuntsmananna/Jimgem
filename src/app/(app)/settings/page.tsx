@@ -10,6 +10,8 @@ import {
   getPrices,
   getProductionStages,
   getDisplayOptions,
+  getDeliveryOptions,
+  getArchivedItems,
 } from "@/lib/settings";
 import { FlavorsPanel } from "@/components/settings/FlavorsPanel";
 import { NameListPanel } from "@/components/settings/NameListPanel";
@@ -18,16 +20,17 @@ import { OrderTypesPanel } from "@/components/settings/OrderTypesPanel";
 import { PresetsPanel } from "@/components/settings/PresetsPanel";
 import { PricesPanel } from "@/components/settings/PricesPanel";
 import { JellyPricesPanel } from "@/components/settings/JellyPricesPanel";
-import { DisplayOptionsPanel } from "@/components/settings/DisplayOptionsPanel";
+import { PricedOptionsPanel } from "@/components/settings/PricedOptionsPanel";
 import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
+import { ArchivedPanel } from "@/components/settings/ArchivedPanel";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -39,6 +42,8 @@ export default async function SettingsPage() {
       getPrices(),
       getProductionStages(),
       getDisplayOptions(),
+      getDeliveryOptions(),
+      getArchivedItems(),
     ]);
 
   return (
@@ -77,7 +82,20 @@ export default async function SettingsPage() {
               <OrderTypesPanel items={orderTypes} />
               <JellyPricesPanel prices={prices} presets={presets} />
               <PricesPanel prices={prices} />
-              <DisplayOptionsPanel items={displayOptions} />
+              <PricedOptionsPanel
+                title="Display"
+                description="An order can carry several at once."
+                resource="displays"
+                noun="display option"
+                items={displayOptions}
+              />
+              <PricedOptionsPanel
+                title="Delivery"
+                description="An order picks one, or is given an amount by hand."
+                resource="deliveries"
+                noun="delivery destination"
+                items={deliveryOptions}
+              />
               <PackageTypesPanel items={packageTypes} />
               <NameListPanel title="Payment methods" resource="payment-methods" items={paymentMethods} />
               <NameListPanel
@@ -103,8 +121,9 @@ export default async function SettingsPage() {
           label: "Data",
           icon: <Cloud size={14} />,
           content: (
-            <div className="max-w-2xl">
+            <div className="flex max-w-2xl flex-col gap-6">
               <ImportPanel />
+              <ArchivedPanel items={archived} />
             </div>
           ),
         },

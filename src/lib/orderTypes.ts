@@ -280,6 +280,8 @@ export interface Order {
    */
   totalAmount: number;
   deliveryCost: number | null;
+  /** Which destination was picked, or null for a hand-typed amount. */
+  deliveryOptionId: number | null;
   /** Legacy, like `mirrors` above — `displayCost` replaced it. */
   mirrorsCost: number | null;
   displayCost: number | null;
@@ -322,6 +324,8 @@ export interface OrderInput {
   packageLines: OrderPackageLine[];
   totalAmount: number;
   deliveryCost: number | null;
+  /** Which destination was picked, or null for a hand-typed amount. */
+  deliveryOptionId: number | null;
   /** Legacy, like `mirrors` above — `displayCost` replaced it. */
   mirrorsCost: number | null;
   displayCost: number | null;
@@ -354,10 +358,22 @@ export function hasDelivery(order: Pick<OrderInput, "deliveryCost">): boolean {
   return order.deliveryCost !== null;
 }
 
-export function withDelivery<T extends Pick<OrderInput, "deliveryCost">>(order: T, on: boolean): T {
-  // Keeps a price already agreed when toggling back on, and opens at zero
-  // rather than guessing one.
-  return { ...order, deliveryCost: on ? (order.deliveryCost ?? 0) : null };
+/**
+ * Turns delivery on or off, and records which destination was picked.
+ *
+ * `optionId` null with delivery on is the hand-typed case: delivered, but
+ * not to anywhere on the list, so the amount is whatever is entered.
+ * Turning delivery off clears both — a destination on an order that is
+ * not being delivered is a leftover, not a fact.
+ */
+export function withDelivery<T extends Pick<OrderInput, "deliveryCost" | "deliveryOptionId">>(
+  order: T,
+  on: boolean,
+  optionId: number | null = null,
+): T {
+  if (!on) return { ...order, deliveryCost: null, deliveryOptionId: null };
+  // Keeps a price already agreed, and opens at zero rather than guessing.
+  return { ...order, deliveryCost: order.deliveryCost ?? 0, deliveryOptionId: optionId };
 }
 
 export const ORDER_EXTRAS = [
@@ -373,7 +389,12 @@ export const ORDER_EXTRAS = [
     // multiply the rate by.
     per: "flat",
     applies: (order: OrderInput) => hasDelivery(order),
-    standard: (order: OrderInput, rates: Rates) => rates.prices.delivery,
+    // The chosen destination's price when there is one, and the flat rate
+    // when delivery is on without a destination — which is the case a
+    // hand-typed amount starts from.
+    standard: (order: OrderInput, rates: Rates) =>
+      rates.deliveryOptions.find((option) => option.id === order.deliveryOptionId)?.price ??
+      rates.prices.delivery,
   },
   {
     id: "display",
@@ -451,14 +472,27 @@ export const ZERO_PRICES: Prices = {
   kosher: 0,
 };
 
-/** One thing an order can be displayed on, from the owner's list. */
-export interface DisplayOption {
+/**
+ * A named thing with a price, from one of the owner's lists.
+ *
+ * Displays and delivery destinations are different things that happen to
+ * be recorded the same way, so they share the shape — and with it the
+ * Settings pane and the CRUD in settings.ts. The aliases below are what
+ * make a call site say which list it means.
+ */
+export interface PricedOption {
   id: number;
   name: string;
   price: number;
   position: number;
   archivedAt: string | null;
 }
+
+/** One thing an order can be displayed on. An order can carry several. */
+export type DisplayOption = PricedOption;
+
+/** Where an order is delivered to. An order picks at most one. */
+export type DeliveryOption = PricedOption;
 
 /** How many of one display option an order carries. */
 export interface OrderDisplay {
@@ -476,6 +510,7 @@ export interface OrderDisplay {
 export interface Rates {
   prices: Prices;
   displayOptions: DisplayOption[];
+  deliveryOptions: DeliveryOption[];
 }
 
 export type UnitTierKey = "unit_100" | "unit_200" | "unit_500" | "unit_max";
