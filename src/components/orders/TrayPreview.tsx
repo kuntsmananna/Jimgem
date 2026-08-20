@@ -13,11 +13,34 @@ import { flavorCubeGradient, isMixFlavor } from "@/lib/flavorStyle";
 const SAMPLE_THRESHOLD = 300;
 const SAMPLE_CUBES = 200;
 
-/** Cubes across, per package. Fixed so a tray always reads as the same shape. */
-export function trayColumns(unitsPerPackage: number): number {
-  if (unitsPerPackage <= 1) return 20;
-  if (unitsPerPackage <= 60) return 10;
-  return 15;
+/**
+ * The widest a single cube is allowed to draw, in px.
+ *
+ * The grid stretches to its container, so without this a nine-unit box —
+ * three columns — would render three enormous squares across the whole
+ * panel. Capping the cube instead of the grid keeps every preview drawn at
+ * the same scale, so a small tray beside a big one reads as smaller rather
+ * than as the same picture at a different zoom.
+ */
+const MAX_CUBE = 22;
+const CUBE_GAP = 2;
+const GRID_PADDING = 8;
+
+/**
+ * Cubes across, chosen to make the grid as square as it can be: 9 cubes
+ * are 3 × 3, 100 are 10 × 10.
+ *
+ * It used to be three fixed widths by package size, which drew a small
+ * tray as 10 × 5 and a big one as 15 × 10 — the same jelly reading as a
+ * different shape depending on how it was packed. A square block is what
+ * a tray of cubes actually looks like, and it makes two packages
+ * comparable at a glance.
+ *
+ * A count that isn't a perfect square leaves the last column or two a
+ * cube short, which `cubeOrder` already handles.
+ */
+function gridColumns(total: number): number {
+  return Math.max(1, Math.ceil(Math.sqrt(total)));
 }
 
 /**
@@ -156,7 +179,7 @@ export const TrayPreview = memo(function TrayPreview({
     const scaled = sampled
       ? entries.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / scale) }))
       : entries;
-    const columns = Math.min(25, Math.ceil(Math.sqrt(shown * 1.7)));
+    const columns = gridColumns(shown);
     return (
       <div className="flex flex-col gap-2">
         <Grid
@@ -181,7 +204,7 @@ export const TrayPreview = memo(function TrayPreview({
    * rest.
    */
   const perTray = entries.map((e) => ({ flavorId: e.flavorId, units: Math.round(e.units / quantity) }));
-  const columns = trayColumns(unitsPerPackage);
+  const columns = gridColumns(unitsPerPackage);
 
   return (
     <div className="flex flex-col gap-2">
@@ -221,7 +244,10 @@ function Grid({
   return (
     <div
       className="grid gap-[2px] rounded-lg bg-black/[0.07] p-2 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]"
-      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      style={{
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        maxWidth: columns * MAX_CUBE + (columns - 1) * CUBE_GAP + GRID_PADDING * 2,
+      }}
       role="img"
       aria-label="Preview of the packed tray"
     >

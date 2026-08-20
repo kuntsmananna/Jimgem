@@ -74,7 +74,16 @@ something here isn't obvious.
   blend where they cross into a colour nobody plotted, and three of them
   stacked came out flat grey.
 - `src/components/orders/TrayPreview.tsx` draws a package as its actual
-  grid of jelly cubes, **laid out by column** — each flavour fills whole
+  grid of jelly cubes. **The grid is as square as the count allows** —
+  `gridColumns` is `ceil(sqrt(total))`, so 9 units are 3 × 3 and 100 are
+  10 × 10. It used to be three fixed widths by package size, which drew
+  the same jelly as a different shape depending on how it was packed. A
+  cube is capped at `MAX_CUBE` px, because the grid stretches to its
+  container and a three-column preview would otherwise render three
+  enormous squares across the panel; capping the cube rather than the grid
+  also keeps every preview at one scale, so a small tray beside a big one
+  reads as smaller instead of as the same picture zoomed. Cubes are
+  **laid out by column** — each flavour fills whole
   columns and at most one partial one, top to bottom then left to right.
   The grid itself fills row-major, so `cubeOrder` writes each flavour's
   run into the positions `col`, `col + columns`, … rather than in order;
