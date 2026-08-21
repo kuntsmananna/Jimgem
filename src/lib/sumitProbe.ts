@@ -218,9 +218,17 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
         // By ID rather than display name — listentities rejected a name.
         const entities = await listEntities(String(folder.ID));
         out.push(`\n${name} (${folder.ID}): ${entities.length} entities`);
-        if (name === "מסמכים" && entities.length !== documents.length) {
+        if (name === "מסמכים") {
+          // Zero means the folder is a container listing nothing of its
+          // own, not that it is empty -- only a count *above* what the
+          // accounting endpoint returned would show documents being held
+          // back from it.
           out.push(
-            `  ⚠ documents/list returned ${documents.length} — a gap of ${entities.length - documents.length} means documents exist that the accounting endpoint will not list.`,
+            entities.length === 0
+              ? `  (not listable directly — its documents live in inherited folders. documents/list returned ${documents.length}.)`
+              : entities.length > documents.length
+                ? `  ⚠ documents/list returned only ${documents.length} — ${entities.length - documents.length} documents exist that the accounting endpoint will not list.`
+                : `  matches documents/list (${documents.length}).`,
           );
         }
         // A spread rather than the first: the newest receipt may simply
