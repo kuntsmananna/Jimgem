@@ -44,7 +44,12 @@ export function NotYet() {
         if (el?.complete && el.naturalWidth === 0) setMissing(true);
       }}
       onError={() => setMissing(true)}
-      className="w-full max-w-2xl rounded-card"
+      /*
+       * 512px, not larger. The source is 220x165 — every pixel past
+       * ~2.3x is invented, and a mushy Homer is a worse joke than a
+       * slightly smaller sharp one.
+       */
+      className="w-full max-w-lg rounded-card"
     />
   );
 }
