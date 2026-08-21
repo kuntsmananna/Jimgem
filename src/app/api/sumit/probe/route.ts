@@ -6,6 +6,10 @@ import { runSumitProbe } from "@/lib/sumitProbe";
  * nothing, to SUMIT or to the DB — the report it returns is the whole
  * result. Scaffolding for designing the integration, not part of it.
  */
+// A full-history pull pages through every document and then reads the CRM
+// folder, which is well past a default serverless timeout.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
     return NextResponse.json(
