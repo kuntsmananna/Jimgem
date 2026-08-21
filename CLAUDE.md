@@ -532,6 +532,21 @@ iteration (not guessed) — define these as `@theme` tokens in
   divided out of a month's total**: these months straddle registration, so
   one divisor would be wrong for every exempt order in them. That is the
   rule that, broken, produces plausible figures that are quietly false.
+- **One switch decides how every money figure reads.** `vatView` is
+  `gross` (what a customer pays — the default, and how the Sheet always
+  read) or `net`, held in a cookie and provided from the app layout by
+  `VatViewContext`, the same way order types and stages are. A **cookie
+  rather than local storage** because pages compute their money on the
+  server: reading the preference in the browser would paint one convention
+  and then flip. Setting it re-runs the server components through
+  `router.refresh()` rather than converting anything client-side. The
+  toggle lives in the nav, not per page — the figures it governs sit on
+  four screens, and a per-page control would let the Dashboard and the Biz
+  Plan disagree about what a shekel means. Each of those screens states its
+  convention beside the numbers.
+  `getYearlyFinancials(vatView)` returns both sides of profit in the same
+  convention; client components take `forOrder` / `forExpense` from
+  `useVatView()`.
 - `prices` gained a `vat_rate` key, edited in Settings → Lists → **VAT**.
   It sits with the prices because it is the same kind of thing — an
   owner-editable number the money is computed from — but deliberately not

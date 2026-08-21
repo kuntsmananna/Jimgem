@@ -116,6 +116,8 @@ export function totalOf(
   orders: Order[],
   unitsPerPackage: Map<number, number>,
   stages: Map<string, ProductionStage>,
+  /** What one order contributes — see VatViewContext's `forOrder`. */
+  valueOf: (order: Order) => number = orderTotal,
 ): OrderTotals {
   return orders.reduce<OrderTotals>(
     (totals, order) => ({
@@ -125,7 +127,7 @@ export function totalOf(
       // What the order is worth, extras included — the same figure the
       // order sheet calls Total. Summing the bare `total_amount` column
       // made the rail disagree with the popup it links to.
-      income: totals.income + (isBooked(order, stages) ? orderTotal(order) : 0),
+      income: totals.income + (isBooked(order, stages) ? valueOf(order) : 0),
       offers: totals.offers + (isBooked(order, stages) ? 0 : 1),
     }),
     { units: 0, orders: 0, displays: 0, income: 0, offers: 0 },

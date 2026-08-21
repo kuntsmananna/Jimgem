@@ -1,5 +1,6 @@
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
-import { isBooked, orderNet, orderTotal, stageMap } from "./orderTypes";
+import { isBooked, orderNet, orderTotal, stageMap, vatOn, type VatMode } from "./orderTypes";
+import type { VatView } from "./vatView";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories, getProductionStages } from "./settings";
 
@@ -176,7 +177,10 @@ export async function getMonthlyRevenue(
 interface DbExpenseForRollup {
   month: number;
   categoryName: string;
+  /** What was paid, VAT included where the receipt carried it. */
   amount: number;
+  /** The same with VAT taken out, per row — see getYearlyFinancials. */
+  netAmount: number;
 }
 
 /** Dashboard-created expenses, grouped for folding into the Sheet's legacy monthly totals. */
@@ -191,7 +195,9 @@ async function getDbExpensesForRollup(): Promise<DbExpenseForRollup[]> {
     date: string;
     category_id: number;
     amount: string;
-  }>("SELECT date, category_id, amount FROM expenses");
+    vat_mode: VatMode | null;
+    vat_rate: string | null;
+  }>("SELECT date, category_id, amount, vat_mode, vat_rate FROM expenses");
 
   return rows
     .map((row) => {
@@ -199,7 +205,16 @@ async function getDbExpensesForRollup(): Promise<DbExpenseForRollup[]> {
       const month = match ? Number(match[1]) : null;
       const categoryName = categoryNameById.get(row.category_id);
       if (month === null || !categoryName) return null;
-      return { month, categoryName, amount: Number(row.amount) };
+      const amount = Number(row.amount);
+      return {
+        month,
+        categoryName,
+        amount,
+        // Taken out per row, because a receipt from an unregistered
+        // supplier carries no VAT and a month holding both has no single
+        // divisor.
+        netAmount: vatOn(amount, row.vat_mode ?? "included", Number(row.vat_rate ?? 0)).net,
+      };
     })
     .filter((row): row is DbExpenseForRollup => row !== null);
 }
@@ -215,8 +230,19 @@ export interface MonthlyFinancials {
   unitsSold: number;
 }
 
-/** Net profit per month = revenue − recorded expenses, full-year rollup for Biz Plan and Dashboard. */
-export async function getYearlyFinancials(): Promise<MonthlyFinancials[]> {
+/**
+ * Net profit per month = revenue − recorded expenses, full-year rollup for
+ * Biz Plan and Dashboard.
+ *
+ * `vatView` decides which convention every figure comes back in, and both
+ * sides of the subtraction follow it — reporting net revenue against gross
+ * costs would understate profit by the VAT on every purchase. Converted
+ * per order and per expense before they are added, never by dividing a
+ * month's total: these months straddle the date the business registered,
+ * so one divisor would be wrong for every exempt row in them.
+ */
+export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<MonthlyFinancials[]> {
+  const net = vatView === "net";
   const [orders, sheetExpenses, dbExpenses, packageTypes] = await Promise.all([
     getOrders(),
     getLegacyExpenseItems(),
@@ -240,9 +266,10 @@ export async function getYearlyFinancials(): Promise<MonthlyFinancials[]> {
       total: 0,
       byCategory: {},
     };
-    existing.total += dbExpense.amount;
+    const amount = net ? dbExpense.netAmount : dbExpense.amount;
+    existing.total += amount;
     existing.byCategory[dbExpense.categoryName] =
-      (existing.byCategory[dbExpense.categoryName] ?? 0) + dbExpense.amount;
+      (existing.byCategory[dbExpense.categoryName] ?? 0) + amount;
     expensesByMonth.set(dbExpense.month, existing);
   }
 
@@ -253,7 +280,7 @@ export async function getYearlyFinancials(): Promise<MonthlyFinancials[]> {
     .map((month) => {
       const rev = revenue.find((r) => r.month === month);
       const exp = expensesByMonth.get(month);
-      const revenueTotal = rev?.total ?? 0;
+      const revenueTotal = (net ? rev?.netTotal : rev?.total) ?? 0;
       const expensesTotal = exp?.total ?? 0;
       return {
         month,

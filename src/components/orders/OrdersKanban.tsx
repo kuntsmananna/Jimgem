@@ -2,7 +2,6 @@
 
 import {
   formatOrderDate,
-  orderTotal,
   orderUnits,
   unitsPerPackageMap,
   type Order,
@@ -10,6 +9,7 @@ import {
 import type { Flavor, PackageType } from "@/lib/settings";
 import { UnitsIcon } from "@/lib/icons";
 import { useStages } from "@/components/ProductionStagesContext";
+import { useVatView } from "@/components/VatViewContext";
 import { OrderHoverCard } from "./OrderHoverCard";
 import { ProductionStatusSelect } from "./StatusSelects";
 
@@ -30,6 +30,7 @@ export function OrdersKanban({
   onOpen: (key: string) => void;
 }) {
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  const { forOrder } = useVatView();
   /*
    * One column per live stage, in the owner's order. Archived stages are
    * left out — the board is where work is moved *to*, and a retired stage
@@ -91,7 +92,7 @@ export function OrdersKanban({
                   <div className="mt-2 flex items-center justify-between">
                     {/* What the order is worth, extras included — the same
                         figure the order sheet calls Total. */}
-                    <p className="text-sm font-semibold text-ink">{currency(orderTotal(order))}</p>
+                    <p className="text-sm font-semibold text-ink">{currency(forOrder(order))}</p>
                     <ProductionStatusSelect order={order} onChanged={onChanged} />
                   </div>
                 </OrderHoverCard>

@@ -6,6 +6,7 @@ import { Banknote, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "l
 import { UnitsIcon } from "@/lib/icons";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
+import { useVatView } from "@/components/VatViewContext";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
@@ -77,6 +78,7 @@ export function DashboardClient({
   orders: OrderPreview[];
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | "all">("all");
+  const { label: vatLabel } = useVatView();
 
   const scoped = useMemo(() => {
     if (selectedMonth === "all") {
@@ -176,6 +178,7 @@ export function DashboardClient({
         ))}
       </div>
 
+      <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
       <div className="grid grid-cols-4 gap-4">
         {KPI_TILES.map(({ metric, label, tile, Icon, format }) => (
           <KpiTile

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
+import { useVatView } from "@/components/VatViewContext";
+import { VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
@@ -53,6 +55,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
         </nav>
       </div>
       <div className="flex items-center gap-3">
+        <VatViewToggle />
         {/* On every page rather than just the Dashboard — it's how you tell
             which version you're looking at. */}
         <span
@@ -86,5 +89,36 @@ export function Nav({ name, version }: { name: string; version: string }) {
         </form>
       </div>
     </header>
+  );
+}
+
+/**
+ * Which convention every money figure on every page is shown in.
+ *
+ * In the nav rather than on each page: the figures it governs sit on four
+ * different screens, and a per-page control would let the Dashboard and
+ * the Biz Plan disagree about what a shekel means. Two options both worth
+ * seeing, so a toggle rather than a dropdown — the same call the calendar's
+ * Monthly/Weekly switch makes.
+ */
+function VatViewToggle() {
+  const { view, setView } = useVatView();
+  return (
+    <div className="flex items-center rounded-full border border-line p-0.5" role="group" aria-label="VAT view">
+      {(["gross", "net"] as VatView[]).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setView(option)}
+          aria-pressed={view === option}
+          title={option === "gross" ? "Show what customers pay" : "Show figures with VAT taken out"}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+            view === option ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+          }`}
+        >
+          {VAT_VIEW_LABEL[option]}
+        </button>
+      ))}
+    </div>
   );
 }

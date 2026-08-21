@@ -1,9 +1,12 @@
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/session";
 import { getOrderTypes, getProductionStages } from "@/lib/settings";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { Nav } from "@/components/Nav";
 import { OrderTypesProvider } from "@/components/OrderTypesContext";
 import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
+import { VatViewProvider } from "@/components/VatViewContext";
+import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   /*
@@ -13,21 +16,27 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
    * *offer* a type — the order form's pill and the table's Type cell —
    * filter the archived ones out themselves.
    */
-  const [session, orderTypes, stages] = await Promise.all([
+  const [session, orderTypes, stages, cookieStore] = await Promise.all([
     getSession(),
     getOrderTypes(true),
     getProductionStages(true),
+    cookies(),
   ]);
+  // Read here, on the server, so the first paint is already in the right
+  // convention — see VatViewProvider.
+  const vatView = parseVatView(cookieStore.get(VAT_VIEW_COOKIE)?.value);
 
   return (
     <OrderTypesProvider types={orderTypes}>
       <ProductionStagesProvider stages={stages}>
+      <VatViewProvider view={vatView}>
       <div className="min-h-screen">
         {/* Version lives in the nav so every page carries it, not just the
             Dashboard — it is how a deployed build is identified. */}
         <Nav name={session.name ?? ""} version={APP_VERSION_LABEL} />
         <main className="px-6 py-8">{children}</main>
       </div>
+      </VatViewProvider>
       </ProductionStagesProvider>
     </OrderTypesProvider>
   );

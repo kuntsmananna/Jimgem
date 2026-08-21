@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
+import { useVatView } from "@/components/VatViewContext";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -27,9 +28,14 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
     { revenue: 0, profit: 0, orders: 0, units: 0 },
   );
   const avgOrderValue = ytd.orders > 0 ? ytd.revenue / ytd.orders : 0;
+  const { label: vatLabel } = useVatView();
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Which convention the whole page is in. It moves with the nav's
+          switch, and a report that doesn't say so invites the two readings
+          to be compared with each other. */}
+      <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
       <div className="grid grid-cols-5 gap-4">
         <KpiTile label="YTD Revenue" value={currency(ytd.revenue)} tile="peach" />
         <KpiTile label="YTD Profit" value={currency(ytd.profit)} tile="mint" />
