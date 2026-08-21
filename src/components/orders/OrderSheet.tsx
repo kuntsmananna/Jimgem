@@ -29,7 +29,7 @@ export { nf };
  */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mt-1.5 mb-3 block border-b-[1.5px] border-ink/20 pb-2 text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
+    <span className="mt-1.5 mb-3 block border-b-[1.5px] border-current/20 pb-2 text-[10px] font-bold tracking-[0.1em] opacity-60 uppercase">
       {children}
     </span>
   );
@@ -60,11 +60,17 @@ export function SheetRow({
   return (
     <div
       className={`flex min-h-[34px] items-center justify-between gap-4 ${
-        total ? "mt-1.5 border-t-[1.5px] border-ink pt-2.5" : "py-1"
+        total ? "mt-1.5 border-t-[1.5px] border-current pt-2.5" : "py-1"
       }`}
     >
       <span
-        className={`${total ? "text-xs font-bold text-ink" : "text-[12.5px] text-ink-soft"} ${
+        /*
+          Tones stated as opacity rather than as an ink colour: these rows
+          are drawn on cream in the form's panels and on black in the
+          money rail, and a fixed `text-ink-soft` disappears on one of
+          them. Inheriting and dimming works either way round.
+        */
+        className={`${total ? "text-xs font-bold" : "text-[12.5px] opacity-70"} ${
           indent ? "pl-4" : ""
         }`}
       >
@@ -149,14 +155,14 @@ export function PricedAmount({
             type="button"
             onClick={onRelease}
             title={`Back to the standard rate (${money(rate)})`}
-            className="rounded-full p-0.5 text-ink-soft transition hover:bg-black/[0.06] hover:text-ink"
+            className="rounded-full p-0.5 opacity-60 transition hover:bg-current/10 hover:opacity-100"
           >
             <RotateCcw size={12} />
           </button>
         ) : (
           <span
             title={`Calculated from the standard rate (${money(rate)})`}
-            className="text-[10px] font-bold tracking-wide text-ink-soft/70 uppercase"
+            className="text-[10px] font-bold tracking-wide opacity-50 uppercase"
           >
             auto
           </span>
@@ -242,7 +248,7 @@ export function DiscountInput({
 }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span role="group" aria-label="Discount unit" className="flex items-center rounded-full bg-black/[0.05] p-0.5">
+      <span role="group" aria-label="Discount unit" className="flex items-center rounded-full bg-current/10 p-0.5">
         {[
           { percent: false, text: "₪" },
           { percent: true, text: "%" },
@@ -253,7 +259,9 @@ export function DiscountInput({
             aria-pressed={isPercent === option.percent}
             onClick={() => onChange(value, option.percent)}
             className={`rounded-full px-2 py-0.5 text-[11px] font-bold transition ${
-              isPercent === option.percent ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+              isPercent === option.percent
+                ? "bg-cream text-ink"
+                : "opacity-60 hover:opacity-100"
             }`}
           >
             {option.text}

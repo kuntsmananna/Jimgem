@@ -40,11 +40,13 @@ export function OrderEventPanel({
 
   return (
     /*
-      Three groups across rather than two: the event's counts, what it is
-      shown on, and how it gets there are three separate conversations —
-      with the kitchen, with the stylist and with the driver.
+      Stacked, not columns. The three groups — the event's counts, what it
+      is shown on, how it gets there — are separate conversations and read
+      fine one under the other, and a 13" laptop has no room for three of
+      them side by side. Each group keeps its rows to a readable measure
+      rather than stretching a stepper across the whole panel.
     */
-    <div className="grid grid-cols-[1fr_1fr_1fr] gap-x-8">
+    <div className="flex max-w-lg flex-col gap-5">
       <section className="flex min-w-0 flex-col">
         <GroupLabel>The event</GroupLabel>
         <SheetRow label="Guests">
@@ -86,7 +88,7 @@ export function OrderEventPanel({
           Flat and open, where the Details sheet had these folded under a
           Display heading. That fold existed to stop three display types
           lengthening a column they shared with Guests and Waitresses;
-          with a column of their own there is nothing left to protect,
+          with a heading of their own there is nothing left to protect,
           and folding two steppers away costs a click to answer a question
           the tab exists to answer.
 
@@ -123,6 +125,7 @@ export function OrderEventPanel({
         */}
         <ChipSpread
           label="Delivery"
+          showLabel={false}
           value={hasDelivery(draft) ? String(draft.deliveryOptionId ?? "other") : "none"}
           onChange={(value) =>
             onChange(

@@ -135,6 +135,38 @@ body {
 
   /* Selects can't show a placeholder, so they keep a visible affordance:
      the native chevron plus room for it, filled or not. */
+  /*
+   * The order form's money rail, drawn in negative.
+   *
+   * Every other surface in the app is cream on cream, so the one pane
+   * that has to be read from across the form is the one that stops
+   * matching: black lifts the total and the balance off the page instead
+   * of leaving them as one more column of small text. The rule sits here
+   * rather than in the component because it has to reach the shared
+   * sheet pieces (GroupLabel, SheetRow, .input) without any of them
+   * learning that a dark variant exists.
+   */
+  .money-rail {
+    @apply bg-black text-cream;
+  }
+
+  .money-rail .input {
+    @apply border-cream/25 text-cream;
+  }
+
+  .money-rail .input:hover:not(:disabled):not(:focus),
+  .money-rail .input:focus {
+    background-color: --alpha(var(--color-cream) / 10%);
+  }
+
+  .money-rail .input:focus {
+    @apply border-accent;
+  }
+
+  .money-rail .input::placeholder {
+    @apply text-cream/40;
+  }
+
   select.input {
     @apply appearance-none bg-no-repeat pr-6;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23726a5e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");

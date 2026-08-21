@@ -82,7 +82,12 @@ export function OrderMoneyRail({
   const extras = ORDER_EXTRAS.filter((extra) => extra.applies(draft));
 
   return (
-    <aside className="flex w-full flex-col rounded-2xl bg-cream/60 px-4 pt-1 pb-4">
+    /*
+      Negative, unlike everything else on the page. See globals.css's
+      `.money-rail`: the money is what this whole layout was rearranged to
+      keep visible, and cream-on-cream it was still just another column.
+    */
+    <aside className="money-rail flex w-full flex-col rounded-2xl px-4 pt-1 pb-4">
       {/*
         Coverage above the money, because it is the one thing on this rail
         that isn't a number the customer agreed to — it says whether the
@@ -94,13 +99,16 @@ export function OrderMoneyRail({
         type="button"
         onClick={onOpenContent}
         title="Edit the packing on the Content tab"
-        className="hover-line -mx-2 flex items-center gap-2 rounded-xl px-2 py-1.5 text-left"
+        // Not `.hover-line`: that rule turns a row black, which is what
+        // this pane already is. A light wash is the same gesture in
+        // negative.
+        className="-mx-2 flex items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-cream/10"
       >
-        <UnitsIcon size={15} className="shrink-0 text-ink-soft" />
-        <span className="font-display text-[22px] leading-none font-extrabold tabular-nums text-ink">
+        <UnitsIcon size={15} className="shrink-0 text-cream/60" />
+        <span className="font-display text-[22px] leading-none font-extrabold tabular-nums text-cream">
           {nf.format(totalUnits)}
         </span>
-        <span className="text-[11px] text-ink-soft">units</span>
+        <span className="text-[11px] text-cream/60">units</span>
         <span className="flex-1" />
         <Coverage
           totalUnits={totalUnits}
@@ -159,7 +167,7 @@ export function OrderMoneyRail({
       </SheetRow>
 
       <SheetRow label="Total">
-        <span className="pr-2 text-sm font-bold tabular-nums text-ink">{money(total)}</span>
+        <span className="pr-2 text-sm font-bold tabular-nums text-cream">{money(total)}</span>
       </SheetRow>
       <SheetRow label="Deposit">
         <MoneyInput
@@ -169,7 +177,7 @@ export function OrderMoneyRail({
         />
       </SheetRow>
       <SheetRow label={balance < 0 ? "Overpaid by" : "Balance due"} total>
-        <span className="font-display text-[21px] leading-none font-extrabold tabular-nums text-ink">
+        <span className="font-display text-[21px] leading-none font-extrabold tabular-nums text-cream">
           {money(Math.abs(balance))}
         </span>
       </SheetRow>
@@ -195,7 +203,7 @@ function Coverage({
   overAssignedUnits: number;
 }) {
   if (totalUnits === 0) {
-    return <span className="keeps-color text-[11px] font-semibold text-ink-soft">nothing packed</span>;
+    return <span className="keeps-color text-[11px] font-semibold text-cream/50">nothing packed</span>;
   }
   // Both say "and you can still save" rather than reading as a blocker:
   // orders are routinely booked before anyone has decided the mix, and
@@ -205,7 +213,7 @@ function Coverage({
     return (
       <span
         title={`${nf.format(overAssignedUnits)} more units are assigned to flavours than the packaging holds. You can still save and come back to it.`}
-        className="keeps-color text-[11px] font-bold text-amber-700"
+        className="keeps-color text-[11px] font-bold text-amber-300"
       >
         {nf.format(overAssignedUnits)} over
       </span>
@@ -215,11 +223,11 @@ function Coverage({
     return (
       <span
         title={`${nf.format(unassignedUnits)} units still need a flavour. You can still save and come back to it.`}
-        className="keeps-color text-[11px] font-bold text-amber-700"
+        className="keeps-color text-[11px] font-bold text-amber-300"
       >
         {nf.format(unassignedUnits)} unflavoured
       </span>
     );
   }
-  return <span className="keeps-color text-[11px] font-bold text-accent">balanced</span>;
+  return <span className="keeps-color text-[11px] font-bold text-lime-300">balanced</span>;
 }

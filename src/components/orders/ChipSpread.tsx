@@ -61,15 +61,24 @@ export function ChipSpread({
   value,
   options,
   onChange,
+  showLabel = true,
 }: {
   label: string;
   value: string;
   options: SpreadOption[];
   onChange: (value: string) => void;
+  /**
+   * Drop the visible caption where a `GroupLabel` right above already
+   * names the field — two headings for one row of chips reads as two
+   * fields. The label still reaches screen readers as the group's name.
+   */
+  showLabel?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">{label}</span>
+      {showLabel && (
+        <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">{label}</span>
+      )}
       <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1.5">
         {options.map((option) => {
           const on = option.value === value;
@@ -85,16 +94,20 @@ export function ChipSpread({
                 `keeps-color` because a chosen chip's fill *is* the answer:
                 without it the hover rule would recolor the one pill on the
                 row that must not change.
+
+                Every state carries a 1px border, selected included. The
+                chosen chip used a `ring` instead, which draws outside the
+                box rather than in it — so it came out 2px shorter than the
+                chips beside it and its label looked cropped by its own
+                pill.
               */
-              className={`keeps-color flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition ${
+              className={`keeps-color flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition ${
                 on
                   ? option.color
-                    ? "text-ink shadow-sm ring-[1.5px] ring-ink/25"
-                    : "bg-black text-cream"
+                    ? "border-ink/30 text-ink shadow-sm"
+                    : "border-black bg-black text-cream"
                   : `text-ink-soft hover:text-ink ${
-                      option.retired
-                        ? "border border-dashed border-line"
-                        : "border border-line hover:border-ink"
+                      option.retired ? "border-dashed border-line" : "border-line hover:border-ink"
                     }`
               }`}
               style={on && option.color ? { background: option.color } : undefined}

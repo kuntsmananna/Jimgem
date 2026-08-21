@@ -174,12 +174,15 @@ iteration (not guessed) — define these as `@theme` tokens in
   `OrderForm` portals the tab strip into it, which buys back a whole row
   in a popup already tall enough to crowd a laptop. The slot is null
   outside a `Modal`, so the form falls back to rendering them inline.
-- **A wide `Modal` takes 80% of the viewport**, not a fixed 64rem. The
-  order form outgrew that the moment it carried three tabs and a rail,
-  and on a 1680px laptop a 1024px popup dimmed a third of the screen for
-  nothing. The body is one fixed `min(56vh,31rem)` scroller holding every
-  panel, so the dialog is exactly the same size on every tab — sized to
-  its contents it jumped and re-centred on each switch.
+- **A wide `Modal` takes 80% of the viewport, capped at 1400px.** A fixed
+  64rem was too little the moment the order form carried three tabs and a
+  rail — on a 1680px laptop it dimmed a third of the screen for nothing —
+  but 80% of a 27" display is a 2000px popup, which is unusable in the
+  other direction: the eye has to cross the desk to read one order. The
+  cap is where the form stops having any use for more width. The body is
+  one fixed `min(56vh,31rem)` scroller holding every panel, so the dialog
+  is exactly the same size on every tab — sized to its contents it jumped
+  and re-centred on each switch.
 - **The money is a rail, not a tab** (`OrderMoneyRail`). It sits beside
   all three panels and carries the order's units, its flavour coverage,
   every amount, the discount, the total and the balance. That is what the
@@ -188,7 +191,13 @@ iteration (not guessed) — define these as `@theme` tokens in
   as the third column of a Details sheet the money could only be read
   while that tab was open. A rail rather than a fourth tab for the same
   reason — a number you have to go and look at is a number nobody looks
-  at. The old `OrderDetailsPanel` is gone; its statement pieces
+  at. **It is drawn in negative** (`.money-rail` in `globals.css`): every
+  other surface in the app is cream on cream, so the one pane meant to be
+  read from across the form is the one that stops matching. The shared
+  sheet pieces state their tones as `currentColor` and opacity rather than
+  as `text-ink-soft`, which is what lets the same `SheetRow` sit on cream
+  in a panel and on black in the rail. The old `OrderDetailsPanel` is
+  gone; its statement pieces
   (`GroupLabel`, `SheetRow`, `MoneyInput`, `PricedAmount`,
   `DiscountInput`, `YesNo`) moved to `OrderSheet.tsx`, shared by all four.
 - **The four categorical fields are chip spreads, not dropdowns**
@@ -200,14 +209,20 @@ iteration (not guessed) — define these as `@theme` tokens in
   `spreadOptions` states the three rules every picker here follows in one
   place: live rows are offered, an archived row only while this order
   still uses it, and a value resolving to no row at all still gets a chip
-  so saving cannot silently drop it. Chips stay **left-aligned** like
+  so saving cannot silently drop it. Every chip carries a 1px border in
+  every state, selected included — the chosen one used a `ring`, which
+  draws outside the box, and came out 2px shorter than its neighbours with
+  its label looking cropped by its own pill. Chips stay **left-aligned** like
   every other row in the app, even though the customer/location data
   they sit beside is Hebrew — the chrome is LTR throughout.
-- **The Event tab lays Display flat in its own column**, reversing the
-  fold `DisplayGroup` used to carry. That fold existed to stop three
-  display types lengthening a column shared with Guests and Waitresses;
-  with a column of its own there is nothing left to protect, and folding
-  two steppers away costs a click to answer the question the tab is for.
+- **The Event tab stacks its three groups**, rather than setting them in
+  columns: the counts, what it is shown on and how it gets there are
+  separate conversations that read fine one under the other, and a 13"
+  laptop has no room for three of them abreast. Display is flat and open
+  there, reversing the fold `DisplayGroup` used to carry — that fold
+  existed to stop three display types lengthening a column shared with
+  Guests and Waitresses, and with a heading of its own there is nothing
+  left to protect.
 - **The panels are order sheets, not forms.** They replaced twelve
   identical label-and-box pairs in a flat 3×4 grid, which spent a 976×416
   panel saying every field mattered equally and left the bottom third
@@ -787,7 +802,10 @@ package type, same rows and same units, so there is nothing extra to save
 and an order booked before the toggle existed already reads correctly.
 Two modes rather than a "Custom" entry among the sizes, which conflated a
 standard package you might want several of with an arbitrary amount where
-the multiplier means nothing. Switching to custom preserves the total
+the multiplier means nothing. The **Package / Event** switch comes first
+in the row and is drawn larger than the toggles around it, because it
+governs what everything after it means; the sizes themselves are a chip
+spread beside it, for the same reason the form's other short lists are. Switching to custom preserves the total
 exactly; switching back cannot — an arbitrary number rarely divides into
 whole packages, and rounding would change what the customer ordered — so
 it lands on one of the smallest package, to be adjusted.

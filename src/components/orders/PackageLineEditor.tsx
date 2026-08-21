@@ -310,23 +310,25 @@ function PresetRow({
       to its content and pushes the whole panel wider instead of being the
       thing that overflows, and `overflow-hidden` alone will not stop it.
     */
-    <div ref={rowRef} className="relative min-w-0 flex-1 overflow-hidden">
-      {/* The chips and the overflow control ride together, so "+10" reads
-          as the end of the row rather than as a separate control parked
-          against the far edge. */}
-      <div className="flex items-center gap-2">
+    <div ref={rowRef} className="flex min-w-0 flex-1 items-center gap-2">
+      {/*
+        Only the chips are clipped. The overflow control sits outside that
+        box on purpose: inside it, `overflow-hidden` cut off the popover it
+        opens, which appeared as a shadow with nothing in it.
+      */}
+      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
         {presets.slice(0, fits).map((preset) => (
           <PresetChip key={preset.id} preset={preset} flavors={flavors} onApply={onApply} />
         ))}
-        {hidden > 0 && <PresetOverflow presets={presets} flavors={flavors} hidden={hidden} onApply={onApply} />}
       </div>
+      {hidden > 0 && <PresetOverflow presets={presets} flavors={flavors} hidden={hidden} onApply={onApply} />}
 
       {/* Never seen; only measured. Absolute so it takes no space, and
           `invisible` rather than hidden so its chips still have widths. */}
       <div
         ref={measureRef}
         aria-hidden
-        className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-2"
+        className="pointer-events-none invisible fixed top-0 left-0 flex items-center gap-2"
       >
         {presets.map((preset) => (
           <PresetChip key={preset.id} preset={preset} flavors={flavors} onApply={() => {}} />
@@ -339,6 +341,8 @@ function PresetRow({
 /** Matches the `gap-2` and the overflow button below, in px. */
 const CHIP_GAP = 8;
 const OVERFLOW_WIDTH = 44;
+/** Roughly what the overflow list needs, for deciding which way it opens. */
+const LIST_HEIGHT = 280;
 
 function PresetChip({
   preset,
@@ -375,8 +379,24 @@ function PresetOverflow({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  /**
+   * Which way the list opens. Measured rather than fixed: this control
+   * sits under the packages, so it is near the bottom of a tall order and
+   * near the top of an empty one — and on a 13" laptop, opening upwards
+   * from the top of the panel put the search box above the window.
+   */
+  const [up, setUp] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   usePopoverDismiss(open, containerRef, () => setOpen(false));
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const trigger = containerRef.current?.getBoundingClientRect();
+    if (!trigger) return;
+    // Upwards only when the room is actually there; below is the default
+    // a dropdown is read as having.
+    setUp(window.innerHeight - trigger.bottom < LIST_HEIGHT && trigger.top > LIST_HEIGHT);
+  }, [open]);
 
   const matches = presets.filter((preset) =>
     preset.name.toLowerCase().includes(query.trim().toLowerCase()),
@@ -395,10 +415,13 @@ function PresetOverflow({
       </button>
 
       {open && (
-        // Right-aligned and opening upwards: this control sits at the
-        // bottom-right of the panel, and a list dropping from it would
-        // fall straight out of the dialog.
-        <div className="absolute right-0 bottom-full z-30 mb-1.5 w-64 rounded-2xl border border-line bg-card p-2 shadow-xl">
+        // Right-aligned, so a list wider than a "+10" button grows back
+        // over the chips it belongs to rather than off the panel's edge.
+        <div
+          className={`absolute right-0 z-30 w-64 rounded-2xl border border-line bg-card p-2 shadow-xl ${
+            up ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          }`}
+        >
           <label className="relative mb-1.5 flex items-center">
             <Search size={13} className="pointer-events-none absolute left-2.5 text-ink-soft" aria-hidden />
             <TextInput
@@ -661,74 +684,13 @@ function LineCard({
           {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 16)}
         </span>
 
-        {custom ? (
-          /*
-            One plain total, no multiplier. An event asking for 260 cubes
-            is not "so many of a package" — it is a number someone agreed
-            to — and expressing it as a count of a 1-unit package is an
-            implementation detail the person typing it shouldn't have to
-            perform.
-          */
-          <label className="flex items-center gap-2">
-            <span className="text-xs text-ink-soft">Total</span>
-            <input
-              type="number"
-              min={1}
-              aria-label="Total units"
-              value={line.quantity}
-              onChange={(e) => resize({ quantity: Math.max(1, Number(e.target.value) || 1) }, Math.max(1, Number(e.target.value) || 1))}
-              className="w-24 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent"
-            />
-            <span className="text-xs text-ink-soft">units</span>
-          </label>
-        ) : (
-          <>
-            <select
-              aria-label="Package type"
-              value={line.packageTypeId}
-              onChange={(e) =>
-                resize(
-                  { packageTypeId: e.target.value },
-                  (unitsPerPackage.get(Number(e.target.value)) ?? 0) * line.quantity,
-                )
-              }
-              className="rounded-full border border-line bg-cream px-3 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
-            >
-              {/* Retired types stay out, unless this line already uses one —
-                  then it has to remain selectable or opening the dropdown and
-                  closing it would silently repackage the order. `packageTypes`
-                  arrives with archived rows so existing lines can resolve
-                  their size, which is why the filter belongs here. The
-                  1-unit type is left out too: it is what Custom *is*, and
-                  offering it here would be two ways to say the same thing. */}
-              {packageTypes
-                .filter(
-                  (p) =>
-                    (!p.archivedAt || String(p.id) === line.packageTypeId) &&
-                    (p.unitsPerPackage > 1 || String(p.id) === line.packageTypeId),
-                )
-                .map((p) => (
-                  <option key={p.id} value={String(p.id)}>
-                    {p.name}
-                  </option>
-                ))}
-            </select>
-
-            <NumberStepper
-              label="packages"
-              value={line.quantity}
-              min={1}
-              onChange={(quantity) =>
-                resize({ quantity }, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity)
-              }
-            />
-
-            <span className="text-xs text-ink-soft">
-              = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
-            </span>
-          </>
-        )}
-
+        {/*
+          First and loudest, because it decides what every control after
+          it means: a count of packages, or one agreed total. Reading the
+          row left to right then goes "this is a Package line — of this
+          size — this many", which is the order the decision is actually
+          made in.
+        */}
         {singleUnit && smallestPackage && (
           <SizingSwitch
             custom={custom}
@@ -747,6 +709,67 @@ function LineCard({
                   )
             }
           />
+        )}
+
+        {custom ? (
+          /*
+            One plain total, no multiplier. An event asking for 260 cubes
+            is not "so many of a package" — it is a number someone agreed
+            to — and expressing it as a count of a 1-unit package is an
+            implementation detail the person typing it shouldn't have to
+            perform.
+          */
+          <label className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              aria-label="Total units"
+              value={line.quantity}
+              onChange={(e) => resize({ quantity: Math.max(1, Number(e.target.value) || 1) }, Math.max(1, Number(e.target.value) || 1))}
+              className="w-24 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent"
+            />
+            <span className="text-xs text-ink-soft">units in total</span>
+          </label>
+        ) : (
+          <>
+            {/*
+              The sizes spread out rather than hiding behind a dropdown.
+              There are three of them, they are the shortest labels in the
+              form, and which one a line is *is* what you came to this row
+              to read — a select spent a click and a popover to show one of
+              three words. Same rule as the form's other chip spreads.
+
+              Retired types stay out, unless this line already uses one:
+              it has to remain choosable or opening the row and leaving it
+              would silently repackage the order. The 1-unit type is left
+              out too — it is what Event mode *is*, and offering it here
+              would be two ways to say the same thing.
+            */}
+            <SizeSpread
+              value={line.packageTypeId}
+              options={packageTypes.filter(
+                (p) =>
+                  (!p.archivedAt || String(p.id) === line.packageTypeId) &&
+                  (p.unitsPerPackage > 1 || String(p.id) === line.packageTypeId),
+              )}
+              onChange={(id) =>
+                resize({ packageTypeId: id }, (unitsPerPackage.get(Number(id)) ?? 0) * line.quantity)
+              }
+            />
+
+            <NumberStepper
+              label="packages"
+              value={line.quantity}
+              min={1}
+              onChange={(quantity) =>
+                resize({ quantity }, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity)
+              }
+            />
+
+            <span className="text-xs text-ink-soft">
+              = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
+            </span>
+          </>
         )}
 
         <span className="flex-1" />
@@ -837,13 +860,18 @@ function LineCoverage({ remaining, packed }: { remaining: number; packed: number
 }
 
 /**
- * Package or Custom — two ways of saying how much jelly, not one control
+ * Package or Event — two ways of saying how much jelly, not one control
  * with a "Custom" entry mixed in among the sizes.
  *
  * They are different questions. A package is a thing the kitchen makes
- * several of; a custom total is a number agreed for one event, where the
- * idea of a multiplier doesn't apply at all. Putting "Custom" in the size
- * dropdown made the count stepper beside it meaningless without saying so.
+ * several of; an event total is a number agreed for one booking, where
+ * the idea of a multiplier doesn't apply at all. Putting "Custom" among
+ * the sizes made the count stepper beside it meaningless without saying
+ * so.
+ *
+ * Drawn larger than the toggles elsewhere in the form and placed first in
+ * the row, because it governs everything after it: the same row reads as
+ * "three of the 12s" or as "260 units" depending only on this.
  */
 function SizingSwitch({
   custom,
@@ -855,21 +883,66 @@ function SizingSwitch({
   return (
     <div role="group" aria-label="How this line is sized" className="flex shrink-0 gap-0.5 rounded-full bg-cream p-0.5">
       {[
-        { value: false, text: "package" },
-        { value: true, text: "custom" },
+        { value: false, text: "Package" },
+        { value: true, text: "Event" },
       ].map((option) => (
         <button
           key={option.text}
           type="button"
           aria-pressed={custom === option.value}
           onClick={() => onChange(option.value)}
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
+          className={`rounded-full px-3.5 py-1 text-xs font-bold transition ${
             custom === option.value ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
           }`}
         >
           {option.text}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * The package sizes as a chip spread. Same reasoning as the form's other
+ * spreads: a short owner-managed list read far more often than it is
+ * changed has no business behind a popover.
+ *
+ * It wraps rather than scrolls, so a fifth size added in Settings takes a
+ * second line instead of quietly falling off the end of the row.
+ */
+function SizeSpread({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: PackageType[];
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Package size" className="flex flex-wrap items-center gap-1">
+      {options.map((option) => {
+        const id = String(option.id);
+        const on = id === value;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(id)}
+            // Border on both states, so the chosen size is the same
+            // height as the ones beside it.
+            className={`keeps-color rounded-full border px-3 py-1 text-xs font-bold whitespace-nowrap transition ${
+              on
+                ? "border-black bg-black text-cream"
+                : "border-line text-ink-soft hover:border-ink hover:text-ink"
+            }`}
+          >
+            {option.name}
+          </button>
+        );
+      })}
     </div>
   );
 }
