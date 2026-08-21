@@ -43,6 +43,16 @@ export function spreadOptions<T>(
   rows: T[],
   current: string,
   read: (row: T) => Omit<SpreadOption, "retired"> & { archivedAt?: string | null },
+  /**
+   * What to call a value that resolves to no row at all.
+   *
+   * Defaults to the stored value, which is right for a list orders
+   * reference by name (order types). For an id- or key-keyed list it is
+   * not: a deleted destination would render a chip reading "7" and a
+   * missing stage one reading "paid-closed". Those callers pass something
+   * legible instead.
+   */
+  labelFor: (value: string) => string = (value) => value,
 ): SpreadOption[] {
   const options: SpreadOption[] = [];
   for (const row of rows) {
@@ -51,7 +61,7 @@ export function spreadOptions<T>(
     else if (option.value === current) options.push({ ...option, retired: true });
   }
   if (current && !options.some((option) => option.value === current)) {
-    options.push({ value: current, label: current, retired: true });
+    options.push({ value: current, label: labelFor(current), retired: true });
   }
   return options;
 }
@@ -62,11 +72,20 @@ export function ChipSpread({
   options,
   onChange,
   showLabel = true,
+  size = "sm",
 }: {
   label: string;
   value: string;
   options: SpreadOption[];
   onChange: (value: string) => void;
+  /**
+   * `md` for a spread that is the subject of its row rather than one of
+   * several stacked under captions — the package sizes on a content line.
+   * A prop rather than a second component: the two differ by padding and
+   * a point of type, and drawn as separate components they drifted apart
+   * within a day of each other being written.
+   */
+  size?: "sm" | "md";
   /**
    * Drop the visible caption where a `GroupLabel` right above already
    * names the field — two headings for one row of chips reads as two
@@ -74,12 +93,14 @@ export function ChipSpread({
    */
   showLabel?: boolean;
 }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      {showLabel && (
-        <span className="text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase">{label}</span>
-      )}
-      <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1.5">
+  /*
+   * The captioned form wraps the chips in a column; the uncaptioned one is
+   * just the chips. Rendering the wrapper either way put a non-shrinking
+   * block in the middle of the package line's flex row, which pushed Save
+   * and delete onto a second line.
+   */
+  const chips = (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1.5">
         {options.map((option) => {
           const on = option.value === value;
           return (
@@ -101,7 +122,9 @@ export function ChipSpread({
                 chips beside it and its label looked cropped by its own
                 pill.
               */
-              className={`keeps-color flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition ${
+              className={`keeps-color flex shrink-0 items-center gap-1.5 rounded-full border font-bold whitespace-nowrap transition ${
+                size === "md" ? "px-3 py-1 text-xs" : "px-2.5 py-1 text-[11px]"
+              } ${
                 on
                   ? option.color
                     ? "border-ink/30 text-ink shadow-sm"
@@ -117,7 +140,14 @@ export function ChipSpread({
             </button>
           );
         })}
-      </div>
+    </div>
+  );
+
+  if (!showLabel) return chips;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase">{label}</span>
+      {chips}
     </div>
   );
 }

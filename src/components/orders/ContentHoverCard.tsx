@@ -6,6 +6,7 @@ import {
   linePackedUnits,
   matchingPreset,
   orderUnits,
+  packageLineLabel,
   unitsPerPackageMap,
   type OrderPackageLine,
 } from "@/lib/orderTypes";
@@ -84,6 +85,7 @@ export function ContentHoverCard({
                 line={line}
                 flavors={flavors}
                 packed={linePackedUnits(line, unitsPerPackage)}
+                unitsPerPackage={unitsPerPackage}
                 packageType={packageTypes.find((p) => String(p.id) === line.packageTypeId)}
                 preset={matchingPreset(line, presets, unitsPerPackage)}
               />
@@ -102,6 +104,7 @@ function LineDetail({
   line,
   flavors,
   packed,
+  unitsPerPackage,
   packageType,
   preset,
 }: {
@@ -109,6 +112,8 @@ function LineDetail({
   flavors: Flavor[];
   /** Units this line packs, from the parent's one lookup map. */
   packed: number;
+  /** The same map, so the line can say whether it is a one-off total. */
+  unitsPerPackage: Map<number, number>;
   packageType: PackageType | undefined;
   /** The saved mix this line holds, if it is one of them. */
   preset: ContentPreset | undefined;
@@ -119,7 +124,7 @@ function LineDetail({
     <section>
       <div className="flex items-baseline justify-between gap-2">
         <p className="flex min-w-0 items-baseline gap-1.5 truncate text-xs font-bold text-ink">
-          {line.quantity}× {packageType?.name ?? "Unknown package"}
+          {packageLineLabel(line, unitsPerPackage, packageType?.name ?? "Unknown package")}
           {/* Named when the line holds one of the saved mixes, so a
               recognisable order reads as "2 × the usual" rather than as a
               flavour list to decode. The rows below still spell it out. */}

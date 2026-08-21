@@ -1,5 +1,3 @@
-import { NotYet } from "@/components/clients/NotYet";
-
 /**
  * Clients — a placeholder, deliberately.
  *
@@ -13,7 +11,21 @@ export default function ClientsPage() {
     // Fills the space the nav leaves, so the gif is centred on the page
     // rather than sitting under the header with a screen of cream below.
     <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center">
-      <NotYet />
+      {/*
+        A plain <img>, not next/image: the optimizer re-encodes an animated
+        gif to a still frame, and a page whose only content is a gif that
+        doesn't move is not the page.
+
+        Held at 512px — the source is 220px wide, so everything past ~2.3x
+        is invented, and a mushy Homer is a worse joke than a smaller sharp
+        one.
+      */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/not-yet.gif"
+        alt="Homer Simpson in front of a hedge, captioned: not yet"
+        className="w-full max-w-lg rounded-card"
+      />
     </div>
   );
 }

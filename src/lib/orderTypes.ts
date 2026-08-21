@@ -243,6 +243,43 @@ export function unitsPerPackageMap(
 }
 
 /** Units this line packs: its package count times that package's size. */
+/**
+ * Whether a package line is a one-off total rather than a count of
+ * packages.
+ *
+ * Inferred, never stored: a custom total *is* N of the 1-unit package
+ * type — same rows, same units — so there is nothing extra to save and an
+ * order booked before the distinction existed already reads correctly. A
+ * stored flag would only be a second account of the same fact, free to
+ * disagree with it.
+ *
+ * Here rather than in the editor that introduced it, because every other
+ * renderer of a line needs the same answer: without it a line of 260
+ * reads as "260x 1 units" in the folded summary, the Orders table's hover
+ * card, the Kanban chips and the tray caption.
+ */
+export function isCustomLine(
+  line: Pick<OrderPackageLine, "packageTypeId">,
+  unitsPerPackage: Map<number, number>,
+): boolean {
+  return unitsPerPackage.get(Number(line.packageTypeId)) === 1;
+}
+
+/**
+ * How to name a package line: "3 x Small tray", or just its total when
+ * the line is a one-off amount for one event.
+ */
+export function packageLineLabel(
+  line: Pick<OrderPackageLine, "packageTypeId" | "quantity">,
+  unitsPerPackage: Map<number, number>,
+  packageName: string,
+): string {
+  if (isCustomLine(line, unitsPerPackage)) {
+    return `${line.quantity.toLocaleString("en-US")} units`;
+  }
+  return `${line.quantity}× ${packageName}`;
+}
+
 export function linePackedUnits(line: OrderPackageLine, unitsPerPackage: Map<number, number>): number {
   return line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0);
 }
@@ -417,6 +454,27 @@ export function withDelivery<T extends Pick<OrderInput, "deliveryCost" | "delive
   return { ...order, deliveryCost: order.deliveryCost ?? 0, deliveryOptionId: optionId };
 }
 
+/**
+ * What the displays on an order come to, at the owner's list prices.
+ *
+ * Named rather than written inline in ORDER_EXTRAS because both
+ * `standard` and `rate` need it, and referring to the array from inside
+ * its own literal makes its inferred type circular — every member then
+ * degrades to `any` and the table stops type-checking its own entries.
+ */
+function displayTotal(order: OrderInput, rates: Rates): number {
+  const priceById = new Map(rates.displayOptions.map((o) => [o.id, o.price]));
+  return order.displays.reduce(
+    (sum, entry) => sum + (priceById.get(entry.optionId) ?? 0) * entry.quantity,
+    0,
+  );
+}
+
+/** The price of the destination an order is being delivered to, if any. */
+function deliveryRate(order: OrderInput, rates: Rates): number {
+  return rates.deliveryOptions.find((option) => option.id === order.deliveryOptionId)?.price ?? 0;
+}
+
 export const ORDER_EXTRAS = [
   {
     // Gated on the cost being set at all rather than on a separate flag:
@@ -431,14 +489,13 @@ export const ORDER_EXTRAS = [
     // prices as well, which meant the same number was set in two places
     // and the destinations were the half that could actually be right.
     priceKey: null,
-    per: "per destination",
     applies: (order: OrderInput) => hasDelivery(order),
     // The chosen destination's price, and nothing when delivery is on
     // without one — "Other" is exactly the case where nobody has said yet
     // what the trip costs, so the amount is hand-typed from blank rather
     // than pre-filled with a rate that means nothing.
-    standard: (order: OrderInput, rates: Rates) =>
-      rates.deliveryOptions.find((option) => option.id === order.deliveryOptionId)?.price ?? 0,
+    standard: deliveryRate,
+    rate: deliveryRate,
   },
   {
     id: "display",
@@ -448,15 +505,10 @@ export const ORDER_EXTRAS = [
     // order can hold several at once. This is why `standard` exists rather
     // than a `priceKey` every extra multiplies — see `Rates`.
     priceKey: null,
-    per: "per item",
     applies: (order: OrderInput) => displayCount(order.displays) > 0,
-    standard: (order: OrderInput, rates: Rates) => {
-      const priceById = new Map(rates.displayOptions.map((o) => [o.id, o.price]));
-      return order.displays.reduce(
-        (sum, entry) => sum + (priceById.get(entry.optionId) ?? 0) * entry.quantity,
-        0,
-      );
-    },
+    standard: displayTotal,
+    // Priced from its own list, so what it "would" cost is the same sum.
+    rate: displayTotal,
   },
   {
     id: "waitress",
@@ -466,6 +518,7 @@ export const ORDER_EXTRAS = [
     per: "per waitress",
     applies: (order: OrderInput) => (order.waitresses ?? 0) > 0,
     standard: (order: OrderInput, rates: Rates) => rates.prices.waitress * (order.waitresses ?? 0),
+    rate: (_order: OrderInput, rates: Rates) => rates.prices.waitress,
   },
   {
     id: "kosher",
@@ -475,6 +528,7 @@ export const ORDER_EXTRAS = [
     per: "flat",
     applies: (order: OrderInput) => order.kosher,
     standard: (order: OrderInput, rates: Rates) => rates.prices.kosher,
+    rate: (_order: OrderInput, rates: Rates) => rates.prices.kosher,
   },
 ] as const satisfies readonly {
   id: string;
@@ -482,9 +536,26 @@ export const ORDER_EXTRAS = [
   cost: keyof OrderInput;
   /** Null when the extra prices itself from a list rather than a flat rate. */
   priceKey: PriceKey | null;
-  per: string;
+  /**
+   * How the rate is charged, for the Add-on prices pane. Only a flat rate
+   * has one — `PRICE_FIELDS` skips every extra whose `priceKey` is null,
+   * so a `per` beside one could never be read.
+   */
+  per?: string;
   applies: (order: OrderInput) => boolean;
+  /** What the whole extra comes to at the standard rate. */
   standard: (order: OrderInput, rates: Rates) => number;
+  /**
+   * The single figure to name as "the standard rate" beside the amount —
+   * per waitress, per destination, and so on.
+   *
+   * Its own member rather than something the caller derives by branching
+   * on `priceKey`: `priceKey` says whether the extra appears in the Add-on
+   * prices pane, which is a different question, and two of the four now
+   * answer null to it. With this, adding a fifth extra is one more entry
+   * here rather than one more entry plus a ternary in the money rail.
+   */
+  rate: (order: OrderInput, rates: Rates) => number;
 }[];
 
 /** How many display items an order carries in total, across its options. */

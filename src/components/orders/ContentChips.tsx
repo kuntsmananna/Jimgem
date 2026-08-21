@@ -1,4 +1,4 @@
-import type { OrderPackageLine } from "@/lib/orderTypes";
+import { type OrderPackageLine, packageLineLabel, unitsPerPackageMap } from "@/lib/orderTypes";
 import type { PackageType } from "@/lib/settings";
 import { flavorGradient } from "@/lib/flavorStyle";
 
@@ -32,21 +32,22 @@ export function ContentChips({
 }) {
   if (lines.length === 0) return <span className="text-xs text-ink-soft">—</span>;
 
+  // A line of N x the 1-unit package is a one-off total, not a count of
+  // packages — see `packageLineLabel`.
+  const unitsPerPackage = unitsPerPackageMap(packageTypes);
+
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       {lines.map((line, lineIndex) => {
         const pkg = packageTypes.find((p) => String(p.id) === line.packageTypeId);
+        const label = packageLineLabel(line, unitsPerPackage, pkg?.name ?? "?");
         return (
           <span key={lineIndex} className="flex flex-wrap items-center gap-1">
             <span
-              title={
-                pkg
-                  ? `${line.quantity} × ${pkg.name} (${pkg.unitsPerPackage} units each)`
-                  : undefined
-              }
+              title={pkg ? `${label} (${pkg.unitsPerPackage} units each)` : undefined}
               className="keeps-color rounded-full border border-line bg-cream px-2 py-0.5 text-[11px] font-semibold text-ink"
             >
-              {line.quantity}× {pkg?.name ?? "?"}
+              {label}
             </span>
             {line.flavors.map((entry, i) => {
               const flavor = flavors.find((f) => String(f.id) === entry.flavorId);

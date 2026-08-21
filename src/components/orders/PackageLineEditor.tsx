@@ -5,9 +5,11 @@ import { CalendarRange, ChevronDown, ChevronRight, Minus, Package, Plus, Search,
 import {
   type OrderPackageLine,
   evenSplit,
+  isCustomLine,
   lineAssignedUnits,
   linePackedUnits,
   matchingPreset,
+  packageLineLabel,
   presetUnits,
   setFlavorUnits,
   toggleFlavorUnits,
@@ -16,6 +18,8 @@ import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { flavorBarGradient, flavorGradient } from "@/lib/flavorStyle";
 import { UnitsIcon, packageTypeIconElement } from "@/lib/icons";
 import { TextInput } from "@/components/Field";
+import { ChipSpread, spreadOptions } from "./ChipSpread";
+import { Segmented } from "./OrderSheet";
 import { usePopoverDismiss } from "@/components/useOverlayDismiss";
 import { TrayPreview } from "./TrayPreview";
 
@@ -122,6 +126,29 @@ export function lineFromPreset(preset: ContentPreset, packageTypes: PackageType[
 }
 
 /**
+ * The smallest live package type, optionally ignoring the 1-unit one.
+ *
+ * Written twice before — once to pick what a blank line starts as, once
+ * to pick what Event mode falls back to when it is switched off — with
+ * the same reduce spelled out both times. `packageTypes` arrives with
+ * archived rows so existing lines can still resolve their size, which is
+ * why every caller has to filter: the first entry in the list can easily
+ * be one that was retired, which is how a new package once started out as
+ * a retired 100-unit box.
+ */
+function smallestLivePackage(
+  packageTypes: PackageType[],
+  { above = 0 }: { above?: number } = {},
+): PackageType | null {
+  return packageTypes
+    .filter((type) => !type.archivedAt && type.unitsPerPackage > above)
+    .reduce<PackageType | null>(
+      (best, type) => (best === null || type.unitsPerPackage < best.unitsPerPackage ? type : best),
+      null,
+    );
+}
+
+/**
  * The order form's Content section: a list of package lines, one open at
  * a time. Each open line puts every flavour on the left with its
  * percentage and unit count, and a picture of the packed tray on the
@@ -167,22 +194,10 @@ export function PackageLineEditor({
   }
 
   function addBlankLine() {
-    /*
-     * The smallest live package, not simply the first one in the list.
-     *
-     * `packageTypes` arrives with archived rows included so existing lines
-     * can still resolve their size, so the first entry can easily be one
-     * that was retired — which is how a new package started out as a
-     * retired 100-unit box. Smallest because a new line should commit to
-     * as little as possible: scaling up is a keystroke, and noticing that
-     * a blank line already said 100 units is not.
-     */
-    const smallest = packageTypes
-      .filter((type) => !type.archivedAt)
-      .reduce<PackageType | null>(
-        (best, type) => (best === null || type.unitsPerPackage < best.unitsPerPackage ? type : best),
-        null,
-      );
+    // Smallest, because a new line should commit to as little as
+    // possible: scaling up is a keystroke, and noticing that a blank line
+    // already said 100 units is not.
+    const smallest = smallestLivePackage(packageTypes);
     if (!smallest) return;
     addLine({
       uid: nextUid++,
@@ -536,13 +551,8 @@ function LineCard({
    * account of the same fact, free to disagree with it.
    */
   const singleUnit = packageTypes.find((p) => p.unitsPerPackage === 1 && !p.archivedAt);
-  const smallestPackage = packageTypes
-    .filter((p) => !p.archivedAt && p.unitsPerPackage > 1)
-    .reduce<PackageType | null>(
-      (best, type) => (best === null || type.unitsPerPackage < best.unitsPerPackage ? type : best),
-      null,
-    );
-  const custom = packageType?.unitsPerPackage === 1;
+  const smallestPackage = smallestLivePackage(packageTypes, { above: 1 });
+  const custom = isCustomLine(line, unitsPerPackage);
 
   /**
    * A number typed or dragged is a deliberate ratio, so it also switches
@@ -658,7 +668,7 @@ function LineCard({
           <ChevronRight size={14} className="shrink-0 text-ink-soft" />
           <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink">
             {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 12)}
-            {line.quantity}× {packageType?.name ?? "?"}
+            {packageLineLabel(line, unitsPerPackage, packageType?.name ?? "?")}
           </span>
           <FoldedMix line={line} flavors={flavors} packed={packed} />
           <span className="flex-1" />
@@ -673,7 +683,7 @@ function LineCard({
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`Remove ${line.quantity}× ${packageType?.name ?? "package"}`}
+          aria-label={`Remove ${packageLineLabel(line, unitsPerPackage, packageType?.name ?? "package")}`}
           title="Remove this package"
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
         >
@@ -703,8 +713,23 @@ function LineCard({
           made in.
         */}
         {singleUnit && smallestPackage && (
-          <SizingSwitch
-            custom={custom}
+          /*
+            Package or Event — two ways of saying how much jelly, not one
+            control with a "Custom" entry mixed in among the sizes. They
+            are different questions: a package is something the kitchen
+            makes several of, an event total is a number agreed for one
+            booking where a multiplier means nothing. Drawn at `md` and
+            placed first because it governs what every control after it
+            means; the icons carry the same distinction as the two words.
+          */
+          <Segmented
+            label="How this line is sized"
+            size="md"
+            value={custom}
+            options={[
+              { value: false, text: "Package", icon: <Package size={13} /> },
+              { value: true, text: "Event", icon: <CalendarRange size={13} /> },
+            ]}
             onChange={(toCustom) =>
               toCustom
                 ? // The total is preserved exactly: N cubes of a 1-unit
@@ -733,42 +758,51 @@ function LineCard({
           <label className="flex items-center gap-2">
             {/* Room for five digits: an event total is in the thousands,
                 where a package count is never more than three. */}
-            <input
+            <TextInput
               type="number"
               min={1}
               max={99999}
               aria-label="Total units"
               value={line.quantity}
-              onChange={(e) => resize({ quantity: Math.max(1, Number(e.target.value) || 1) }, Math.max(1, Number(e.target.value) || 1))}
-              className="w-28 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent"
+              onChange={(e) => {
+                const units = Math.max(1, Number(e.target.value) || 1);
+                resize({ quantity: units }, units);
+              }}
+              className="w-28 text-center font-semibold tabular-nums"
             />
             <span className="text-xs text-ink-soft">units in total</span>
           </label>
         ) : (
           <>
             {/*
-              The sizes spread out rather than hiding behind a dropdown.
-              There are three of them, they are the shortest labels in the
+              The sizes spread out rather than hiding behind a dropdown:
+              there are three of them, they are the shortest labels in the
               form, and which one a line is *is* what you came to this row
-              to read — a select spent a click and a popover to show one of
-              three words. Same rule as the form's other chip spreads.
-
-              Retired types stay out, unless this line already uses one:
-              it has to remain choosable or opening the row and leaving it
-              would silently repackage the order. The 1-unit type is left
-              out too — it is what Event mode *is*, and offering it here
-              would be two ways to say the same thing.
+              to read. The same `ChipSpread` the form's other short lists
+              use, so the archived-value rule is stated once in
+              `spreadOptions` instead of re-derived here.
             */}
-            <SizeSpread
+            <ChipSpread
+              label="Package size"
+              showLabel={false}
+              size="md"
               value={line.packageTypeId}
-              options={packageTypes.filter(
-                (p) =>
-                  (!p.archivedAt || String(p.id) === line.packageTypeId) &&
-                  (p.unitsPerPackage > 1 || String(p.id) === line.packageTypeId),
-              )}
               onChange={(id) =>
                 resize({ packageTypeId: id }, (unitsPerPackage.get(Number(id)) ?? 0) * line.quantity)
               }
+              options={spreadOptions(
+                // The 1-unit type is filtered out rather than left to the
+                // archive rule: it is what Event mode *is*, so offering it
+                // here would be two ways to say the same thing.
+                packageTypes.filter(
+                  (p) => p.unitsPerPackage > 1 || String(p.id) === line.packageTypeId,
+                ),
+                line.packageTypeId,
+                (p) => ({ value: String(p.id), label: p.name, archivedAt: p.archivedAt }),
+                // Keyed by id, so a size resolving to no row at all would
+                // otherwise draw a chip reading "7".
+                () => "Unknown size",
+              )}
             />
 
             {/* Three digits is already more trays than anyone has ordered;
@@ -793,7 +827,19 @@ function LineCard({
 
         <LineNote remaining={remaining} packed={packed} />
 
-        <ModeSwitch mode={line.mode} onChange={(mode) => onPatch({ mode })} />
+        {/* Units or percent, per line rather than per form: an order can
+            hold one tray sized by a headcount and another quoted as "a
+            third mix". The bar is identical either way — only the numbers
+            beside it change what they read as. */}
+        <Segmented
+          label="Enter flavours as"
+          value={line.mode}
+          options={[
+            { value: "units" as const, text: "units" },
+            { value: "percent" as const, text: "%" },
+          ]}
+          onChange={(mode) => onPatch({ mode })}
+        />
 
         {/* Done with this package. It doesn't write anything — the order
             saves as a whole — it folds the line back to its summary so the
@@ -885,98 +931,6 @@ function LineNote({ remaining, packed }: { remaining: number; packed: number }) 
             ? `${nf.format(remaining)} unassigned`
             : `${nf.format(-remaining)} over`}
     </span>
-  );
-}
-
-/**
- * Package or Event — two ways of saying how much jelly, not one control
- * with a "Custom" entry mixed in among the sizes.
- *
- * They are different questions. A package is a thing the kitchen makes
- * several of; an event total is a number agreed for one booking, where
- * the idea of a multiplier doesn't apply at all. Putting "Custom" among
- * the sizes made the count stepper beside it meaningless without saying
- * so.
- *
- * Drawn larger than the toggles elsewhere in the form and placed first in
- * the row, because it governs everything after it: the same row reads as
- * "three of the 12s" or as "260 units" depending only on this.
- */
-function SizingSwitch({
-  custom,
-  onChange,
-}: {
-  custom: boolean;
-  onChange: (custom: boolean) => void;
-}) {
-  return (
-    <div role="group" aria-label="How this line is sized" className="flex shrink-0 gap-0.5 rounded-full bg-cream p-0.5">
-      {[
-        // A box you make several of, against a date you make one amount
-        // for. The marks carry the distinction the two words are making,
-        // which is the whole reason this control sits first in the row.
-        { value: false, text: "Package", Icon: Package },
-        { value: true, text: "Event", Icon: CalendarRange },
-      ].map((option) => (
-        <button
-          key={option.text}
-          type="button"
-          aria-pressed={custom === option.value}
-          onClick={() => onChange(option.value)}
-          className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition ${
-            custom === option.value ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-          }`}
-        >
-          <option.Icon size={13} />
-          {option.text}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
- * The package sizes as a chip spread. Same reasoning as the form's other
- * spreads: a short owner-managed list read far more often than it is
- * changed has no business behind a popover.
- *
- * It wraps rather than scrolls, so a fifth size added in Settings takes a
- * second line instead of quietly falling off the end of the row.
- */
-function SizeSpread({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: PackageType[];
-  onChange: (id: string) => void;
-}) {
-  return (
-    <div role="radiogroup" aria-label="Package size" className="flex flex-wrap items-center gap-1">
-      {options.map((option) => {
-        const id = String(option.id);
-        const on = id === value;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => onChange(id)}
-            // Border on both states, so the chosen size is the same
-            // height as the ones beside it.
-            className={`keeps-color rounded-full border px-3 py-1 text-xs font-bold whitespace-nowrap transition ${
-              on
-                ? "border-black bg-black text-cream"
-                : "border-line text-ink-soft hover:border-ink hover:text-ink"
-            }`}
-          >
-            {option.name}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1185,41 +1139,6 @@ export function NumberStepper({
         <Plus size={13} />
       </StepButton>
     </span>
-  );
-}
-
-/**
- * Units or percent, per line rather than per form: an order can hold one
- * tray sized by a customer's headcount and another quoted as "a third
- * mix", and forcing both into one notation is what made the old single
- * flavour list awkward.
- *
- * The bar is identical in either mode — only the numbers beside it change
- * what they read as.
- */
-function ModeSwitch({
-  mode,
-  onChange,
-}: {
-  mode: DraftPackageLine["mode"];
-  onChange: (mode: DraftPackageLine["mode"]) => void;
-}) {
-  return (
-    <div className="flex shrink-0 gap-0.5 rounded-full bg-cream p-0.5">
-      {(["units", "percent"] as const).map((option) => (
-        <button
-          key={option}
-          type="button"
-          aria-pressed={mode === option}
-          onClick={() => onChange(option)}
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
-            mode === option ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-          }`}
-        >
-          {option === "units" ? "units" : "%"}
-        </button>
-      ))}
-    </div>
   );
 }
 

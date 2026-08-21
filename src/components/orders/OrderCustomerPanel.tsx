@@ -135,12 +135,14 @@ export function OrderCustomerPanel({
             label="Status"
             value={draft.productionStatus}
             onChange={(productionStatus) => set({ productionStatus })}
-            options={spreadOptions(stages, draft.productionStatus, (s) => ({
-              value: s.key,
-              label: s.label,
-              color: s.color,
-              archivedAt: s.archivedAt,
-            }))}
+            options={spreadOptions(
+              stages,
+              draft.productionStatus,
+              (s) => ({ value: s.key, label: s.label, color: s.color, archivedAt: s.archivedAt }),
+              // Stages are stored by key, so a stage row that has gone
+              // missing would otherwise draw a chip reading "paid-closed".
+              () => "Unknown status",
+            )}
           />
         </div>
       </section>

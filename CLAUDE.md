@@ -223,9 +223,22 @@ iteration (not guessed) — define these as `@theme` tokens in
   in a panel and on black in the rail. The old `OrderDetailsPanel` is
   gone; its statement pieces
   (`GroupLabel`, `SheetRow`, `MoneyInput`, `PricedAmount`,
-  `DiscountInput`, `YesNo`) moved to `OrderSheet.tsx`, shared by all four.
-- **The four categorical fields are chip spreads, not dropdowns**
-  (`ChipSpread`): order type, payment status, status, delivery. They are
+  `DiscountInput`, `YesNo`, `Segmented`) moved to `OrderSheet.tsx`, shared
+  by the three panels and the rail. They state their tones through
+  `currentColor` and the `--field-*` / `--segmented-*` custom properties
+  rather than as fixed `text-ink-soft`/`bg-black`, which is what lets one
+  piece sit on a cream panel and on the black rail without the call site
+  saying which — a surface re-tones every field and toggle inside it by
+  setting those properties once (see `.money-rail` in `globals.css`).
+- **Two shared pickers, one shape apart.** `ChipSpread` is the
+  many-option one — order type, payment status, status, delivery, package
+  size — and `Segmented` is the two-or-three-option track: Yes/No, ₪/%,
+  units/percent, Package/Event. Both take a `size`, because the drift that
+  produced five hand-written copies of the segmented pill started as "this
+  one wants slightly bigger padding".
+- **The categorical fields are chip spreads, not dropdowns**
+  (`ChipSpread`): order type, payment status, status, delivery, and a
+  package line's size. They are
   short owner-managed lists read far more often than they are changed,
   and a dropdown spent a click and a popover hiding eight things to show
   one. **Colour is worn by the chosen chip only** — nine saturated pills
@@ -233,7 +246,9 @@ iteration (not guessed) — define these as `@theme` tokens in
   `spreadOptions` states the three rules every picker here follows in one
   place: live rows are offered, an archived row only while this order
   still uses it, and a value resolving to no row at all still gets a chip
-  so saving cannot silently drop it. Every chip carries a 1px border in
+  so saving cannot silently drop it — its fourth argument names that
+  value, since a list keyed by id or by key would otherwise draw a chip
+  reading "7" or "paid-closed". Every chip carries a 1px border in
   every state, selected included — the chosen one used a `ring`, which
   draws outside the box, and came out 2px shorter than its neighbours with
   its label looking cropped by its own pill. Chips stay **left-aligned** like
@@ -853,10 +868,15 @@ of them. The strip needs `min-w-0` or a non-wrapping flex child sizes to
 its content and pushes the whole panel wider instead of being the thing
 that overflows — `overflow-hidden` alone will not stop it.
 
-**A package line is sized as a package or as a custom total**, and which
+**A package line is sized as a package or as an event total**, and which
 is **inferred, never stored**: a one-off total *is* N of the 1-unit
 package type, same rows and same units, so there is nothing extra to save
 and an order booked before the toggle existed already reads correctly.
+`isCustomLine` and `packageLineLabel` in `orderTypes.ts` are where that
+inference lives, not the editor that introduced it — every other renderer
+of a line needs the same answer, and while the rule sat in the editor a
+line of 260 read as "260× 1 units" in the folded summary, the Orders
+table's hover card and the Kanban chips.
 Two modes rather than a "Custom" entry among the sizes, which conflated a
 standard package you might want several of with an arbitrary amount where
 the multiplier means nothing. The **Package / Event** switch comes first

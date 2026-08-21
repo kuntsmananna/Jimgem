@@ -171,10 +171,8 @@ export function OrderMoneyRail({
                 label={`${extra.label} cost`}
                 value={draft[extra.cost]}
                 onChange={(value) => set({ [extra.cost]: value } as Partial<OrderInput>)}
-                // Display and Delivery have no flat rate of their own —
-                // each prices itself from its own list — so they show the
-                // standard amount rather than a per-item figure.
-                rate={extra.priceKey === null ? extra.standard(draft, rates) : rates.prices[extra.priceKey]}
+                // Each extra names its own rate — see ORDER_EXTRAS.
+                rate={extra.rate(draft, rates)}
                 manual={manual.has(extra.id)}
                 onRelease={() => setManual(extra.id, false)}
                 onTyped={() => setManual(extra.id, true)}
@@ -239,15 +237,20 @@ export function OrderMoneyRail({
  * actually read. Cutting the shape says "two parts" without spending a
  * line on saying so — the same thing a ticket stub does.
  *
- * The cut-outs are circles in the surrounding colour rather than a real
+ * The cut-outs are circles in the *surrounding* colour rather than a real
  * clip path, which keeps the pane an ordinary rounded box that the rows
- * inside it can lay out against normally.
+ * inside it can lay out against normally. That colour comes from
+ * `--rail-surface` rather than being hardcoded: painting `bg-card` was a
+ * standing claim that whatever hosts the form is white, true of `Modal`
+ * today and false the moment the rail sits on cream — where it would draw
+ * two white dots instead of a bite. A host on another surface sets the
+ * property; nobody has to remember to come back here.
  */
 function Notch() {
   return (
     <div className="relative h-0" aria-hidden>
-      <span className="absolute -top-2 -left-2 h-4 w-4 rounded-full bg-card" />
-      <span className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-card" />
+      <span className="absolute -top-2 -left-2 h-4 w-4 rounded-full bg-(--rail-surface)" />
+      <span className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-(--rail-surface)" />
       <span className="absolute inset-x-4 top-0 border-t border-dashed border-cream/15" />
     </div>
   );

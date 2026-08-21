@@ -8,10 +8,14 @@ import { TextInput } from "@/components/Field";
  * The order form's shared statement pieces.
  *
  * Extracted from what was one Details panel when the form went to three
- * tabs and a money rail: a group heading, a statement row and the money
- * fields are now used by four separate components, and keeping four
- * copies visually in step by hand is exactly the drift the single
- * `GroupLabel` rule was introduced to prevent.
+ * tabs and a money rail: a group heading, a statement row, a segmented
+ * toggle and the money fields are shared by the three panels and the
+ * rail, and keeping separate copies visually in step by hand is exactly
+ * the drift these pieces were extracted to prevent.
+ *
+ * They state their tones as `currentColor` and opacity rather than as
+ * `text-ink-soft`, which is what lets the same piece sit on a cream panel
+ * and on the black rail without the call site saying which.
  */
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -68,7 +72,7 @@ export function GroupLabel({
  */
 export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase">
+    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] uppercase">
       {children}
     </span>
   );
@@ -87,13 +91,10 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
 export function SheetRow({
   label,
   total = false,
-  indent = false,
   children,
 }: {
   label: string;
   total?: boolean;
-  /** Nudges the label right, for a row that belongs to the one above it. */
-  indent?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -109,9 +110,7 @@ export function SheetRow({
           money rail, and a fixed `text-ink-soft` disappears on one of
           them. Inheriting and dimming works either way round.
         */
-        className={`${total ? "text-xs font-bold" : "text-[12.5px] opacity-70"} ${
-          indent ? "pl-4" : ""
-        }`}
+        className={total ? "text-xs font-bold" : "text-[12.5px] opacity-70"}
       >
         {label}
       </span>
@@ -121,10 +120,76 @@ export function SheetRow({
 }
 
 /**
- * A two-state switch for a field that is simply on or off. A checkbox
+ * A segmented two-or-three-state pill: the options side by side in a
+ * tinted track, the chosen one filled.
+ *
+ * There were five hand-written copies of this shape in the order form —
+ * Yes/No, the discount's ₪/%, units/percent on a package line,
+ * Package/Event, and the tab strip — and they had already drifted across
+ * four paddings and two type sizes. `ChipSpread` is the same extraction
+ * one shape up, for a list too long to sit in a track.
+ *
+ * Tones come from the surface, like `SheetRow` and `GroupLabel`, so one
+ * of these works on a cream panel and on the black money rail without the
+ * call site saying which it is on. That is what the copies could not do:
+ * each had baked in either `bg-black text-cream` or `bg-cream text-ink`
+ * and so only worked on one surface.
+ */
+export function Segmented<T extends string | boolean>({
+  label,
+  value,
+  options,
+  onChange,
+  size = "sm",
+}: {
+  label: string;
+  value: T;
+  options: { value: T; text: string; icon?: React.ReactNode }[];
+  onChange: (value: T) => void;
+  /** `md` where the control governs the row it opens, rather than trimming it. */
+  size?: "sm" | "md";
+}) {
+  return (
+    <span
+      role="group"
+      aria-label={label}
+      className="segmented flex shrink-0 items-center gap-0.5 rounded-full bg-current/8 p-0.5"
+    >
+      {options.map((option) => (
+        <button
+          key={String(option.value)}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+          className={`flex items-center gap-1.5 rounded-full font-bold whitespace-nowrap transition ${
+            size === "md" ? "px-3.5 py-1 text-xs" : "px-2.5 py-0.5 text-[11px]"
+          } ${
+            value === option.value
+              ? /*
+                  Two tokens rather than `currentColor` for the fill: on one
+                  element `background-color: currentColor` resolves against
+                  that element's *own* `color`, so setting the text colour
+                  here also set the background to the same thing and the
+                  chosen segment came out an empty pill. See `.segmented`
+                  in globals.css for the per-surface values.
+                */
+                "bg-(--segmented-fill) text-(--segmented-ink)"
+              : "opacity-60 hover:opacity-100"
+          }`}
+        >
+          {option.icon}
+          {option.text}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Yes or no, for a field that is asked rather than defaulted. A checkbox
  * reads as "tick if true" and leaves "no" and "not answered yet" looking
  * identical, which matters here because kosher is a question someone is
- * asked rather than a default.
+ * asked.
  */
 export function YesNo({
   value,
@@ -136,24 +201,15 @@ export function YesNo({
   label: string;
 }) {
   return (
-    <span role="group" aria-label={label} className="flex items-center gap-1 rounded-full bg-black/[0.05] p-0.5">
-      {[
-        { on: false, text: "No" },
-        { on: true, text: "Yes" },
-      ].map((option) => (
-        <button
-          key={option.text}
-          type="button"
-          aria-pressed={value === option.on}
-          onClick={() => onChange(option.on)}
-          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
-            value === option.on ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-          }`}
-        >
-          {option.text}
-        </button>
-      ))}
-    </span>
+    <Segmented
+      label={label}
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: false, text: "No" },
+        { value: true, text: "Yes" },
+      ]}
+    />
   );
 }
 
@@ -287,26 +343,15 @@ export function DiscountInput({
 }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span role="group" aria-label="Discount unit" className="flex items-center rounded-full bg-current/10 p-0.5">
-        {[
-          { percent: false, text: "₪" },
-          { percent: true, text: "%" },
-        ].map((option) => (
-          <button
-            key={option.text}
-            type="button"
-            aria-pressed={isPercent === option.percent}
-            onClick={() => onChange(value, option.percent)}
-            className={`rounded-full px-2 py-0.5 text-[11px] font-bold transition ${
-              isPercent === option.percent
-                ? "bg-cream text-ink"
-                : "opacity-60 hover:opacity-100"
-            }`}
-          >
-            {option.text}
-          </button>
-        ))}
-      </span>
+      <Segmented
+        label="Discount unit"
+        value={isPercent}
+        onChange={(percent) => onChange(value, percent)}
+        options={[
+          { value: false, text: "₪" },
+          { value: true, text: "%" },
+        ]}
+      />
       <TextInput
         type="number"
         min={0}

@@ -8,7 +8,7 @@ import {
   type Rates,
 } from "@/lib/orderTypes";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
-import { GroupLabel, SheetRow, YesNo, nf } from "./OrderSheet";
+import { GroupLabel, SheetRow, YesNo } from "./OrderSheet";
 import { NumberStepper } from "./PackageLineEditor";
 
 /**
@@ -22,16 +22,11 @@ import { NumberStepper } from "./PackageLineEditor";
 export function OrderEventPanel({
   draft,
   onChange,
-  totalUnits,
   rates,
-  onOpenContent,
 }: {
   draft: OrderInput;
   onChange: (draft: OrderInput) => void;
-  /** Units the Content tab packs, shown here so the two tabs agree. */
-  totalUnits: number;
   rates: Rates;
-  onOpenContent: () => void;
 }) {
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
   const displayOptions = rates.displayOptions.filter(
@@ -67,18 +62,6 @@ export function OrderEventPanel({
         </SheetRow>
         <SheetRow label="Kosher">
           <YesNo value={draft.kosher} onChange={(kosher) => set({ kosher })} label="Kosher" />
-        </SheetRow>
-        <SheetRow label="Units ordered">
-          {/* Packed on the Content tab, so this reads it rather than
-              editing it — and offers the trip there instead. */}
-          <button
-            type="button"
-            onClick={onOpenContent}
-            className="rounded-md px-1.5 py-0.5 text-sm tabular-nums text-ink underline decoration-line underline-offset-4 hover:bg-black/[0.04] hover:decoration-accent"
-            title="Edit the packing on the Content tab"
-          >
-            {totalUnits > 0 ? nf.format(totalUnits) : "None yet"}
-          </button>
         </SheetRow>
       </section>
 
@@ -152,6 +135,9 @@ export function OrderEventPanel({
                 label: option.name,
                 archivedAt: option.archivedAt,
               }),
+              // Keyed by id: a destination since deleted would otherwise
+              // draw a chip reading "7".
+              () => "Unknown destination",
             ),
             { value: "other", label: "Other" },
           ]}

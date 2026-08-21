@@ -269,10 +269,11 @@ export function OrderForm({
   return (
     <>
       {/*
-        Two tabs rather than one long scroll: the text fields and the
-        packing are separate jobs, usually done at different times — an
-        order is booked first and mixed later. The Content tab carries a
-        unit count so you can see it is filled in without switching.
+        Three tabs rather than one long scroll: who the order is for, what
+        the event needs and how the trays are packed are separate jobs,
+        usually done at different times — an order is booked first and
+        mixed later. The money rail beside them carries the unit count, so
+        no tab has to restate it.
 
         They ride in the dialog's title row when there is one, which buys
         back the whole row plus its rule — worth having in a popup already
@@ -304,13 +305,7 @@ export function OrderForm({
           </div>
 
           <div role="tabpanel" className={tab === "event" ? "" : "hidden"}>
-            <OrderEventPanel
-              draft={priced}
-              onChange={setDraft}
-              totalUnits={totalUnits}
-              rates={rates}
-              onOpenContent={() => setTab("content")}
-            />
+            <OrderEventPanel draft={priced} onChange={setDraft} rates={rates} />
           </div>
 
           <div role="tabpanel" className={tab === "content" ? "" : "hidden"}>

@@ -71,9 +71,22 @@ body {
    * read as broken.
    */
   .input {
-    @apply rounded-lg border border-transparent px-2 py-1 text-sm text-ink outline-none;
+    /*
+     * The four things a surface changes, as tokens. The money rail then
+     * re-tones every field state by setting these once, instead of
+     * restating the whole base/filled/hover/focus machine in cream — five
+     * rules that had to be kept in step with five rules, and a third
+     * surface would have copied them again.
+     */
+    --field-tone: var(--color-ink);
+    --field-fill: 5%;
+    --field-fill-hover: 9%;
+    --field-focus-surface: var(--color-card);
+
+    @apply rounded-lg border border-transparent px-2 py-1 text-sm outline-none;
     @apply transition-colors;
-    background-color: --alpha(var(--color-ink) / 5%);
+    color: var(--field-tone);
+    background-color: --alpha(var(--field-tone) / var(--field-fill));
   }
 
   /*
@@ -91,11 +104,12 @@ body {
   }
 
   .input:hover:not(:disabled):not(:focus) {
-    background-color: --alpha(var(--color-ink) / 9%);
+    background-color: --alpha(var(--field-tone) / var(--field-fill-hover));
   }
 
   .input:focus {
-    @apply border-accent bg-card;
+    @apply border-accent;
+    background-color: var(--field-focus-surface);
   }
 
   .input:disabled {
@@ -165,8 +179,17 @@ body {
     margin: 0;
   }
 
-  /* Selects can't show a placeholder, so they keep a visible affordance:
-     the native chevron plus room for it, filled or not. */
+  /*
+   * `Segmented`'s two tones. Default is the app's usual — a dark fill with
+   * the page's cream showing through the label — and any surface that
+   * inverts says so once, on itself, rather than every call site passing a
+   * variant down.
+   */
+  .segmented {
+    --segmented-fill: var(--color-ink);
+    --segmented-ink: var(--color-cream);
+  }
+
   /*
    * The order form's money rail, drawn in negative.
    *
@@ -174,38 +197,37 @@ body {
    * that has to be read from across the form is the one that stops
    * matching: black lifts the total and the balance off the page instead
    * of leaving them as one more column of small text. The rule sits here
-   * rather than in the component because it has to reach the shared
-   * sheet pieces (GroupLabel, SheetRow, .input) without any of them
+   * rather than in the component because it has to reach the shared sheet
+   * pieces (GroupLabel, SheetRow, .input, Segmented) without any of them
    * learning that a dark variant exists.
    */
   .money-rail {
     @apply bg-black text-cream;
+    /* What the notch's cut-outs are painted in — the colour of whatever
+       the rail is sitting on. Every host today is `bg-card`; one on
+       another surface overrides this rather than editing the component. */
+    --rail-surface: var(--color-card);
+
+  }
+
+  .money-rail .segmented {
+    --segmented-fill: var(--color-cream);
+    --segmented-ink: var(--color-ink);
   }
 
   .money-rail .input {
-    @apply border-transparent text-cream;
-    background-color: --alpha(var(--color-cream) / 10%);
-  }
-
-  /* Same rule as on cream, in the other direction: a filled amount is
-     only its figure, an empty one is a block of light. */
-  .money-rail .input:not(:placeholder-shown) {
-    background-color: transparent;
-  }
-
-  .money-rail .input:hover:not(:disabled):not(:focus) {
-    background-color: --alpha(var(--color-cream) / 18%);
-  }
-
-  .money-rail .input:focus {
-    @apply border-accent;
-    background-color: --alpha(var(--color-cream) / 14%);
+    --field-tone: var(--color-cream);
+    --field-fill: 10%;
+    --field-fill-hover: 18%;
+    --field-focus-surface: --alpha(var(--color-cream) / 14%);
   }
 
   .money-rail .input::placeholder {
     @apply text-cream/40;
   }
 
+  /* Selects can't show a placeholder, so they keep a visible affordance:
+     the native chevron plus room for it, filled or not. */
   select.input {
     @apply appearance-none bg-no-repeat pr-6;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23726a5e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");

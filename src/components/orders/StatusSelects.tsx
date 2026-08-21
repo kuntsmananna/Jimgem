@@ -14,7 +14,7 @@ import { useStage, useStages } from "@/components/ProductionStagesContext";
  * just a tint of the surface — see globals.css's line-hover block for why
  * the two behave differently on a hovered black row.
  */
-export const PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
+const PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
   unpaid: "chip-neutral bg-black/5 text-ink-soft",
   deposit: "keeps-color bg-tile-peach text-ink",
   paid: "keeps-color bg-tile-sage text-ink",
