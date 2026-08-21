@@ -236,8 +236,11 @@ iteration (not guessed) — define these as `@theme` tokens in
   field (Notes) — a rule over one box separates it from nothing. The
   Customer tab has no headings at all: the dialog is titled "Edit order",
   its first line is the customer's name at 28px, and the date and location
-  boxes beside it are self-evident (the location one says "Location" until
-  it has one).
+  under it are self-evident (the location one says "Location" until it has
+  one, behind a `MapPin` so it reads as a place rather than more free
+  text). The tab is two columns from the top, so Notes starts level with
+  the money rail and runs its full height instead of beginning a third of
+  the way down the panel.
 - **The Event tab stacks its three groups**, rather than setting them in
   columns: the counts, what it is shown on and how it gets there are
   separate conversations that read fine one under the other, and a 13"
@@ -816,8 +819,11 @@ thing on the row. Its unit count is written like the rail's (`PackedUnits`
 — cube, figure, then the word small), not as an 11px grey "144u" smaller
 than the percentages beside it.
 
-**The preset catalog is one non-wrapping row** (`PresetRow`), with
-whatever doesn't fit behind a searchable `+N`. There are fifteen saved
+**The preset catalog is one non-wrapping row** (`PresetRow`), **dimmed at
+rest**, with whatever doesn't fit behind a searchable `+N`. The dimming is
+per chip rather than on the strip, so hovering lights up the one being
+reached for: they are optional shortcuts, and fifteen bright recipe
+swatches pulled the eye off the packages the tab is actually for. There are fifteen saved
 mixes and the list only grows; wrapped, they were four rows of pills that
 pushed the packages themselves down the panel and gave every preset the
 same weight as every other, which is the opposite of what a shortcut is

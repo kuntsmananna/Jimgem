@@ -5,6 +5,7 @@ import {
   type OrderInput,
   type PaymentStatus,
 } from "@/lib/orderTypes";
+import { MapPin } from "lucide-react";
 import { TextInput, TextArea } from "@/components/Field";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
@@ -34,52 +35,65 @@ export function OrderCustomerPanel({
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
 
   return (
-    <div className="flex min-h-full flex-col">
-      {/*
-        No heading over this. The dialog is already titled "Edit order"
-        and the first thing in it is the customer's name at 28px — a
-        caption saying THE CUSTOMER above that labels the unmistakable.
+    /*
+      Two columns from the top, so Notes starts level with the money rail
+      beside it rather than a third of the way down the panel. What the
+      order *is* reads straight down the wide side — name, when and where,
+      then how it is classed — and the note about it sits alongside the
+      whole of that.
+    */
+    <div className="grid min-h-full grid-cols-[1.45fr_1fr] gap-x-8">
+      <section className="flex min-w-0 flex-col">
+        {/*
+          No heading over this. The dialog is already titled "Edit order"
+          and the first thing in it is the customer's name at 28px — a
+          caption saying THE CUSTOMER above that labels the unmistakable.
 
-        The name is the headline, not a field: it is how you know which
-        order is open, and at 14px in a grid cell it never read that way.
-        Date and location ride beside it — they are the rest of "which
-        order", and each is one short value that would waste a row. Both
-        go uncaptioned too: a date field is self-evident, and the location
-        box already says "Location" until it has one.
-      */}
-      <div className="flex items-end gap-5">
+          The name is the headline, not a field: it is how you know which
+          order is open, and at 14px in a grid cell it never read that way.
+        */}
         <input
           value={draft.customer}
           onChange={(e) => set({ customer: e.target.value })}
           placeholder="Customer name"
           aria-label="Customer"
-          className="min-w-0 flex-1 border-b border-transparent bg-transparent font-display text-[28px] leading-tight font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
+          className="w-full border-b border-transparent bg-transparent font-display text-[28px] leading-tight font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
         />
-        <TextInput
-          type="date"
-          value={draft.date}
-          onChange={(e) => set({ date: e.target.value })}
-          aria-label="Date"
-          className="w-[9rem] shrink-0 text-sm tabular-nums"
-        />
-        <TextInput
-          value={draft.location}
-          onChange={(e) => set({ location: e.target.value })}
-          placeholder="Location"
-          aria-label="Location"
-          className="w-72 shrink-0 text-sm"
-        />
-      </div>
 
-      {/*
-        The classifications get the wide side and the notes the narrow
-        one: nine order types wrap to three rows and need the room, while
-        notes are read as a block whatever width they get.
-      */}
-      <div className="mt-7 grid flex-1 grid-cols-[1.45fr_1fr] gap-x-8">
+        {/*
+          When and where, on the line under the name — they are the rest of
+          "which order", and each is one short value that would waste a row
+          of its own. Both go uncaptioned: a date field is self-evident,
+          and the location box says "Location" until it has one, behind a
+          pin so it reads as a place rather than as more free text.
+        */}
+        <div className="mt-3 flex items-center gap-3">
+          <TextInput
+            type="date"
+            value={draft.date}
+            onChange={(e) => set({ date: e.target.value })}
+            aria-label="Date"
+            className="w-[9rem] shrink-0 text-sm tabular-nums"
+          />
+          <label className="relative flex min-w-0 flex-1 items-center">
+            <MapPin
+              size={14}
+              aria-hidden
+              className="pointer-events-none absolute left-2.5 text-ink-soft"
+            />
+            <TextInput
+              value={draft.location}
+              onChange={(e) => set({ location: e.target.value })}
+              placeholder="Location"
+              aria-label="Location"
+              className="w-full pl-8 text-sm"
+            />
+          </label>
+        </div>
+
         {/* No heading here either: three captioned chip rows say what they
             are, and a section title over them was a heading for headings. */}
-        <section className="flex min-w-0 flex-col gap-4">
+        <div className="mt-7 flex flex-col gap-4">
           <ChipSpread
             label="Order type"
             value={draft.customerType}
@@ -118,26 +132,26 @@ export function OrderCustomerPanel({
               archivedAt: s.archivedAt,
             }))}
           />
-        </section>
+        </div>
+      </section>
 
-        <section className="flex min-w-0 flex-col">
-          {/* Captioned, not headed: one field wants its name directly above
-              it, and a ruled group line over a single box separated it
-              from nothing. */}
-          <FieldLabel>Notes</FieldLabel>
-          {/* Keeps its box whether filled or not, unlike the single-line
-              fields: an unbordered block of text has nothing to say where
-              the writing area ends. */}
-          <TextArea
-            rows={9}
-            value={draft.notes}
-            onChange={(e) => set({ notes: e.target.value })}
-            aria-label="Notes"
-            placeholder="Anything worth remembering about this order"
-            className="w-full flex-1 border-line bg-cream/40 px-2.5 py-2 text-sm"
-          />
-        </section>
-      </div>
+      <section className="flex min-w-0 flex-col">
+        {/* Captioned, not headed: one field wants its name directly above
+            it, and a ruled group line over a single box separated it
+            from nothing. */}
+        <FieldLabel>Notes</FieldLabel>
+        {/* Keeps its box whether filled or not, unlike the single-line
+            fields: an unbordered block of text has nothing to say where
+            the writing area ends. Runs the height of the panel, which is
+            the height of the rail across from it. */}
+        <TextArea
+          value={draft.notes}
+          onChange={(e) => set({ notes: e.target.value })}
+          aria-label="Notes"
+          placeholder="Anything worth remembering about this order"
+          className="w-full flex-1 border-line bg-cream/40 px-2.5 py-2 text-sm"
+        />
+      </section>
     </div>
   );
 }

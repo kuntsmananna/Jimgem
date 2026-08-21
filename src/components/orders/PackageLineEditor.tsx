@@ -357,7 +357,14 @@ function PresetChip({
     <button
       type="button"
       onClick={() => onApply(preset)}
-      className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-ink transition hover:border-ink"
+      /*
+        Dimmed at rest, and only one of them at a time on hover. They are
+        optional shortcuts, but fifteen chips each carrying a bright
+        recipe swatch pulled the eye away from the packages themselves —
+        which are the thing the tab is actually for. Recessed they read as
+        "there if you want them", and reaching for one still lights it up.
+      */
+      className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-ink opacity-45 transition hover:border-ink hover:opacity-100"
     >
       <PresetSwatch preset={preset} flavors={flavors} />
       {preset.name}
@@ -409,7 +416,7 @@ function PresetOverflow({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         title={`${hidden} more preset${hidden === 1 ? "" : "s"}`}
-        className="flex items-center gap-1 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-ink-soft transition hover:border-ink hover:text-ink"
+        className="flex items-center gap-1 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-ink-soft opacity-45 transition hover:border-ink hover:text-ink hover:opacity-100"
       >
         +{hidden}
       </button>
