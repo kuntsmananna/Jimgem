@@ -839,7 +839,14 @@ flavour id and saying nothing.
 In the order popup's Content tab, an open package line has a **Save
 package** button that folds it back to its summary — it writes nothing,
 the order saves as a whole, but closing a finished package is what it
-feels like. A folded line carries a trash icon, so deleting a package
+feels like. It sits **bottom-right, under the panel it closes**, like
+every other Save in the app; in the header it was one of nine controls on
+a row that could not hold them, and it and the delete icon were the two
+that wrapped onto a second line. The units/percent switch left that row
+too, for the top of the flavour list: it does not describe the packaging,
+it says what the column of numbers beneath it means. The header now fits
+one line up to four figures of units, and folds to two tidy rows —
+sizing, then totals — on a 13" screen. A folded line carries a trash icon, so deleting a package
 you can already see the summary of doesn't mean opening it first, and it
 keeps its **note chip** (`LineNote` — No flavours yet / Balanced / N
 unassigned / N over): the package whose flavours don't add up is exactly

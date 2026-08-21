@@ -827,32 +827,6 @@ function LineCard({
 
         <LineNote remaining={remaining} packed={packed} />
 
-        {/* Units or percent, per line rather than per form: an order can
-            hold one tray sized by a headcount and another quoted as "a
-            third mix". The bar is identical either way — only the numbers
-            beside it change what they read as. */}
-        <Segmented
-          label="Enter flavours as"
-          value={line.mode}
-          options={[
-            { value: "units" as const, text: "units" },
-            { value: "percent" as const, text: "%" },
-          ]}
-          onChange={(mode) => onPatch({ mode })}
-        />
-
-        {/* Done with this package. It doesn't write anything — the order
-            saves as a whole — it folds the line back to its summary so the
-            next one has the room. Named Save because that is what closing
-            a finished package feels like. */}
-        <button
-          type="button"
-          onClick={onToggleFold}
-          className="rounded-full bg-black px-3 py-1 text-[11px] font-semibold text-cream transition hover:opacity-85"
-        >
-          Save package
-        </button>
-
         <button
           type="button"
           aria-label="Remove this package"
@@ -868,6 +842,26 @@ function LineCard({
           same thing, side by side. */}
       <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
         <div className="flex flex-col">
+          {/*
+            Over the flavour list rather than up in the header, where it
+            was one of nine controls on a row that could not hold them.
+            It belongs here anyway: it does not describe the packaging, it
+            says what the column of numbers directly beneath it means.
+          */}
+          <div className="mb-1 flex items-center justify-end gap-2 pr-1">
+            <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
+              Enter as
+            </span>
+            <Segmented
+              label="Enter flavours as"
+              value={line.mode}
+              options={[
+                { value: "units" as const, text: "units" },
+                { value: "percent" as const, text: "%" },
+              ]}
+              onChange={(mode) => onPatch({ mode })}
+            />
+          </div>
           {flavors
             .filter((f) => !f.archivedAt || line.flavors.some((e) => e.flavorId === String(f.id)))
             .map((flavor) => (
@@ -892,6 +886,26 @@ function LineCard({
             packageName={packageType?.name ?? "Package"}
           />
         </div>
+      </div>
+
+      {/*
+        Done with this package. It doesn't write anything — the order saves
+        as a whole — it folds the line back to its summary so the next one
+        has the room. Named Save because that is what closing a finished
+        package feels like.
+
+        Bottom-right, under the panel it closes, which is where every popup
+        in this app puts its Save. It used to sit in the header among the
+        sizing controls, which is what made that row overflow.
+      */}
+      <div className="mt-2.5 flex justify-end">
+        <button
+          type="button"
+          onClick={onToggleFold}
+          className="rounded-full bg-black px-4 py-1.5 text-[11px] font-semibold text-cream transition hover:opacity-85"
+        >
+          Save package
+        </button>
       </div>
     </div>
   );
