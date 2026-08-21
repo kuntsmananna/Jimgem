@@ -581,8 +581,20 @@ function LineCard({
   if (preset) {
     return (
       <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2">
-        <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-lavender px-2.5 py-0.5 text-[11px] font-bold text-ink">
-          <PresetSwatch preset={preset} flavors={flavors} className="h-3 w-6" />
+        {/*
+          The line's title, and drawn like one. It was an 11px lavender
+          pill — shorter than the stepper beside it and in a colour that
+          belonged to nothing else on the row, so the name of the thing
+          came out quieter than the controls for adjusting it. Black is
+          what this app makes a primary out of, and the recipe swatch
+          reads better on it than on a tint.
+
+          Safe to fill solid here, unlike the folded ordinary line: a
+          preset row carries no `.hover-line`, so there is no black
+          background for a black chip to disappear into.
+        */}
+        <span className="keeps-color flex shrink-0 items-center gap-2 rounded-full bg-black py-1.5 pr-3.5 pl-2 text-[13px] font-bold text-cream">
+          <PresetSwatch preset={preset} flavors={flavors} className="h-4 w-7" />
           {preset.name}
         </span>
 

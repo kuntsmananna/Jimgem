@@ -39,10 +39,19 @@ export function GroupLabel({
    */
   rule?: boolean;
 }) {
+  /*
+   * Full strength, where the rows under it are dimmed. It had this the
+   * wrong way round — the heading sat at 60% opacity above labels at 70%,
+   * so the thing organising the group was fainter than its contents and
+   * "The event" read as one more field beside "Guests". Small caps,
+   * letterspaced and at full weight against normal-case dimmed rows is
+   * the whole distinction; the rule is only a boundary and draws as a
+   * hairline, not as a second announcement.
+   */
   return (
     <span
-      className={`text-[10px] font-bold tracking-[0.1em] opacity-60 uppercase ${
-        rule ? "mt-1.5 mb-3 block border-b-[1.5px] border-current/20 pb-2" : ""
+      className={`text-[10.5px] font-extrabold tracking-[0.14em] uppercase ${
+        rule ? "mt-1.5 mb-2.5 block border-b border-current/12 pb-2" : ""
       }`}
     >
       {children}
@@ -59,7 +68,7 @@ export function GroupLabel({
  */
 export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
+    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase">
       {children}
     </span>
   );

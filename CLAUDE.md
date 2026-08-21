@@ -222,6 +222,14 @@ iteration (not guessed) — define these as `@theme` tokens in
   its label looking cropped by its own pill. Chips stay **left-aligned** like
   every other row in the app, even though the customer/location data
   they sit beside is Hebrew — the chrome is LTR throughout.
+- **A heading outranks its rows, and says so by contrast, not by colour.**
+  `GroupLabel` and `FieldLabel` draw at full strength in small extrabold
+  caps with wide tracking; the `SheetRow` labels under them are
+  normal-case and dimmed. It had this backwards — the heading sat at 60%
+  opacity above labels at 70%, so "The event" read as one more field
+  beside "Guests". The rule is a hairline at 12%, a boundary rather than a
+  second announcement, and the sage accent stays out of it: the order-type
+  chips already carry the colour on that screen.
 - **A heading is only ruled where it heads several rows.** `GroupLabel`
   takes `rule={false}` for a group that is one row with its control beside
   it (Getting it there), and `FieldLabel` is the caption for a single

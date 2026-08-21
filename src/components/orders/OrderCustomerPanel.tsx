@@ -67,7 +67,7 @@ export function OrderCustomerPanel({
           onChange={(e) => set({ location: e.target.value })}
           placeholder="Location"
           aria-label="Location"
-          className="w-56 shrink-0 text-sm"
+          className="w-72 shrink-0 text-sm"
         />
       </div>
 

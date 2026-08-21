@@ -77,7 +77,7 @@ export function ChipSpread({
   return (
     <div className="flex flex-col gap-1.5">
       {showLabel && (
-        <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">{label}</span>
+        <span className="text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase">{label}</span>
       )}
       <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1.5">
         {options.map((option) => {
