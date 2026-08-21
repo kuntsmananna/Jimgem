@@ -266,17 +266,29 @@ it. Every KPI, chart series and monthly rollup converts each order with
 its own mode and rate, then adds. This is the one rule that, broken,
 gives plausible-looking figures that are quietly false.
 
-Two consequences to be honest about:
+**An expense carries the same three modes**, for the same reason an order
+does — a receipt from a registered supplier has VAT inside it, one from an
+unregistered supplier has none, and nothing about the amount says which:
 
-- **The Biz Plan's numbers move when the switch moves.** Every screen
-  therefore states which convention it is showing, beside the figures
-  rather than in a settings pane.
-- **Expenses have no VAT breakdown yet.** A recorded expense is what the
-  receipt said, VAT inside, and nothing records how much of it was VAT.
-  Under the excluding-VAT view they can be divided by the standard rate,
-  but suppliers who charge none would be understated. Until an expense
-  carries its own mode, the honest move is to show expenses gross in both
-  views and label them.
+```sql
+ALTER TABLE expenses ADD COLUMN vat_mode TEXT NOT NULL DEFAULT 'included';
+ALTER TABLE expenses ADD COLUMN vat_rate NUMERIC(5,4);
+```
+
+Defaults follow the same date rule as orders — expenses dated before
+2026-06-23 are `exempt`, later ones `included` — and the field is edited
+on the expense row like any other. `added` exists for the case where a
+price was quoted before VAT.
+
+Legacy Sheet expense items are monthly totals rather than receipts, so
+they take the date rule and nothing more; they are already
+approximations and the plan doesn't pretend otherwise.
+
+With that, both sides of the report honour the switch: revenue and costs
+convert per row and then add, and profit is finally the same kind of
+number on both sides of the subtraction. **The Biz Plan's figures move
+when the switch moves**, so every screen states which convention it is
+showing, beside the figures rather than in a settings pane.
 
 ## Phase 2
 
