@@ -16,7 +16,9 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { useModalHeaderSlot } from "@/components/Modal";
-import { OrderDetailsPanel } from "./OrderDetailsPanel";
+import { OrderCustomerPanel } from "./OrderCustomerPanel";
+import { OrderEventPanel } from "./OrderEventPanel";
+import { OrderMoneyRail } from "./OrderMoneyRail";
 import {
   PackageLineEditor,
   toDraftLines,
@@ -24,7 +26,23 @@ import {
   type DraftPackageLine,
 } from "./PackageLineEditor";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+/**
+ * The form's three tabs, in the order an order is actually filled in:
+ * who it is for, what the event needs, then what goes in the trays.
+ *
+ * Three rather than the two this replaced. Details had grown to hold the
+ * customer, the event *and* the money in one 3-column sheet, which meant
+ * every one of them was a third of a panel wide and the money — the part
+ * read most often — could only be seen while that tab was open. Splitting
+ * the first two frees the money to sit in a rail beside all three.
+ */
+const TABS = [
+  { id: "customer", label: "Customer" },
+  { id: "event", label: "Event" },
+  { id: "content", label: "Content" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 function draftFromOrder(order?: Order): OrderInput {
   if (!order) {
@@ -164,7 +182,7 @@ export function OrderForm({
   const [manual, setManual] = useState<ReadonlySet<AmountKey>>(initial.manual);
   const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"details" | "content">("details");
+  const [tab, setTab] = useState<TabId>("customer");
 
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   // Lines whose flavours don't add up to what they pack. Reported, not
@@ -212,26 +230,21 @@ export function OrderForm({
   const headerSlot = useModalHeaderSlot();
   // A segmented pill rather than folder tabs: at the title's own height,
   // beside it, the joined-baseline treatment had no panel edge left to
-  // sit on and read as two loose buttons.
+  // sit on and read as three loose buttons.
   const tabs = (
     <div role="tablist" className="flex items-center gap-0.5 rounded-full bg-cream p-0.5">
-      {(["details", "content"] as const).map((id) => (
+      {TABS.map(({ id, label }) => (
         <button
           key={id}
           type="button"
           role="tab"
           aria-selected={tab === id}
           onClick={() => setTab(id)}
-          className={`flex items-center gap-1.5 rounded-full px-4 py-1 text-xs font-bold capitalize transition ${
+          className={`flex items-center gap-1.5 rounded-full px-4 py-1 text-xs font-bold transition ${
             tab === id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
           }`}
         >
-          {id}
-          {id === "content" && totalUnits > 0 && (
-            <span className={`font-semibold ${tab === id ? "text-cream/70" : "text-ink-soft"}`}>
-              {nf.format(totalUnits)}u
-            </span>
-          )}
+          {label}
           {id === "content" && unbalanced.length > 0 && (
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Some units have no flavour" />
           )}
@@ -269,49 +282,62 @@ export function OrderForm({
       {headerSlot ? createPortal(tabs, headerSlot) : <div className="mb-4">{tabs}</div>}
 
       {/*
-        One fixed-height, scrolling body holding both panels, so the popup
-        is exactly the same size on either tab. Letting it size to its
-        contents made the whole dialog jump and re-centre on every switch.
+        The panels scroll; the rail does not. Money and unit coverage stay
+        on screen whichever tab is open, which is what the three-tab split
+        bought — pricing an order is a conversation that moves between
+        what the event is and what it costs, and a tab switch in the
+        middle of that is a switch too many.
+
+        One fixed-height, scrolling body holding every panel, so the popup
+        is exactly the same size on every tab. Letting it size to its
+        contents made the whole dialog jump and re-centre on each switch.
       */}
-      <div className="h-[26rem] overflow-y-auto pr-1">
+      <div className="flex h-[min(56vh,31rem)] gap-6">
+        <div className="min-w-0 flex-1 overflow-y-auto pr-1">
+          {/*
+            Every panel stays mounted while hidden, not unmounted:
+            switching tabs would otherwise throw away which package line
+            was open and any half-typed number in it.
+          */}
+          <div role="tabpanel" className={tab === "customer" ? "" : "hidden"}>
+            <OrderCustomerPanel draft={priced} onChange={setDraft} />
+          </div>
 
-      <div role="tabpanel" className={tab === "details" ? "" : "hidden"}>
-        <OrderDetailsPanel
-          draft={priced}
-          onChange={setDraft}
-          totalUnits={totalUnits}
-          rates={rates}
-          manual={manual}
-          onManualChange={setManual}
-          onOpenContent={() => setTab("content")}
-        />
+          <div role="tabpanel" className={tab === "event" ? "" : "hidden"}>
+            <OrderEventPanel
+              draft={priced}
+              onChange={setDraft}
+              totalUnits={totalUnits}
+              rates={rates}
+              onOpenContent={() => setTab("content")}
+            />
+          </div>
+
+          <div role="tabpanel" className={tab === "content" ? "" : "hidden"}>
+            <PackageLineEditor
+              lines={lines}
+              onChange={setLines}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              presets={presets}
+            />
+          </div>
+        </div>
+
+        <div className="w-[20rem] shrink-0 overflow-y-auto">
+          <OrderMoneyRail
+            draft={priced}
+            onChange={setDraft}
+            totalUnits={totalUnits}
+            unassignedUnits={unassignedUnits}
+            overAssignedUnits={overAssignedUnits}
+            rates={rates}
+            manual={manual}
+            onManualChange={setManual}
+            onOpenContent={() => setTab("content")}
+          />
+        </div>
       </div>
-
-      {/*
-        Kept mounted while hidden, not unmounted: switching tabs would
-        otherwise throw away which package line was open and any
-        half-typed number in it.
-      */}
-      <div role="tabpanel" className={tab === "content" ? "" : "hidden"}>
-        <PackageLineEditor
-          lines={lines}
-          onChange={setLines}
-          flavors={flavors}
-          packageTypes={packageTypes}
-          presets={presets}
-        />
-      </div>
-
-      </div>
-
-      {unbalanced.length > 0 && (
-        <p className="mt-3 text-xs font-semibold text-amber-700" role="status">
-          {overAssignedUnits > 0 &&
-            `${nf.format(overAssignedUnits)} more units are assigned to flavours than the packaging holds. `}
-          {unassignedUnits > 0 && `${nf.format(unassignedUnits)} units still need a flavour. `}
-          You can still save and come back to it.
-        </p>
-      )}
 
       {/* Actions right, status left: the buttons sit where the eye ends up
           after reading the form, and every popup in the app puts them
