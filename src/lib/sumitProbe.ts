@@ -19,6 +19,8 @@ import {
   listFolders,
   listEntities,
   getEntity,
+  getDocumentDetails,
+  getVatRate,
   documentTypeName,
   documentBucket,
   isExpenseDocument,
@@ -165,6 +167,38 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
       ? `\nExpense documents start ${firstExpenseMonth} — proposed cutover: SUMIT is authoritative from that month on, the Sheet's legacy totals stay for earlier ones.`
       : "\nNo expense documents in this window — the expense sync has nothing to read yet.",
   );
+
+  // Whether a document's value includes VAT decides every comparison
+  // against Jimgem's own totals, and the field name says nothing. The
+  // lines carry TotalPrice and VAT separately, so arithmetic settles it.
+  section("VAT — is a document's value gross or net?");
+  try {
+    const rate = await getVatRate();
+    out.push(`Company VAT rate today: ${(rate * 100).toFixed(1)}%`);
+    const sampled = income.slice(0, 3);
+    for (const document of sampled) {
+      const details = await getDocumentDetails(document.DocumentID);
+      const items = details.Items ?? [];
+      const lines = items.reduce((total, item) => total + (item.TotalPrice ?? 0), 0);
+      const vat = items.reduce((total, item) => total + (item.VAT ?? 0), 0);
+      const value = document.CompanyValue ?? 0;
+      const verdict =
+        Math.abs(value - (lines + vat)) < 0.5 && vat > 0
+          ? "value = lines + VAT → VALUE IS GROSS, lines are net"
+          : Math.abs(value - lines) < 0.5 && vat > 0
+            ? "value = lines, VAT stated inside → VALUE IS GROSS, lines already include VAT"
+            : Math.abs(value - lines) < 0.5 && vat === 0
+              ? "value = lines, no VAT on the document"
+              : "no clean match — read the numbers above";
+      out.push(
+        `#${document.DocumentNumber ?? document.DocumentID} ${documentTypeName(document.Type)}: ` +
+          `value ${money(value)}, lines ${money(lines)}, VAT ${money(vat)} — ${verdict}`,
+      );
+    }
+    if (sampled.length === 0) out.push("No revenue documents to sample.");
+  } catch (error) {
+    out.push(`VAT check failed: ${(error as Error).message}`);
+  }
 
   // /accounting/customers/ has no list or search, so the roster is
   // whatever the documents say it is.

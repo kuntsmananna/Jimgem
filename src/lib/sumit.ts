@@ -289,3 +289,30 @@ export async function getEntity(
   });
   return data.Entity;
 }
+
+/** One line of a document — what `getdetails` returns per item. */
+export interface SumitDocumentItem {
+  Quantity: number | null;
+  UnitPrice: number | null;
+  TotalPrice: number | null;
+  /** VAT in ILS, stated separately from TotalPrice. */
+  VAT: number | null;
+  Description: string | null;
+}
+
+export interface SumitDocumentDetails {
+  Document: { DocumentValue: number | null; CompanyValue: number | null; Type: string | number } | null;
+  Items: SumitDocumentItem[] | null;
+}
+
+export function getDocumentDetails(documentId: number): Promise<SumitDocumentDetails> {
+  return sumitPost<SumitDocumentDetails>("/accounting/documents/getdetails/", { DocumentID: documentId });
+}
+
+/** The company's VAT rate on a date — 0.18 style, not 18. */
+export async function getVatRate(date?: Date | string): Promise<number> {
+  const data = await sumitPost<{ Rate: number }>("/accounting/general/getvatrate/", {
+    Date: date ? isoDate(date) : null,
+  });
+  return data.Rate;
+}
