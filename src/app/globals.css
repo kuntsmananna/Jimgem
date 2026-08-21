@@ -112,11 +112,16 @@ body {
    */
   .input::-webkit-calendar-picker-indicator {
     @apply cursor-pointer rounded-full p-1 transition-colors;
-    background-color: --alpha(var(--color-ink) / 8%);
+    /*
+     * 8% read as nothing at all — the circle was there, and invisible.
+     * This is a button, so it wants roughly the weight of the hairline
+     * every other control in the app is drawn with.
+     */
+    background-color: --alpha(var(--color-ink) / 14%);
   }
 
   .input::-webkit-calendar-picker-indicator:hover {
-    background-color: --alpha(var(--color-ink) / 20%);
+    background-color: --alpha(var(--color-ink) / 28%);
   }
 
   /*

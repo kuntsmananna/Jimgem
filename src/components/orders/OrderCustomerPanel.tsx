@@ -80,7 +80,10 @@ export function OrderCustomerPanel({
             value={draft.date}
             onChange={(e) => set({ date: e.target.value })}
             aria-label="Date"
-            className="w-[9.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums"
+            // Sized to the date plus its button and no further: at 9.5rem the
+            // picker sat at the far right of a box the date only half filled,
+            // reading as a control belonging to nothing in particular.
+            className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums"
           />
           <label className="relative flex min-w-0 flex-1 items-center">
             <MapPin

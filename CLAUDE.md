@@ -169,7 +169,9 @@ iteration (not guessed) — define these as `@theme` tokens in
   The customer name is the same `.input`, only set at 28px. A date field's
   `::-webkit-calendar-picker-indicator` wears a tinted circle that deepens
   on hover — it is how a date actually gets changed, so it gets a target
-  like every other round button. Filled/empty is detected with `:placeholder-shown`,
+  like every other round button — and the box is sized to the date plus
+  that button, since a wider one parks the picker at the far right with
+  nothing beside it. Filled/empty is detected with `:placeholder-shown`,
   which needs a placeholder attribute to match against — so use
   `TextInput`/`SelectInput` from `src/components/Field.tsx` rather than a
   bare `<input className="input">`; they carry the default `placeholder=" "`
