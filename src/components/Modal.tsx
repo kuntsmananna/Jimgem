@@ -48,7 +48,15 @@ export function Modal({
       }}
     >
       <div
-        className={`max-h-[90vh] w-full ${wide ? "max-w-5xl" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
+        /*
+          A wide dialog takes 80% of the viewport rather than a fixed
+          64rem. The order form outgrew that: three tabs and a money rail
+          need the room, and on a 1680px laptop a 1024px popup was leaving
+          a third of the screen dimmed for no reason. It stays a popup —
+          the page behind it is still what you came from — just one that
+          uses the screen it is given.
+        */
+        className={`max-h-[90vh] w-full ${wide ? "max-w-[80vw]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
       >
         {/*
           Title and close both take equal space so whatever sits in the

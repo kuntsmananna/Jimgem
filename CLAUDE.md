@@ -167,21 +167,54 @@ iteration (not guessed) — define these as `@theme` tokens in
   `/login` deliberately opts out by not using `.input` at all.
 - **One overlay for orders.** Adding and editing both use
   `OrderFormModal`; `OrderDetailsPane` is kept but unused (see its
-  header). The form is split into Details and Content tabs, and both are
-  kept mounted while hidden so switching tabs doesn't discard a
-  half-typed line. The tabs sit **in the dialog's title row**, centred:
-  `Modal` offers its title-row middle through `useModalHeaderSlot`, and
+  header). The form is split into **Customer, Event and Content** tabs,
+  all kept mounted while hidden so switching doesn't discard a half-typed
+  line. The tabs sit **in the dialog's title row**, centred: `Modal`
+  offers its title-row middle through `useModalHeaderSlot`, and
   `OrderForm` portals the tab strip into it, which buys back a whole row
   in a popup already tall enough to crowd a laptop. The slot is null
   outside a `Modal`, so the form falls back to rendering them inline.
-- **The Details tab is an order sheet, not a form** (`OrderDetailsPanel`).
-  It replaced twelve identical label-and-box pairs in a flat 3×4 grid,
-  which spent a 976×416 panel saying every field mattered equally and left
-  the bottom third empty. It is now **three columns, each reading straight
-  down**: *Details* (the customer as a headline, then type and both status
-  pills, date, location and Notes), *The event* (the counts and yes/nos),
-  and *The money*. A ruled `GroupLabel` heads each column and is what
-  separates them — there are deliberately no vertical hairlines, which
+- **A wide `Modal` takes 80% of the viewport**, not a fixed 64rem. The
+  order form outgrew that the moment it carried three tabs and a rail,
+  and on a 1680px laptop a 1024px popup dimmed a third of the screen for
+  nothing. The body is one fixed `min(56vh,31rem)` scroller holding every
+  panel, so the dialog is exactly the same size on every tab — sized to
+  its contents it jumped and re-centred on each switch.
+- **The money is a rail, not a tab** (`OrderMoneyRail`). It sits beside
+  all three panels and carries the order's units, its flavour coverage,
+  every amount, the discount, the total and the balance. That is what the
+  three-tab split bought: pricing an order is a conversation that moves
+  between what the event is and what it costs, sentence by sentence, and
+  as the third column of a Details sheet the money could only be read
+  while that tab was open. A rail rather than a fourth tab for the same
+  reason — a number you have to go and look at is a number nobody looks
+  at. The old `OrderDetailsPanel` is gone; its statement pieces
+  (`GroupLabel`, `SheetRow`, `MoneyInput`, `PricedAmount`,
+  `DiscountInput`, `YesNo`) moved to `OrderSheet.tsx`, shared by all four.
+- **The four categorical fields are chip spreads, not dropdowns**
+  (`ChipSpread`): order type, payment status, status, delivery. They are
+  short owner-managed lists read far more often than they are changed,
+  and a dropdown spent a click and a popover hiding eight things to show
+  one. **Colour is worn by the chosen chip only** — nine saturated pills
+  at once is a rainbow that says nothing about which is selected.
+  `spreadOptions` states the three rules every picker here follows in one
+  place: live rows are offered, an archived row only while this order
+  still uses it, and a value resolving to no row at all still gets a chip
+  so saving cannot silently drop it. Chips stay **left-aligned** like
+  every other row in the app, even though the customer/location data
+  they sit beside is Hebrew — the chrome is LTR throughout.
+- **The Event tab lays Display flat in its own column**, reversing the
+  fold `DisplayGroup` used to carry. That fold existed to stop three
+  display types lengthening a column shared with Guests and Waitresses;
+  with a column of its own there is nothing left to protect, and folding
+  two steppers away costs a click to answer the question the tab is for.
+- **The panels are order sheets, not forms.** They replaced twelve
+  identical label-and-box pairs in a flat 3×4 grid, which spent a 976×416
+  panel saying every field mattered equally and left the bottom third
+  empty. Customer is the name as a headline with date and location beside
+  it, then the chip spreads on the wide side and Notes on the narrow one;
+  Event is three columns — the counts, what it is shown on, how it gets
+  there. A ruled `GroupLabel` heads each group and is what separates them — there are deliberately no vertical hairlines, which
   read as a table once every group already carries a line of its own.
   **That heading rule is the only line in the panel**: `SheetRow` used to
   draw a dotted hairline under every field, which turned the three columns
@@ -200,6 +233,13 @@ iteration (not guessed) — define these as `@theme` tokens in
   Escape-to-close and a reference-counted body scroll lock. They nest —
   the details pane hosts a form that can open a modal — so the count is
   what stops the inner one unlocking the page under the outer.
+  `usePopoverDismiss` beside it is the lighter half, for a popover
+  anchored to its trigger (the toolbar dropdowns, the preset overflow
+  list): outside-click and Escape, no lock and no count. Its Escape
+  listener **captures and stops the event**, because a popover can be
+  open inside an overlay that also closes on Escape and both listen on
+  `document` — bubbling, one keystroke dismissed the preset list *and*
+  the half-typed order behind it.
 - Hovering a line — an orders-table row, a Kanban card, a calendar pill,
   an expense row, a settings list item — turns it **solid black with
   light text**. One mechanism in `globals.css`: add `.hover-line` to the
@@ -721,7 +761,36 @@ In the order popup's Content tab, an open package line has a **Save
 package** button that folds it back to its summary — it writes nothing,
 the order saves as a whole, but closing a finished package is what it
 feels like. A folded line carries a trash icon, so deleting a package
-you can already see the summary of doesn't mean opening it first.
+you can already see the summary of doesn't mean opening it first, and it
+keeps its **coverage chip** (`LineCoverage` — balanced / N unassigned /
+N over): the package whose flavours don't add up is exactly the one you
+would close and forget. Silent on a line with no flavours yet, which is a
+normal stage of booking an order rather than a mistake.
+
+**The preset catalog is one non-wrapping row** (`PresetRow`), with
+whatever doesn't fit behind a searchable `+N`. There are fifteen saved
+mixes and the list only grows; wrapped, they were four rows of pills that
+pushed the packages themselves down the panel and gave every preset the
+same weight as every other, which is the opposite of what a shortcut is
+for. The search covers *all* of them, not only the overflow — hunting for
+"9 Mix" shouldn't depend on whether it happened to land inside the fold.
+How many fit is measured, not guessed, off **a hidden copy of the full
+row**: a chip removed from the visible row is `display: none` and reports
+no width, so the widths have to come from somewhere that always draws all
+of them. The strip needs `min-w-0` or a non-wrapping flex child sizes to
+its content and pushes the whole panel wider instead of being the thing
+that overflows — `overflow-hidden` alone will not stop it.
+
+**A package line is sized as a package or as a custom total**, and which
+is **inferred, never stored**: a one-off total *is* N of the 1-unit
+package type, same rows and same units, so there is nothing extra to save
+and an order booked before the toggle existed already reads correctly.
+Two modes rather than a "Custom" entry among the sizes, which conflated a
+standard package you might want several of with an arbitrary amount where
+the multiplier means nothing. Switching to custom preserves the total
+exactly; switching back cannot — an arbitrary number rarely divides into
+whole packages, and rounding would change what the customer ordered — so
+it lands on one of the smallest package, to be adjusted.
 
 `migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
 a SQL comment truncates the statement after it** — keep comments in that

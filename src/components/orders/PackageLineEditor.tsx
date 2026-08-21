@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Minus, Plus, Trash2 } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Minus, Plus, Search, Trash2 } from "lucide-react";
 import {
   type OrderPackageLine,
   evenSplit,
@@ -14,6 +15,8 @@ import {
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { flavorBarGradient, flavorGradient } from "@/lib/flavorStyle";
 import { packageTypeIconElement } from "@/lib/icons";
+import { TextInput } from "@/components/Field";
+import { usePopoverDismiss } from "@/components/useOverlayDismiss";
 import { TrayPreview } from "./TrayPreview";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -221,26 +224,213 @@ export function PackageLineEditor({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={addBlankLine}
-          className="rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream transition hover:opacity-85"
+          className="shrink-0 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream transition hover:opacity-85"
         >
           + Add package
         </button>
+        <PresetRow
+          presets={presets}
+          flavors={flavors}
+          onApply={(preset) => addLine(lineFromPreset(preset, packageTypes))}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The preset catalog as one non-wrapping row, with whatever doesn't fit
+ * behind a searchable overflow list.
+ *
+ * There are fifteen saved mixes and the list only grows. Wrapped, they
+ * were four rows of pills that pushed "Add package" and the packages
+ * themselves down the panel, and gave every preset the same weight as
+ * every other — which is the opposite of what a shortcut is for. One row
+ * keeps the shortcuts to hand and the search covers the rest, including
+ * the ones that did fit: hunting for "9 Mix" shouldn't depend on whether
+ * it happened to land inside the fold.
+ *
+ * How many fit is measured rather than guessed. A hidden copy of the full
+ * row is what gets measured, because a chip removed from the visible row
+ * is `display: none` and reports no width at all — so the widths have to
+ * come from somewhere that always draws all of them.
+ */
+function PresetRow({
+  presets,
+  flavors,
+  onApply,
+}: {
+  presets: ContentPreset[];
+  flavors: Flavor[];
+  onApply: (preset: ContentPreset) => void;
+}) {
+  const [fits, setFits] = useState(presets.length);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const measure = measureRef.current;
+    if (!row || !measure) return;
+
+    const recompute = () => {
+      const widths = Array.from(measure.children).map((chip) => (chip as HTMLElement).offsetWidth);
+      const available = row.clientWidth;
+      let used = 0;
+      let count = 0;
+      for (const width of widths) {
+        const next = used + (count > 0 ? CHIP_GAP : 0) + width;
+        // Anything still to come has to leave room for the control that
+        // will hold it, or the last chip fits and the "+3" it needs
+        // doesn't.
+        const spare = count + 1 < widths.length ? CHIP_GAP + OVERFLOW_WIDTH : 0;
+        if (next + spare > available) break;
+        used = next;
+        count += 1;
+      }
+      setFits(count);
+    };
+
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [presets]);
+
+  if (presets.length === 0) return null;
+  const hidden = presets.length - fits;
+
+  return (
+    /*
+      `min-w-0` is load-bearing: without it a non-wrapping flex child sizes
+      to its content and pushes the whole panel wider instead of being the
+      thing that overflows, and `overflow-hidden` alone will not stop it.
+    */
+    <div ref={rowRef} className="relative min-w-0 flex-1 overflow-hidden">
+      {/* The chips and the overflow control ride together, so "+10" reads
+          as the end of the row rather than as a separate control parked
+          against the far edge. */}
+      <div className="flex items-center gap-2">
+        {presets.slice(0, fits).map((preset) => (
+          <PresetChip key={preset.id} preset={preset} flavors={flavors} onApply={onApply} />
+        ))}
+        {hidden > 0 && <PresetOverflow presets={presets} flavors={flavors} hidden={hidden} onApply={onApply} />}
+      </div>
+
+      {/* Never seen; only measured. Absolute so it takes no space, and
+          `invisible` rather than hidden so its chips still have widths. */}
+      <div
+        ref={measureRef}
+        aria-hidden
+        className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-2"
+      >
         {presets.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => addLine(lineFromPreset(preset, packageTypes))}
-            className="flex items-center gap-2 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold text-ink transition hover:border-ink"
-          >
-            <PresetSwatch preset={preset} flavors={flavors} />
-            {preset.name}
-          </button>
+          <PresetChip key={preset.id} preset={preset} flavors={flavors} onApply={() => {}} />
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Matches the `gap-2` and the overflow button below, in px. */
+const CHIP_GAP = 8;
+const OVERFLOW_WIDTH = 44;
+
+function PresetChip({
+  preset,
+  flavors,
+  onApply,
+}: {
+  preset: ContentPreset;
+  flavors: Flavor[];
+  onApply: (preset: ContentPreset) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onApply(preset)}
+      className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-ink transition hover:border-ink"
+    >
+      <PresetSwatch preset={preset} flavors={flavors} />
+      {preset.name}
+    </button>
+  );
+}
+
+/** Everything, searchable — not only what fell off the end of the row. */
+function PresetOverflow({
+  presets,
+  flavors,
+  hidden,
+  onApply,
+}: {
+  presets: ContentPreset[];
+  flavors: Flavor[];
+  hidden: number;
+  onApply: (preset: ContentPreset) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  usePopoverDismiss(open, containerRef, () => setOpen(false));
+
+  const matches = presets.filter((preset) =>
+    preset.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
+  return (
+    <div ref={containerRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        title={`${hidden} more preset${hidden === 1 ? "" : "s"}`}
+        className="flex items-center gap-1 rounded-full border border-line bg-card px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-ink-soft transition hover:border-ink hover:text-ink"
+      >
+        +{hidden}
+      </button>
+
+      {open && (
+        // Right-aligned and opening upwards: this control sits at the
+        // bottom-right of the panel, and a list dropping from it would
+        // fall straight out of the dialog.
+        <div className="absolute right-0 bottom-full z-30 mb-1.5 w-64 rounded-2xl border border-line bg-card p-2 shadow-xl">
+          <label className="relative mb-1.5 flex items-center">
+            <Search size={13} className="pointer-events-none absolute left-2.5 text-ink-soft" aria-hidden />
+            <TextInput
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search presets"
+              placeholder="Search presets"
+              className="w-full pl-7 text-xs"
+            />
+          </label>
+          <div className="max-h-56 overflow-y-auto">
+            {matches.length === 0 && (
+              <p className="px-2 py-3 text-center text-[11px] text-ink-soft">Nothing by that name.</p>
+            )}
+            {matches.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => {
+                  onApply(preset);
+                  setOpen(false);
+                }}
+                className="hover-line flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold text-ink"
+              >
+                <PresetSwatch preset={preset} flavors={flavors} />
+                <span className="min-w-0 truncate">{preset.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -306,6 +496,24 @@ function LineCard({
   const remaining = packed - assigned;
   const packageType = packageTypes.find((p) => String(p.id) === line.packageTypeId);
 
+  /*
+   * Which of the two ways this line is being sized — inferred from what
+   * it holds, never stored.
+   *
+   * A one-off total *is* N of a 1-unit package: same rows, same units, so
+   * there is nothing extra to save and an order booked before this
+   * existed already reads correctly. A flag would only be a second
+   * account of the same fact, free to disagree with it.
+   */
+  const singleUnit = packageTypes.find((p) => p.unitsPerPackage === 1 && !p.archivedAt);
+  const smallestPackage = packageTypes
+    .filter((p) => !p.archivedAt && p.unitsPerPackage > 1)
+    .reduce<PackageType | null>(
+      (best, type) => (best === null || type.unitsPerPackage < best.unitsPerPackage ? type : best),
+      null,
+    );
+  const custom = packageType?.unitsPerPackage === 1;
+
   /**
    * A number typed or dragged is a deliberate ratio, so it also switches
    * the line off auto-split — otherwise picking one more flavour would
@@ -368,6 +576,12 @@ function LineCard({
 
         <span className="flex-1" />
 
+        {/* A preset's shares are floored into whole cubes, so a recipe
+            that doesn't divide evenly leaves a cube or two spare. Said
+            here rather than silently, since the line has no editor to
+            open and go looking in. */}
+        <LineCoverage remaining={remaining} packed={packed} />
+
         <button
           type="button"
           onClick={() => onPatch({ presetId: null, folded: false })}
@@ -408,6 +622,10 @@ function LineCard({
           </span>
           <FoldedMix line={line} flavors={flavors} packed={packed} />
           <span className="flex-1" />
+          {/* The warning survives folding. A package whose flavours don't
+              add up is exactly the one you'd close and forget, and the
+              summary row is where you'd look for it. */}
+          <LineCoverage remaining={remaining} packed={packed} />
           <span className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">
             {nf.format(packed)}u
           </span>
@@ -443,57 +661,97 @@ function LineCard({
           {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 16)}
         </span>
 
-        <select
-          aria-label="Package type"
-          value={line.packageTypeId}
-          onChange={(e) =>
-            resize(
-              { packageTypeId: e.target.value },
-              (unitsPerPackage.get(Number(e.target.value)) ?? 0) * line.quantity,
-            )
-          }
-          className="rounded-full border border-line bg-cream px-3 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
-        >
-          {/* Retired types stay out, unless this line already uses one —
-              then it has to remain selectable or opening the dropdown and
-              closing it would silently repackage the order. `packageTypes`
-              arrives with archived rows so existing lines can resolve
-              their size, which is why the filter belongs here. */}
-          {packageTypes
-            .filter((p) => !p.archivedAt || String(p.id) === line.packageTypeId)
-            .map((p) => (
-              <option key={p.id} value={String(p.id)}>
-                {p.name}
-              </option>
-            ))}
-        </select>
+        {custom ? (
+          /*
+            One plain total, no multiplier. An event asking for 260 cubes
+            is not "so many of a package" — it is a number someone agreed
+            to — and expressing it as a count of a 1-unit package is an
+            implementation detail the person typing it shouldn't have to
+            perform.
+          */
+          <label className="flex items-center gap-2">
+            <span className="text-xs text-ink-soft">Total</span>
+            <input
+              type="number"
+              min={1}
+              aria-label="Total units"
+              value={line.quantity}
+              onChange={(e) => resize({ quantity: Math.max(1, Number(e.target.value) || 1) }, Math.max(1, Number(e.target.value) || 1))}
+              className="w-24 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent"
+            />
+            <span className="text-xs text-ink-soft">units</span>
+          </label>
+        ) : (
+          <>
+            <select
+              aria-label="Package type"
+              value={line.packageTypeId}
+              onChange={(e) =>
+                resize(
+                  { packageTypeId: e.target.value },
+                  (unitsPerPackage.get(Number(e.target.value)) ?? 0) * line.quantity,
+                )
+              }
+              className="rounded-full border border-line bg-cream px-3 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
+            >
+              {/* Retired types stay out, unless this line already uses one —
+                  then it has to remain selectable or opening the dropdown and
+                  closing it would silently repackage the order. `packageTypes`
+                  arrives with archived rows so existing lines can resolve
+                  their size, which is why the filter belongs here. The
+                  1-unit type is left out too: it is what Custom *is*, and
+                  offering it here would be two ways to say the same thing. */}
+              {packageTypes
+                .filter(
+                  (p) =>
+                    (!p.archivedAt || String(p.id) === line.packageTypeId) &&
+                    (p.unitsPerPackage > 1 || String(p.id) === line.packageTypeId),
+                )
+                .map((p) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
 
-        <NumberStepper
-          label="packages"
-          value={line.quantity}
-          min={1}
-          onChange={(quantity) =>
-            resize({ quantity }, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity)
-          }
-        />
+            <NumberStepper
+              label="packages"
+              value={line.quantity}
+              min={1}
+              onChange={(quantity) =>
+                resize({ quantity }, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity)
+              }
+            />
 
-        <span className="text-xs text-ink-soft">
-          = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
-        </span>
+            <span className="text-xs text-ink-soft">
+              = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
+            </span>
+          </>
+        )}
+
+        {singleUnit && smallestPackage && (
+          <SizingSwitch
+            custom={custom}
+            onChange={(toCustom) =>
+              toCustom
+                ? // The total is preserved exactly: N cubes of a 1-unit
+                  // package is the same jelly, differently described.
+                  resize({ packageTypeId: String(singleUnit.id), quantity: packed }, packed)
+                : // Going the other way can't preserve it — an arbitrary
+                  // total rarely divides into whole packages, and quietly
+                  // rounding would change what the customer ordered. One
+                  // of the smallest package instead, to be adjusted.
+                  resize(
+                    { packageTypeId: String(smallestPackage.id), quantity: 1 },
+                    smallestPackage.unitsPerPackage,
+                  )
+            }
+          />
+        )}
 
         <span className="flex-1" />
 
-        <span
-          className={`text-[11px] font-semibold tabular-nums ${
-            remaining === 0 ? "text-accent" : "text-amber-700"
-          }`}
-        >
-          {remaining === 0
-            ? "balanced"
-            : remaining > 0
-              ? `${nf.format(remaining)} unassigned`
-              : `${nf.format(-remaining)} over`}
-        </span>
+        <LineCoverage remaining={remaining} packed={packed} />
 
         <ModeSwitch mode={line.mode} onChange={(mode) => onPatch({ mode })} />
 
@@ -549,6 +807,69 @@ function LineCard({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Whether a line's flavours add up to what it packs.
+ *
+ * Shown on the open editor, on a folded summary and on a preset line, so
+ * that an unfinished package cannot hide behind being closed. Silent on
+ * an empty line: a package with no flavours yet is a normal stage of
+ * booking an order, not a mistake to flag.
+ */
+function LineCoverage({ remaining, packed }: { remaining: number; packed: number }) {
+  if (packed === 0 || remaining === packed) return null;
+  return (
+    <span
+      className={`keeps-color shrink-0 text-[11px] font-semibold tabular-nums ${
+        remaining === 0 ? "text-accent" : "text-amber-700"
+      }`}
+    >
+      {remaining === 0
+        ? "balanced"
+        : remaining > 0
+          ? `${nf.format(remaining)} unassigned`
+          : `${nf.format(-remaining)} over`}
+    </span>
+  );
+}
+
+/**
+ * Package or Custom — two ways of saying how much jelly, not one control
+ * with a "Custom" entry mixed in among the sizes.
+ *
+ * They are different questions. A package is a thing the kitchen makes
+ * several of; a custom total is a number agreed for one event, where the
+ * idea of a multiplier doesn't apply at all. Putting "Custom" in the size
+ * dropdown made the count stepper beside it meaningless without saying so.
+ */
+function SizingSwitch({
+  custom,
+  onChange,
+}: {
+  custom: boolean;
+  onChange: (custom: boolean) => void;
+}) {
+  return (
+    <div role="group" aria-label="How this line is sized" className="flex shrink-0 gap-0.5 rounded-full bg-cream p-0.5">
+      {[
+        { value: false, text: "package" },
+        { value: true, text: "custom" },
+      ].map((option) => (
+        <button
+          key={option.text}
+          type="button"
+          aria-pressed={custom === option.value}
+          onClick={() => onChange(option.value)}
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
+            custom === option.value ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+          }`}
+        >
+          {option.text}
+        </button>
+      ))}
     </div>
   );
 }
