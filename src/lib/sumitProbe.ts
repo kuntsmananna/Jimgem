@@ -174,7 +174,8 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
   section("VAT — is a document's value gross or net?");
   try {
     const rate = await getVatRate();
-    out.push(`Company VAT rate today: ${(rate * 100).toFixed(1)}%`);
+    // getvatrate answers in percent (18), not as a fraction.
+    out.push(`Company VAT rate today: ${rate}%`);
     const sampled = income.slice(0, 3);
     for (const document of sampled) {
       const details = await getDocumentDetails(document.DocumentID);
@@ -182,12 +183,16 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
       const lines = items.reduce((total, item) => total + (item.TotalPrice ?? 0), 0);
       const vat = items.reduce((total, item) => total + (item.VAT ?? 0), 0);
       const value = document.CompanyValue ?? 0;
+      // Compared on magnitude, not sign: a credit note's value, lines and
+      // VAT are all negative, and requiring VAT > 0 made every credit
+      // note fall through to "no clean match".
+      const hasVat = Math.abs(vat) >= 0.5;
       const verdict =
-        Math.abs(value - (lines + vat)) < 0.5 && vat > 0
+        Math.abs(value - (lines + vat)) < 0.5 && hasVat
           ? "value = lines + VAT → VALUE IS GROSS, lines are net"
-          : Math.abs(value - lines) < 0.5 && vat > 0
+          : Math.abs(value - lines) < 0.5 && hasVat
             ? "value = lines, VAT stated inside → VALUE IS GROSS, lines already include VAT"
-            : Math.abs(value - lines) < 0.5 && vat === 0
+            : Math.abs(value - lines) < 0.5 && !hasVat
               ? "value = lines, no VAT on the document"
               : "no clean match — read the numbers above";
       out.push(

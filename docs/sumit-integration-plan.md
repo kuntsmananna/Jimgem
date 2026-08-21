@@ -21,7 +21,8 @@ months, so there is no deep history to migrate.
 | DeliveryNote | logistics | 3 | ₪8,118 |
 | CreditInvoiceAndReceipt | revenue | 1 | −₪1,000 |
 
-**Billed revenue is ₪52,257** — the revenue bucket only. Summing every
+**Billed revenue is ₪52,257 including VAT** (₪44,285 net) — the revenue
+bucket only. Summing every
 non-expense document counts the same money twice, since a Receipt pays an
 Invoice already counted, and a DeliveryNote or PaymentRequest is not
 income at all. `documentBucket` in `sumit.ts` states that once.
@@ -85,14 +86,15 @@ independently against SUMIT's own screens on 2026-08-21.
   drafts for approval in SUMIT (`IsDraft` + `movetobooks`).
   `PaymentRequest` is exempt: it books nothing, so it can be issued for
   real.
-- **Whether a value is gross or net is established, never assumed.**
-  `DocumentValue` and `CompanyValue` name no convention, and guessing puts
-  an 18% error through every comparison with nothing looking broken. The
-  probe now samples three documents, adds each one's line totals and its
-  separately-stated VAT, and compares both against the reported value —
-  and asks `getvatrate` for the company's own rate instead of assuming the
-  statutory one. Whatever it reports is what the mirror stores, recorded
-  here once settled.
+- **A document's value is gross — settled by arithmetic, not assumed.**
+  `#1000` reports a value of ₪1,000 against lines of ₪847 and VAT of ₪153,
+  and 847 × 1.18 = 1,000. So `CompanyValue` **includes VAT**, the lines
+  are net, and VAT is stated separately per line. The billed total of
+  ₪52,257 is gross — ₪44,285 net — and directly comparable to Jimgem's own
+  VAT-inclusive order totals. Worth having checked: the assumption in the
+  room was the opposite, and acting on it would have put an 18% error
+  through every comparison with nothing looking broken.
+  (`getvatrate` answers in percent, 18 rather than 0.18.)
 
 ## Phase 1
 
@@ -141,7 +143,9 @@ CREATE TABLE sumit_documents (
   client_id INTEGER REFERENCES clients(id),
   order_id INTEGER REFERENCES orders(id),
   customer_name TEXT,
-  value NUMERIC(12,2),
+  value NUMERIC(12,2),         -- gross, VAT included
+  net_value NUMERIC(12,2),     -- from getdetails, per revenue document
+  vat_value NUMERIC(12,2),
   is_closed BOOLEAN,
   is_draft BOOLEAN,
   download_url TEXT,

@@ -309,7 +309,10 @@ export function getDocumentDetails(documentId: number): Promise<SumitDocumentDet
   return sumitPost<SumitDocumentDetails>("/accounting/documents/getdetails/", { DocumentID: documentId });
 }
 
-/** The company's VAT rate on a date — 0.18 style, not 18. */
+/**
+ * The company's VAT rate on a date, **as a percentage** — 18, not 0.18.
+ * Verified against the live account; divide by 100 before multiplying.
+ */
 export async function getVatRate(date?: Date | string): Promise<number> {
   const data = await sumitPost<{ Rate: number }>("/accounting/general/getvatrate/", {
     Date: date ? isoDate(date) : null,
