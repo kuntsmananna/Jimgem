@@ -8,6 +8,7 @@ import { logout } from "@/app/login/actions";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/orders", label: "Orders" },
+  { href: "/clients", label: "Clients" },
   { href: "/expenses", label: "Expenses" },
   { href: "/biz-plan", label: "Biz Plan" },
   { href: "/settings", label: "Settings" },
