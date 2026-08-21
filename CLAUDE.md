@@ -195,6 +195,10 @@ iteration (not guessed) — define these as `@theme` tokens in
   all over the money half — the pane's own silhouette says where the count
   stops and the cost starts, pinched by a `Notch` the way a ticket stub
   is, which is read at a glance where a caption has to actually be read.
+  The pane **clips** (`overflow-hidden`), so each cut-out draws as the
+  half-moon it is meant to be — hanging 8px past the edge, and with the
+  rail's container scrolling vertically, CSS turned its horizontal
+  `visible` into `auto` and those 8px became a scrollbar under the money.
   The **deposit is behind an "Add deposit" button** until an order has
   one: most are quoted before anyone has paid, and an empty box between
   Total and Balance due sat in front of the line the pane exists to show.

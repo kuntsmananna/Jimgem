@@ -102,7 +102,15 @@ export function OrderMoneyRail({
           negative over it spent the brightest thing on screen on a word. */}
       <GroupLabel rule={false}>The order</GroupLabel>
 
-      <aside className="money-rail mt-1.5 flex w-full flex-col rounded-2xl">
+      {/*
+        `overflow-hidden` clips the notch's cut-outs to the pane's own box.
+        They used to hang 8px past each edge, and since the rail's
+        container scrolls vertically the CSS spec turns its horizontal
+        `visible` into `auto` — so those 8px became a scrollbar under the
+        money. Clipped, each circle draws as the half-moon bitten out of
+        the edge, which is the shape it was always meant to be.
+      */}
+      <aside className="money-rail mt-1.5 flex w-full flex-col overflow-hidden rounded-2xl">
         {/*
           Coverage above the money, because it is the one thing on this
           rail that isn't a number the customer agreed to — it says whether
