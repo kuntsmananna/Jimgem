@@ -114,8 +114,14 @@ export function OrderEventPanel({
         )}
       </section>
 
-      <section className="flex min-w-0 flex-col">
-        <GroupLabel>Getting it there</GroupLabel>
+      {/*
+        One row, label left and control right — the same shape every
+        SheetRow above it has. As a headed section it drew a rule under
+        two words and then put a pair of chips beneath, which read as a
+        group with one empty row in it.
+      */}
+      <section className="flex min-w-0 items-center justify-between gap-4">
+        <GroupLabel rule={false}>Getting it there</GroupLabel>
         {/*
           A destination sets the price; "Other" turns delivery on with
           none, which is the hand-typed case — an order can be booked for
@@ -150,14 +156,14 @@ export function OrderEventPanel({
             { value: "other", label: "Other" },
           ]}
         />
-        {hasDelivery(draft) && (
-          <p className="mt-2 text-[11px] text-ink-soft">
-            {draft.deliveryOptionId === null
-              ? "Set what this one costs on the money rail."
-              : "Priced from the destination — type over it on the rail if this trip is different."}
-          </p>
-        )}
       </section>
+      {hasDelivery(draft) && (
+        <p className="-mt-3 text-[11px] text-ink-soft">
+            {draft.deliveryOptionId === null
+            ? "Set what this one costs on the money rail."
+            : "Priced from the destination — type over it on the rail if this trip is different."}
+        </p>
+      )}
     </div>
   );
 }

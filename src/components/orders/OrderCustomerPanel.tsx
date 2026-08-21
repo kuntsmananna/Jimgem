@@ -10,7 +10,7 @@ import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { orderTypeIconElement } from "@/lib/icons";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
-import { GroupLabel } from "./OrderSheet";
+import { FieldLabel } from "./OrderSheet";
 
 /**
  * The Customer tab: who the order is for, when, where, and how it is
@@ -35,12 +35,17 @@ export function OrderCustomerPanel({
 
   return (
     <div className="flex min-h-full flex-col">
-      <GroupLabel>The customer</GroupLabel>
       {/*
+        No heading over this. The dialog is already titled "Edit order"
+        and the first thing in it is the customer's name at 28px — a
+        caption saying THE CUSTOMER above that labels the unmistakable.
+
         The name is the headline, not a field: it is how you know which
         order is open, and at 14px in a grid cell it never read that way.
         Date and location ride beside it — they are the rest of "which
-        order", and each is one short value that would waste a row.
+        order", and each is one short value that would waste a row. Both
+        go uncaptioned too: a date field is self-evident, and the location
+        box already says "Location" until it has one.
       */}
       <div className="flex items-end gap-5">
         <input
@@ -50,26 +55,20 @@ export function OrderCustomerPanel({
           aria-label="Customer"
           className="min-w-0 flex-1 border-b border-transparent bg-transparent font-display text-[28px] leading-tight font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
         />
-        <label className="flex shrink-0 flex-col gap-0.5">
-          <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">Date</span>
-          <TextInput
-            type="date"
-            value={draft.date}
-            onChange={(e) => set({ date: e.target.value })}
-            aria-label="Date"
-            className="w-[9rem] text-sm tabular-nums"
-          />
-        </label>
-        <label className="flex shrink-0 flex-col gap-0.5">
-          <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">Location</span>
-          <TextInput
-            value={draft.location}
-            onChange={(e) => set({ location: e.target.value })}
-            placeholder="Location"
-            aria-label="Location"
-            className="w-56 text-sm"
-          />
-        </label>
+        <TextInput
+          type="date"
+          value={draft.date}
+          onChange={(e) => set({ date: e.target.value })}
+          aria-label="Date"
+          className="w-[9rem] shrink-0 text-sm tabular-nums"
+        />
+        <TextInput
+          value={draft.location}
+          onChange={(e) => set({ location: e.target.value })}
+          placeholder="Location"
+          aria-label="Location"
+          className="w-56 shrink-0 text-sm"
+        />
       </div>
 
       {/*
@@ -77,9 +76,10 @@ export function OrderCustomerPanel({
         one: nine order types wrap to three rows and need the room, while
         notes are read as a block whatever width they get.
       */}
-      <div className="mt-6 grid flex-1 grid-cols-[1.45fr_1fr] gap-x-8">
+      <div className="mt-7 grid flex-1 grid-cols-[1.45fr_1fr] gap-x-8">
+        {/* No heading here either: three captioned chip rows say what they
+            are, and a section title over them was a heading for headings. */}
         <section className="flex min-w-0 flex-col gap-4">
-          <GroupLabel>How it is classed</GroupLabel>
           <ChipSpread
             label="Order type"
             value={draft.customerType}
@@ -121,7 +121,10 @@ export function OrderCustomerPanel({
         </section>
 
         <section className="flex min-w-0 flex-col">
-          <GroupLabel>Notes</GroupLabel>
+          {/* Captioned, not headed: one field wants its name directly above
+              it, and a ruled group line over a single box separated it
+              from nothing. */}
+          <FieldLabel>Notes</FieldLabel>
           {/* Keeps its box whether filled or not, unlike the single-line
               fields: an unbordered block of text has nothing to say where
               the writing area ends. */}

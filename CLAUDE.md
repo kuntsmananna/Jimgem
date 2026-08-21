@@ -191,7 +191,14 @@ iteration (not guessed) — define these as `@theme` tokens in
   as the third column of a Details sheet the money could only be read
   while that tab was open. A rail rather than a fourth tab for the same
   reason — a number you have to go and look at is a number nobody looks
-  at. **It is drawn in negative** (`.money-rail` in `globals.css`): every
+  at. Its heading sits on the cream *above* the pane and there is none at
+  all over the money half — the pane's own silhouette says where the count
+  stops and the cost starts, pinched by a `Notch` the way a ticket stub
+  is, which is read at a glance where a caption has to actually be read.
+  The **deposit is behind an "Add deposit" button** until an order has
+  one: most are quoted before anyone has paid, and an empty box between
+  Total and Balance due sat in front of the line the pane exists to show.
+  **It is drawn in negative** (`.money-rail` in `globals.css`): every
   other surface in the app is cream on cream, so the one pane meant to be
   read from across the form is the one that stops matching. The shared
   sheet pieces state their tones as `currentColor` and opacity rather than
@@ -215,6 +222,14 @@ iteration (not guessed) — define these as `@theme` tokens in
   its label looking cropped by its own pill. Chips stay **left-aligned** like
   every other row in the app, even though the customer/location data
   they sit beside is Hebrew — the chrome is LTR throughout.
+- **A heading is only ruled where it heads several rows.** `GroupLabel`
+  takes `rule={false}` for a group that is one row with its control beside
+  it (Getting it there), and `FieldLabel` is the caption for a single
+  field (Notes) — a rule over one box separates it from nothing. The
+  Customer tab has no headings at all: the dialog is titled "Edit order",
+  its first line is the customer's name at 28px, and the date and location
+  boxes beside it are self-evident (the location one says "Location" until
+  it has one).
 - **The Event tab stacks its three groups**, rather than setting them in
   columns: the counts, what it is shown on and how it gets there are
   separate conversations that read fine one under the other, and a 13"
@@ -228,8 +243,8 @@ iteration (not guessed) — define these as `@theme` tokens in
   panel saying every field mattered equally and left the bottom third
   empty. Customer is the name as a headline with date and location beside
   it, then the chip spreads on the wide side and Notes on the narrow one;
-  Event is three columns — the counts, what it is shown on, how it gets
-  there. A ruled `GroupLabel` heads each group and is what separates them — there are deliberately no vertical hairlines, which
+  Event stacks its groups. A ruled `GroupLabel` heads each *group* and is
+  what separates them — there are deliberately no vertical hairlines, which
   read as a table once every group already carries a line of its own.
   **That heading rule is the only line in the panel**: `SheetRow` used to
   draw a dotted hairline under every field, which turned the three columns
@@ -506,7 +521,12 @@ iteration (not guessed) — define these as `@theme` tokens in
   every mirror count into an `order_displays` row against a seeded
   "Mirror" option.
 - **Delivery is picked from `delivery_options`** — a named destination
-  with a price — or left as "Other" and given an amount by hand.
+  with a price — or left as "Other" and given an amount by hand. It has
+  **no flat rate**, like Display: what a trip costs is a property of where
+  it goes. There used to be a `delivery` key in Add-on prices as well,
+  which set the same number in two places and left the destinations as the
+  half that could actually be right. The stale `prices` row is harmless —
+  `getPrices` only reads keys `PriceKey` still names.
   `orders.delivery_option_id` records which, and null with a non-null
   `delivery_cost` *is* the hand-typed case. `delivery_options` and
   `display_options` are the same shape (`PricedOption`), so they share the
@@ -520,9 +540,10 @@ iteration (not guessed) — define these as `@theme` tokens in
   is only reachable for an already-archived row, and the database refuses
   it while any order or expense still points at one; the route turns that
   refusal into a sentence rather than a 500.
-- **The add-on rates** (`delivery`, `waitress`, `kosher`) live in
-  Settings → Lists → **Add-on prices**. A fixed set, because each key is
-  wired to a specific field on the order.
+- **The add-on rates** (`waitress`, `kosher`) live in Settings → Lists →
+  **Add-on prices**. A fixed set, because each key is wired to a specific
+  field on the order. Delivery and Display are not in it: each prices
+  itself from its own list (see `ORDER_EXTRAS`).
 - **Every extra prices itself.** `ORDER_EXTRAS` gives each one a
   `standard(order, rates)` rather than a single rate key to multiply,
   which is what lets Display compute from its own list while the other
@@ -777,10 +798,15 @@ package** button that folds it back to its summary — it writes nothing,
 the order saves as a whole, but closing a finished package is what it
 feels like. A folded line carries a trash icon, so deleting a package
 you can already see the summary of doesn't mean opening it first, and it
-keeps its **coverage chip** (`LineCoverage` — balanced / N unassigned /
-N over): the package whose flavours don't add up is exactly the one you
-would close and forget. Silent on a line with no flavours yet, which is a
-normal stage of booking an order rather than a mistake.
+keeps its **note chip** (`LineNote` — No flavours yet / Balanced / N
+unassigned / N over): the package whose flavours don't add up is exactly
+the one you would close and forget. Everything a line has to say goes in
+that one chip in that one position — "No flavours yet" used to be grey
+text among the flavour names while the coverage was coloured text at the
+far end, so the line you most wanted to notice looked like the quietest
+thing on the row. Its unit count is written like the rail's (`PackedUnits`
+— cube, figure, then the word small), not as an 11px grey "144u" smaller
+than the percentages beside it.
 
 **The preset catalog is one non-wrapping row** (`PresetRow`), with
 whatever doesn't fit behind a searchable `+N`. There are fifteen saved

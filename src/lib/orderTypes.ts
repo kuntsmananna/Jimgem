@@ -425,17 +425,20 @@ export const ORDER_EXTRAS = [
     id: "delivery",
     label: "Delivery",
     cost: "deliveryCost",
-    priceKey: "delivery",
-    // Flat: an order is delivered or it isn't, so there is nothing to
-    // multiply the rate by.
-    per: "flat",
+    // No flat rate of its own, like Display: what a delivery costs is a
+    // property of where it is going, and `delivery_options` is where the
+    // owner says so. There used to be a single `delivery` rate in Add-on
+    // prices as well, which meant the same number was set in two places
+    // and the destinations were the half that could actually be right.
+    priceKey: null,
+    per: "per destination",
     applies: (order: OrderInput) => hasDelivery(order),
-    // The chosen destination's price when there is one, and the flat rate
-    // when delivery is on without a destination — which is the case a
-    // hand-typed amount starts from.
+    // The chosen destination's price, and nothing when delivery is on
+    // without one — "Other" is exactly the case where nobody has said yet
+    // what the trip costs, so the amount is hand-typed from blank rather
+    // than pre-filled with a rate that means nothing.
     standard: (order: OrderInput, rates: Rates) =>
-      rates.deliveryOptions.find((option) => option.id === order.deliveryOptionId)?.price ??
-      rates.prices.delivery,
+      rates.deliveryOptions.find((option) => option.id === order.deliveryOptionId)?.price ?? 0,
   },
   {
     id: "display",
@@ -498,7 +501,7 @@ export function displayCount(displays: OrderDisplay[]): number {
  * nothing to price. `unit` is the odd one out — it multiplies the units
  * the Content tab packs rather than a count on the Details tab.
  */
-export type PriceKey = UnitTierKey | "delivery" | "waitress" | "kosher";
+export type PriceKey = UnitTierKey | "waitress" | "kosher";
 
 export type Prices = Record<PriceKey, number>;
 
@@ -508,7 +511,6 @@ export const ZERO_PRICES: Prices = {
   unit_200: 0,
   unit_500: 0,
   unit_max: 0,
-  delivery: 0,
   waitress: 0,
   kosher: 0,
 };

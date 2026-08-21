@@ -27,9 +27,39 @@ export { nf };
  * hairline: it is the only line in the panel, so it has to hold the
  * groups apart on its own.
  */
-export function GroupLabel({ children }: { children: React.ReactNode }) {
+export function GroupLabel({
+  children,
+  rule = true,
+}: {
+  children: React.ReactNode;
+  /**
+   * Drop the rule where the group is a single row and its control sits
+   * on the same line — there is nothing below the heading for a line to
+   * separate it from, and drawn anyway it reads as an empty section.
+   */
+  rule?: boolean;
+}) {
   return (
-    <span className="mt-1.5 mb-3 block border-b-[1.5px] border-current/20 pb-2 text-[10px] font-bold tracking-[0.1em] opacity-60 uppercase">
+    <span
+      className={`text-[10px] font-bold tracking-[0.1em] opacity-60 uppercase ${
+        rule ? "mt-1.5 mb-3 block border-b-[1.5px] border-current/20 pb-2" : ""
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A caption sitting directly on top of its field, with no rule.
+ *
+ * `GroupLabel` heads a *group* and earns its line by having several rows
+ * under it; a single field wants its name and nothing else, or the panel
+ * fills up with rules separating one thing from one thing.
+ */
+export function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mb-1 block text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">
       {children}
     </span>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Minus, Plus, Search, Trash2 } from "lucide-react";
+import { CalendarRange, ChevronDown, ChevronRight, Minus, Package, Plus, Search, Trash2 } from "lucide-react";
 import {
   type OrderPackageLine,
   evenSplit,
@@ -14,7 +14,7 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { flavorBarGradient, flavorGradient } from "@/lib/flavorStyle";
-import { packageTypeIconElement } from "@/lib/icons";
+import { UnitsIcon, packageTypeIconElement } from "@/lib/icons";
 import { TextInput } from "@/components/Field";
 import { usePopoverDismiss } from "@/components/useOverlayDismiss";
 import { TrayPreview } from "./TrayPreview";
@@ -593,9 +593,7 @@ function LineCard({
           onChange={(quantity) => onPatch({ quantity: quantity, flavors: presetUnits(preset.flavors, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity) })}
         />
 
-        <span className="text-xs text-ink-soft">
-          = <span className="font-bold tabular-nums text-ink">{nf.format(packed)}</span> units
-        </span>
+        <PackedUnits packed={packed} />
 
         <span className="flex-1" />
 
@@ -603,7 +601,7 @@ function LineCard({
             that doesn't divide evenly leaves a cube or two spare. Said
             here rather than silently, since the line has no editor to
             open and go looking in. */}
-        <LineCoverage remaining={remaining} packed={packed} />
+        <LineNote remaining={remaining} packed={packed} />
 
         <button
           type="button"
@@ -648,10 +646,8 @@ function LineCard({
           {/* The warning survives folding. A package whose flavours don't
               add up is exactly the one you'd close and forget, and the
               summary row is where you'd look for it. */}
-          <LineCoverage remaining={remaining} packed={packed} />
-          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-soft">
-            {nf.format(packed)}u
-          </span>
+          <LineNote remaining={remaining} packed={packed} />
+          <PackedUnits packed={packed} />
         </button>
         {/* Deleting a package you can see the summary of shouldn't mean
             opening it first. */}
@@ -679,10 +675,6 @@ function LineCard({
         >
           <ChevronDown size={14} />
         </button>
-
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/[0.06] text-ink">
-          {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 16)}
-        </span>
 
         {/*
           First and loudest, because it decides what every control after
@@ -720,13 +712,16 @@ function LineCard({
             perform.
           */
           <label className="flex items-center gap-2">
+            {/* Room for five digits: an event total is in the thousands,
+                where a package count is never more than three. */}
             <input
               type="number"
               min={1}
+              max={99999}
               aria-label="Total units"
               value={line.quantity}
               onChange={(e) => resize({ quantity: Math.max(1, Number(e.target.value) || 1) }, Math.max(1, Number(e.target.value) || 1))}
-              className="w-24 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent"
+              className="w-28 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent"
             />
             <span className="text-xs text-ink-soft">units in total</span>
           </label>
@@ -757,10 +752,13 @@ function LineCard({
               }
             />
 
+            {/* Three digits is already more trays than anyone has ordered;
+                a wider box just makes "2" look lost in it. */}
             <NumberStepper
               label="packages"
               value={line.quantity}
               min={1}
+              className="w-12"
               onChange={(quantity) =>
                 resize({ quantity }, (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0) * quantity)
               }
@@ -774,7 +772,7 @@ function LineCard({
 
         <span className="flex-1" />
 
-        <LineCoverage remaining={remaining} packed={packed} />
+        <LineNote remaining={remaining} packed={packed} />
 
         <ModeSwitch mode={line.mode} onChange={(mode) => onPatch({ mode })} />
 
@@ -835,26 +833,38 @@ function LineCard({
 }
 
 /**
- * Whether a line's flavours add up to what it packs.
+ * Everything a package line has to say about itself, in one chip, always
+ * in the same place on the row.
  *
- * Shown on the open editor, on a folded summary and on a preset line, so
- * that an unfinished package cannot hide behind being closed. Silent on
- * an empty line: a package with no flavours yet is a normal stage of
- * booking an order, not a mistake to flag.
+ * It used to be two different things in two different spots — "No
+ * flavours yet" as grey text among the flavour names, and the coverage as
+ * coloured text at the end — so the one line you would want to notice
+ * looked like the quietest thing on the row. One chip, one position: you
+ * learn where to look once.
+ *
+ * `keeps-color` throughout, because hovering the row turns it black and
+ * these fills *are* the message.
  */
-function LineCoverage({ remaining, packed }: { remaining: number; packed: number }) {
-  if (packed === 0 || remaining === packed) return null;
+function LineNote({ remaining, packed }: { remaining: number; packed: number }) {
+  if (packed === 0) return null;
+  // Nothing assigned at all reads as a to-do rather than as an error: it
+  // is a normal stage of booking an order, but it is still the thing left
+  // to do.
+  const unstarted = remaining === packed;
+  const done = remaining === 0;
   return (
     <span
-      className={`keeps-color shrink-0 text-[11px] font-semibold tabular-nums ${
-        remaining === 0 ? "text-accent" : "text-amber-700"
+      className={`keeps-color shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap tabular-nums ${
+        done ? "bg-tile-sage text-ink" : "bg-amber-200 text-amber-900"
       }`}
     >
-      {remaining === 0
-        ? "balanced"
-        : remaining > 0
-          ? `${nf.format(remaining)} unassigned`
-          : `${nf.format(-remaining)} over`}
+      {unstarted
+        ? "No flavours yet"
+        : done
+          ? "Balanced"
+          : remaining > 0
+            ? `${nf.format(remaining)} unassigned`
+            : `${nf.format(-remaining)} over`}
     </span>
   );
 }
@@ -883,18 +893,22 @@ function SizingSwitch({
   return (
     <div role="group" aria-label="How this line is sized" className="flex shrink-0 gap-0.5 rounded-full bg-cream p-0.5">
       {[
-        { value: false, text: "Package" },
-        { value: true, text: "Event" },
+        // A box you make several of, against a date you make one amount
+        // for. The marks carry the distinction the two words are making,
+        // which is the whole reason this control sits first in the row.
+        { value: false, text: "Package", Icon: Package },
+        { value: true, text: "Event", Icon: CalendarRange },
       ].map((option) => (
         <button
           key={option.text}
           type="button"
           aria-pressed={custom === option.value}
           onClick={() => onChange(option.value)}
-          className={`rounded-full px-3.5 py-1 text-xs font-bold transition ${
+          className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition ${
             custom === option.value ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
           }`}
         >
+          <option.Icon size={13} />
           {option.text}
         </button>
       ))}
@@ -947,6 +961,27 @@ function SizeSpread({
   );
 }
 
+/**
+ * A line's unit count, written the way the money rail writes the order's:
+ * the cube, the figure, then the word small beside it.
+ *
+ * "144u" was the number this row is actually scanned for, set in 11px
+ * grey at the end of it — smaller than the flavour percentages it sat
+ * next to. Same phrase as the rail so the two read as the same fact at
+ * two scales.
+ */
+function PackedUnits({ packed }: { packed: number }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <UnitsIcon size={14} className="text-ink-soft" />
+      <span className="font-display text-[15px] leading-none font-extrabold tabular-nums text-ink">
+        {nf.format(packed)}
+      </span>
+      <span className="text-[11px] text-ink-soft">units</span>
+    </span>
+  );
+}
+
 /** The mix as colour proportions, for a folded line. */
 function FoldedMix({
   line,
@@ -957,9 +992,9 @@ function FoldedMix({
   flavors: Flavor[];
   packed: number;
 }) {
-  if (line.flavors.length === 0) {
-    return <span className="text-[11px] text-ink-soft">No flavours yet</span>;
-  }
+  // Nothing to draw with no flavours picked: the row's note chip says so,
+  // in the one place every message about a package appears.
+  if (line.flavors.length === 0) return null;
   return (
     <>
       <span className="flex h-3.5 w-20 shrink-0 overflow-hidden rounded" aria-hidden>
@@ -1098,12 +1133,15 @@ export function NumberStepper({
   min = 0,
   onChange,
   allowEmpty = false,
+  className = "w-14",
 }: {
   label: string;
   value: number | null;
   min?: number;
   onChange: (value: number) => void;
   allowEmpty?: boolean;
+  /** Width of the box. Sized to the digits it will actually hold. */
+  className?: string;
 }) {
   const current = value ?? min;
   return (
@@ -1122,7 +1160,7 @@ export function NumberStepper({
         value={allowEmpty && value === null ? "" : current}
         placeholder={allowEmpty ? "—" : undefined}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || min))}
-        className="w-14 rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold text-ink outline-none focus:border-accent"
+        className={`${className} rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent`}
       />
       <StepButton label={`One more ${label}`} onClick={() => onChange(current + 1)}>
         <Plus size={13} />
