@@ -113,11 +113,49 @@ export function documentTypeName(type: string | number | null): string {
   return type.replace(/\s*\(\d+\)$/, "");
 }
 
+/**
+ * What a document type *means*, which is not the same as whether it
+ * carries a number. Summing every non-expense document double-counts:
+ * a Receipt is the payment of an Invoice already counted, and a
+ * DeliveryNote or PaymentRequest is not money at all.
+ *
+ *   revenue     what was actually billed — the only bucket to sum as income
+ *   collection  money arriving against revenue already billed
+ *   quote       asked for, not agreed
+ *   logistics   goods moving, no money
+ *   expense     the supplier side
+ */
+export type DocumentBucket = "revenue" | "collection" | "quote" | "logistics" | "expense";
+
+const BUCKETS: Record<string, DocumentBucket> = {
+  Invoice: "revenue",
+  InvoiceAndReceipt: "revenue",
+  CreditInvoice: "revenue",
+  CreditInvoiceAndReceipt: "revenue",
+  DonationReceipt: "revenue",
+  CreditDonationReceipt: "revenue",
+  Receipt: "collection",
+  CreditReceipt: "collection",
+  PaymentRequest: "collection",
+  ProformaInvoice: "quote",
+  PriceQuotation: "quote",
+  Order: "logistics",
+  DeliveryNote: "logistics",
+  GoodsReturnNote: "logistics",
+  PurchasingOrder: "logistics",
+};
+
+export function documentBucket(type: string | number | null): DocumentBucket {
+  return BUCKETS[documentTypeName(type)] ?? "expense";
+}
+
 /** The supplier side of the ledger: every Expense* type plus SupplierPayment. */
 export function isExpenseDocument(type: string | number | null): boolean {
-  const name = documentTypeName(type);
-  return name.includes("Expense") || name === "SupplierPayment";
+  return documentBucket(type) === "expense";
 }
+
+/** Every supplier-side type, for asking documents/list about them explicitly. */
+export const EXPENSE_DOCUMENT_TYPES = DOCUMENT_TYPES.filter(isExpenseDocument);
 
 /** A credit note reverses the document it credits, so its value is negative to us. */
 export function isCreditDocument(type: string | number | null): boolean {

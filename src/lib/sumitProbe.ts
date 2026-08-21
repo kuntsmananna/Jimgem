@@ -14,7 +14,16 @@
  * designed panel, because it is a throwaway diagnostic whose output is
  * meant to be copied out and read once, not lived with.
  */
-import { listDocuments, listFolders, listEntities, documentTypeName, isExpenseDocument, type SumitDocument } from "./sumit";
+import {
+  listDocuments,
+  listFolders,
+  listEntities,
+  documentTypeName,
+  documentBucket,
+  isExpenseDocument,
+  EXPENSE_DOCUMENT_TYPES,
+  type SumitDocument,
+} from "./sumit";
 
 const shekels = new Intl.NumberFormat("en-IL", { maximumFractionDigits: 0 });
 const money = (amount: number) => `₪${shekels.format(Math.round(amount))}`;
@@ -82,11 +91,12 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
   section("Type mix");
   out.push(
     table([
-      ["type", "count", "value", "closed", "has pay URL"],
+      ["type", "means", "count", "value", "closed", "has pay URL"],
       ...[...groupBy(documents, (document) => documentTypeName(document.Type))]
         .sort((a, b) => b[1].length - a[1].length)
         .map(([type, group]) => [
           type,
+          documentBucket(group[0].Type),
           String(group.length),
           money(sumValue(group)),
           String(group.filter((document) => document.IsClosed).length),
@@ -99,24 +109,57 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
   // cutover comes from: the month SUMIT's expenses start is the month its
   // numbers should replace the Sheet's legacy totals.
   const expenses = documents.filter((document) => isExpenseDocument(document.Type));
-  const income = documents.filter((document) => !isExpenseDocument(document.Type));
+  // Revenue is the billed bucket alone. Adding the receipts to it counts
+  // the same money twice, and a delivery note or payment request is not
+  // income at all.
+  const income = documents.filter((document) => documentBucket(document.Type) === "revenue");
+  const collections = documents.filter((document) => documentBucket(document.Type) === "collection");
   section("By month");
   out.push(
     table([
-      ["month", "income docs", "income ₪", "expense docs", "expense ₪"],
+      ["month", "billed docs", "billed ₪", "collected ₪", "expense docs", "expense ₪"],
       ...[...new Set(documents.map(monthOf))].sort().map((month) => {
-        const monthIncome = income.filter((document) => monthOf(document) === month);
-        const monthExpenses = expenses.filter((document) => monthOf(document) === month);
+        const inMonth = <T extends SumitDocument>(list: T[]) => list.filter((document) => monthOf(document) === month);
         return [
           month,
-          String(monthIncome.length),
-          money(sumValue(monthIncome)),
-          String(monthExpenses.length),
-          money(sumValue(monthExpenses)),
+          String(inMonth(income).length),
+          money(sumValue(inMonth(income))),
+          money(sumValue(inMonth(collections))),
+          String(inMonth(expenses).length),
+          money(sumValue(inMonth(expenses))),
         ];
       }),
     ]),
   );
+  out.push(`\nBilled total ${money(sumValue(income))} — that is the revenue figure, credit notes included.`);
+  // The unfiltered listing above may simply not return supplier-side
+  // documents. Asking for them by type is what tells "you have none" apart
+  // from "the endpoint didn't offer them".
+  if (expenses.length === 0) {
+    section("Expense documents, asked for by type");
+    try {
+      const explicit = await listDocuments({ dateFrom, dateTo, types: EXPENSE_DOCUMENT_TYPES, includeDrafts: true });
+      out.push(
+        explicit.length === 0
+          ? `Still none, asking for ${EXPENSE_DOCUMENT_TYPES.join(", ")} directly. Expenses are genuinely not recorded as documents.`
+          : `${explicit.length} returned when asked by type — the unfiltered listing omits them, and the sync must always pass DocumentTypes.`,
+      );
+      if (explicit.length > 0) {
+        out.push(
+          table([
+            ["month", "docs", "₪"],
+            ...[...new Set(explicit.map(monthOf))].sort().map((month) => {
+              const group = explicit.filter((document) => monthOf(document) === month);
+              return [month, String(group.length), money(sumValue(group))];
+            }),
+          ]),
+        );
+      }
+    } catch (error) {
+      out.push(`Typed expense query failed: ${(error as Error).message}`);
+    }
+  }
+
   const firstExpenseMonth = [...new Set(expenses.map(monthOf))].sort()[0];
   out.push(
     firstExpenseMonth
@@ -151,32 +194,32 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
   section("CRM folders");
   try {
     const folders = await listFolders();
-    out.push(folders.map((folder) => `${folder.ID} ${folder.Name ?? ""}`).join("\n") || "none");
-    const customersFolder = folders.find((folder) => /customer|לקוח/i.test(folder.Name ?? ""));
-    if (customersFolder?.Name) {
-      const entities = await listEntities(customersFolder.Name);
-      section(`Customer entities — folder "${customersFolder.Name}"`);
-      out.push(`${entities.length} entities.`);
-      const keys = [...new Set(entities.flatMap((entity) => Object.keys(entity.Properties ?? {})))];
-      out.push(`Property keys: ${keys.join(", ") || "none (LoadProperties returned nothing)"}`);
-      const phoneKeys = keys.filter((key) => /phone|mobile|טלפון|נייד/i.test(key));
-      for (const key of phoneKeys) {
-        const filled = entities.filter((entity) => {
-          const value = entity.Properties?.[key];
-          return value !== null && value !== undefined && String(value).trim() !== "";
-        }).length;
-        const percent = entities.length ? Math.round((filled / entities.length) * 100) : 0;
-        out.push(`  ${key}: ${filled}/${entities.length} filled (${percent}%)`);
+    // Folders are matched by exact name: a loose match picked
+    // "כרטיסי אשראי ללקוחות" over "לקוחות" and read the wrong list.
+    const wanted = ["לקוחות", "הוצאות", "פריטי הוצאות", "קבצי הוצאות", "חשבוניות ספקים", "ספקים"];
+    for (const name of wanted) {
+      const folder = folders.find((candidate) => candidate.Name?.trim() === name);
+      if (!folder) {
+        out.push(`${name}: no such folder`);
+        continue;
       }
-      if (phoneKeys.length === 0) {
-        out.push("  No phone-shaped property — phone matching starts from Jimgem's side.");
+      try {
+        // By ID rather than display name — listentities rejected a name.
+        const entities = await listEntities(String(folder.ID));
+        const keys = [...new Set(entities.flatMap((entity) => Object.keys(entity.Properties ?? {})))];
+        out.push(`\n${name} (${folder.ID}): ${entities.length} entities`);
+        out.push(`  keys: ${keys.slice(0, 30).join(", ") || "none"}`);
+        for (const key of keys.filter((candidate) => /phone|mobile|טלפון|נייד|email|דוא/i.test(candidate))) {
+          const filled = entities.filter((entity) => String(entity.Properties?.[key] ?? "").trim() !== "").length;
+          const percent = entities.length ? Math.round((filled / entities.length) * 100) : 0;
+          out.push(`  ${key}: ${filled}/${entities.length} filled (${percent}%)`);
+        }
+      } catch (error) {
+        out.push(`\n${name} (${folder.ID}): read failed — ${(error as Error).message}`);
       }
-    } else {
-      out.push("No customers-looking folder; the roster comes from documents only.");
     }
   } catch (error) {
-    out.push(`CRM read failed: ${(error as Error).message}`);
-    out.push("Not fatal — it only means the roster comes from documents rather than customer records.");
+    out.push(`Folder list failed: ${(error as Error).message}`);
   }
 
   section("Orders in Postgres vs SUMIT customers");
@@ -202,7 +245,11 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
       `${orders.length} orders under ${orderNames.size} distinct names; ` +
         `${sumitNames.size} named SUMIT customers; ${matched.length} match exactly.`,
     );
-    out.push(`${near.length} more match loosely (one name contains the other) — those want confirming by hand.`);
+    out.push(`${near.length} more match loosely (one name contains the other) — those want confirming by hand:`);
+    for (const [key, name] of near.slice(0, 25)) {
+      const candidates = [...sumitNames].filter(([other]) => other.includes(key) || key.includes(other));
+      out.push(`  ${name}  →  ${candidates.map(([, other]) => other).join(" | ")}`);
+    }
     out.push(`\nIn orders, not in SUMIT (${unmatchedOrders.length}):`);
     out.push(unmatchedOrders.slice(0, 20).map(([, name]) => `  ${name}`).join("\n") || "  none");
     out.push(`\nIn SUMIT, not in orders (${unmatchedSumit.length}):`);
