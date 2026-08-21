@@ -510,6 +510,32 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **VAT is per row, and the rate is copied onto it.** `orders` and
+  `expenses` both carry `vat_mode` (`included` / `added` / `exempt`) and
+  `vat_rate`, in percent (18, not 0.18). Three modes because three
+  different things are true of different rows and no amount says which: a
+  price quoted before VAT, a price the customer pays with VAT already
+  inside, and a transaction VAT never touched — everything before the
+  business registered on **2026-06-23**, which is the boundary
+  `scripts/migrate-015-vat.mjs` stamped the back catalogue by. That
+  boundary is imperfect on purpose: `orders.date` is the *event* date, not
+  the invoice date, and the mode is an ordinary editable field. The rate is
+  copied at creation rather than read at display time — the same
+  copy-not-link rule a preset's price follows, so a rate change cannot
+  reprice work already agreed. `vatOn(amount, mode, rate)` in
+  `orderTypes.ts` is the whole arithmetic, and rounds the gross and the VAT
+  so the three figures add up on screen.
+- **`orderTotal` is what the customer pays; `orderNet` is what the business
+  earns.** Every existing call site — the rail, the Kanban card, the hover
+  card, the summary — wanted the first and still gets it. `financials.ts`
+  carries both as `total` and `netTotal`. **Both are summed per order, never
+  divided out of a month's total**: these months straddle registration, so
+  one divisor would be wrong for every exempt order in them. That is the
+  rule that, broken, produces plausible figures that are quietly false.
+- `prices` gained a `vat_rate` key, edited in Settings → Lists → **VAT**.
+  It sits with the prices because it is the same kind of thing — an
+  owner-editable number the money is computed from — but deliberately not
+  in `PRICE_FIELDS`, which drives the add-on pane: VAT is not an add-on.
 - **A discount comes off the whole order**, given either as a percentage
   of it or as shekels off. Two columns (`discount`, `discount_is_percent`)
   rather than one resolved amount: "10% off" and "₪10 off" are different

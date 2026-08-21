@@ -19,6 +19,7 @@ import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
 import { OrderTypesPanel } from "@/components/settings/OrderTypesPanel";
 import { PresetsPanel } from "@/components/settings/PresetsPanel";
 import { PricesPanel } from "@/components/settings/PricesPanel";
+import { VatPanel } from "@/components/settings/VatPanel";
 import { JellyPricesPanel } from "@/components/settings/JellyPricesPanel";
 import { PricedOptionsPanel } from "@/components/settings/PricedOptionsPanel";
 import { StagesPanel } from "@/components/settings/StagesPanel";
@@ -83,6 +84,7 @@ export default async function SettingsPage() {
               <OrderTypesPanel items={orderTypes} />
               <JellyPricesPanel prices={prices} presets={presets} />
               <PricesPanel prices={prices} />
+              <VatPanel prices={prices} />
               <PricedOptionsPanel
                 title="Display"
                 description="An order can carry several at once."

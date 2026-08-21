@@ -338,6 +338,15 @@ export interface Order {
    */
   discount: number;
   discountIsPercent: boolean;
+  /** How VAT applies to this order — see `VAT_MODES`. */
+  vatMode: VatMode;
+  /**
+   * The rate in percent (18, not 0.18), copied onto the order when it is
+   * created rather than looked up at read time. Rates change; an order
+   * booked at one must not silently reprice when the country changes the
+   * other. The same copy-not-link rule a preset's price follows.
+   */
+  vatRate: number;
   deposit: number;
   paymentStatus: PaymentStatus;
   /** Never null: `orders.production_status` is NOT NULL DEFAULT 'queue'. */
@@ -375,6 +384,15 @@ export interface OrderInput {
   /** See `Order.discount` — a percentage of the order, or shekels off it. */
   discount: number;
   discountIsPercent: boolean;
+  /** How VAT applies to this order — see `VAT_MODES`. */
+  vatMode: VatMode;
+  /**
+   * The rate in percent (18, not 0.18), copied onto the order when it is
+   * created rather than looked up at read time. Rates change; an order
+   * booked at one must not silently reprice when the country changes the
+   * other. The same copy-not-link rule a preset's price follows.
+   */
+  vatRate: number;
   deposit: number;
   paymentStatus: PaymentStatus;
   productionStatus: ProductionStatus;
@@ -498,7 +516,13 @@ export function displayCount(displays: OrderDisplay[]): number {
  * nothing to price. `unit` is the odd one out — it multiplies the units
  * the Content tab packs rather than a count on the Details tab.
  */
-export type PriceKey = UnitTierKey | "delivery" | "waitress" | "kosher";
+/**
+ * `vat_rate` sits with the prices because it is the same kind of thing —
+ * an owner-editable number the money is computed from — even though it is
+ * a percentage rather than an amount. It is deliberately *not* in
+ * PRICE_FIELDS: that list drives the add-on pane, and VAT is not an add-on.
+ */
+export type PriceKey = UnitTierKey | "delivery" | "waitress" | "kosher" | "vat_rate";
 
 export type Prices = Record<PriceKey, number>;
 
@@ -511,6 +535,7 @@ export const ZERO_PRICES: Prices = {
   delivery: 0,
   waitress: 0,
   kosher: 0,
+  vat_rate: 0,
 };
 
 /**
@@ -591,6 +616,53 @@ export const PRICE_FIELDS: { key: PriceKey; label: string; per: string }[] = ORD
 );
 
 /**
+ * How VAT applies to an order or an expense.
+ *
+ * Three, because three different things are true of different rows and no
+ * single amount says which: a price quoted before VAT, a price the
+ * customer pays with VAT already inside it, and a transaction VAT never
+ * touched — everything this business did before it registered.
+ */
+export type VatMode = "included" | "added" | "exempt";
+
+/**
+ * When the business registered for VAT — the same boundary migration 015
+ * stamped the back catalogue with. Anything earlier was genuinely exempt,
+ * which is why a period spanning it cannot be converted with one divisor.
+ */
+export const VAT_REGISTERED_FROM = "2026-06-23";
+
+export const VAT_MODES: { id: VatMode; label: string; hint: string }[] = [
+  { id: "included", label: "VAT included", hint: "The price already contains VAT" },
+  { id: "added", label: "+ VAT", hint: "VAT is added on top of the price" },
+  { id: "exempt", label: "No VAT", hint: "VAT does not apply" },
+];
+
+/**
+ * What VAT comes to on an agreed amount, and what that amount grows to.
+ *
+ * Kept as one helper taking a plain number so an expense can use it
+ * without pretending to be an order. Both figures are rounded to whole
+ * shekels and `net` is derived by subtraction, so the three always add up
+ * on screen rather than being off by a rounding step.
+ */
+export function vatOn(amount: number, mode: VatMode, rate: number): {
+  net: number;
+  vat: number;
+  gross: number;
+} {
+  const factor = 1 + rate / 100;
+  if (mode === "exempt" || !rate) return { net: amount, vat: 0, gross: amount };
+  if (mode === "added") {
+    const gross = Math.round(amount * factor);
+    return { net: amount, vat: gross - amount, gross };
+  }
+  // Included: the amount is what the customer pays, VAT already inside.
+  const net = Math.round(amount / factor);
+  return { net, vat: amount - net, gross: amount };
+}
+
+/**
  * The jelly plus every extra that applies, before any discount.
  *
  * An extra is only counted when the thing itself is on the order, so
@@ -631,7 +703,39 @@ export function orderDiscount(order: OrderInput | Order): number {
  * place and forgotten in another.
  */
 export function orderTotal(order: OrderInput | Order): number {
+  return orderVatOn(order).gross;
+}
+
+/**
+ * The agreed figure before VAT is reasoned about: jelly plus extras, less
+ * the discount. Under `added` this is what the customer was quoted; under
+ * `included` it is what they pay. What separates the two is `vatMode`,
+ * which is why nothing downstream should use this directly — take
+ * `orderTotal` for what is charged and `orderNet` for what is earned.
+ */
+function orderAgreed(order: OrderInput | Order): number {
   return orderSubtotal(order) - orderDiscount(order);
+}
+
+export function orderVatOn(order: OrderInput | Order): ReturnType<typeof vatOn> {
+  return vatOn(orderAgreed(order), order.vatMode ?? "included", order.vatRate ?? 0);
+}
+
+/** The VAT on the order, in shekels. */
+export function orderVat(order: OrderInput | Order): number {
+  return orderVatOn(order).vat;
+}
+
+/**
+ * What the order earns the business, VAT removed.
+ *
+ * This — not `orderTotal` — is what a financial report should sum: VAT
+ * collected is money held for the state, not income. The two differ by
+ * nothing at all on an exempt order, which is exactly why the mode has to
+ * be stored per order rather than assumed for a period.
+ */
+export function orderNet(order: OrderInput | Order): number {
+  return orderVatOn(order).net;
 }
 
 /**

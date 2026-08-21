@@ -3,6 +3,7 @@ import {
   type OrderDisplay,
   type PaymentStatus,
   type ProductionStatus,
+  type VatMode,
   type OrderLineFlavor,
   type OrderPackageLine,
   type Order,
@@ -106,6 +107,8 @@ interface DbOrderRow {
   kosher_cost: string | null;
   discount: string;
   discount_is_percent: boolean;
+  vat_mode: VatMode;
+  vat_rate: string | null;
   total_amount: string;
   deposit: string;
   payment_status: PaymentStatus;
@@ -211,6 +214,8 @@ function mapDbOrder(
     kosherCost: money(row.kosher_cost),
     discount: Number(row.discount),
     discountIsPercent: row.discount_is_percent,
+    vatMode: row.vat_mode ?? "included",
+    vatRate: Number(row.vat_rate ?? 0),
     deposit: Number(row.deposit),
     paymentStatus: row.payment_status,
     productionStatus: row.production_status,
@@ -357,6 +362,8 @@ const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] 
   { column: "kosher_cost", value: (i) => i.kosherCost },
   { column: "discount", value: (i) => i.discount },
   { column: "discount_is_percent", value: (i) => i.discountIsPercent },
+  { column: "vat_mode", value: (i) => i.vatMode },
+  { column: "vat_rate", value: (i) => i.vatRate },
   { column: "display_cost", value: (i) => i.displayCost },
   { column: "total_amount", value: (i) => i.totalAmount },
   { column: "deposit", value: (i) => i.deposit },
@@ -502,6 +509,8 @@ export async function duplicateOrder(id: number): Promise<Order> {
     kosherCost: money(source.kosher_cost),
     discount: Number(source.discount),
     discountIsPercent: source.discount_is_percent,
+    vatMode: source.vat_mode ?? "included",
+    vatRate: Number(source.vat_rate ?? 0),
     deposit: Number(source.deposit),
     paymentStatus: source.payment_status,
     productionStatus: source.production_status,

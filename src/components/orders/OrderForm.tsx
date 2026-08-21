@@ -44,7 +44,12 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-function draftFromOrder(order?: Order): OrderInput {
+/**
+ * `vatRate` is passed in rather than read here: a new order takes today's
+ * rate as its own, and an existing one keeps whatever it was booked at.
+ * That is the whole point of storing it on the row.
+ */
+function draftFromOrder(order: Order | undefined, vatRate: number): OrderInput {
   if (!order) {
     return {
       date: new Date().toISOString().slice(0, 10),
@@ -66,6 +71,8 @@ function draftFromOrder(order?: Order): OrderInput {
       kosherCost: null,
       discount: 0,
       discountIsPercent: false,
+      vatMode: "included",
+      vatRate,
       deposit: 0,
       paymentStatus: "unpaid",
       productionStatus: "queue",
@@ -92,6 +99,8 @@ function draftFromOrder(order?: Order): OrderInput {
     kosherCost: order.kosherCost,
     discount: order.discount,
     discountIsPercent: order.discountIsPercent,
+    vatMode: order.vatMode,
+    vatRate: order.vatRate,
     deposit: order.deposit,
     paymentStatus: order.paymentStatus,
     productionStatus: order.productionStatus ?? "queue",
@@ -169,7 +178,7 @@ export function OrderForm({
   // against can't drift apart — draftFromOrder stamps today's date for a
   // new order, and calling it twice could straddle midnight.
   const [initial] = useState(() => {
-    const draft = draftFromOrder(order);
+    const draft = draftFromOrder(order, rates.prices.vat_rate);
     const packed = unitsPerPackageMap(packageTypes);
     const lines = toDraftLines(order?.packageLines ?? [], presets, packed);
     const jelly = jellyTotal(toPackageLines(lines), packed, rates.prices);

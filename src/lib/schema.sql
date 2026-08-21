@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS prices (
 
 INSERT INTO prices (key, amount) VALUES
   ('unit_100', 0), ('unit_200', 0), ('unit_500', 0), ('unit_max', 0),
-  ('delivery', 0), ('waitress', 0), ('kosher', 0)
+  ('delivery', 0), ('waitress', 0), ('kosher', 0), ('vat_rate', 18)
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -187,6 +187,14 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_is_percent BOOLEAN NOT NULL
 -- delivery_cost is a hand-typed amount
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_option_id INTEGER REFERENCES delivery_options(id);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
+
+-- How VAT applies to the order, and the rate it was booked at. The rate
+-- is copied onto the row rather than read from prices at display time --
+-- rates change, and an order agreed at one must not silently reprice
+-- when the country changes the other. 'included' is the default because
+-- that is what a registered business quotes
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;
@@ -370,3 +378,9 @@ CREATE TABLE IF NOT EXISTS expenses (
   note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- The same two columns an order carries, for the same reason: a receipt
+-- from a registered supplier has VAT inside it, one from an unregistered
+-- supplier has none, and the amount alone says nothing about which
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;

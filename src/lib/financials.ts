@@ -1,5 +1,5 @@
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
-import { isBooked, orderTotal, stageMap } from "./orderTypes";
+import { isBooked, orderNet, orderTotal, stageMap } from "./orderTypes";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories, getProductionStages } from "./settings";
 
@@ -107,7 +107,18 @@ export async function getLegacyExpenseItems(): Promise<MonthlyExpenses[]> {
 
 export interface MonthlyRevenue {
   month: number;
+  /** What was charged, VAT included where the order carries it. */
   total: number;
+  /**
+   * The same months with VAT taken back out — what the business actually
+   * earned, since VAT collected is money held for the state.
+   *
+   * Carried alongside `total` rather than replacing it because the app
+   * shows either, and it is summed **per order** rather than divided out
+   * of the month: these months straddle the date the business registered,
+   * so a single divisor would be wrong for every exempt order in them.
+   */
+  netTotal: number;
   orderCount: number;
   unitsSold: number;
 }
@@ -143,6 +154,7 @@ export async function getMonthlyRevenue(
     const existing = byMonth.get(month) ?? {
       month,
       total: 0,
+      netTotal: 0,
       orderCount: 0,
       unitsSold: 0,
     };
@@ -152,6 +164,7 @@ export async function getMonthlyRevenue(
     // figure the order sheet, the Kanban card and the summary rail all
     // showed for the same order.
     existing.total += orderTotal(order);
+    existing.netTotal += orderNet(order);
     existing.orderCount += 1;
     existing.unitsSold += orderUnits(order.packageLines, packageUnitsById);
     byMonth.set(month, existing);

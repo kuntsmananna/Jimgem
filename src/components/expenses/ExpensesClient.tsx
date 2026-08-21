@@ -18,11 +18,14 @@ export function ExpensesClient({
   categories,
   paymentMethods,
   staff,
+  vatRate,
 }: {
   periods: ExpensePeriod[];
   categories: ExpenseCategory[];
   paymentMethods: PaymentMethod[];
   staff: StaffAccount[];
+  /** Today's VAT rate, stamped onto a new expense. */
+  vatRate: number;
 }) {
   const router = useRouter();
   const defaultPeriod = periods.find((p) => p.key !== "general" && p.entries.length > 0)?.key ?? periods[0]?.key;
@@ -102,6 +105,7 @@ export function ExpensesClient({
             categories={categories}
             paymentMethods={paymentMethods}
             staff={staff}
+            vatRate={vatRate}
             onClose={() => setAdding(false)}
             onSaved={(date) => {
               setAdding(false);
