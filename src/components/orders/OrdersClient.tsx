@@ -13,6 +13,7 @@ import {
   type ProductionStatus,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import type { Client } from "@/lib/clients";
 import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
 import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
@@ -86,12 +87,15 @@ export function OrdersClient({
   flavors,
   packageTypes,
   presets,
+  clients,
   rates,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
+  /** Everyone on file, for the order form's customer picker. */
+  clients: Client[];
   rates: Rates;
 }) {
   const router = useRouter();
@@ -267,6 +271,7 @@ export function OrdersClient({
           flavors={flavors}
           packageTypes={packageTypes}
           presets={presets}
+          clients={clients}
           rates={rates}
           onClose={() => setAdding(false)}
           onSaved={() => {
@@ -287,6 +292,7 @@ export function OrdersClient({
           flavors={flavors}
           packageTypes={packageTypes}
           presets={presets}
+          clients={clients}
           rates={rates}
           onClose={closePane}
           onSaved={() => {

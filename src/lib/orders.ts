@@ -93,6 +93,7 @@ interface DbOrderRow {
   id: number;
   date: string;
   customer: string;
+  client_id: number | null;
   customer_type: string | null;
   location: string | null;
   guests: number | null;
@@ -196,6 +197,7 @@ function mapDbOrder(
     source: row.sheet_row !== null ? "sheet" : "db",
     date: row.date,
     customer: row.customer,
+    clientId: row.client_id,
     customerType: row.customer_type ?? "",
     location: row.location ?? "",
     details: row.details ?? "",
@@ -349,6 +351,7 @@ const arrayValues = (arrays: LineArrays) => LINE_ARRAYS.map((name) => arrays[nam
 const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] = [
   { column: "date", value: (i) => i.date },
   { column: "customer", value: (i) => i.customer },
+  { column: "client_id", value: (i) => i.clientId },
   { column: "customer_type", value: (i) => i.customerType },
   { column: "location", value: (i) => i.location },
   { column: "guests", value: (i) => i.guests },
@@ -492,6 +495,7 @@ export async function duplicateOrder(id: number): Promise<Order> {
   return createOrder({
     date: source.date,
     customer: source.customer,
+    clientId: source.client_id,
     customerType: source.customer_type ?? "",
     location: source.location ?? "",
     guests: source.guests,

@@ -9,7 +9,9 @@ import { TextInput, TextArea } from "@/components/Field";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { orderTypeIconElement } from "@/lib/icons";
+import type { Client } from "@/lib/clients";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
+import { ClientPicker } from "./ClientPicker";
 import { GroupLabel } from "./OrderSheet";
 
 /**
@@ -25,9 +27,16 @@ import { GroupLabel } from "./OrderSheet";
 export function OrderCustomerPanel({
   draft,
   onChange,
+  clients,
+  newClientPhone,
+  onNewClientPhone,
 }: {
   draft: OrderInput;
   onChange: (draft: OrderInput) => void;
+  clients: Client[];
+  /** Phone for a client this order is about to create — see OrderForm. */
+  newClientPhone: string;
+  onNewClientPhone: (phone: string) => void;
 }) {
   const orderTypes = useOrderTypes();
   const stages = useStages();
@@ -43,12 +52,13 @@ export function OrderCustomerPanel({
         order", and each is one short value that would waste a row.
       */}
       <div className="flex items-end gap-5">
-        <input
-          value={draft.customer}
-          onChange={(e) => set({ customer: e.target.value })}
-          placeholder="Customer name"
-          aria-label="Customer"
-          className="min-w-0 flex-1 border-b border-transparent bg-transparent font-display text-[28px] leading-tight font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
+        <ClientPicker
+          clients={clients}
+          name={draft.customer}
+          clientId={draft.clientId}
+          phone={newClientPhone}
+          onPick={(patch) => set(patch)}
+          onPhone={onNewClientPhone}
         />
         <label className="flex shrink-0 flex-col gap-0.5">
           <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">Date</span>

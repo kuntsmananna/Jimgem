@@ -510,6 +510,30 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **A client is a row, and `orders.client_id` points at it.** SUMIT's
+  `/accounting/customers/` has create and update but **no list and no
+  search**, so a customer over there can only be found again by an id
+  stored here — which is why this is a table rather than a view over
+  `orders.customer`. That column stays free text beside it, the same rule
+  `customer_type` follows, so a Sheet import can never be rejected by a
+  name not on the list, and an order booked before the list existed still
+  shows a customer.
+- **Names are matched exactly or not at all.** `clientName.ts` normalises
+  case, quotes, geresh/gershayim and punctuation; `sameClientName` is what
+  links, and `looksLikeSameClient` only ever *offers* — `בילדוטס` against
+  `בילדוטס בע"מ` is usually the same customer and occasionally isn't, and
+  only a person can tell. The order form's picker and the Clients page both
+  show near matches without acting on them.
+- **A client is created when the order is saved, not as the name is
+  typed** — an abandoned half-filled form leaves nothing behind. If that
+  create fails the order still saves, unlinked: losing a booking to a
+  failed lookup is the worse outcome, and the link can be made later.
+- **Phone is asked for on a new client** because it is the match key from
+  now on: SUMIT's customers carry an email but no phone, so what is typed
+  here is what makes a match possible when the integration lands.
+- Clients archive like every other owner-managed list, never delete.
+  `scripts/migrate-016-clients.sql` backfills one client per distinct
+  order name and links every order to it.
 - **VAT is per row, and the rate is copied onto it.** `orders` and
   `expenses` both carry `vat_mode` (`included` / `added` / `exempt`) and
   `vat_rate`, in percent (18, not 0.18). Three modes because three

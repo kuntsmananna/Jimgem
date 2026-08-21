@@ -10,6 +10,7 @@ import { VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/orders", label: "Orders" },
+  { href: "/clients", label: "Clients" },
   { href: "/expenses", label: "Expenses" },
   { href: "/biz-plan", label: "Biz Plan" },
   { href: "/settings", label: "Settings" },

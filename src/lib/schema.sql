@@ -139,6 +139,21 @@ INSERT INTO prices (key, amount) VALUES
   ('delivery', 0), ('waitress', 0), ('kosher', 0), ('vat_rate', 18)
 ON CONFLICT (key) DO NOTHING;
 
+-- The owner's client list, and the only place a SUMIT customer id can
+-- live. SUMIT's /accounting/customers/ has create and update but no list
+-- and no search, so a client that exists there can only be found again by
+-- an id we stored when it was created
+CREATE TABLE IF NOT EXISTS clients (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT,
+  email TEXT,
+  sumit_customer_id BIGINT UNIQUE,
+  notes TEXT,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -195,6 +210,11 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
 -- that is what a registered business quotes
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;
+
+-- Which client the order belongs to. Nullable, and orders.customer stays
+-- free text beside it: the same rule customer_type follows, so a Sheet
+-- import can never be rejected by a name not on the list
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;

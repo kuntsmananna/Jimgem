@@ -294,6 +294,13 @@ export interface Order {
   /** "YYYY-MM-DD". */
   date: string;
   customer: string;
+  /**
+   * Which client this order belongs to, or null for one booked before the
+   * client list existed and never linked since. `customer` stays free text
+   * beside it — the same rule `customerType` follows, so a Sheet import
+   * can never be rejected by a name not on the list.
+   */
+  clientId: number | null;
   customerType: string;
   location: string;
   /**
@@ -359,6 +366,13 @@ export interface Order {
 export interface OrderInput {
   date: string;
   customer: string;
+  /**
+   * Which client this order belongs to, or null for one booked before the
+   * client list existed and never linked since. `customer` stays free text
+   * beside it — the same rule `customerType` follows, so a Sheet import
+   * can never be rejected by a name not on the list.
+   */
+  clientId: number | null;
   customerType: string;
   location: string;
   guests: number | null;
