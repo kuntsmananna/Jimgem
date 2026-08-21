@@ -237,10 +237,46 @@ or not. The money rail gains one line: the VAT amount, or "VAT included".
 The default mode and the rate live in Settings, and the rate can be
 prefilled from SUMIT's `getvatrate`.
 
-**Open question — the existing 80 orders.** Their stored amounts are what
-was agreed with customers, but whether those figures ever included VAT
-depends on when the business registered for it. The migration needs one
-answer for the back catalogue before it can stamp a mode on them.
+**The back catalogue is settled**: the business registered when it started
+using SUMIT, so `scripts/migrate-015-order-vat.mjs` stamps orders dated
+before **2026-06-23** as `exempt` and everything from that date on as
+`included`. The boundary is imperfect on purpose — `orders.date` is the
+*event* date, not the invoice date, so an event in July quoted in May
+lands on the wrong side. A rule that can be corrected per order beats a
+guess spread silently across 80 rows, and the mode is an ordinary
+editable field.
+
+## One switch for every money figure
+
+Money is shown **including VAT by default** — that is what a customer
+pays and how the Sheet always read — with an app-wide toggle to see every
+figure excluding it. One switch in the nav, not a control per page:
+half a screen in one convention and half in the other is how a number
+gets misread.
+
+`VatViewContext` provides it from the app layout, the same way order
+types and production stages are provided. The choice is stored in a
+cookie rather than local storage so the server render already agrees with
+it — otherwise every page paints one convention and then flips.
+
+**Aggregates convert per order, never after summing.** A month holding
+both exempt and VAT-inclusive orders has no single divisor, so dividing a
+month's total by 1.18 produces a number that is wrong for every order in
+it. Every KPI, chart series and monthly rollup converts each order with
+its own mode and rate, then adds. This is the one rule that, broken,
+gives plausible-looking figures that are quietly false.
+
+Two consequences to be honest about:
+
+- **The Biz Plan's numbers move when the switch moves.** Every screen
+  therefore states which convention it is showing, beside the figures
+  rather than in a settings pane.
+- **Expenses have no VAT breakdown yet.** A recorded expense is what the
+  receipt said, VAT inside, and nothing records how much of it was VAT.
+  Under the excluding-VAT view they can be divided by the standard rate,
+  but suppliers who charge none would be understated. Until an expense
+  carries its own mode, the honest move is to show expenses gross in both
+  views and label them.
 
 ## Phase 2
 
