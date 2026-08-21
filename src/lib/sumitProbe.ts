@@ -195,7 +195,19 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
     const folders = await listFolders();
     // Folders are matched by exact name: a loose match picked
     // "כרטיסי אשראי ללקוחות" over "לקוחות" and read the wrong list.
-    const wanted = ["לקוחות", "הוצאות", "פריטי הוצאות", "קבצי הוצאות", "חשבוניות ספקים", "ספקים"];
+    // "מסמכים" is every document as an entity — if expense documents
+    // exist but documents/list won't return them, the count here exceeds
+    // what the accounting endpoint reported.
+    const wanted = [
+      "לקוחות",
+      "מסמכים",
+      "הוצאות",
+      "פריטי הוצאות",
+      "קבצי הוצאות",
+      "חשבוניות ספקים",
+      "חשבוניות ותשלומים לספקים",
+      "ספקים",
+    ];
     for (const name of wanted) {
       const folder = folders.find((candidate) => candidate.Name?.trim() === name);
       if (!folder) {
@@ -206,6 +218,11 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
         // By ID rather than display name — listentities rejected a name.
         const entities = await listEntities(String(folder.ID));
         out.push(`\n${name} (${folder.ID}): ${entities.length} entities`);
+        if (name === "מסמכים" && entities.length !== documents.length) {
+          out.push(
+            `  ⚠ documents/list returned ${documents.length} — a gap of ${entities.length - documents.length} means documents exist that the accounting endpoint will not list.`,
+          );
+        }
         // A spread rather than the first: the newest receipt may simply
         // not have been processed yet, which looks identical to a folder
         // that never carries amounts at all.
