@@ -154,8 +154,13 @@ export function isExpenseDocument(type: string | number | null): boolean {
   return documentBucket(type) === "expense";
 }
 
-/** Every supplier-side type, for asking documents/list about them explicitly. */
-export const EXPENSE_DOCUMENT_TYPES = DOCUMENT_TYPES.filter(isExpenseDocument);
+/**
+ * The supplier-side types documents/list will actually accept.
+ * SupplierPayment is in the enum but the endpoint rejects it outright
+ * ("Document type not supported"), and one bad entry fails the whole
+ * query rather than being ignored.
+ */
+export const EXPENSE_DOCUMENT_TYPES = DOCUMENT_TYPES.filter((type) => type.includes("Expense"));
 
 /** A credit note reverses the document it credits, so its value is negative to us. */
 export function isCreditDocument(type: string | number | null): boolean {
@@ -262,4 +267,17 @@ export async function listEntities(folder: string, loadProperties = true): Promi
     if (!data.HasNextPage) break;
   }
   return entities;
+}
+
+/**
+ * One CRM entity with its fields. listEntities returns entities whose
+ * Properties come back empty; getentity is what carries the actual
+ * fields, which is the only way to learn a folder's shape.
+ */
+export async function getEntity(entityId: number): Promise<Record<string, unknown> | null> {
+  const data = await sumitPost<{ Entity: Record<string, unknown> | null }>("/crm/data/getentity/", {
+    EntityID: entityId,
+    IncludeFields: true,
+  });
+  return data.Entity;
 }

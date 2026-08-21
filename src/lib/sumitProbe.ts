@@ -18,6 +18,7 @@ import {
   listDocuments,
   listFolders,
   listEntities,
+  getEntity,
   documentTypeName,
   documentBucket,
   isExpenseDocument,
@@ -137,26 +138,16 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
   // from "the endpoint didn't offer them".
   if (expenses.length === 0) {
     section("Expense documents, asked for by type");
-    try {
-      const explicit = await listDocuments({ dateFrom, dateTo, types: EXPENSE_DOCUMENT_TYPES, includeDrafts: true });
-      out.push(
-        explicit.length === 0
-          ? `Still none, asking for ${EXPENSE_DOCUMENT_TYPES.join(", ")} directly. Expenses are genuinely not recorded as documents.`
-          : `${explicit.length} returned when asked by type — the unfiltered listing omits them, and the sync must always pass DocumentTypes.`,
-      );
-      if (explicit.length > 0) {
-        out.push(
-          table([
-            ["month", "docs", "₪"],
-            ...[...new Set(explicit.map(monthOf))].sort().map((month) => {
-              const group = explicit.filter((document) => monthOf(document) === month);
-              return [month, String(group.length), money(sumValue(group))];
-            }),
-          ]),
-        );
+    // One type at a time: the endpoint rejects the whole query over a
+    // single unsupported type, so asking for them together tells you
+    // nothing about the rest.
+    for (const type of EXPENSE_DOCUMENT_TYPES) {
+      try {
+        const explicit = await listDocuments({ dateFrom, dateTo, types: [type], includeDrafts: true });
+        out.push(`${type}: ${explicit.length}${explicit.length ? ` — ${money(sumValue(explicit))}` : ""}`);
+      } catch (error) {
+        out.push(`${type}: ${(error as Error).message.replace(/^SUMIT \S+ failed \(\d\): /, "")}`);
       }
-    } catch (error) {
-      out.push(`Typed expense query failed: ${(error as Error).message}`);
     }
   }
 
@@ -206,14 +197,13 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
       try {
         // By ID rather than display name — listentities rejected a name.
         const entities = await listEntities(String(folder.ID));
-        const keys = [...new Set(entities.flatMap((entity) => Object.keys(entity.Properties ?? {})))];
         out.push(`\n${name} (${folder.ID}): ${entities.length} entities`);
-        out.push(`  keys: ${keys.slice(0, 30).join(", ") || "none"}`);
-        for (const key of keys.filter((candidate) => /phone|mobile|טלפון|נייד|email|דוא/i.test(candidate))) {
-          const filled = entities.filter((entity) => String(entity.Properties?.[key] ?? "").trim() !== "").length;
-          const percent = entities.length ? Math.round((filled / entities.length) * 100) : 0;
-          out.push(`  ${key}: ${filled}/${entities.length} filled (${percent}%)`);
-        }
+        const first = entities.find((entity) => entity.ID);
+        if (!first?.ID) continue;
+        // listEntities returns Properties empty whatever LoadProperties
+        // says, so one entity is fetched in full to learn the shape.
+        const full = await getEntity(first.ID);
+        out.push(`  one entity in full:\n${JSON.stringify(full, null, 1).slice(0, 1500)}`);
       } catch (error) {
         out.push(`\n${name} (${folder.ID}): read failed — ${(error as Error).message}`);
       }
