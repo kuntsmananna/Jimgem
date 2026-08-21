@@ -12,6 +12,10 @@
 // ordinary editable field.
 //
 // Idempotent: re-running only stamps rows still at the column default.
+//
+// migrate-015-vat.sql beside this file is the same migration as plain SQL,
+// for pasting into a database console when there is no terminal to run
+// Node from — which is the normal case on this project.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

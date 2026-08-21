@@ -701,7 +701,10 @@ seeds the value lists, `db:import` pulls the Sheet into Postgres.
 
 One-off data migrations live beside them as numbered scripts
 (`scripts/migrate-00N-*.mjs`) and are run by hand after `db:migrate`
-creates the tables they need. Each is idempotent — re-running one is a
+creates the tables they need. This project is developed from the browser,
+with no local checkout to run Node from, so a migration that has to reach
+the production database ships **with a `.sql` twin beside it**
+(`migrate-015-vat.sql`) for pasting into the database console. Each is idempotent — re-running one is a
 no-op, not a duplicate — so a script stays runnable against a database
 that has already had it applied.
 
