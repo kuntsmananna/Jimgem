@@ -24,6 +24,7 @@ import { PricedOptionsPanel } from "@/components/settings/PricedOptionsPanel";
 import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
+import { SumitProbePanel } from "@/components/settings/SumitProbePanel";
 import { ArchivedPanel } from "@/components/settings/ArchivedPanel";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
 
@@ -123,6 +124,7 @@ export default async function SettingsPage() {
           content: (
             <div className="flex max-w-2xl flex-col gap-6">
               <ImportPanel />
+              <SumitProbePanel />
               <ArchivedPanel items={archived} />
             </div>
           ),

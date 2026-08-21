@@ -325,11 +325,16 @@ iteration (not guessed) — define these as `@theme` tokens in
   credentials in its *body*; `sumitPost` is the whole protocol, and a
   failure comes back as HTTP 200 with a non-Success `Status`, so the
   envelope check is what catches a bad key.
-- **Read-only so far.** `scripts/sumit-probe.mts` (`npm run sumit:probe`)
-  is reconnaissance for the integration's design: it prints the document
-  type mix, income and expense documents by month, the customer roster
-  reconstructed from documents, and how those names line up against the
-  orders already in Postgres. It writes nothing, to SUMIT or to the DB.
+- **Read-only so far.** `sumitProbe.ts` is reconnaissance for the
+  integration's design: the document type mix, income and expense
+  documents by month, the customer roster reconstructed from documents,
+  and how those names line up against the orders already in Postgres. It
+  writes nothing, to SUMIT or to the DB. Two ways in, one implementation:
+  the **Run SUMIT probe** button in Settings → Data (`/api/sumit/probe`),
+  and `npm run sumit:probe` from a terminal. The report is a fixed-width
+  text block rather than a designed panel on purpose — it is throwaway
+  scaffolding, read once and pasted elsewhere, and it goes away when the
+  integration lands.
 - Two constraints shape everything built on top. `/accounting/customers/`
   has create and update but **no list or search**, so Jimgem has to own the
   client list and store the `CustomerID` SUMIT hands back; and
