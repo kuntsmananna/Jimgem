@@ -85,9 +85,14 @@ independently against SUMIT's own screens on 2026-08-21.
   drafts for approval in SUMIT (`IsDraft` + `movetobooks`).
   `PaymentRequest` is exempt: it books nothing, so it can be issued for
   real.
-- **Values are VAT-inclusive** (`CompanyValue`), matching how the Sheet
-  recorded money. Any ex-VAT view comes later from `getdetails`, without
-  re-importing.
+- **Whether a value is gross or net is established, never assumed.**
+  `DocumentValue` and `CompanyValue` name no convention, and guessing puts
+  an 18% error through every comparison with nothing looking broken. The
+  probe now samples three documents, adds each one's line totals and its
+  separately-stated VAT, and compares both against the reported value —
+  and asks `getvatrate` for the company's own rate instead of assuming the
+  statutory one. Whatever it reports is what the mirror stores, recorded
+  here once settled.
 
 ## Phase 1
 
@@ -185,11 +190,57 @@ a button press.
 
 ### 1f — Booked vs billed
 
-June: **₪21,549 booked, ₪11,281 billed.** July ₪24,664 / ₪27,897. August
-₪17,308 / ₪13,080. A panel on the Biz Plan comparing the two per month,
-plus the list that matters — booked orders with no revenue document
-against them. This is the first thing the integration can tell the
-business that it cannot currently see.
+July ₪24,664 booked / ₪27,897 billed. August ₪17,308 / ₪13,080, still in
+progress. **June is not a gap**: SUMIT went live on 23 June, so only the
+last week of that month was ever invoiced through it — ₪21,549 booked
+against ₪11,281 billed is the changeover, not missed invoicing.
+
+A panel on the Biz Plan comparing the two per month, plus the list that
+matters — booked orders with no revenue document against them. From July
+onward the comparison is honest; June is annotated as partial rather than
+flagged, or the view cries wolf on its first screen.
+
+## VAT on an order
+
+Independent of SUMIT, and worth doing first: an order needs to say how
+VAT applies to it, because three different things are true of different
+orders and today the schema can express none of them.
+
+```sql
+ALTER TABLE orders ADD COLUMN vat_mode TEXT NOT NULL DEFAULT 'included';
+ALTER TABLE orders ADD COLUMN vat_rate NUMERIC(5,4);
+```
+
+- **`added`** — the price is before VAT, and VAT goes on top.
+- **`included`** — the price is what the customer pays, VAT already inside.
+- **`exempt`** — no VAT applies.
+
+`vat_rate` is **copied onto the order** when it is created, not looked up
+at read time — the same copy-not-link rule a preset's price follows. Rates
+change; an order booked at one rate must not silently reprice when the
+country changes the other.
+
+The arithmetic lives beside the rest of the money in `orderTypes.ts`:
+
+| mode | net | VAT | total |
+|---|---|---|---|
+| `added` | subtotal − discount | net × rate | net + VAT |
+| `included` | total − VAT | total − total ÷ (1 + rate) | subtotal − discount |
+| `exempt` | subtotal − discount | 0 | net |
+
+**`orderTotal` keeps meaning what the customer pays**, so the rail, the
+Kanban card and the hover card need no changes. A new `orderNet` is what
+the Biz Plan reports, because VAT collected is not income — and that
+distinction is exactly what makes a reconciliation against SUMIT line up
+or not. The money rail gains one line: the VAT amount, or "VAT included".
+
+The default mode and the rate live in Settings, and the rate can be
+prefilled from SUMIT's `getvatrate`.
+
+**Open question — the existing 80 orders.** Their stored amounts are what
+was agreed with customers, but whether those figures ever included VAT
+depends on when the business registered for it. The migration needs one
+answer for the back catalogue before it can stamp a mode on them.
 
 ## Phase 2
 
