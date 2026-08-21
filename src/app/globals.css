@@ -49,11 +49,17 @@ body {
 @layer components {
   /*
    * Quiet field styling for the forms filled in daily (order popup,
-   * Expenses, Settings). A filled field drops its box so a completed form
-   * reads as a document rather than a grid of outlines; an empty one keeps
-   * a faint outline so what's still blank is obvious at a glance. Hovering
-   * brings the box back to signal "editable", and focus is the loudest
-   * state.
+   * Expenses, Settings). A filled field is only its text, so a completed
+   * form reads as a document rather than a grid of boxes; an empty one is
+   * a faint block of fill, so what is still blank shows as a gap in the
+   * page. Hovering deepens the fill to signal "editable", and focus is
+   * the loudest state.
+   *
+   * Fill rather than the outline this used to draw: an outline and a
+   * filled-in value are two different *shapes*, so a row of fields in
+   * mixed states never lined up — and next to the customer name, which was
+   * an underline, three fields on one line were three different objects.
+   * A wash of tone reads as "nothing here yet" without adding an edge.
    *
    * Filled vs empty is `:placeholder-shown` inverted, which is why every
    * .input needs a placeholder — even " " — for the CSS to read it. Number
@@ -65,23 +71,27 @@ body {
    * read as broken.
    */
   .input {
-    @apply rounded-lg border border-line/70 bg-transparent px-2 py-1 text-sm text-ink outline-none;
+    @apply rounded-lg border border-transparent px-2 py-1 text-sm text-ink outline-none;
     @apply transition-colors;
+    background-color: --alpha(var(--color-ink) / 5%);
   }
 
   /*
-   * Filled → drop the box. Stated as an override of the outlined base
-   * rather than the other way round, so the fallback is safe: a field
-   * that never matches (no placeholder attribute, or a select) stays
-   * outlined and visible instead of turning invisible.
+   * Filled → drop the fill, leave the text. Stated as an override of the
+   * filled base rather than the other way round, so the fallback is safe:
+   * a field that never matches (no placeholder attribute, or a select)
+   * keeps its fill and stays visible instead of vanishing.
+   *
+   * The border is transparent in every state but focus, so gaining one
+   * never nudges the row by a pixel.
    */
   .input:not(:placeholder-shown),
   select.input:not(:has(option[value=""]:checked)) {
-    @apply border-transparent;
+    background-color: transparent;
   }
 
   .input:hover:not(:disabled):not(:focus) {
-    @apply border-line bg-card;
+    background-color: --alpha(var(--color-ink) / 9%);
   }
 
   .input:focus {
@@ -90,6 +100,23 @@ body {
 
   .input:disabled {
     @apply text-ink-soft;
+  }
+
+  /*
+   * The date field's picker button is the control, not decoration — it is
+   * how a date actually gets changed — so it wears a target: a tinted
+   * circle that deepens on hover, like every other round button in the
+   * app. Chrome draws the glyph as a background image on this pseudo
+   * element, so a background *colour* sits behind it rather than
+   * replacing it.
+   */
+  .input::-webkit-calendar-picker-indicator {
+    @apply cursor-pointer rounded-full p-1 transition-colors;
+    background-color: --alpha(var(--color-ink) / 8%);
+  }
+
+  .input::-webkit-calendar-picker-indicator:hover {
+    background-color: --alpha(var(--color-ink) / 20%);
   }
 
   /*
@@ -151,16 +178,23 @@ body {
   }
 
   .money-rail .input {
-    @apply border-cream/25 text-cream;
+    @apply border-transparent text-cream;
+    background-color: --alpha(var(--color-cream) / 10%);
   }
 
-  .money-rail .input:hover:not(:disabled):not(:focus),
-  .money-rail .input:focus {
-    background-color: --alpha(var(--color-cream) / 10%);
+  /* Same rule as on cream, in the other direction: a filled amount is
+     only its figure, an empty one is a block of light. */
+  .money-rail .input:not(:placeholder-shown) {
+    background-color: transparent;
+  }
+
+  .money-rail .input:hover:not(:disabled):not(:focus) {
+    background-color: --alpha(var(--color-cream) / 18%);
   }
 
   .money-rail .input:focus {
     @apply border-accent;
+    background-color: --alpha(var(--color-cream) / 14%);
   }
 
   .money-rail .input::placeholder {

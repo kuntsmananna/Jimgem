@@ -52,12 +52,19 @@ export function OrderCustomerPanel({
           The name is the headline, not a field: it is how you know which
           order is open, and at 14px in a grid cell it never read that way.
         */}
-        <input
+        {/*
+          The same field as the two under it — `.input`, so it fills when
+          empty, drops to bare text when filled, and deepens on hover —
+          only set at headline size. It used to be an underline, which
+          made three fields on one line look like three different kinds of
+          object for no reason other than their sizes.
+        */}
+        <TextInput
           value={draft.customer}
           onChange={(e) => set({ customer: e.target.value })}
           placeholder="Customer name"
           aria-label="Customer"
-          className="w-full border-b border-transparent bg-transparent font-display text-[28px] leading-tight font-extrabold tracking-tight text-ink outline-none placeholder:text-ink-soft/35 placeholder-shown:border-line/70 hover:border-line focus:border-accent"
+          className="w-full rounded-xl px-2.5 py-1 font-display text-[28px] leading-tight font-extrabold tracking-tight placeholder:text-ink-soft/35"
         />
 
         {/*
@@ -67,13 +74,13 @@ export function OrderCustomerPanel({
           and the location box says "Location" until it has one, behind a
           pin so it reads as a place rather than as more free text.
         */}
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-2.5 flex items-center gap-2.5">
           <TextInput
             type="date"
             value={draft.date}
             onChange={(e) => set({ date: e.target.value })}
             aria-label="Date"
-            className="w-[9rem] shrink-0 text-sm tabular-nums"
+            className="w-[9.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums"
           />
           <label className="relative flex min-w-0 flex-1 items-center">
             <MapPin
@@ -86,7 +93,7 @@ export function OrderCustomerPanel({
               onChange={(e) => set({ location: e.target.value })}
               placeholder="Location"
               aria-label="Location"
-              className="w-full pl-8 text-sm"
+              className="w-full py-1.5 pr-2.5 pl-8 text-sm"
             />
           </label>
         </div>

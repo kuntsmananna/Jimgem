@@ -157,8 +157,19 @@ iteration (not guessed) — define these as `@theme` tokens in
   A lucide component is a plain function and **cannot be passed from a
   Server Component to a Client Component** — pass the rendered element
   (`icon: <Palette size={14} />`) instead; see `settings/page.tsx`.
-- Form fields: filled = no box, empty = weak outline, hover = box, focus
-  = accent border. Filled/empty is detected with `:placeholder-shown`,
+- Form fields: **filled = bare text, empty = a faint block of fill**,
+  hover = a deeper fill, focus = accent border on white. Fill rather than
+  the outline this used to draw: an outline and a filled-in value are two
+  different shapes, so a row of fields in mixed states never lined up, and
+  beside the customer name — which was an underline — three fields on one
+  line read as three different kinds of object. A wash of tone says
+  "nothing here yet" without adding an edge, and the border stays
+  transparent in every state but focus so gaining one never nudges a row.
+  The `.money-rail` variant is the same three states in light on black.
+  The customer name is the same `.input`, only set at 28px. A date field's
+  `::-webkit-calendar-picker-indicator` wears a tinted circle that deepens
+  on hover — it is how a date actually gets changed, so it gets a target
+  like every other round button. Filled/empty is detected with `:placeholder-shown`,
   which needs a placeholder attribute to match against — so use
   `TextInput`/`SelectInput` from `src/components/Field.tsx` rather than a
   bare `<input className="input">`; they carry the default `placeholder=" "`
