@@ -315,6 +315,31 @@ iteration (not guessed) — define these as `@theme` tokens in
   pre-June expense log) are out of scope — don't add readers for them
   without confirming it's actually wanted.
 
+## SUMIT integration (in progress)
+
+- SUMIT (formerly OfficeGuy) is where invoicing, card charging and receipts
+  already live. `src/lib/sumit.ts` is the client and **the only module that
+  reads `SUMIT_COMPANY_ID` / `SUMIT_API_KEY`** — the same rule
+  `googleSheets.ts` follows for the Google credential, and neither may ever
+  carry a `NEXT_PUBLIC_` prefix. Every SUMIT call is a POST carrying the
+  credentials in its *body*; `sumitPost` is the whole protocol, and a
+  failure comes back as HTTP 200 with a non-Success `Status`, so the
+  envelope check is what catches a bad key.
+- **Read-only so far.** `scripts/sumit-probe.mts` (`npm run sumit:probe`)
+  is reconnaissance for the integration's design: it prints the document
+  type mix, income and expense documents by month, the customer roster
+  reconstructed from documents, and how those names line up against the
+  orders already in Postgres. It writes nothing, to SUMIT or to the DB.
+- Two constraints shape everything built on top. `/accounting/customers/`
+  has create and update but **no list or search**, so Jimgem has to own the
+  client list and store the `CustomerID` SUMIT hands back; and
+  `/accounting/documents/list/` filters by type and date only — **no
+  customer filter, no "modified since"** — so per-client views bucket a
+  date window locally, and sync means a window plus upsert on `DocumentID`.
+- Expenses are not a separate resource: they are documents whose type is
+  one of the `Expense*` ones (`isExpenseDocument`), which is why the
+  expense sync is a `documents/list` call.
+
 ## Database
 
 - Postgres, owner-provisioned (Neon). Connection via `DATABASE_URL`.
@@ -548,6 +573,8 @@ iteration (not guessed) — define these as `@theme` tokens in
 | `GOOGLE_SHEETS_DEFAULT_RANGE` | Default A1 range for `/api/sheets` | no |
 | `DATABASE_URL` | Postgres connection string | yes |
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
+| `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |
+| `SUMIT_API_KEY` | SUMIT API key secret | no (SUMIT probe only, for now) |
 
 ## Versioning
 
