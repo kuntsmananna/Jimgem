@@ -140,14 +140,22 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
     section("Expense documents, asked for by type");
     // One type at a time: the endpoint rejects the whole query over a
     // single unsupported type, so asking for them together tells you
-    // nothing about the rest.
+    // nothing about the rest. And twice — a document carrying no date of
+    // its own is excluded by a date range however wide it is.
     for (const type of EXPENSE_DOCUMENT_TYPES) {
-      try {
-        const explicit = await listDocuments({ dateFrom, dateTo, types: [type], includeDrafts: true });
-        out.push(`${type}: ${explicit.length}${explicit.length ? ` — ${money(sumValue(explicit))}` : ""}`);
-      } catch (error) {
-        out.push(`${type}: ${(error as Error).message.replace(/^SUMIT \S+ failed \(\d\): /, "")}`);
+      const counts: string[] = [];
+      for (const [label, window] of [
+        ["in window", { dateFrom, dateTo }],
+        ["undated", {}],
+      ] as const) {
+        try {
+          const found = await listDocuments({ ...window, types: [type], includeDrafts: true });
+          counts.push(`${label} ${found.length}${found.length ? ` (${money(sumValue(found))})` : ""}`);
+        } catch (error) {
+          counts.push(`${label} — ${(error as Error).message.replace(/^SUMIT \S+ failed \(\d\): /, "")}`);
+        }
       }
+      out.push(`${type}: ${counts.join(", ")}`);
     }
   }
 
@@ -198,13 +206,26 @@ export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<st
         // By ID rather than display name — listentities rejected a name.
         const entities = await listEntities(String(folder.ID));
         out.push(`\n${name} (${folder.ID}): ${entities.length} entities`);
-        const first = entities.find((entity) => entity.ID);
-        if (!first?.ID) continue;
-        // listEntities returns Properties empty whatever LoadProperties
-        // says, so one entity is fetched in full to learn the shape.
-        const full = await getEntity(first.ID);
-        out.push(`  one entity in full:\n${JSON.stringify(full, null, 1).slice(0, 1500)}`);
-      } catch (error) {
+        // A spread rather than the first: the newest receipt may simply
+        // not have been processed yet, which looks identical to a folder
+        // that never carries amounts at all.
+        const ids = entities.map((entity) => entity.ID).filter((id): id is number => Boolean(id));
+        const sample = [...ids.slice(0, 3), ...ids.slice(-3)].filter((id, index, all) => all.indexOf(id) === index);
+        const fieldCounts = new Map<string, number>();
+        for (const id of sample) {
+          const full = await getEntity(id, true);
+          if (!full) continue;
+          for (const key of Object.keys(full)) fieldCounts.set(key, (fieldCounts.get(key) ?? 0) + 1);
+          // The file blob is the one field whose contents say nothing.
+          const trimmed = Object.fromEntries(
+            Object.entries(full).filter(([key]) => key !== "Accounting_File" && key !== "Properties"),
+          );
+          out.push(`  #${id}: ${JSON.stringify(trimmed).slice(0, 900)}`);
+        }
+        if (fieldCounts.size > 0) {
+          out.push(`  fields seen: ${[...fieldCounts].map(([key, count]) => `${key}(${count})`).join(", ")}`);
+        }
+            } catch (error) {
         out.push(`\n${name} (${folder.ID}): read failed — ${(error as Error).message}`);
       }
     }

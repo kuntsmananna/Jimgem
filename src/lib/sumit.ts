@@ -210,8 +210,10 @@ function isoDate(value: Date | string): string {
  */
 export async function listDocuments(
   options: {
-    dateFrom: Date | string;
-    dateTo: Date | string;
+    /** Omit both dates to ask without a date filter — a document with no
+     * date of its own is excluded by a range, however wide. */
+    dateFrom?: Date | string;
+    dateTo?: Date | string;
     types?: readonly SumitDocumentType[];
     includeDrafts?: boolean;
   },
@@ -219,8 +221,8 @@ export async function listDocuments(
   const documents: SumitDocument[] = [];
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const data = await sumitPost<ListDocumentsResponse>("/accounting/documents/list/", {
-      DateFrom: isoDate(options.dateFrom),
-      DateTo: isoDate(options.dateTo),
+      DateFrom: options.dateFrom ? isoDate(options.dateFrom) : null,
+      DateTo: options.dateTo ? isoDate(options.dateTo) : null,
       DocumentTypes: options.types ?? null,
       IncludeDrafts: options.includeDrafts ?? false,
       Paging: { StartIndex: page * PAGE_SIZE, PageSize: PAGE_SIZE },
@@ -274,10 +276,16 @@ export async function listEntities(folder: string, loadProperties = true): Promi
  * Properties come back empty; getentity is what carries the actual
  * fields, which is the only way to learn a folder's shape.
  */
-export async function getEntity(entityId: number): Promise<Record<string, unknown> | null> {
+export async function getEntity(
+  entityId: number,
+  includeIncoming = false,
+): Promise<Record<string, unknown> | null> {
   const data = await sumitPost<{ Entity: Record<string, unknown> | null }>("/crm/data/getentity/", {
     EntityID: entityId,
     IncludeFields: true,
+    // Entities pointing *at* this one — how a receipt file would reveal
+    // the expense record made from it.
+    IncludeIncomingProperties: includeIncoming,
   });
   return data.Entity;
 }
