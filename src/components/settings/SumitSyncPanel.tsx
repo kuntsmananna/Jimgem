@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
 import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { InfoTip } from "@/components/InfoTip";
 
 interface SyncResult {
   documents: number;
@@ -67,14 +68,22 @@ export function SumitSyncPanel({
       <PaneHeader
         title="SUMIT documents"
         description={<>Copied here so clients and orders can show them. Nothing is ever written to SUMIT.</>}
-        action={<button
-          onClick={() => run()}
-          disabled={busy || spent}
-          className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
-        >
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-          {busy ? "Syncing…" : "Sync now"}
-        </button>}
+        action={
+          <div className="flex items-center gap-2 text-band-ink">
+            <InfoTip
+              label="Sync now"
+              text="Reads the documents SUMIT issued in the last 30 days — and up to a year ahead, since invoices get dated forward — into Jimgem's copy, adding new ones and updating any that changed. One API call, plus one per invoice whose VAT breakdown has never been fetched."
+            />
+            <button
+              onClick={() => run()}
+              disabled={busy || spent}
+              className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
+            >
+              {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+              {busy ? "Syncing…" : "Sync now"}
+            </button>
+          </div>
+        }
       />
       <p className="text-xs text-ink-soft">
         {documentCount > 0 ? `${documentCount} documents on file` : "Nothing synced yet"}
@@ -123,7 +132,7 @@ export function SumitSyncPanel({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {/* The routine sync looks back 90 days. Everything is for the first
+        {/* The routine sync looks back 30 days. Everything is for the first
             run, and for the rare case of a document backdated past that. */}
         <button
           onClick={() => run(3650)}
@@ -132,6 +141,10 @@ export function SumitSyncPanel({
         >
           Sync everything
         </button>
+        <InfoTip
+          label="Sync everything"
+          text="The same, reaching back ten years instead of thirty days. For the first run, or for a document dated before the routine window. It spends a call on every invoice never priced before, so it is not the one to press nightly."
+        />
       </div>
 
       {result && (
