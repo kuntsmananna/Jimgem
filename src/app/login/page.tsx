@@ -1,4 +1,5 @@
 import { login } from "./actions";
+import { GemsLogo } from "@/components/GemsLogo";
 
 export default async function LoginPage({
   searchParams,
@@ -9,8 +10,11 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream px-4">
       <div className="w-full max-w-sm rounded-card border border-line bg-card p-8 shadow-sm">
-        <h1 className="font-display text-2xl font-extrabold text-ink">Gems</h1>
-        <p className="mt-1 text-sm font-medium text-ink-soft">Sign in to continue</p>
+        {/* The mark stands in for the wordmark here, and is given room:
+            this is the one screen with nothing else on it. */}
+        <GemsLogo className="h-14 w-auto text-brand" />
+        <h1 className="sr-only">Gems</h1>
+        <p className="mt-4 text-sm font-medium text-ink-soft">Sign in to continue</p>
 
         <form action={login} className="mt-6 flex flex-col gap-4">
           <div>

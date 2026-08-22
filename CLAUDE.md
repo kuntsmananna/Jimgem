@@ -1083,12 +1083,27 @@ of the page. Each is small; together they were ~290px. If a narrower
 screen ever has to fit, the next move is folding a column into
 `ContentHoverCard` rather than shaving pixels further.
 
+**The Gems mark is inline SVG** (`src/components/GemsLogo.tsx`), not an
+`<img>` or `next/image` pointing at `public/gems-logo.svg` — Next refuses
+to run an SVG through the image optimizer without `dangerouslyAllowSVG`,
+and a mark in the nav of every page shouldn't be a second request. The
+file stays in `public/` as the original the owner supplied. It states no
+colour of its own (`currentColor` for fill *and* stroke — the stroke is
+part of the artwork), so the call site picks: `text-brand` is the ink it
+was drawn in, `#29332f`. It is **40px tall in the nav**, not the 32 that
+would match the pills beside it — the script's hairlines close up below
+about 40 and it stops reading as a word. The nav mark links to `/`, and
+`/login` carries the same component at 56px.
+
 **The Dashboard's order list is every order in the selected period**, not
 the latest few still needing work — so it now includes delivered ones,
-which "all orders in May" would otherwise leave out. It scrolls rather
-than growing: all-time is 79 rows, and a pane that long would strand the
-three charts beside it at the top of a mostly empty page. Each row shows
-`orderTotal`, matching the KPI tiles above it.
+which "all orders in May" would otherwise leave out. It **fills the pane
+and scrolls inside it**: the scroller is absolutely positioned in a box
+claiming only a minimum height, so the charts beside it set the height and
+the list takes it. Sized by its own content instead, all-time's 79 rows
+would drive the row and strand those charts at the top of a very long
+page; capped at a fixed height, it left a third of the pane empty. Each
+row shows `orderTotal`, matching the KPI tiles above it.
 
 `OrdersSummary` is the rail beside the table and the board (not the
 calendar, which would then carry two different windows at once). It is a

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GemsLogo } from "@/components/GemsLogo";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -31,12 +32,16 @@ export function Nav({ name, version }: { name: string; version: string }) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur">
       <div className="flex items-center gap-8">
+        {/* The mark itself, and still the way back to the Dashboard.
+            Sized by height, and 40px rather than the 32 that would match
+            the pills beside it: the script's hairlines close up below
+            about 40 and it stops reading as a word at all. */}
         <Link
           href="/"
           aria-label="Gems — dashboard"
-          className="font-display text-xl font-extrabold tracking-tight text-ink transition hover:opacity-70"
+          className="shrink-0 text-brand transition hover:opacity-70"
         >
-          Gems
+          <GemsLogo className="h-10 w-auto" />
         </Link>
         <nav className="flex items-center gap-1">
           {LINKS.map((link) => {

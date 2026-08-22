@@ -197,7 +197,7 @@ export function DashboardClient({
       </div>
 
       <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6">
-        <section className="min-w-0 rounded-card border border-line bg-card p-6">
+        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-ink">
               Orders{" "}
@@ -207,10 +207,21 @@ export function DashboardClient({
               View all →
             </Link>
           </div>
-          {/* Scrolls rather than growing: "All time" is 79 rows, and a
-              pane that long would leave the three charts beside it
-              stranded at the top of a mostly empty page. */}
-          <ul className="mt-4 flex max-h-[32rem] flex-col gap-2 overflow-y-auto pr-1">
+          {/*
+            The list fills the pane and scrolls inside it, rather than
+            being a fixed 32rem with cream below: the pane is as tall as
+            the charts beside it, and a list that stopped short left a
+            third of it empty.
+
+            The scroller is absolutely positioned inside a box that only
+            claims a minimum height, which is what stops it working the
+            other way round — 79 rows would otherwise make this column
+            drive the row's height and strand the charts at the top of a
+            very long page. So the charts set the height and the list
+            takes it.
+          */}
+          <div className="relative mt-4 min-h-[22rem] flex-1">
+          <ul className="absolute inset-0 flex flex-col gap-2 overflow-y-auto pr-1">
             {previewOrders.map((order) => (
               <li key={order.key}>
                 <Link
@@ -244,6 +255,7 @@ export function DashboardClient({
             ))}
             {previewOrders.length === 0 && <p className="text-sm text-ink-soft">No orders in this period.</p>}
           </ul>
+          </div>
         </section>
 
         <div className="flex min-w-0 flex-col gap-6">

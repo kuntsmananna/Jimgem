@@ -17,6 +17,10 @@
   --color-line: #e7dbcc;
   --color-accent: #4f6f52;
 
+  /* The ink the Gems mark is drawn in — the logo's own colour, kept as a
+     token so the one place it is stated is here. */
+  --color-brand: #29332f;
+
   /*
    * The band every pane and popup wears as a lid: the cream one shade
    * down, with the app's ordinary ink on it. Owner-picked from a set of
