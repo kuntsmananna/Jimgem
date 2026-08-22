@@ -17,6 +17,16 @@
   --color-line: #e7dbcc;
   --color-accent: #4f6f52;
 
+  /*
+   * The band every pane and popup wears as a lid. A darker cast of the
+   * cream the app sits on rather than flat black: black is a fourth
+   * colour, and against warm cream it reads as a hole in the page.
+   * `--color-band-ink` is whatever text sits on it, so the pair can be
+   * re-lit as a light band without every call site saying which.
+   */
+  --color-band: #3d332e;
+  --color-band-ink: #f4ebe7;
+
   --color-tile-peach: #f6d9a8;
   --color-tile-mint: #c7e6dc;
   --color-tile-lavender: #dfd4f2;

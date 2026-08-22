@@ -934,7 +934,12 @@ right edge, where the rail begins.
 
 Its left group is **which orders**, as three matching dropdowns: the time
 scope (`src/lib/orderScope.ts` — 14 days / this month / next month / all
-time) picks what is in play at all, then Payment and Status narrow it. The
+time) picks what is in play at all, then Payment and Status narrow it.
+Each wears **an icon in place of its written name** (`Dropdown`'s
+optional `icon`) — the value is what changes and what gets read, while
+"Payment:" and "Status:" were fixed text costing more width than the
+values beside them. The word stays as the pill's `title` and its
+accessible name, so nothing is lost to a screen reader or a hover. The
 scope was four segmented pills, which spent most of the toolbar on a
 control changed a few times a day and left nothing to centre the view
 switcher in; `Dropdown.tsx` now holds the shared pill-and-popover shell,
@@ -962,9 +967,16 @@ card. It stays a **toggle** rather than becoming a dropdown like the
 scope beside it: with two options both worth seeing, a dropdown hides
 half the control.
 
-**Every Settings pane wears a black header band** (`PaneHeader` in
-`settings/Pane.tsx`): title, what the pane is for, and its one action, in
-cream on black. A heading set on the same cream as its list read as the
+**Every Settings pane wears a header band** (`PaneHeader` in
+`settings/Pane.tsx`), **and so does every popup** (`Modal`'s title row):
+title, what the pane is for, and its one action, drawn in
+`--color-band` / `--color-band-ink`. Two tokens rather than
+cream-on-black, so the band can be re-lit — light band, ink text — by
+changing the pair in `globals.css` and nothing else: the title, the
+description, the action pill (`PANE_ACTION_CLASS`) and the popup's close
+button all state their colours as those two. The band is **a darker cast
+of the app's own cream, not black** — black is a fourth colour, and
+against warm cream it reads as a hole in the page. A heading set on the same cream as its list read as the
 list's first row; a band gives each pane a lid, so a column of them scans
 as separate things. A header button takes `PANE_ACTION_CLASS` — the same
 pill reversed. **Data lays out in two columns** like Lists, packed by

@@ -21,11 +21,19 @@ export interface FilterOption<T extends string> {
  */
 function Dropdown({
   label,
+  icon,
   summary,
   active,
   children,
 }: {
   label: string;
+  /**
+   * Shown in place of the written label, which then survives as the
+   * button's title and its accessible name. Three toolbar pills each
+   * spelling out what they filter cost more width than the values they
+   * were showing.
+   */
+  icon?: ReactNode;
   /** What is currently chosen, shown beside the label. */
   summary: string;
   /** Filled when the control is narrowing something, plain when it isn't. */
@@ -41,11 +49,15 @@ function Dropdown({
       <button
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        title={label}
+        aria-label={label}
         className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
           active ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
         }`}
       >
-        <span className={active ? "text-cream/70" : ""}>{label}:</span>
+        <span className={active ? "text-cream/70" : ""} aria-hidden={!!icon}>
+          {icon ?? `${label}:`}
+        </span>
         <span>{summary}</span>
         <ChevronDown size={13} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
@@ -68,12 +80,15 @@ function Dropdown({
  */
 export function SelectDropdown<T extends string>({
   label,
+  icon,
   options,
   value,
   onChange,
   active = true,
 }: {
   label: string;
+  /** Drawn instead of the written label — see Dropdown. */
+  icon?: ReactNode;
   options: readonly { id: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
@@ -83,7 +98,7 @@ export function SelectDropdown<T extends string>({
   const summary = options.find((option) => option.id === value)?.label ?? "";
 
   return (
-    <Dropdown label={label} summary={summary} active={active}>
+    <Dropdown label={label} icon={icon} summary={summary} active={active}>
       {(close) => (
         <>
           {options.map((option) => (
@@ -121,11 +136,14 @@ export function SelectDropdown<T extends string>({
  */
 export function FilterDropdown<T extends string>({
   label,
+  icon,
   options,
   selected,
   onChange,
 }: {
   label: string;
+  /** Drawn instead of the written label — see Dropdown. */
+  icon?: ReactNode;
   options: FilterOption<T>[];
   /** Empty means "no filter" — every value passes. */
   selected: Set<T>;
@@ -147,7 +165,7 @@ export function FilterDropdown<T extends string>({
         : `${selected.size} selected`;
 
   return (
-    <Dropdown label={label} summary={summary} active={active}>
+    <Dropdown label={label} icon={icon} summary={summary} active={active}>
       {() => (
         <>
           {options.map((option) => (

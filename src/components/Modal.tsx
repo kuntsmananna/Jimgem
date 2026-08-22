@@ -60,24 +60,29 @@ export function Modal({
         className={`max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
       >
         {/*
+          The title row is a band, the same lid every Settings pane wears
+          (`PaneHeader`) and in the same two tokens — a popup opens over a
+          page of cream cards and needs a top edge of its own, or its first
+          line reads as one more row of whatever is behind it.
+
           Title and close both take equal space so whatever sits in the
           slot is centred on the dialog, not on the gap left over after a
           title of whatever length.
         */}
-        <div className="flex items-center gap-4">
-          <h2 className="flex-1 truncate font-display text-lg font-bold text-ink">{title}</h2>
+        <div className="-mx-6 -mt-6 mb-4 flex items-center gap-4 rounded-t-card bg-band px-6 py-4">
+          <h2 className="flex-1 truncate font-display text-lg font-bold text-band-ink">{title}</h2>
           <div ref={setSlot} className="flex shrink-0 items-center" />
           <div className="flex flex-1 justify-end">
             <button
               onClick={onClose}
               aria-label="Close"
-              className="rounded-full px-2 py-1 text-lg font-semibold text-ink-soft hover:bg-black/5 hover:text-ink"
+              className="rounded-full px-2 py-1 text-lg font-semibold text-band-ink/70 transition hover:bg-band-ink/15 hover:text-band-ink"
             >
               ×
             </button>
           </div>
         </div>
-        <div className="mt-4">
+        <div>
           <HeaderSlot.Provider value={slot}>{children}</HeaderSlot.Provider>
         </div>
       </div>

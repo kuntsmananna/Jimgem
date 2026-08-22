@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, Columns3, Copy, Plus, Table2, Trash2, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   stageMap,
@@ -325,10 +325,14 @@ export function OrdersClient({
                 it navigates itself — so its first slot says how the grid is
                 drawn instead.
 
-                All three are the same dropdown. The scope used to be four
-                pills, which spent most of the toolbar on a control changed
-                a few times a day and left nothing to centre the view
-                switcher in. */}
+                All three are the same dropdown, and each wears an icon
+                instead of its written name: the value is what changes and
+                what gets read, while "Payment:" and "Status:" were fixed
+                text costing more width than the values beside them. The
+                word survives as the pill's title and its accessible name.
+                The scope used to be four pills, which spent most of the
+                toolbar on a control changed a few times a day and left
+                nothing to centre the view switcher in. */}
             <div className="flex flex-1 flex-wrap items-center gap-2">
               {view === "calendar" ? (
                 // Two options, both always worth seeing — a toggle says
@@ -337,6 +341,7 @@ export function OrdersClient({
               ) : (
                 <SelectDropdown
                   label="When"
+                  icon={<CalendarRange size={13} />}
                   options={SCOPES}
                   value={scope}
                   onChange={setScope}
@@ -346,12 +351,14 @@ export function OrdersClient({
               )}
               <FilterDropdown
                 label="Payment"
+                icon={<Wallet size={13} />}
                 options={paymentOptions}
                 selected={paymentFilter}
                 onChange={setPaymentFilter}
               />
               <FilterDropdown
                 label="Status"
+                icon={<ListChecks size={13} />}
                 options={stageOptions}
                 selected={stageFilter}
                 onChange={setStageFilter}
