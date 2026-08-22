@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PricedOption } from "@/lib/orderTypes";
 import { ArchiveButton } from "./ArchiveButton";
 import { RateList, patchRate } from "./RateList";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 /**
  * A list of named things with a price each — displays, and delivery
@@ -51,18 +52,16 @@ export function PricedOptionsPanel({
 
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-base font-bold text-ink">{title}</h2>
-          <p className="mt-0.5 text-xs text-ink-soft">{description}</p>
-        </div>
-        <button
+      <PaneHeader
+        title={title}
+        description={<>{description}</>}
+        action={<button
           onClick={() => setAdding((v) => !v)}
-          className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-cream"
+          className={PANE_ACTION_CLASS}
         >
           {adding ? "Cancel" : "+ Add"}
-        </button>
-      </div>
+        </button>}
+      />
 
       {/* A price list first — which is how this pane is read — with the
           retire button riding in each row's action slot. */}

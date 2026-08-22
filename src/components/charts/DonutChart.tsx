@@ -99,10 +99,12 @@ export function DonutChart({
         )}
       </div>
       {/*
-        The percentage sits directly after the label rather than being
-        pushed to the far edge, so the number stays visually attached to
-        the thing it describes. `min-w-0` on the label lets it truncate
-        instead of forcing the row wider than the column.
+        Percentages line up on the right edge, so the column can be read
+        down as a ranking rather than hunted for after each label. It used
+        to sit directly after the label, which kept the number attached to
+        its subject but left the figures scattered across the pane.
+        `min-w-0` on the label lets it truncate instead of forcing the row
+        wider than the column.
       */}
       <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
         {nonZero.map((slice, i) => (
@@ -116,10 +118,12 @@ export function DonutChart({
               className="h-2.5 w-2.5 shrink-0 translate-y-0.5 rounded-full"
               style={{ background: slice.color }}
             />
-            <span className="min-w-0 truncate font-medium text-ink" title={slice.label}>
+            <span className="min-w-0 flex-1 truncate font-medium text-ink" title={slice.label}>
               {slice.label}
             </span>
-            <span className="shrink-0 font-semibold text-ink-soft">{Math.round((slice.value / total) * 100)}%</span>
+            <span className="shrink-0 font-semibold text-ink-soft tabular-nums">
+              {Math.round((slice.value / total) * 100)}%
+            </span>
           </li>
         ))}
       </ul>

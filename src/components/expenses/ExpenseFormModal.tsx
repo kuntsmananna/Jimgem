@@ -73,7 +73,7 @@ export function ExpenseFormModal({
 
   return (
     <Modal title={isEdit ? "Edit expense" : "Add expense"} onClose={onClose}>
-      <div className="flex flex-col gap-3">
+      <div className="fields-lit flex flex-col gap-3">
         <Field label="Date">
           <TextInput
             type="date"

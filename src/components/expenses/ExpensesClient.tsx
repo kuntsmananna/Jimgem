@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Expense, ExpensePeriod } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
-import { EXPENSE_PALETTE } from "@/lib/chartPalette";
-import { CreditCard, Maximize2, Plus, Sheet, Trash2, UserRound } from "lucide-react";
+import { LineChart } from "@/components/charts/LineChart";
+import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
+import { CalendarDays, CreditCard, Maximize2, Plus, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { EditableCell } from "@/components/orders/EditableCell";
@@ -79,6 +80,31 @@ export function ExpensesClient({
   }, [period]);
 
   const total = entries.reduce((sum, entry) => sum + forExpense(entry), 0);
+
+  /** The five that account for most of the period, biggest first. */
+  const biggest = useMemo(
+    () => [...entries].sort((a, b) => forExpense(b) - forExpense(a)).slice(0, 5),
+    [entries, forExpense],
+  );
+
+  /**
+   * The period's spend as it accumulates, one point per day that has an
+   * expense on it. Cumulative rather than daily: what a period is asked is
+   * how fast it is adding up, and most days are simply empty.
+   */
+  const cumulative = useMemo(() => {
+    const byDay = new Map<string, number>();
+    for (const entry of entries) {
+      if (!entry.date) continue;
+      byDay.set(entry.date, (byDay.get(entry.date) ?? 0) + forExpense(entry));
+    }
+    const days = [...byDay.keys()].sort();
+    const values: number[] = [];
+    for (const day of days) {
+      values.push((values.at(-1) ?? 0) + (byDay.get(day) ?? 0));
+    }
+    return { labels: days.map((day) => formatOrderDate(day)), values };
+  }, [entries, forExpense]);
   const editing = editingKey === null ? null : (entries.find((entry) => entry.key === editingKey) ?? null);
 
   function refresh() {
@@ -217,12 +243,61 @@ export function ExpensesClient({
         </div>
       </section>
 
-      <section className="min-w-0 rounded-card border border-line bg-card p-6">
-        <h2 className="font-display text-base font-bold text-ink">Category breakdown</h2>
-        <div className="mt-4">
-          <DonutChart slices={slices} />
-        </div>
-      </section>
+      <div className="flex min-w-0 flex-col gap-6">
+        <section className="min-w-0 rounded-card border border-line bg-card p-6">
+          <h2 className="font-display text-base font-bold text-ink">Category breakdown</h2>
+          <div className="mt-4">
+            <DonutChart slices={slices} />
+          </div>
+        </section>
+
+        {/*
+          Where the money went, biggest first. A donut answers "which
+          category", this answers "which expense" — the one that is usually
+          behind a month looking heavier than it should.
+        */}
+        <section className="min-w-0 rounded-card border border-line bg-card p-6">
+          <h2 className="font-display text-base font-bold text-ink">Biggest expenses</h2>
+          <ul className="mt-3 flex flex-col">
+            {biggest.map((entry) => (
+              <li key={entry.key}>
+                <button
+                  onClick={() => setEditingKey(entry.key)}
+                  className="hover-line flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left"
+                >
+                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
+                    {entry.note || entry.categoryName}
+                  </span>
+                  <span className="shrink-0 text-xs font-bold text-ink tabular-nums">
+                    {currency(forExpense(entry))}
+                  </span>
+                </button>
+              </li>
+            ))}
+            {biggest.length === 0 && <p className="text-sm text-ink-soft">Nothing in this period.</p>}
+          </ul>
+        </section>
+
+        {/*
+          Cumulative, not per-day: the question a period asks is "how fast
+          is this adding up", and a bar per day answers a different one —
+          most days are empty, and the ones that aren't say nothing about
+          where the total is heading.
+        */}
+        <section className="min-w-0 rounded-card border border-line bg-card p-6">
+          <h2 className="font-display text-base font-bold text-ink">Spend so far</h2>
+          <p className="mt-0.5 mb-3 text-xs text-ink-soft">Adding up across the period.</p>
+          {cumulative.values.length > 1 ? (
+            <LineChart
+              series={[{ label: "Spent", color: SERIES_COLORS.jasmine, values: cumulative.values }]}
+              xLabels={cumulative.labels}
+              height={150}
+            />
+          ) : (
+            <p className="text-sm text-ink-soft">Not enough dated expenses to plot yet.</p>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -273,25 +348,29 @@ function ExpenseRow({
         if ((event.target as HTMLElement).closest("button, input, select, a")) return;
         onOpen();
       }}
-      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[4.5rem_9rem_1fr_auto_auto] items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
+      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[6.5rem_2rem_9rem_1fr_auto_auto] items-center gap-x-3 rounded-xl border border-line px-3 py-2 text-sm"
     >
       {/*
-        Date, description and amount are the row: what it was, what it was
-        for, what it cost. Everything else on the line qualifies those
-        three, and is set quieter so they carry.
+        Date, description and amount are the row: when, what for, what it
+        cost. Everything else qualifies those three and is set quieter.
 
-        No year — the app works one season at a time, and the year on every
-        row is noise repeated down the column.
+        No year — the period says which one, and repeating it on every row
+        is noise down the column.
       */}
-      <span className="flex shrink-0 items-center gap-1 font-semibold text-ink tabular-nums">
-        {formatOrderDate(entry.date)}
-        {entry.source === "sheet" && (
-          <Sheet
-            size={11}
-            className="shrink-0 text-ink-soft/50"
-            aria-label="Imported from the Google Sheet"
-          />
-        )}
+      <DateCell date={entry.date} onChange={(date) => onPatch({ date })} />
+
+      {/* Opening the row lives here rather than beside the trash: two
+          icons a few pixels apart, one of them destructive, is a mis-click
+          waiting to happen. There is room on this side and none there. */}
+      <span className="flex justify-center">
+        <button
+          onClick={onOpen}
+          title="Open this expense"
+          aria-label="Open this expense"
+          className="invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+        >
+          <Maximize2 size={13} />
+        </button>
       </span>
 
       {/* A chip, because a category is a class the row belongs to rather
@@ -299,6 +378,7 @@ function ExpenseRow({
           follows on the Orders table. */}
       <span className="min-w-0">
         <EditableCell
+          chip
           displayValue={<CategoryChip name={entry.categoryName} />}
           editValue={String(entry.categoryId)}
           options={categories.map((category) => ({ value: String(category.id), label: category.name }))}
@@ -321,11 +401,11 @@ function ExpenseRow({
       </span>
 
       {/* Who and how, right-aligned against the amount: they qualify the
-          expense rather than identify it. `whitespace-nowrap` on the empty
-          state because "+ who" broke over two lines in a narrow column,
-          which read as two separate controls. */}
+          expense rather than identify it. Both stay on one line — "+ who"
+          broke over two in a narrow column and read as two controls. */}
       <span className="flex shrink-0 items-center justify-end gap-1.5">
         <EditableCell
+          chip
           displayValue={
             entry.staffName ? (
               <AttributeChip icon={<UserRound size={11} />} label={entry.staffName} />
@@ -341,6 +421,7 @@ function ExpenseRow({
           onSave={(raw) => onPatch({ staffId: raw ? Number(raw) : null })}
         />
         <EditableCell
+          chip
           displayValue={
             entry.paymentMethodName ? (
               <AttributeChip icon={<CreditCard size={11} />} label={entry.paymentMethodName} />
@@ -357,12 +438,6 @@ function ExpenseRow({
         />
       </span>
 
-      {/*
-        The amount and the two things you can do to the row, in one group
-        so the money sits beside its buttons rather than a column away.
-        Both buttons appear on hover and hold their space when they don't,
-        so nothing shifts as the mouse crosses the list.
-      */}
       <span className="flex shrink-0 items-center gap-1">
         <span className="w-[6.5rem] text-right text-[15px] font-bold text-ink tabular-nums">
           <EditableCell
@@ -373,23 +448,55 @@ function ExpenseRow({
           />
         </span>
         <button
-          onClick={onOpen}
-          title="Open this expense"
-          aria-label="Open this expense"
-          className="invisible rounded-lg p-1 text-ink-soft transition group-hover:visible hover:bg-cream/15 hover:text-cream"
-        >
-          <Maximize2 size={13} />
-        </button>
-        <button
           onClick={onDelete}
           title="Delete this expense"
           aria-label="Delete this expense"
-          className="invisible rounded-lg p-1 text-ink-soft transition group-hover:visible hover:bg-cream/15 hover:text-cream"
+          className="invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
         >
           <Trash2 size={13} />
         </button>
       </span>
     </div>
+  );
+}
+
+/**
+ * The date, with the control that changes it.
+ *
+ * The circle appears on hover and opens the browser's own date picker —
+ * a date is picked from a calendar, not typed, and a bare text cell that
+ * happened to accept a date was neither. The input sits under the button
+ * rather than beside it: `showPicker()` needs a real date input, and one
+ * that is only a target would take space on every row for nothing.
+ */
+function DateCell({ date, onChange }: { date: string; onChange: (date: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      <span className="font-semibold text-ink tabular-nums">{formatOrderDate(date)}</span>
+      <span className="relative">
+        <button
+          onClick={() => input.current?.showPicker()}
+          title="Change the date"
+          aria-label="Change the date"
+          className="invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+        >
+          <CalendarDays size={13} />
+        </button>
+        <input
+          ref={input}
+          type="date"
+          value={date}
+          onChange={(event) => event.target.value && onChange(event.target.value)}
+          // Present for the picker to anchor to, and no larger than the
+          // button it hides behind.
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+          tabIndex={-1}
+          aria-hidden
+        />
+      </span>
+    </span>
   );
 }
 

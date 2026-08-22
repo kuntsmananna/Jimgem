@@ -117,6 +117,30 @@ body {
   }
 
   /*
+   * `.fields-lit` keeps every field filled, not just the empty ones.
+   *
+   * The app's default says the opposite — a filled field drops to bare
+   * text, so a sheet of values reads as prose rather than as a form. In a
+   * popup that is only fields, that reasoning inverts: there is nothing to
+   * read *around* them, and a form whose boxes appear only where nothing
+   * has been typed looks half-broken. So the fill stays, hover deepens it,
+   * and focus is loud enough to find without looking for the caret.
+   */
+  .fields-lit .input:not(:placeholder-shown),
+  .fields-lit select.input:not(:has(option[value=""]:checked)) {
+    background-color: --alpha(var(--field-tone) / var(--field-fill));
+  }
+
+  .fields-lit .input:hover:not(:disabled):not(:focus) {
+    background-color: --alpha(var(--field-tone) / var(--field-fill-hover));
+  }
+
+  .fields-lit .input:focus {
+    background-color: var(--field-focus-surface);
+    box-shadow: 0 0 0 3px --alpha(var(--color-accent) / 22%);
+  }
+
+  /*
    * The date field's picker button is the control, not decoration — it is
    * how a date actually gets changed — so it wears a target: a tinted
    * circle that deepens on hover, like every other round button in the
@@ -305,6 +329,23 @@ body {
 
 .editable-cell:hover {
   background-color: --alpha(var(--color-ink) / 7%);
+}
+
+/*
+ * A cell whose value is already a chip says "editable" by deepening the
+ * chip, not by drawing a second box around it — two nested rounded shapes
+ * read as a bug, and the chip is the target either way.
+ */
+.editable-cell.is-chip:hover {
+  background-color: transparent;
+}
+
+.editable-cell.is-chip:hover .chip-neutral {
+  background-color: --alpha(var(--color-ink) / 14%);
+}
+
+.hover-line:hover .editable-cell.is-chip:hover .chip-neutral {
+  background-color: --alpha(var(--color-cream) / 30%);
 }
 
 /*

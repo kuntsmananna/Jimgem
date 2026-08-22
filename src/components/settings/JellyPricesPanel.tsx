@@ -3,6 +3,7 @@
 import { UNIT_TIERS, type Prices } from "@/lib/orderTypes";
 import type { ContentPreset } from "@/lib/settings";
 import { RateList, patchRate } from "./RateList";
+import { PaneHeader } from "./Pane";
 
 /**
  * Settings → Lists → Jelly prices. What the jelly itself costs.
@@ -27,12 +28,9 @@ export function JellyPricesPanel({
 }) {
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div>
-        <h2 className="font-display text-base font-bold text-ink">Jelly prices</h2>
-        <p className="mt-0.5 text-xs text-ink-soft">
+      <PaneHeader title="Jelly prices" description={<>
           Per unit by order size, unless the package is one of your presets.
-        </p>
-      </div>
+        </>} />
 
       <RateList
         rows={UNIT_TIERS.map((tier) => ({

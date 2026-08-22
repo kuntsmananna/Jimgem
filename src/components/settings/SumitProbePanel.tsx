@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy, Loader2, Radar } from "lucide-react";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 /**
  * Runs the read-only SUMIT probe and shows its report. Deliberately a raw
@@ -44,7 +45,18 @@ export function SumitProbePanel() {
 
   return (
     <section className="min-w-0 rounded-card border border-line bg-card p-6">
-      <h2 className="font-display text-base font-bold text-ink">SUMIT</h2>
+      <PaneHeader
+        title="SUMIT"
+        description={<>Reconnaissance for designing the integration. Read-only, and it goes away once that is built.</>}
+        action={<button
+          onClick={runProbe}
+          disabled={busy}
+          className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
+        >
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Radar size={15} />}
+          {busy ? "Reading SUMIT…" : "Run SUMIT probe"}
+        </button>}
+      />
       <p className="mt-1 text-xs text-ink-soft">
         Looks at what SUMIT holds — documents, customers, expenses by month — and lines it up against the orders here.
         Read-only: nothing is written to SUMIT or to this database. It exists to design the integration, and goes away
@@ -52,14 +64,6 @@ export function SumitProbePanel() {
       </p>
 
       <div className="mt-4 flex items-center gap-3">
-        <button
-          onClick={runProbe}
-          disabled={busy}
-          className="flex items-center gap-2 rounded-full bg-black px-4 py-2 text-sm font-semibold text-cream disabled:opacity-60"
-        >
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <Radar size={15} />}
-          {busy ? "Reading SUMIT…" : "Run SUMIT probe"}
-        </button>
 
         {report && (
           <button

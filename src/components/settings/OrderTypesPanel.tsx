@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderType } from "@/lib/settings";
 import { ORDER_TYPE_ICON_KEYS, orderTypeIconElement } from "@/lib/icons";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 const DEFAULT_COLOR = "#f6d9a8";
 
@@ -45,21 +46,19 @@ export function OrderTypesPanel({ items }: { items: OrderType[] }) {
 
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-base font-bold text-ink">Order types</h2>
-          <p className="mt-0.5 text-xs text-ink-soft">Shown as a coloured chip on every order.</p>
-        </div>
-        <button
+      <PaneHeader
+        title="Order types"
+        description={<>Shown as a coloured chip on every order.</>}
+        action={<button
           onClick={() => {
             setEditing(editing === "new" ? null : "new");
             setDraft(BLANK);
           }}
-          className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-cream"
+          className={PANE_ACTION_CLASS}
         >
           {editing === "new" ? "Cancel" : "+ Add"}
-        </button>
-      </div>
+        </button>}
+      />
 
       {editing === "new" && (
         <div className="mt-3">

@@ -2,6 +2,7 @@
 
 import { PRICE_FIELDS, type Prices } from "@/lib/orderTypes";
 import { RateList, patchRate } from "./RateList";
+import { PaneHeader } from "./Pane";
 
 /**
  * Settings → Lists → Add-on prices. What the extras cost, which fills an
@@ -15,12 +16,9 @@ import { RateList, patchRate } from "./RateList";
 export function PricesPanel({ prices }: { prices: Prices }) {
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div>
-        <h2 className="font-display text-base font-bold text-ink">Add-on prices</h2>
-        <p className="mt-0.5 text-xs text-ink-soft">
+      <PaneHeader title="Add-on prices" description={<>
           Standard rates. Every order starts from these and can still be changed on the order itself.
-        </p>
-      </div>
+        </>} />
 
       <RateList
         rows={PRICE_FIELDS.map((field) => ({

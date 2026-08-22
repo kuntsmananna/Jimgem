@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 interface SyncResult {
   documents: number;
@@ -51,28 +52,30 @@ export function SumitSyncPanel({ lastSync, documentCount }: { lastSync: string |
 
   return (
     <section className="min-w-0 rounded-card border border-line bg-card p-6">
-      <h2 className="font-display text-base font-bold text-ink">SUMIT documents</h2>
-      <p className="mt-1 text-xs text-ink-soft">
-        Invoices, receipts and payment requests, copied here so clients and orders can show them. Nothing is ever
-        written to SUMIT. {documentCount > 0 ? `${documentCount} on file` : "Nothing synced yet"}
+      <PaneHeader
+        title="SUMIT documents"
+        description={<>Copied here so clients and orders can show them. Nothing is ever written to SUMIT.</>}
+        action={<button
+          onClick={() => run()}
+          disabled={busy}
+          className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
+        >
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+          {busy ? "Syncing…" : "Sync now"}
+        </button>}
+      />
+      <p className="text-xs text-ink-soft">
+        {documentCount > 0 ? `${documentCount} documents on file` : "Nothing synced yet"}
         {lastSync ? `, last synced ${new Date(lastSync).toLocaleString()}` : ""}.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => run()}
-          disabled={busy}
-          className="flex items-center gap-2 rounded-full bg-black px-4 py-2 text-sm font-semibold text-cream disabled:opacity-60"
-        >
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-          {busy ? "Syncing…" : "Sync now"}
-        </button>
         {/* The routine sync looks back 90 days. Everything is for the first
             run, and for the rare case of a document backdated past that. */}
         <button
           onClick={() => run(3650)}
           disabled={busy}
-          className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink disabled:opacity-60"
+          className="rounded-full border border-cream/40 px-3 py-1 text-xs font-semibold text-cream transition hover:bg-cream/15 disabled:opacity-60"
         >
           Sync everything
         </button>

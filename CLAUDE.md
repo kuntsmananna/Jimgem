@@ -698,6 +698,21 @@ iteration (not guessed) — define these as `@theme` tokens in
   hover — outside it, the amounts above and below shifted as the mouse
   moved, and on a trash can the word "Delete" is what the icon already
   says.
+- **A click-to-edit cell shows a hover fill** (`.editable-cell`, unlayered
+  in `globals.css` beside `.hover-line` so it beats Tailwind's utilities
+  without `!important`), in whichever tone the surface is — the dark half
+  rides the rule that already covers buttons inside a hovered line. A cell
+  whose value is a *chip* passes `chip` and deepens the chip instead
+  (`.is-chip`): two nested rounded shapes read as a bug.
+- **The date is changed from a calendar, not typed.** `DateCell` puts a
+  round button beside the date that calls `showPicker()` on a hidden date
+  input. Opening the row sits on the *left*, beside the category, not next
+  to the trash — two icons a few pixels apart, one destructive, is a
+  mis-click waiting to happen.
+- **`.fields-lit` keeps every field filled inside a popup**, inverting the
+  app's default that a filled field drops to bare text. In a popup that is
+  only fields there is nothing to read around them, and boxes appearing
+  only where nothing has been typed look half-broken.
 - **An expense edits two ways.** Clicking the row opens it in the same
   modal that adds one (`ExpenseFormModal` takes an optional `expense`);
   category, description, staff, method and amount also edit in place
@@ -920,6 +935,15 @@ scope to show, and the switcher used to be a second control inside the
 card. It stays a **toggle** rather than becoming a dropdown like the
 scope beside it: with two options both worth seeing, a dropdown hides
 half the control.
+
+**Every Settings pane wears a black header band** (`PaneHeader` in
+`settings/Pane.tsx`): title, what the pane is for, and its one action, in
+cream on black. A heading set on the same cream as its list read as the
+list's first row; a band gives each pane a lid, so a column of them scans
+as separate things. A header button takes `PANE_ACTION_CLASS` — the same
+pill reversed. **Data lays out in two columns** like Lists, packed by
+height: a sync button beside the archive left half a screen of cream when
+they were stacked.
 
 Settings is four tabs: **Flavors** (flavour cards *and* presets — a preset
 is a package plus a recipe of these flavours, so keeping them apart meant

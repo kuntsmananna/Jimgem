@@ -128,8 +128,11 @@ export default async function SettingsPage() {
           id: "data",
           label: "Data",
           icon: <Cloud size={14} />,
+          // Two columns, packed by height like Lists: these panes are
+          // wildly different lengths — a sync button against the archive —
+          // and stacked they left a screen of cream beside them.
           content: (
-            <div className="flex max-w-2xl flex-col gap-6">
+            <div className="columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <ImportPanel />
               <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} />
               <SumitProbePanel />

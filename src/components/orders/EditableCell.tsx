@@ -16,12 +16,15 @@ export function EditableCell({
   editValue,
   type = "text",
   options,
+  chip = false,
   onSave,
 }: {
   displayValue: React.ReactNode;
   editValue: string;
   type?: "text" | "number" | "date";
   options?: { value: string; label: string }[];
+  /** True when the value is drawn as a chip — see `.is-chip` in globals.css. */
+  chip?: boolean;
   onSave: (raw: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -45,7 +48,7 @@ export function EditableCell({
         // `editable-cell` (globals.css) is what makes "this can be
         // edited" visible on hover, on cream and on the black a hovered
         // row turns.
-        className="editable-cell -mx-1 block w-full px-1 text-left"
+        className={`editable-cell -mx-1 block w-full px-1 text-left ${chip ? "is-chip" : ""}`}
       >
         {displayValue}
       </button>

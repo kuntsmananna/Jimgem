@@ -2,6 +2,7 @@
 
 import { VAT_MODES, VAT_REGISTERED_FROM, type Prices } from "@/lib/orderTypes";
 import { RateList, patchRate } from "./RateList";
+import { PaneHeader } from "./Pane";
 
 /**
  * Settings → Lists → VAT. One rate, and what it means.
@@ -15,13 +16,10 @@ import { RateList, patchRate } from "./RateList";
 export function VatPanel({ prices }: { prices: Prices }) {
   return (
     <section className="break-inside-avoid rounded-card border border-line bg-card p-6">
-      <div>
-        <h2 className="font-display text-base font-bold text-ink">VAT</h2>
-        <p className="mt-0.5 text-xs text-ink-soft">
+      <PaneHeader title="VAT" description={<>
           Applied to new orders and expenses. Existing ones keep the rate they were saved with, so changing this
           never reprices work already agreed.
-        </p>
-      </div>
+        </>} />
 
       <RateList
         rows={[

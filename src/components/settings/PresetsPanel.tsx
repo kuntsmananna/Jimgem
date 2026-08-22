@@ -14,6 +14,7 @@ import {
 import { packageTypeIconElement } from "@/lib/icons";
 import { FlavorRow } from "@/components/orders/PackageLineEditor";
 import { TrayPreview } from "@/components/orders/TrayPreview";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 /**
  * A preset being edited, held in **units of one package** rather than in
@@ -129,22 +130,20 @@ export function PresetsPanel({
 
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-base font-bold text-ink">Presets</h2>
-          <p className="mt-0.5 text-xs text-ink-soft">
+      <PaneHeader
+        title="Presets"
+        description={<>
             A package and its mix, saved together. Recipes are proportions, so one preset works for
             any quantity.
-          </p>
-        </div>
-        <button
+          </>}
+        action={<button
           onClick={() => (editing === "new" ? cancel() : startNew())}
           disabled={packageTypes.length === 0}
-          className="shrink-0 rounded-full bg-black px-3 py-1 text-xs font-semibold text-cream disabled:opacity-40"
+          className={`shrink-0 ${PANE_ACTION_CLASS} disabled:opacity-40`}
         >
           {editing === "new" ? "Cancel" : "+ Add preset"}
-        </button>
-      </div>
+        </button>}
+      />
 
       {editing === "new" && draft && (
         <div className="mt-4">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PackageType } from "@/lib/settings";
 import { packageTypeIconElement } from "@/lib/icons";
 import { ArchiveButton } from "./ArchiveButton";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 export function PackageTypesPanel({ items }: { items: PackageType[] }) {
   const router = useRouter();
@@ -42,15 +43,12 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
 
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-base font-bold text-ink">Package types</h2>
-        <button
+      <PaneHeader title="Package types" action={<button
           onClick={() => setAdding((v) => !v)}
-          className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-cream"
+          className={PANE_ACTION_CLASS}
         >
           {adding ? "Cancel" : "+ Add"}
-        </button>
-      </div>
+        </button>} />
 
       <ul className="mt-3 flex flex-col gap-1.5">
         {items.map((item) => (

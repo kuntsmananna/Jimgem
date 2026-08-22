@@ -193,9 +193,9 @@ export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
     .sort()
     .map((key) => ({
       key,
-      // Month alone, no year: the app works in a single season, and an
-      // imported row carries a year only because the DB column needs one.
-      label: MONTH_NAMES_EN[Number(key.split("-")[1]) - 1],
+      // "June 2026": the year is back. It was dropped while every row was
+      // one season, and a list of expenses now spans more than one.
+      label: `${MONTH_NAMES_EN[Number(key.split("-")[1]) - 1]} ${key.split("-")[0]}`,
       entries: byMonth.get(key) ?? [],
     }));
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw, Trash2 } from "lucide-react";
 import type { ArchivedItem } from "@/lib/settings";
+import { PaneHeader } from "./Pane";
 
 /**
  * Settings → Data → Archived. Everything retired from every list, in one
@@ -43,13 +44,10 @@ export function ArchivedPanel({ items }: { items: ArchivedItem[] }) {
 
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <div>
-        <h2 className="font-display text-base font-bold text-ink">Archived</h2>
-        <p className="mt-0.5 text-xs text-ink-soft">
+      <PaneHeader title="Archived" description={<>
           Retired from their lists and hidden from every dropdown. Orders and expenses that already use
           one keep it.
-        </p>
-      </div>
+        </>} />
 
       {note && (
         <p className="mt-3 rounded-lg bg-tile-peach px-3 py-2 text-xs font-semibold text-ink" role="status">

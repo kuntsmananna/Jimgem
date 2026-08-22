@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffAccount } from "@/lib/settings";
+import { PaneHeader } from "./Pane";
 
 export function StaffPanel({ items }: { items: StaffAccount[] }) {
   const router = useRouter();
@@ -41,7 +42,7 @@ export function StaffPanel({ items }: { items: StaffAccount[] }) {
 
   return (
     <section className="rounded-card border border-line bg-card p-6">
-      <h2 className="font-display text-base font-bold text-ink">Staff & logins</h2>
+      <PaneHeader title="Staff & logins" />
       <ul className="mt-3 flex flex-col gap-3">
         {items.map((staff) => (
           <li key={staff.id} className="rounded-xl border border-line p-3">

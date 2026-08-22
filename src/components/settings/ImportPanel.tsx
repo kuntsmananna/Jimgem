@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Loader2 } from "lucide-react";
+import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 
 interface ImportResult {
   ordersImported: number;
@@ -46,20 +47,24 @@ export function ImportPanel() {
 
   return (
     <section className="min-w-0 rounded-card border border-line bg-card p-6">
-      <h2 className="font-display text-base font-bold text-ink">Google Sheet</h2>
-      <p className="mt-1 text-xs text-ink-soft">
-        The dashboard reads its own database, not the sheet. Import when you&apos;ve added rows to the sheet and want
-        them here. Rows already imported are left alone, so your dashboard edits are never overwritten.
-      </p>
-
-      <button
+      <PaneHeader
+        title="Google Sheet"
+        description={<>Rows already imported are left alone, so dashboard edits are never overwritten.</>}
+        action={<button
         onClick={runImport}
         disabled={busy}
-        className="mt-4 flex items-center gap-2 rounded-full bg-black px-4 py-2 text-sm font-semibold text-cream disabled:opacity-60"
+        className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
       >
         {busy ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
         {busy ? "Importing…" : "Import from Google Sheet"}
-      </button>
+      </button>}
+      />
+      <p className="text-xs text-ink-soft">
+        The dashboard reads its own database, not the sheet. Import when you&apos;ve added rows to the sheet and
+        want them here.
+      </p>
+
+      
 
       {result && (
         <p className="mt-3 text-xs font-semibold text-ink">
