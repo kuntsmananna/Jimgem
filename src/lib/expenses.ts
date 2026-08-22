@@ -1,21 +1,22 @@
 import { getDb } from "./db";
-import { getLegacyExpenseItems, MONTH_NAMES_EN, type MonthlyExpenses } from "./financials";
-import { getExpenseCategories, getPaymentMethods, getPrices, getStaff } from "./settings";
-import { vatOn, VAT_REGISTERED_FROM, type VatMode } from "./orderTypes";
+import { MONTH_NAMES_EN } from "./financials";
+import { getExpenseCategories, getPaymentMethods, getStaff } from "./settings";
+import { vatOn, type VatMode } from "./orderTypes";
 
 export interface Expense {
-  /** DB row id (string) for dashboard-created expenses, or a "sheet-expense:<row>:<col>" key for Sheet-derived ones. */
+  /** The DB row id, as a string. Every expense is a row. */
   key: string;
+  /**
+   * Where it came from. Provenance only: an expense imported from the
+   * Sheet is an ordinary editable row like any other, the same rule
+   * `orders.source` follows. The Sheet is not the record any more.
+   */
   source: "db" | "sheet";
-  /** "YYYY-MM-DD" for DB expenses; "YYYY-MM" for Sheet ones — the Sheet has no per-item day (see CLAUDE.md). */
+  /** "YYYY-MM-DD". A Sheet-derived one is dated to the 1st of its month — the finest grain that source has. */
   date: string;
   categoryName: string;
-  /**
-   * The ids behind those names, so a row can be edited without looking
-   * them up again. Null on a Sheet-derived item, which has no DB row and
-   * therefore nothing to edit.
-   */
-  categoryId: number | null;
+  /** The ids behind those names, so a row can be edited without looking them up again. */
+  categoryId: number;
   paymentMethodId: number | null;
   staffId: number | null;
   amount: number;
@@ -35,8 +36,6 @@ export interface Expense {
   netAmount: number;
   /** True when `note` is a best-effort, unverified match from a Sheet comment — see financials.ts's SheetExpenseItem. */
   noteUnverified: boolean;
-  /** False for Sheet-derived items — there's no DB row to edit or delete. */
-  editable: boolean;
 }
 
 export interface ExpenseInput {
@@ -58,6 +57,7 @@ interface DbExpenseRow {
   payment_method_id: number | null;
   staff_id: number | null;
   note: string | null;
+  sheet_key: string | null;
   vat_mode: VatMode | null;
   vat_rate: string | null;
 }
@@ -70,7 +70,7 @@ function mapExpense(
 ): Expense {
   return {
     key: String(row.id),
-    source: "db",
+    source: row.sheet_key ? "sheet" : "db",
     date: row.date,
     categoryName: categoryNameById.get(row.category_id) ?? "Other",
     categoryId: row.category_id,
@@ -86,7 +86,6 @@ function mapExpense(
     // to take VAT back out rather than how to add it on.
     netAmount: vatOn(Number(row.amount), row.vat_mode ?? "included", Number(row.vat_rate ?? 0)).net,
     noteUnverified: false,
-    editable: true,
   };
 }
 
@@ -122,6 +121,7 @@ interface RawDbExpenseRow {
   amount: string;
   vat_mode: VatMode | null;
   vat_rate: string | null;
+  sheet_key: string | null;
   payment_method_id: number | null;
   staff_id: number | null;
   note: string | null;
@@ -165,129 +165,42 @@ export interface ExpensePeriod {
   /** "YYYY-MM" for a real month, or "general" for the all-time bucket. */
   key: string;
   label: string;
-  /** True when every entry in this period comes from the Sheet (no dashboard-created expenses that month). */
-  isLegacy: boolean;
   entries: Expense[];
-  legacyTotals: MonthlyExpenses | null;
 }
 
 /**
- * Groups DB expenses by month and mixes in each Sheet month's per-category
- * amounts as read-only entries — the Sheet has no per-row date or
- * description (see CLAUDE.md), so each is dated to the 1st of its month
- * and labeled by category alone, which is the finest grain actually
- * recoverable from the source data.
+ * Every expense, grouped by month.
+ *
+ * Reads the `expenses` table alone. It used to merge in the Sheet's
+ * per-category monthly totals as read-only entries, because the Sheet was
+ * still the record for anything before the dashboard existed. It isn't any
+ * more: migration 018 turned each of those into a real row, so they are
+ * corrected here like anything else and `legacy_expense_items` is kept
+ * only so that fold-in stays auditable.
  */
 export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
-  const [dbExpenses, legacyMonths, prices] = await Promise.all([
-    getDbExpenses(),
-    getLegacyExpenseItems(),
-    getPrices(),
-  ]);
-  const legacyVatRate = prices.vat_rate;
-
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  const expenses = await getDbExpenses();
 
   const byMonth = new Map<string, Expense[]>();
-  for (const expense of dbExpenses) {
-    const d = new Date(expense.date);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  for (const expense of expenses) {
+    const key = expense.date.slice(0, 7);
     const list = byMonth.get(key) ?? [];
     list.push(expense);
     byMonth.set(key, list);
   }
-  for (const month of legacyMonths) {
-    const key = `${currentYear}-${String(month.month).padStart(2, "0")}`;
-    const list = byMonth.get(key) ?? [];
-    for (const item of month.items) {
-      list.push({
-        key: item.key,
-        source: "sheet",
-        date: key,
-        categoryName: item.category,
-        categoryId: null,
-        paymentMethodId: null,
-        staffId: null,
-        amount: item.amount,
-        paymentMethodName: null,
-        staffName: null,
-        note: item.description ?? "",
-        // A legacy Sheet item is a month's total, not a receipt, so it
-        // takes the registration date rule and nothing more. These are
-        // approximations already; the plan doesn't pretend otherwise.
-        vatMode: `${key}-01` < VAT_REGISTERED_FROM ? "exempt" : "included",
-        vatRate: `${key}-01` < VAT_REGISTERED_FROM ? 0 : legacyVatRate,
-        netAmount: vatOn(
-          item.amount,
-          `${key}-01` < VAT_REGISTERED_FROM ? "exempt" : "included",
-          `${key}-01` < VAT_REGISTERED_FROM ? 0 : legacyVatRate,
-        ).net,
-        noteUnverified: item.description !== null,
-        editable: false,
-      });
-    }
-    byMonth.set(key, list);
-  }
-
-  const legacyByMonth = new Map(legacyMonths.map((m) => [m.month, m]));
 
   const periods: ExpensePeriod[] = Array.from(byMonth.keys())
     .sort()
-    .map((key) => {
-      const month = Number(key.split("-")[1]);
-      const entries = byMonth.get(key) ?? [];
-      return {
-        key,
-        // Month alone, no year: the app works in a single season and
-        // imported Sheet rows carry a year only because the DB column
-        // needs one (see sheetImport.ts). Printing it would assert a
-        // fact the source data doesn't have.
-        label: MONTH_NAMES_EN[month - 1],
-        isLegacy: entries.every((e) => e.source === "sheet"),
-        entries: entries.sort((a, b) => (a.source === b.source ? 0 : a.source === "db" ? -1 : 1)),
-        legacyTotals: legacyByMonth.get(month) ?? null,
-      };
-    });
+    .map((key) => ({
+      key,
+      // Month alone, no year: the app works in a single season, and an
+      // imported row carries a year only because the DB column needs one.
+      label: MONTH_NAMES_EN[Number(key.split("-")[1]) - 1],
+      entries: byMonth.get(key) ?? [],
+    }));
 
-  const combinedLegacyTotals: MonthlyExpenses = legacyMonths.reduce<MonthlyExpenses>(
-    (acc, m) => {
-      const byCategory: Record<string, number> = { ...acc.byCategory };
-      for (const [cat, amount] of Object.entries(m.byCategory)) {
-        byCategory[cat] = (byCategory[cat] ?? 0) + amount;
-      }
-      return { month: 0, byCategory, total: acc.total + m.total, items: [...acc.items, ...m.items] };
-    },
-    { month: 0, byCategory: {}, total: 0, items: [] },
-  );
-
-  periods.push({
-    key: "general",
-    label: "General / All time",
-    isLegacy: false,
-    entries: [...dbExpenses, ...combinedLegacyTotals.items.map((item) => ({
-      key: item.key,
-      source: "sheet" as const,
-      date: "",
-      categoryId: null,
-      paymentMethodId: null,
-      staffId: null,
-      // All-time rolls every legacy month together, so there is no one
-      // date to test: these predate the DB expenses entirely and are
-      // treated as pre-registration.
-      vatMode: "exempt" as const,
-      vatRate: 0,
-      netAmount: item.amount,
-      categoryName: item.category,
-      amount: item.amount,
-      paymentMethodName: null,
-      staffName: null,
-      note: item.description ?? "",
-      noteUnverified: item.description !== null,
-      editable: false,
-    }))],
-    legacyTotals: legacyMonths.length > 0 ? combinedLegacyTotals : null,
-  });
+  periods.push({ key: "general", label: "General / All time", entries: expenses });
 
   return periods;
 }
+

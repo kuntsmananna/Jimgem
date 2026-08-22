@@ -243,9 +243,11 @@ export interface MonthlyFinancials {
  */
 export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<MonthlyFinancials[]> {
   const net = vatView === "net";
-  const [orders, sheetExpenses, dbExpenses, packageTypes] = await Promise.all([
+  const [orders, dbExpenses, packageTypes] = await Promise.all([
     getOrders(),
-    getLegacyExpenseItems(),
+    // The Sheet's monthly totals are no longer read here: migration 018
+    // turned each into a real expenses row, so adding them again would
+    // count every pre-dashboard cost twice.
     getDbExpensesForRollup(),
     // Archived included: units sold is computed from stored package
     // lines, which can reference a package type since retired.
@@ -255,12 +257,6 @@ export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<M
   const revenue = await getMonthlyRevenue(orders, packageUnitsById);
 
   const expensesByMonth = new Map<number, { total: number; byCategory: Record<string, number> }>();
-  for (const sheetMonth of sheetExpenses) {
-    expensesByMonth.set(sheetMonth.month, {
-      total: sheetMonth.total,
-      byCategory: { ...sheetMonth.byCategory },
-    });
-  }
   for (const dbExpense of dbExpenses) {
     const existing = expensesByMonth.get(dbExpense.month) ?? {
       total: 0,

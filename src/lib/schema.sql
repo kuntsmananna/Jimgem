@@ -439,5 +439,12 @@ CREATE TABLE IF NOT EXISTS expenses (
 -- The same two columns an order carries, for the same reason: a receipt
 -- from a registered supplier has VAT inside it, one from an unregistered
 -- supplier has none, and the amount alone says nothing about which
+-- Provenance for an expense brought over from the Sheet, and what makes
+-- migration 018 re-runnable. NULL for one entered in the dashboard.
+-- An imported expense is an ordinary editable row like any other -- the
+-- Sheet is not the record any more
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS sheet_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS expenses_sheet_key_idx ON expenses (sheet_key) WHERE sheet_key IS NOT NULL;
+
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;

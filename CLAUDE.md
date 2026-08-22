@@ -704,8 +704,15 @@ iteration (not guessed) — define these as `@theme` tokens in
   through the Orders table's `EditableCell`, since a typo shouldn't need a
   popup. An inline edit sends the whole row — the route takes a complete
   `ExpenseInput` — rather than adding a partial-update path.
-- **Sheet-derived expenses stay read-only** (`editable: false`): they are a
-  month's total, not a row, and there is nothing to write back to.
+- **Every expense is a row, and every row edits.** `scripts/migrate-018-materialize-legacy-expenses.sql`
+  turned each `legacy_expense_items` entry into a real `expenses` row, dated
+  to the 1st of its month — the finest grain the Sheet has. The dashboard is
+  the record for expenses now, so nothing is read-only and no mismatch with
+  the Sheet is worth chasing. `expenses.sheet_key` is provenance and what
+  makes that migration re-runnable; `legacy_expense_items` is **legacy and
+  unread**, kept so the fold-in stays auditable, like `order_overrides`.
+  `financials.ts` no longer adds the Sheet's monthly totals to the rollup —
+  doing so after the migration would count every pre-dashboard cost twice.
 - **Everything archived is recoverable from Settings → Data → Archived**,
   with restore and a hard delete. One panel rather than a "show archived"
   footer in each of the nine panes — archiving is rare and restoring

@@ -129,11 +129,6 @@ export function ExpensesClient({
                 }`}
               >
                 <span>{p.label}</span>
-                {p.isLegacy && (
-                  <span className={`text-[10px] font-bold ${selectedKey === p.key ? "text-cream/70" : "text-ink-soft"}`}>
-                    legacy
-                  </span>
-                )}
               </button>
             </li>
           ))}
@@ -173,12 +168,6 @@ export function ExpensesClient({
           </div>
         </div>
 
-        {period?.isLegacy && (
-          <p className="mt-2 rounded-lg bg-tile-peach px-3 py-2 text-xs font-medium text-ink">
-            Legacy month — the Sheet has no per-item date or description, so these are shown by category and
-            amount only.
-          </p>
-        )}
 
         {(adding || editing) && (
           <ExpenseFormModal
@@ -209,7 +198,7 @@ export function ExpensesClient({
               categories={categories}
               paymentMethods={paymentMethods}
               staff={staff}
-              onOpen={() => entry.editable && setEditingKey(entry.key)}
+              onOpen={() => setEditingKey(entry.key)}
               onPatch={(change) => patch(entry, change)}
               onDelete={() => deleteEntry(entry.key)}
             />
@@ -271,8 +260,6 @@ function ExpenseRow({
   onPatch: (change: Record<string, unknown>) => Promise<void>;
   onDelete: () => void;
 }) {
-  const editable = entry.editable;
-
   return (
     <div
       onClick={(event) => {
@@ -282,108 +269,75 @@ function ExpenseRow({
         if ((event.target as HTMLElement).closest("button, input, select, a")) return;
         onOpen();
       }}
-      className={`hover-line group grid min-w-0 grid-cols-[3.2rem_9rem_1fr_auto_6.5rem_1.5rem] items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm ${
-        editable ? "cursor-pointer" : ""
-      }`}
+      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[3.2rem_9rem_1fr_auto_6.5rem_1.5rem] items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
     >
       {/* No year: the app works one season at a time, and the year on
           every row is noise repeated down the column. */}
-      <span className="shrink-0 text-xs text-ink-soft tabular-nums">
-        {entry.source === "db" ? formatOrderDate(entry.date) : "—"}
-      </span>
+      <span className="shrink-0 text-xs text-ink-soft tabular-nums">{formatOrderDate(entry.date)}</span>
 
       {/* A chip, because a category is a class the row belongs to rather
           than a value it holds — the same reasoning the order type chip
           follows on the Orders table. */}
       <span className="min-w-0">
-        {editable ? (
-          <EditableCell
-            displayValue={<CategoryChip name={entry.categoryName} />}
-            editValue={String(entry.categoryId ?? "")}
-            options={categories.map((category) => ({ value: String(category.id), label: category.name }))}
-            onSave={(raw) => onPatch({ categoryId: Number(raw) })}
-          />
-        ) : (
-          <CategoryChip name={entry.categoryName} />
-        )}
+        <EditableCell
+          displayValue={<CategoryChip name={entry.categoryName} />}
+          editValue={String(entry.categoryId)}
+          options={categories.map((category) => ({ value: String(category.id), label: category.name }))}
+          onSave={(raw) => onPatch({ categoryId: Number(raw) })}
+        />
       </span>
 
       {/* The subject of the line, and the one thing that says what this
           expense actually was. Everything else on the row qualifies it. */}
       <span className="min-w-0">
-        {editable ? (
-          <EditableCell
-            displayValue={
-              <span className="block truncate font-semibold text-ink">
-                {entry.note || <span className="font-normal text-ink-soft/60">Add a description</span>}
-              </span>
-            }
-            editValue={entry.note}
-            onSave={(raw) => onPatch({ note: raw })}
-          />
-        ) : (
-          <span
-            className={`block truncate ${entry.noteUnverified ? "text-ink-soft/70 italic" : "font-semibold text-ink"}`}
-            title={
-              (entry.noteUnverified
-                ? "Best-effort match from a Sheet comment — not verified, double-check before relying on it. "
-                : "") + entry.note
-            }
-          >
-            {entry.note || "—"}
-            {entry.noteUnverified && <span className="ml-1 font-semibold not-italic">(unverified)</span>}
-          </span>
-        )}
+        <EditableCell
+          displayValue={
+            <span className="block truncate font-semibold text-ink">
+              {entry.note || <span className="font-normal text-ink-soft/60">Add a description</span>}
+            </span>
+          }
+          editValue={entry.note}
+          onSave={(raw) => onPatch({ note: raw })}
+        />
       </span>
 
       {/* Who and how, right-aligned against the amount: they qualify the
           expense rather than identify it, so they sit closest to the
           number and read as attributes, not as more text. */}
       <span className="flex shrink-0 items-center justify-end gap-1.5">
-        {editable ? (
-          <>
-            {/* Both editable in place, and both offer a blank: an expense
-                can genuinely have no staff and no recorded method, and a
-                picker that cannot be emptied makes a guess permanent. */}
-            <EditableCell
-              displayValue={
-                entry.staffName ? (
-                  <AttributeChip icon={<UserRound size={11} />} label={entry.staffName} />
-                ) : (
-                  <span className="text-[10px] text-ink-soft/50 group-hover:text-cream/60">+ who</span>
-                )
-              }
-              editValue={String(entry.staffId ?? "")}
-              options={[
-                { value: "", label: "—" },
-                ...staff.map((person) => ({ value: String(person.id), label: person.name })),
-              ]}
-              onSave={(raw) => onPatch({ staffId: raw ? Number(raw) : null })}
-            />
-            <EditableCell
-              displayValue={
-                entry.paymentMethodName ? (
-                  <AttributeChip icon={<CreditCard size={11} />} label={entry.paymentMethodName} />
-                ) : (
-                  <span className="text-[10px] text-ink-soft/50 group-hover:text-cream/60">+ how</span>
-                )
-              }
-              editValue={String(entry.paymentMethodId ?? "")}
-              options={[
-                { value: "", label: "—" },
-                ...paymentMethods.map((method) => ({ value: String(method.id), label: method.name })),
-              ]}
-              onSave={(raw) => onPatch({ paymentMethodId: raw ? Number(raw) : null })}
-            />
-          </>
-        ) : (
-          <>
-            {entry.staffName && <AttributeChip icon={<UserRound size={11} />} label={entry.staffName} />}
-            {entry.paymentMethodName && (
+        {/* Both editable in place, and both offer a blank: an expense can
+            genuinely have no staff and no recorded method, and a picker
+            that cannot be emptied makes a guess permanent. */}
+        <EditableCell
+          displayValue={
+            entry.staffName ? (
+              <AttributeChip icon={<UserRound size={11} />} label={entry.staffName} />
+            ) : (
+              <span className="text-[10px] text-ink-soft/50 group-hover:text-cream/60">+ who</span>
+            )
+          }
+          editValue={String(entry.staffId ?? "")}
+          options={[
+            { value: "", label: "—" },
+            ...staff.map((person) => ({ value: String(person.id), label: person.name })),
+          ]}
+          onSave={(raw) => onPatch({ staffId: raw ? Number(raw) : null })}
+        />
+        <EditableCell
+          displayValue={
+            entry.paymentMethodName ? (
               <AttributeChip icon={<CreditCard size={11} />} label={entry.paymentMethodName} />
-            )}
-          </>
-        )}
+            ) : (
+              <span className="text-[10px] text-ink-soft/50 group-hover:text-cream/60">+ how</span>
+            )
+          }
+          editValue={String(entry.paymentMethodId ?? "")}
+          options={[
+            { value: "", label: "—" },
+            ...paymentMethods.map((method) => ({ value: String(method.id), label: method.name })),
+          ]}
+          onSave={(raw) => onPatch({ paymentMethodId: raw ? Number(raw) : null })}
+        />
         {entry.source === "sheet" && (
           <span className="keeps-color shrink-0 rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">
             sheet
@@ -392,32 +346,26 @@ function ExpenseRow({
       </span>
 
       <span className="text-right font-semibold text-ink tabular-nums">
-        {editable ? (
-          <EditableCell
-            displayValue={<span className="block text-right">{currency(value)}</span>}
-            editValue={String(entry.amount)}
-            type="number"
-            onSave={(raw) => onPatch({ amount: Number(raw) })}
-          />
-        ) : (
-          currency(value)
-        )}
+        <EditableCell
+          displayValue={<span className="block text-right">{currency(value)}</span>}
+          editValue={String(entry.amount)}
+          type="number"
+          onSave={(raw) => onPatch({ amount: Number(raw) })}
+        />
       </span>
 
       {/* Inside the row, in its own column, so the amounts above and below
           stay in line whether or not a row is hovered. The icon alone —
           on a trash can, the word is the icon. */}
       <span className="flex justify-end">
-        {editable && (
-          <button
-            onClick={onDelete}
-            title="Delete this expense"
-            aria-label="Delete this expense"
-            className="hidden text-ink-soft transition hover:text-ink group-hover:block"
-          >
-            <Trash2 size={13} />
-          </button>
-        )}
+        <button
+          onClick={onDelete}
+          title="Delete this expense"
+          aria-label="Delete this expense"
+          className="hidden text-ink-soft transition hover:text-ink group-hover:block"
+        >
+          <Trash2 size={13} />
+        </button>
       </span>
     </div>
   );
