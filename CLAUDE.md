@@ -689,6 +689,26 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **Orders, Expenses and Clients each carry one search box**
+  (`SearchInput` + `matchesSearch` in `src/components/SearchInput.tsx`).
+  The needle is split on whitespace and every term has to appear
+  somewhere in the row's joined fields, so "anna 054" finds the same row
+  as "054 anna" — a name and a phone are two facts about one client, not
+  a phrase. On Orders it runs **before every other filter**, so it
+  narrows the board and the calendar too rather than being a table
+  control; on Expenses it narrows the charts and the period total with
+  the list, because those figures describe the list. A search box carries
+  `fields-lit`: it is a control rather than a value on a sheet, and the
+  app's default (a filled field drops to bare text) would leave a live
+  query reading as a stray word in the toolbar.
+- **The Clients page is the list on the left, everything else in a column
+  beside it.** The tiles and the two charts used to sit above the list,
+  which started the page's actual subject halfway down a laptop screen and
+  spent a full-width row on four numbers. They are read while working the
+  list, not before it. The list's header is a `PaneHeader` band like a
+  Settings pane's, and its sort pills state their colours as
+  `bg-band-ink` / `text-band` so they follow the lid rather than carrying
+  a black of their own.
 - **Both of the Expenses page's flanks fold away.** The periods rail and
   the charts column answer questions asked far less often than "what is on
   this row", and together they take a third of the width from the list,
@@ -979,7 +999,8 @@ scope beside it: with two options both worth seeing, a dropdown hides
 half the control.
 
 **Every Settings pane wears a header band** (`PaneHeader` in
-`settings/Pane.tsx`), **and so does every popup** (`Modal`'s title row):
+`settings/Pane.tsx`), **and so does every popup** (`Modal`'s title row)
+**and the Clients list**:
 title, what the pane is for, and its one action, drawn in
 `--color-band` / `--color-band-ink`. Two tokens rather than
 cream-on-black, so the band can be re-lit — light band, ink text — by

@@ -23,6 +23,7 @@ import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
+import { SearchInput, matchesSearch } from "@/components/SearchInput";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -126,12 +127,28 @@ export function OrdersClient({
   // open that order's pane directly. Read once on mount: arriving from
   // that link is a navigation, so the component mounts fresh.
   const [openKey, setOpenKey] = useState<string | null>(() => searchParams.get("order"));
+  const [query, setQuery] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchNote, setBatchNote] = useState<string | null>(null);
 
+  /**
+   * Free text, applied before every other filter and therefore to every
+   * view — the board and the calendar included. A search that only
+   * narrowed the table would be a different page's control.
+   *
+   * It reads the fields an order is actually remembered by: who it is
+   * for, what kind of event, where it is going, and the note. Not the
+   * money or the dates, which have columns and a scope of their own.
+   */
+  const bySearch = useMemo(
+    () =>
+      orders.filter((o) => matchesSearch(query, [o.customer, o.customerType, o.location, o.notes])),
+    [orders, query],
+  );
+
   const byPayment = useMemo(
-    () => orders.filter((o) => paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus)),
-    [orders, paymentFilter],
+    () => bySearch.filter((o) => paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus)),
+    [bySearch, paymentFilter],
   );
 
   /**
@@ -334,6 +351,16 @@ export function OrdersClient({
                 toolbar on a control changed a few times a day and left
                 nothing to centre the view switcher in. */}
             <div className="flex flex-1 flex-wrap items-center gap-2">
+              {/* Ahead of the filters because it is the widest net: the
+                  dropdowns narrow what is already on screen, this decides
+                  what is on screen at all. */}
+              <SearchInput
+                value={query}
+                onChange={setQuery}
+                placeholder="Search orders"
+                label="Search orders by customer, type, location or note"
+                className="w-44"
+              />
               {view === "calendar" ? (
                 // Two options, both always worth seeing — a toggle says
                 // that at a glance where a dropdown hides half of it.
@@ -394,9 +421,14 @@ export function OrdersClient({
               onChanged={refresh}
               onOpen={setOpenKey}
               emptyNote={
-                filtered.length > 0
-                  ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
-                  : "No orders match these filters."
+                // A search that finds nothing is its own answer: pointing
+                // at the time scope would send you widening a window that
+                // was never the reason the table is empty.
+                query.trim() && bySearch.length === 0
+                  ? `Nothing matches “${query.trim()}”.`
+                  : filtered.length > 0
+                    ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
+                    : "No orders match these filters."
               }
             />
           )}

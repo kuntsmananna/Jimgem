@@ -9,6 +9,8 @@ import { SERIES_COLORS } from "@/lib/chartPalette";
 import { LineChart } from "@/components/charts/LineChart";
 import { Modal } from "@/components/Modal";
 import { Field, TextInput } from "@/components/Field";
+import { PaneHeader } from "@/components/settings/Pane";
+import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { useVatView } from "@/components/VatViewContext";
 import { formatOrderDate } from "@/lib/orderTypes";
@@ -43,11 +45,14 @@ const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
 
 /**
- * The Clients page: a shallow band of figures, then the list gets the page.
+ * The Clients page: the list on the left with most of the width, every
+ * figure and chart stacked in a column beside it.
  *
- * The band is one row of tiles and one chart on purpose — the list is what
- * this page is for, and it should still start above the fold on a laptop.
- * The same instinct that keeps the Orders toolbar inside the table column.
+ * The tiles and the two charts used to sit *above* the list, which meant
+ * the thing the page is for started halfway down a laptop screen and the
+ * summary took a full-width row to say four numbers. As a right-hand
+ * column they are read the way they are actually used — glanced at while
+ * working the list — and the list starts at the top of the page.
  */
 export function ClientsClient({
   clients,
@@ -97,15 +102,9 @@ export function ClientsClient({
   }, [documents]);
 
   const shown = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const filtered = needle
-      ? live.filter(
-          (client) =>
-            client.name.toLowerCase().includes(needle) ||
-            client.phone.includes(needle) ||
-            client.email.toLowerCase().includes(needle),
-        )
-      : live;
+    const filtered = live.filter((client) =>
+      matchesSearch(query, [client.name, client.phone, client.email]),
+    );
     return [...filtered].sort((a, b) => {
       if (sort === "spend") return b.totalSpent - a.totalSpent;
       if (sort === "name") return a.name.localeCompare(b.name);
@@ -123,98 +122,44 @@ export function ClientsClient({
   const open = openId === null ? null : (clients.find((client) => client.id === openId) ?? null);
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
-
-      <div className="grid grid-cols-4 gap-4">
-        <Tile label="Clients" value={nf.format(live.length)} note={`${withOrders} have ordered`} tile="peach" />
-        <Tile
-          label="Repeat rate"
-          value={withOrders > 0 ? `${Math.round((repeat / withOrders) * 100)}%` : "—"}
-          note={`${repeat} came back`}
-          tile="mint"
-        />
-        <Tile
-          label="Average client"
-          value={withOrders > 0 ? currency(totalSpent / withOrders) : "—"}
-          note="of those who ordered"
-          tile="lavender"
-        />
-        <Tile label="Outstanding" value={currency(owed)} note="booked, not yet paid" tile="sage" />
-      </div>
-
-      <div className="grid min-w-0 grid-cols-[62fr_38fr] gap-6">
-        <section className="min-w-0 rounded-card border border-line bg-card p-6">
-          <h2 className="font-display text-base font-bold text-ink">New vs returning</h2>
-          <p className="mt-0.5 mb-3 text-xs text-ink-soft">
-            Orders per month from a client&apos;s first booking against everyone coming back.
-          </p>
-          <LineChart
-            series={[
-              { label: "Returning", color: SERIES_COLORS.sage, values: returningOrders },
-              { label: "New", color: SERIES_COLORS.berry, values: newOrders },
-            ]}
-            xLabels={months}
-            height={180}
-            valueFormat={(v) => `${nf.format(v)} orders`}
-          />
-        </section>
-
-        <section className="min-w-0 rounded-card border border-line bg-card p-6">
-          <h2 className="font-display text-base font-bold text-ink">Top clients</h2>
-          <p className="mt-0.5 mb-3 text-xs text-ink-soft">By what they have spent.</p>
-          <ul className="flex flex-col">
-            {[...live]
-              .sort((a, b) => b.totalSpent - a.totalSpent)
-              .slice(0, 6)
-              .map((client) => (
-                <li key={client.id}>
-                  <button
-                    onClick={() => setOpenId(client.id)}
-                    className="hover-line flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{client.name}</span>
-                    <span className="shrink-0 text-xs text-ink-soft">{client.orderCount}×</span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
-                      {currency(client.totalSpent)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            {live.length === 0 && <p className="text-sm text-ink-soft">No clients yet.</p>}
-          </ul>
-        </section>
-      </div>
-
+    <div className="grid min-w-0 grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)] gap-6">
       <section className="min-w-0 rounded-card border border-line bg-card p-6">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="font-display text-lg font-bold text-ink">
-            Clients <span className="font-normal text-ink-soft">({nf.format(shown.length)})</span>
-          </h2>
-          <div className="flex items-center gap-2">
-            <TextInput
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, phone, email"
-              aria-label="Search clients"
-              className="w-64 text-sm"
-            />
-            {(["recent", "spend", "name"] as const).map((option) => (
-              <button
-                key={option}
-                onClick={() => setSort(option)}
-                aria-pressed={sort === option}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                  sort === option ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-                }`}
-              >
-                {option === "recent" ? "Recent" : option === "spend" ? "Spend" : "A–Z"}
-              </button>
-            ))}
-          </div>
-        </div>
+        <PaneHeader
+          title={
+            <>
+              Clients <span className="font-normal opacity-60">({nf.format(shown.length)})</span>
+            </>
+          }
+          action={
+            <div className="flex items-center gap-2">
+              <SearchInput
+                value={query}
+                onChange={setQuery}
+                placeholder="Search clients"
+                label="Search clients by name, phone or email"
+                className="w-48"
+              />
+              {/* The sort states its colours in the band's own pair, so it
+                  follows the lid rather than needing its own black. */}
+              {(["recent", "spend", "name"] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setSort(option)}
+                  aria-pressed={sort === option}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    sort === option
+                      ? "bg-band-ink text-band"
+                      : "text-band-ink/60 hover:text-band-ink"
+                  }`}
+                >
+                  {option === "recent" ? "Recent" : option === "spend" ? "Spend" : "A–Z"}
+                </button>
+              ))}
+            </div>
+          }
+        />
 
-        <div className="mt-4 flex flex-col">
+        <div className="flex flex-col">
           {shown.map((client) => {
             const theirs = ordersByClient.get(client.id) ?? [];
             const balance = theirs.reduce((sum, line) => sum + Math.max(0, line.balance), 0);
@@ -248,6 +193,71 @@ export function ClientsClient({
           )}
         </div>
       </section>
+
+      {/* Everything that describes the list rather than being it. The
+          convention the money is in leads, because every figure under it
+          depends on which one is set. */}
+      <div className="flex min-w-0 flex-col gap-4">
+        <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Tile label="Clients" value={nf.format(live.length)} note={`${withOrders} have ordered`} tile="peach" />
+          <Tile
+            label="Repeat rate"
+            value={withOrders > 0 ? `${Math.round((repeat / withOrders) * 100)}%` : "—"}
+            note={`${repeat} came back`}
+            tile="mint"
+          />
+          <Tile
+            label="Average client"
+            value={withOrders > 0 ? currency(totalSpent / withOrders) : "—"}
+            note="of those who ordered"
+            tile="lavender"
+          />
+          <Tile label="Outstanding" value={currency(owed)} note="booked, not yet paid" tile="sage" />
+        </div>
+
+        <section className="min-w-0 rounded-card border border-line bg-card p-5">
+          <h2 className="font-display text-base font-bold text-ink">New vs returning</h2>
+          <p className="mt-0.5 mb-3 text-xs text-ink-soft">
+            Orders per month from a client&apos;s first booking against everyone coming back.
+          </p>
+          <LineChart
+            series={[
+              { label: "Returning", color: SERIES_COLORS.sage, values: returningOrders },
+              { label: "New", color: SERIES_COLORS.berry, values: newOrders },
+            ]}
+            xLabels={months}
+            height={150}
+            valueFormat={(v) => `${nf.format(v)} orders`}
+          />
+        </section>
+
+        <section className="min-w-0 rounded-card border border-line bg-card p-5">
+          <h2 className="font-display text-base font-bold text-ink">Top clients</h2>
+          <p className="mt-0.5 mb-3 text-xs text-ink-soft">By what they have spent.</p>
+          <ul className="flex flex-col">
+            {[...live]
+              .sort((a, b) => b.totalSpent - a.totalSpent)
+              .slice(0, 6)
+              .map((client) => (
+                <li key={client.id}>
+                  <button
+                    onClick={() => setOpenId(client.id)}
+                    className="hover-line flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{client.name}</span>
+                    <span className="shrink-0 text-xs text-ink-soft">{client.orderCount}×</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
+                      {currency(client.totalSpent)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            {live.length === 0 && <p className="text-sm text-ink-soft">No clients yet.</p>}
+          </ul>
+        </section>
+      </div>
 
       {open && (
         <ClientModal

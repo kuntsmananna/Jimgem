@@ -12,6 +12,7 @@ import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { EditableCell } from "@/components/orders/EditableCell";
 import { FilterDropdown } from "@/components/orders/Dropdown";
+import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 import {
@@ -51,6 +52,7 @@ export function ExpensesClient({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   /** Empty means every category — the same default the Orders filters use. */
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<ExpensePane>>(() => new Set(collapsedPanes));
 
   /**
@@ -73,12 +75,24 @@ export function ExpensesClient({
   // carries no VAT, so a month holding both has no single divisor.
   const { forExpense, label: vatLabel } = useVatView();
 
+  /**
+   * The rows on screen: this period, narrowed by the category filter and
+   * by whatever is typed in the search box.
+   *
+   * Search covers the supplier, what was bought and the category — the
+   * three things an expense is remembered by. It narrows the charts and
+   * the total with it, deliberately: the figures beside the list describe
+   * the list, and a total that ignored the search would state a period
+   * nobody was looking at.
+   */
   const entries = useMemo(
     () =>
       (period?.entries ?? []).filter(
-        (entry) => categoryFilter.size === 0 || categoryFilter.has(entry.categoryName),
+        (entry) =>
+          (categoryFilter.size === 0 || categoryFilter.has(entry.categoryName)) &&
+          matchesSearch(query, [entry.business, entry.note, entry.categoryName]),
       ),
-    [period, categoryFilter],
+    [period, categoryFilter, query],
   );
 
   const slices: DonutSlice[] = useMemo(() => {
@@ -219,6 +233,13 @@ export function ExpensesClient({
             <span className="text-[11px] font-semibold text-ink-soft">{vatLabel}</span>
           </div>
           <div className="flex items-center gap-2">
+            <SearchInput
+              value={query}
+              onChange={setQuery}
+              placeholder="Search expenses"
+              label="Search expenses by business, description or category"
+              className="w-44"
+            />
             <FilterDropdown
               label="Category"
               options={categories
@@ -278,9 +299,11 @@ export function ExpensesClient({
           ))}
           {entries.length === 0 && (
             <p className="text-sm text-ink-soft">
-              {categoryFilter.size > 0
-                ? "Nothing in those categories this period."
-                : "No expenses logged for this period yet."}
+              {query.trim()
+                ? `Nothing matches “${query.trim()}” this period.`
+                : categoryFilter.size > 0
+                  ? "Nothing in those categories this period."
+                  : "No expenses logged for this period yet."}
             </p>
           )}
         </div>
