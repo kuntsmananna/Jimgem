@@ -42,7 +42,10 @@ export function EditableCell({
           setValue(editValue);
           setEditing(true);
         }}
-        className="-mx-1 block w-full rounded px-1 text-left hover:bg-black/5"
+        // `editable-cell` (globals.css) is what makes "this can be
+        // edited" visible on hover, on cream and on the black a hovered
+        // row turns.
+        className="editable-cell -mx-1 block w-full px-1 text-left"
       >
         {displayValue}
       </button>

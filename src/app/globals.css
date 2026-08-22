@@ -283,8 +283,28 @@ body {
 
 /* Ghost hover states nested inside a dark line — the table's
    click-to-edit cells tint themselves with black, invisible here. */
-.orders-rows > tr:hover button:hover {
-  background-color: --alpha(var(--color-cream) / 12%);
+.orders-rows > tr:hover button:hover,
+.hover-line:hover button:hover {
+  background-color: --alpha(var(--color-cream) / 16%);
+}
+
+/*
+ * What can be edited in place says so on hover: a soft fill under the
+ * value, in whichever tone the surface is. Without it, a click-to-edit
+ * cell and a plain one look identical until you happen to click, which is
+ * how an editable row reads as read-only.
+ *
+ * Unlayered, like the hover block above, so it beats Tailwind's utilities
+ * without !important — and the dark half is handled by the rule above,
+ * which already covers every button inside a hovered line.
+ */
+.editable-cell {
+  border-radius: 0.5rem;
+  transition: background-color 120ms ease;
+}
+
+.editable-cell:hover {
+  background-color: --alpha(var(--color-ink) / 7%);
 }
 
 /*

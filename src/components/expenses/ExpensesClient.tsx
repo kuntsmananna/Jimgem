@@ -6,7 +6,7 @@ import type { Expense, ExpensePeriod } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE } from "@/lib/chartPalette";
-import { CreditCard, Plus, Trash2, UserRound } from "lucide-react";
+import { CreditCard, Maximize2, Plus, Sheet, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { EditableCell } from "@/components/orders/EditableCell";
@@ -14,8 +14,12 @@ import { FilterDropdown } from "@/components/orders/Dropdown";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
+/**
+ * Amounts carry their agorot when they have any — ₪12,344.67 — and drop
+ * the ".00" when they don't, so a column of round numbers stays quiet.
+ */
+const money = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const currency = (n: number) => `₪${money.format(n)}`;
 
 export function ExpensesClient({
   periods,
@@ -269,11 +273,26 @@ function ExpenseRow({
         if ((event.target as HTMLElement).closest("button, input, select, a")) return;
         onOpen();
       }}
-      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[3.2rem_9rem_1fr_auto_6.5rem_1.5rem] items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
+      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[4.5rem_9rem_1fr_auto_auto] items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
     >
-      {/* No year: the app works one season at a time, and the year on
-          every row is noise repeated down the column. */}
-      <span className="shrink-0 text-xs text-ink-soft tabular-nums">{formatOrderDate(entry.date)}</span>
+      {/*
+        Date, description and amount are the row: what it was, what it was
+        for, what it cost. Everything else on the line qualifies those
+        three, and is set quieter so they carry.
+
+        No year — the app works one season at a time, and the year on every
+        row is noise repeated down the column.
+      */}
+      <span className="flex shrink-0 items-center gap-1 font-semibold text-ink tabular-nums">
+        {formatOrderDate(entry.date)}
+        {entry.source === "sheet" && (
+          <Sheet
+            size={11}
+            className="shrink-0 text-ink-soft/50"
+            aria-label="Imported from the Google Sheet"
+          />
+        )}
+      </span>
 
       {/* A chip, because a category is a class the row belongs to rather
           than a value it holds — the same reasoning the order type chip
@@ -288,7 +307,7 @@ function ExpenseRow({
       </span>
 
       {/* The subject of the line, and the one thing that says what this
-          expense actually was. Everything else on the row qualifies it. */}
+          expense actually was. */}
       <span className="min-w-0">
         <EditableCell
           displayValue={
@@ -302,18 +321,16 @@ function ExpenseRow({
       </span>
 
       {/* Who and how, right-aligned against the amount: they qualify the
-          expense rather than identify it, so they sit closest to the
-          number and read as attributes, not as more text. */}
+          expense rather than identify it. `whitespace-nowrap` on the empty
+          state because "+ who" broke over two lines in a narrow column,
+          which read as two separate controls. */}
       <span className="flex shrink-0 items-center justify-end gap-1.5">
-        {/* Both editable in place, and both offer a blank: an expense can
-            genuinely have no staff and no recorded method, and a picker
-            that cannot be emptied makes a guess permanent. */}
         <EditableCell
           displayValue={
             entry.staffName ? (
               <AttributeChip icon={<UserRound size={11} />} label={entry.staffName} />
             ) : (
-              <span className="text-[10px] text-ink-soft/50 group-hover:text-cream/60">+ who</span>
+              <AddChip label="who" />
             )
           }
           editValue={String(entry.staffId ?? "")}
@@ -328,7 +345,7 @@ function ExpenseRow({
             entry.paymentMethodName ? (
               <AttributeChip icon={<CreditCard size={11} />} label={entry.paymentMethodName} />
             ) : (
-              <span className="text-[10px] text-ink-soft/50 group-hover:text-cream/60">+ how</span>
+              <AddChip label="how" />
             )
           }
           editValue={String(entry.paymentMethodId ?? "")}
@@ -338,31 +355,36 @@ function ExpenseRow({
           ]}
           onSave={(raw) => onPatch({ paymentMethodId: raw ? Number(raw) : null })}
         />
-        {entry.source === "sheet" && (
-          <span className="keeps-color shrink-0 rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink">
-            sheet
-          </span>
-        )}
       </span>
 
-      <span className="text-right font-semibold text-ink tabular-nums">
-        <EditableCell
-          displayValue={<span className="block text-right">{currency(value)}</span>}
-          editValue={String(entry.amount)}
-          type="number"
-          onSave={(raw) => onPatch({ amount: Number(raw) })}
-        />
-      </span>
-
-      {/* Inside the row, in its own column, so the amounts above and below
-          stay in line whether or not a row is hovered. The icon alone —
-          on a trash can, the word is the icon. */}
-      <span className="flex justify-end">
+      {/*
+        The amount and the two things you can do to the row, in one group
+        so the money sits beside its buttons rather than a column away.
+        Both buttons appear on hover and hold their space when they don't,
+        so nothing shifts as the mouse crosses the list.
+      */}
+      <span className="flex shrink-0 items-center gap-1">
+        <span className="w-[6.5rem] text-right text-[15px] font-bold text-ink tabular-nums">
+          <EditableCell
+            displayValue={<span className="block text-right">{currency(value)}</span>}
+            editValue={String(entry.amount)}
+            type="number"
+            onSave={(raw) => onPatch({ amount: Number(raw) })}
+          />
+        </span>
+        <button
+          onClick={onOpen}
+          title="Open this expense"
+          aria-label="Open this expense"
+          className="invisible rounded-lg p-1 text-ink-soft transition group-hover:visible hover:bg-cream/15 hover:text-cream"
+        >
+          <Maximize2 size={13} />
+        </button>
         <button
           onClick={onDelete}
           title="Delete this expense"
           aria-label="Delete this expense"
-          className="hidden text-ink-soft transition hover:text-ink group-hover:block"
+          className="invisible rounded-lg p-1 text-ink-soft transition group-hover:visible hover:bg-cream/15 hover:text-cream"
         >
           <Trash2 size={13} />
         </button>
@@ -373,8 +395,8 @@ function ExpenseRow({
 
 function CategoryChip({ name }: { name: string }) {
   return (
-    <span className="chip-neutral inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-black/5 px-2 py-0.5 text-xs font-semibold text-ink">
-      <span className="shrink-0 text-ink-soft">{expenseCategoryIconElement(name)}</span>
+    <span className="chip-neutral inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-black/5 px-2 py-0.5 text-xs font-medium text-ink-soft">
+      <span className="shrink-0">{expenseCategoryIconElement(name)}</span>
       <span className="truncate">{name}</span>
     </span>
   );
@@ -382,9 +404,22 @@ function CategoryChip({ name }: { name: string }) {
 
 function AttributeChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="chip-neutral inline-flex shrink-0 items-center gap-1 rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold text-ink-soft">
+    <span className="chip-neutral inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold text-ink-soft">
       {icon}
       {label}
+    </span>
+  );
+}
+
+/**
+ * The empty half of an attribute — a button rather than a hint, because
+ * that is what it is. One line always: "+ who" wrapped onto two in a
+ * narrow column and read as two separate controls.
+ */
+function AddChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-dashed border-current px-1.5 py-0.5 text-[10px] font-semibold text-ink-soft/60">
+      + {label}
     </span>
   );
 }
