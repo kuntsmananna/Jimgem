@@ -13,8 +13,10 @@ import {
   type ProductionStatus,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import type { Client } from "@/lib/clients";
 import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
 import { useStages } from "@/components/ProductionStagesContext";
+import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
 import { OrdersTable } from "./OrdersTable";
 import { OrdersKanban } from "./OrdersKanban";
@@ -85,12 +87,15 @@ export function OrdersClient({
   flavors,
   packageTypes,
   presets,
+  clients,
   rates,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
+  /** Everyone on file, for the order form's customer picker. */
+  clients: Client[];
   rates: Rates;
 }) {
   const router = useRouter();
@@ -159,14 +164,16 @@ export function OrdersClient({
   const inScope = source.filter((o) => inRange(o.date, range));
 
   // The summary describes exactly the list on screen, against the same
-  // list one window back.
+  // list one window back, in whichever VAT convention the nav is set to.
+  const { forOrder } = useVatView();
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   const stageIndex = stageMap(stages);
-  const totals = totalOf(inScope, unitsPerPackage, stageIndex);
+  const totals = totalOf(inScope, unitsPerPackage, stageIndex, forOrder);
   const previousTotals = totalOf(
     previous === null ? [] : source.filter((o) => inRange(o.date, previous)),
     unitsPerPackage,
     stageIndex,
+    forOrder,
   );
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
@@ -264,6 +271,7 @@ export function OrdersClient({
           flavors={flavors}
           packageTypes={packageTypes}
           presets={presets}
+          clients={clients}
           rates={rates}
           onClose={() => setAdding(false)}
           onSaved={() => {
@@ -284,6 +292,7 @@ export function OrdersClient({
           flavors={flavors}
           packageTypes={packageTypes}
           presets={presets}
+          clients={clients}
           rates={rates}
           onClose={closePane}
           onSaved={() => {

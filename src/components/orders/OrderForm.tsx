@@ -15,6 +15,7 @@ import {
   unitsPerPackageMap,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import type { Client } from "@/lib/clients";
 import { useModalHeaderSlot } from "@/components/Modal";
 import { OrderCustomerPanel } from "./OrderCustomerPanel";
 import { OrderEventPanel } from "./OrderEventPanel";
@@ -44,11 +45,17 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-function draftFromOrder(order?: Order): OrderInput {
+/**
+ * `vatRate` is passed in rather than read here: a new order takes today's
+ * rate as its own, and an existing one keeps whatever it was booked at.
+ * That is the whole point of storing it on the row.
+ */
+function draftFromOrder(order: Order | undefined, vatRate: number): OrderInput {
   if (!order) {
     return {
       date: new Date().toISOString().slice(0, 10),
       customer: "",
+      clientId: null,
       customerType: "",
       location: "",
       guests: null,
@@ -66,6 +73,8 @@ function draftFromOrder(order?: Order): OrderInput {
       kosherCost: null,
       discount: 0,
       discountIsPercent: false,
+      vatMode: "included",
+      vatRate,
       deposit: 0,
       paymentStatus: "unpaid",
       productionStatus: "queue",
@@ -75,6 +84,7 @@ function draftFromOrder(order?: Order): OrderInput {
   return {
     date: order.date,
     customer: order.customer,
+    clientId: order.clientId,
     customerType: order.customerType,
     location: order.location,
     guests: order.guests,
@@ -92,6 +102,8 @@ function draftFromOrder(order?: Order): OrderInput {
     kosherCost: order.kosherCost,
     discount: order.discount,
     discountIsPercent: order.discountIsPercent,
+    vatMode: order.vatMode,
+    vatRate: order.vatRate,
     deposit: order.deposit,
     paymentStatus: order.paymentStatus,
     productionStatus: order.productionStatus ?? "queue",
@@ -139,6 +151,7 @@ export function OrderForm({
   flavors,
   packageTypes,
   presets,
+  clients,
   rates,
   onSaved,
   onCancel,
@@ -150,6 +163,8 @@ export function OrderForm({
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
+  /** Everyone on file, for the customer field's picker. */
+  clients: Client[];
   /** The owner's standard rates — see `priced` below for how they apply. */
   rates: Rates;
   onSaved: () => void;
@@ -169,7 +184,7 @@ export function OrderForm({
   // against can't drift apart — draftFromOrder stamps today's date for a
   // new order, and calling it twice could straddle midnight.
   const [initial] = useState(() => {
-    const draft = draftFromOrder(order);
+    const draft = draftFromOrder(order, rates.prices.vat_rate);
     const packed = unitsPerPackageMap(packageTypes);
     const lines = toDraftLines(order?.packageLines ?? [], presets, packed);
     const jelly = jellyTotal(toPackageLines(lines), packed, rates.prices);
@@ -182,6 +197,13 @@ export function OrderForm({
   const [manual, setManual] = useState<ReadonlySet<AmountKey>>(initial.manual);
   const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
+  /*
+   * The phone for a client this order is about to create. Held here rather
+   * than on the draft because it belongs to the *client*, not the order —
+   * and the client only exists once the order is saved, so that a
+   * half-filled form abandoned halfway leaves nothing behind.
+   */
+  const [newClientPhone, setNewClientPhone] = useState("");
   const [tab, setTab] = useState<TabId>("customer");
 
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
@@ -256,11 +278,31 @@ export function OrderForm({
   async function submit() {
     if (!canSave) return;
     setBusy(true);
+    /*
+     * A name nobody has ordered under before becomes a client now, at
+     * save, rather than as it was typed. If this fails the order is still
+     * saved — with its customer name and no link — because losing a
+     * booking to a failed lookup would be the worse outcome, and the
+     * Clients page can link it afterwards.
+     */
+    let clientId = priced.clientId;
+    if (clientId === null && priced.customer.trim()) {
+      try {
+        const response = await fetch("/api/clients", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: priced.customer, phone: newClientPhone }),
+        });
+        if (response.ok) clientId = (await response.json()).id;
+      } catch {
+        // Left null: the order saves, the link doesn't.
+      }
+    }
     // "replace" is explicit: this sends the whole order, not a patch.
     await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "replace", ...priced, packageLines: toPackageLines(lines) }),
+      body: JSON.stringify({ mode: "replace", ...priced, clientId, packageLines: toPackageLines(lines) }),
     });
     setBusy(false);
     onSaved();
@@ -301,7 +343,13 @@ export function OrderForm({
             was open and any half-typed number in it.
           */}
           <div role="tabpanel" className={tab === "customer" ? "" : "hidden"}>
-            <OrderCustomerPanel draft={priced} onChange={setDraft} />
+            <OrderCustomerPanel
+              draft={priced}
+              onChange={setDraft}
+              clients={clients}
+              newClientPhone={newClientPhone}
+              onNewClientPhone={setNewClientPhone}
+            />
           </div>
 
           <div role="tabpanel" className={tab === "event" ? "" : "hidden"}>

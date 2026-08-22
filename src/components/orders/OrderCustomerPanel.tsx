@@ -10,7 +10,9 @@ import { TextInput, TextArea } from "@/components/Field";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { orderTypeIconElement } from "@/lib/icons";
+import type { Client } from "@/lib/clients";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
+import { ClientPicker } from "./ClientPicker";
 import { FieldLabel } from "./OrderSheet";
 
 /**
@@ -26,8 +28,15 @@ import { FieldLabel } from "./OrderSheet";
 export function OrderCustomerPanel({
   draft,
   onChange,
+  clients,
+  newClientPhone,
+  onNewClientPhone,
 }: {
   draft: OrderInput;
+  clients: Client[];
+  /** Phone for a client this order is about to create — see OrderForm. */
+  newClientPhone: string;
+  onNewClientPhone: (phone: string) => void;
   onChange: (draft: OrderInput) => void;
 }) {
   const orderTypes = useOrderTypes();
@@ -59,12 +68,19 @@ export function OrderCustomerPanel({
           made three fields on one line look like three different kinds of
           object for no reason other than their sizes.
         */}
-        <TextInput
-          value={draft.customer}
-          onChange={(e) => set({ customer: e.target.value })}
-          placeholder="Customer name"
-          aria-label="Customer"
-          className="w-full rounded-xl px-2.5 py-1 font-display text-[28px] leading-tight font-extrabold tracking-tight placeholder:text-ink-soft/35"
+        {/*
+          The same field it was, with recognition added: clients already on
+          file are offered as the name is typed, and picking one links the
+          order to them. That link is what every client view and every
+          SUMIT document hangs off — free text has nowhere to keep an id.
+        */}
+        <ClientPicker
+          clients={clients}
+          name={draft.customer}
+          clientId={draft.clientId}
+          phone={newClientPhone}
+          onPick={(patch) => set(patch)}
+          onPhone={onNewClientPhone}
         />
 
         {/*

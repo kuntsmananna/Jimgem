@@ -19,18 +19,22 @@ import { PackageTypesPanel } from "@/components/settings/PackageTypesPanel";
 import { OrderTypesPanel } from "@/components/settings/OrderTypesPanel";
 import { PresetsPanel } from "@/components/settings/PresetsPanel";
 import { PricesPanel } from "@/components/settings/PricesPanel";
+import { VatPanel } from "@/components/settings/VatPanel";
 import { JellyPricesPanel } from "@/components/settings/JellyPricesPanel";
 import { PricedOptionsPanel } from "@/components/settings/PricedOptionsPanel";
 import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
+import { getLastSumitSync, getSumitDocuments } from "@/lib/sumitSync";
+import { SumitProbePanel } from "@/components/settings/SumitProbePanel";
+import { SumitSyncPanel } from "@/components/settings/SumitSyncPanel";
 import { ArchivedPanel } from "@/components/settings/ArchivedPanel";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -44,7 +48,10 @@ export default async function SettingsPage() {
       getDisplayOptions(),
       getDeliveryOptions(),
       getArchivedItems(),
+      getLastSumitSync(),
+      getSumitDocuments(),
     ]);
+  const sumitDocumentCount = sumitDocuments.length;
 
   return (
     <SettingsTabs
@@ -82,6 +89,7 @@ export default async function SettingsPage() {
               <OrderTypesPanel items={orderTypes} />
               <JellyPricesPanel prices={prices} presets={presets} />
               <PricesPanel prices={prices} />
+              <VatPanel prices={prices} />
               <PricedOptionsPanel
                 title="Display"
                 description="An order can carry several at once."
@@ -123,6 +131,8 @@ export default async function SettingsPage() {
           content: (
             <div className="flex max-w-2xl flex-col gap-6">
               <ImportPanel />
+              <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} />
+              <SumitProbePanel />
               <ArchivedPanel items={archived} />
             </div>
           ),

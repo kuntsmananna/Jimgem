@@ -1,6 +1,7 @@
 import { getDb } from "./db";
 import { getLegacyExpenseItems, MONTH_NAMES_EN, type MonthlyExpenses } from "./financials";
-import { getExpenseCategories, getPaymentMethods, getStaff } from "./settings";
+import { getExpenseCategories, getPaymentMethods, getPrices, getStaff } from "./settings";
+import { vatOn, VAT_REGISTERED_FROM, type VatMode } from "./orderTypes";
 
 export interface Expense {
   /** DB row id (string) for dashboard-created expenses, or a "sheet-expense:<row>:<col>" key for Sheet-derived ones. */
@@ -13,6 +14,17 @@ export interface Expense {
   paymentMethodName: string | null;
   staffName: string | null;
   note: string;
+  /**
+   * How VAT sits inside `amount` — the same three modes an order carries.
+   * A receipt from a registered supplier has VAT inside it and one from an
+   * unregistered supplier has none, and the amount alone says nothing
+   * about which, so a report that strips VAT has to be told per row.
+   */
+  vatMode: VatMode;
+  /** The rate in percent (18, not 0.18), as it stood when recorded. */
+  vatRate: number;
+  /** What the expense cost the business with VAT taken out of it. */
+  netAmount: number;
   /** True when `note` is a best-effort, unverified match from a Sheet comment — see financials.ts's SheetExpenseItem. */
   noteUnverified: boolean;
   /** False for Sheet-derived items — there's no DB row to edit or delete. */
@@ -26,6 +38,8 @@ export interface ExpenseInput {
   paymentMethodId: number | null;
   staffId: number | null;
   note: string;
+  vatMode: VatMode;
+  vatRate: number;
 }
 
 interface DbExpenseRow {
@@ -36,6 +50,8 @@ interface DbExpenseRow {
   payment_method_id: number | null;
   staff_id: number | null;
   note: string | null;
+  vat_mode: VatMode | null;
+  vat_rate: string | null;
 }
 
 function mapExpense(
@@ -53,6 +69,11 @@ function mapExpense(
     paymentMethodName: row.payment_method_id ? (paymentMethodNameById.get(row.payment_method_id) ?? null) : null,
     staffName: row.staff_id ? (staffNameById.get(row.staff_id) ?? null) : null,
     note: row.note ?? "",
+    vatMode: row.vat_mode ?? "included",
+    vatRate: Number(row.vat_rate ?? 0),
+    // Recorded amounts are what was actually paid, so the mode says how
+    // to take VAT back out rather than how to add it on.
+    netAmount: vatOn(Number(row.amount), row.vat_mode ?? "included", Number(row.vat_rate ?? 0)).net,
     noteUnverified: false,
     editable: true,
   };
@@ -88,6 +109,8 @@ interface RawDbExpenseRow {
   date: string;
   category_id: number;
   amount: string;
+  vat_mode: VatMode | null;
+  vat_rate: string | null;
   payment_method_id: number | null;
   staff_id: number | null;
   note: string | null;
@@ -102,10 +125,10 @@ async function mapSingleExpense(row: RawDbExpenseRow): Promise<Expense> {
 export async function createExpense(input: ExpenseInput): Promise<Expense> {
   const db = getDb();
   const { rows } = await db.query<RawDbExpenseRow>(
-    `INSERT INTO expenses (date, category_id, amount, payment_method_id, staff_id, note)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO expenses (date, category_id, amount, payment_method_id, staff_id, note, vat_mode, vat_rate)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.note],
+    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.note, input.vatMode, input.vatRate],
   );
   return mapSingleExpense(rows[0]);
 }
@@ -113,10 +136,11 @@ export async function createExpense(input: ExpenseInput): Promise<Expense> {
 export async function updateExpense(id: number, input: ExpenseInput): Promise<Expense> {
   const db = getDb();
   const { rows } = await db.query<RawDbExpenseRow>(
-    `UPDATE expenses SET date = $1, category_id = $2, amount = $3, payment_method_id = $4, staff_id = $5, note = $6
-     WHERE id = $7
+    `UPDATE expenses SET date = $1, category_id = $2, amount = $3, payment_method_id = $4, staff_id = $5, note = $6,
+            vat_mode = $7, vat_rate = $8
+     WHERE id = $9
      RETURNING *`,
-    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.note, id],
+    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.note, input.vatMode, input.vatRate, id],
   );
   return mapSingleExpense(rows[0]);
 }
@@ -144,10 +168,12 @@ export interface ExpensePeriod {
  * recoverable from the source data.
  */
 export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
-  const [dbExpenses, legacyMonths] = await Promise.all([
+  const [dbExpenses, legacyMonths, prices] = await Promise.all([
     getDbExpenses(),
     getLegacyExpenseItems(),
+    getPrices(),
   ]);
+  const legacyVatRate = prices.vat_rate;
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -173,6 +199,16 @@ export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
         paymentMethodName: null,
         staffName: null,
         note: item.description ?? "",
+        // A legacy Sheet item is a month's total, not a receipt, so it
+        // takes the registration date rule and nothing more. These are
+        // approximations already; the plan doesn't pretend otherwise.
+        vatMode: `${key}-01` < VAT_REGISTERED_FROM ? "exempt" : "included",
+        vatRate: `${key}-01` < VAT_REGISTERED_FROM ? 0 : legacyVatRate,
+        netAmount: vatOn(
+          item.amount,
+          `${key}-01` < VAT_REGISTERED_FROM ? "exempt" : "included",
+          `${key}-01` < VAT_REGISTERED_FROM ? 0 : legacyVatRate,
+        ).net,
         noteUnverified: item.description !== null,
         editable: false,
       });
@@ -219,6 +255,12 @@ export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
       key: item.key,
       source: "sheet" as const,
       date: "",
+      // All-time rolls every legacy month together, so there is no one
+      // date to test: these predate the DB expenses entirely and are
+      // treated as pre-registration.
+      vatMode: "exempt" as const,
+      vatRate: 0,
+      netAmount: item.amount,
       categoryName: item.category,
       amount: item.amount,
       paymentMethodName: null,

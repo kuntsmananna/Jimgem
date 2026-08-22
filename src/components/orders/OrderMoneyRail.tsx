@@ -3,9 +3,11 @@
 import { useState } from "react";
 import {
   ORDER_EXTRAS,
+  VAT_MODES,
   orderBalance,
   orderDiscount,
   orderTotal,
+  orderVat,
   unitTierFor,
   type AmountKey,
   type OrderInput,
@@ -90,6 +92,7 @@ export function OrderMoneyRail({
   // what has been paid.
   const discount = orderDiscount(draft);
   const total = orderTotal(draft);
+  const vat = orderVat(draft);
   const balance = orderBalance(draft);
   // Only the extras this order actually has. A price for mirrors nobody
   // ordered is a charge waiting to be forgotten about.
@@ -193,9 +196,45 @@ export function OrderMoneyRail({
             />
           </SheetRow>
 
+          {/*
+            How VAT applies is a property of the order, not a global
+            setting: everything booked before the business registered was
+            exempt, and a price can be quoted either way. Chips rather than
+            a dropdown, for the same reason the form's other short lists
+            are — read far more often than changed.
+          */}
+          <SheetRow label="VAT">
+            <div className="flex items-center gap-1 pr-2">
+              {VAT_MODES.map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  title={mode.hint}
+                  onClick={() => set({ vatMode: mode.id })}
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                    draft.vatMode === mode.id
+                      ? "border-cream bg-cream text-ink"
+                      : "border-cream/25 text-cream/60 hover:border-cream/50"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </SheetRow>
+
           <SheetRow label="Total">
             <span className="pr-2 text-sm font-bold tabular-nums text-cream">{money(total)}</span>
           </SheetRow>
+          {/* Only when there is VAT to state. On an exempt order the row
+              would be a zero nobody needs, and this rail is short on room. */}
+          {vat > 0 && (
+            <SheetRow
+              label={draft.vatMode === "added" ? `incl. VAT ${draft.vatRate}%` : `of which VAT ${draft.vatRate}%`}
+            >
+              <span className="pr-2 text-xs font-semibold tabular-nums text-cream/60">{money(vat)}</span>
+            </SheetRow>
+          )}
 
           {depositOpen ? (
             <SheetRow label="Deposit">

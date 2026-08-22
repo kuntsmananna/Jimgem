@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import type { Order, Rates } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import type { Client } from "@/lib/clients";
 import { Modal } from "@/components/Modal";
 import { OrderForm } from "./OrderForm";
 
@@ -12,6 +13,7 @@ export function OrderFormModal({
   flavors,
   packageTypes,
   presets,
+  clients,
   rates,
   onSaved,
   onClose,
@@ -21,6 +23,7 @@ export function OrderFormModal({
   flavors: Flavor[];
   packageTypes: PackageType[];
   presets: ContentPreset[];
+  clients: Client[];
   rates: Rates;
   onSaved: () => void;
   onClose: () => void;
@@ -40,6 +43,7 @@ export function OrderFormModal({
         flavors={flavors}
         packageTypes={packageTypes}
         presets={presets}
+        clients={clients}
         rates={rates}
         onSaved={onSaved}
         onCancel={requestClose}

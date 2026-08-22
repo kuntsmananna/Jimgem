@@ -428,6 +428,36 @@ iteration (not guessed) — define these as `@theme` tokens in
   pre-June expense log) are out of scope — don't add readers for them
   without confirming it's actually wanted.
 
+## SUMIT integration (in progress)
+
+- SUMIT (formerly OfficeGuy) is where invoicing, card charging and receipts
+  already live. `src/lib/sumit.ts` is the client and **the only module that
+  reads `SUMIT_COMPANY_ID` / `SUMIT_API_KEY`** — the same rule
+  `googleSheets.ts` follows for the Google credential, and neither may ever
+  carry a `NEXT_PUBLIC_` prefix. Every SUMIT call is a POST carrying the
+  credentials in its *body*; `sumitPost` is the whole protocol, and a
+  failure comes back as HTTP 200 with a non-Success `Status`, so the
+  envelope check is what catches a bad key.
+- **Read-only so far.** `sumitProbe.ts` is reconnaissance for the
+  integration's design: the document type mix, income and expense
+  documents by month, the customer roster reconstructed from documents,
+  and how those names line up against the orders already in Postgres. It
+  writes nothing, to SUMIT or to the DB. Two ways in, one implementation:
+  the **Run SUMIT probe** button in Settings → Data (`/api/sumit/probe`),
+  and `npm run sumit:probe` from a terminal. The report is a fixed-width
+  text block rather than a designed panel on purpose — it is throwaway
+  scaffolding, read once and pasted elsewhere, and it goes away when the
+  integration lands.
+- Two constraints shape everything built on top. `/accounting/customers/`
+  has create and update but **no list or search**, so Jimgem has to own the
+  client list and store the `CustomerID` SUMIT hands back; and
+  `/accounting/documents/list/` filters by type and date only — **no
+  customer filter, no "modified since"** — so per-client views bucket a
+  date window locally, and sync means a window plus upsert on `DocumentID`.
+- Expenses are not a separate resource: they are documents whose type is
+  one of the `Expense*` ones (`isExpenseDocument`), which is why the
+  expense sync is a `documents/list` call.
+
 ## Database
 
 - Postgres, owner-provisioned (Neon). Connection via `DATABASE_URL`.
@@ -538,6 +568,90 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **SUMIT's documents are mirrored into `sumit_documents`, never read on a
+  render path.** `sumitSync.ts` is the only module besides the probe that
+  imports `sumit.ts`, the same structural rule that keeps the Google Sheet
+  behind `sheetImport.ts`. Sync is **a date window plus an upsert on
+  `document_id`** because the API offers nothing better — no customer
+  filter, no "modified since" — so re-pulling a window is the only way to
+  notice a document that changed. 90 days by default; **Sync everything**
+  in Settings → Data is for the first run and for anything backdated.
+- **`value` is gross, `net_value` and `vat_value` come from `getdetails`.**
+  SUMIT's `CompanyValue` includes VAT (verified: a document reporting
+  ₪1,000 carries lines of ₪847 and VAT of ₪153). The listing carries no
+  breakdown, so each *revenue* document costs one extra call — and only
+  revenue ones, since a delivery note's VAT answers nothing. Dividing the
+  gross by the standard rate instead would be wrong for anything not
+  standard-rated.
+- **A client links itself to SUMIT by exact name, once.** The sync stores
+  `clients.sumit_customer_id` wherever a document's customer name
+  normalises to a client's — the only automatic link there can be, since
+  SUMIT cannot be searched. Near matches are left for a person.
+- **A client is a row, and `orders.client_id` points at it.** SUMIT's
+  `/accounting/customers/` has create and update but **no list and no
+  search**, so a customer over there can only be found again by an id
+  stored here — which is why this is a table rather than a view over
+  `orders.customer`. That column stays free text beside it, the same rule
+  `customer_type` follows, so a Sheet import can never be rejected by a
+  name not on the list, and an order booked before the list existed still
+  shows a customer.
+- **Names are matched exactly or not at all.** `clientName.ts` normalises
+  case, quotes, geresh/gershayim and punctuation; `sameClientName` is what
+  links, and `looksLikeSameClient` only ever *offers* — `בילדוטס` against
+  `בילדוטס בע"מ` is usually the same customer and occasionally isn't, and
+  only a person can tell. The order form's picker and the Clients page both
+  show near matches without acting on them.
+- **A client is created when the order is saved, not as the name is
+  typed** — an abandoned half-filled form leaves nothing behind. If that
+  create fails the order still saves, unlinked: losing a booking to a
+  failed lookup is the worse outcome, and the link can be made later.
+- **Phone is asked for on a new client** because it is the match key from
+  now on: SUMIT's customers carry an email but no phone, so what is typed
+  here is what makes a match possible when the integration lands.
+- Clients archive like every other owner-managed list, never delete.
+  `scripts/migrate-016-clients.sql` backfills one client per distinct
+  order name and links every order to it.
+- **VAT is per row, and the rate is copied onto it.** `orders` and
+  `expenses` both carry `vat_mode` (`included` / `added` / `exempt`) and
+  `vat_rate`, in percent (18, not 0.18). Three modes because three
+  different things are true of different rows and no amount says which: a
+  price quoted before VAT, a price the customer pays with VAT already
+  inside, and a transaction VAT never touched — everything before the
+  business registered on **2026-06-23**, which is the boundary
+  `scripts/migrate-015-vat.mjs` stamped the back catalogue by. That
+  boundary is imperfect on purpose: `orders.date` is the *event* date, not
+  the invoice date, and the mode is an ordinary editable field. The rate is
+  copied at creation rather than read at display time — the same
+  copy-not-link rule a preset's price follows, so a rate change cannot
+  reprice work already agreed. `vatOn(amount, mode, rate)` in
+  `orderTypes.ts` is the whole arithmetic, and rounds the gross and the VAT
+  so the three figures add up on screen.
+- **`orderTotal` is what the customer pays; `orderNet` is what the business
+  earns.** Every existing call site — the rail, the Kanban card, the hover
+  card, the summary — wanted the first and still gets it. `financials.ts`
+  carries both as `total` and `netTotal`. **Both are summed per order, never
+  divided out of a month's total**: these months straddle registration, so
+  one divisor would be wrong for every exempt order in them. That is the
+  rule that, broken, produces plausible figures that are quietly false.
+- **One switch decides how every money figure reads.** `vatView` is
+  `gross` (what a customer pays — the default, and how the Sheet always
+  read) or `net`, held in a cookie and provided from the app layout by
+  `VatViewContext`, the same way order types and stages are. A **cookie
+  rather than local storage** because pages compute their money on the
+  server: reading the preference in the browser would paint one convention
+  and then flip. Setting it re-runs the server components through
+  `router.refresh()` rather than converting anything client-side. The
+  toggle lives in the nav, not per page — the figures it governs sit on
+  four screens, and a per-page control would let the Dashboard and the Biz
+  Plan disagree about what a shekel means. Each of those screens states its
+  convention beside the numbers.
+  `getYearlyFinancials(vatView)` returns both sides of profit in the same
+  convention; client components take `forOrder` / `forExpense` from
+  `useVatView()`.
+- `prices` gained a `vat_rate` key, edited in Settings → Lists → **VAT**.
+  It sits with the prices because it is the same kind of thing — an
+  owner-editable number the money is computed from — but deliberately not
+  in `PRICE_FIELDS`, which drives the add-on pane: VAT is not an add-on.
 - **A discount comes off the whole order**, given either as a percentage
   of it or as shekels off. Two columns (`discount`, `discount_is_percent`)
   rather than one resolved amount: "10% off" and "₪10 off" are different
@@ -667,6 +781,8 @@ iteration (not guessed) — define these as `@theme` tokens in
 | `GOOGLE_SHEETS_DEFAULT_RANGE` | Default A1 range for `/api/sheets` | no |
 | `DATABASE_URL` | Postgres connection string | yes |
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
+| `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |
+| `SUMIT_API_KEY` | SUMIT API key secret | no (SUMIT probe only, for now) |
 
 ## Versioning
 
@@ -692,7 +808,10 @@ seeds the value lists, `db:import` pulls the Sheet into Postgres.
 
 One-off data migrations live beside them as numbered scripts
 (`scripts/migrate-00N-*.mjs`) and are run by hand after `db:migrate`
-creates the tables they need. Each is idempotent — re-running one is a
+creates the tables they need. This project is developed from the browser,
+with no local checkout to run Node from, so a migration that has to reach
+the production database ships **with a `.sql` twin beside it**
+(`migrate-015-vat.sql`) for pasting into the database console. Each is idempotent — re-running one is a
 no-op, not a duplicate — so a script stays runnable against a database
 that has already had it applied.
 

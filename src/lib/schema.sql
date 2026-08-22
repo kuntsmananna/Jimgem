@@ -136,8 +136,60 @@ CREATE TABLE IF NOT EXISTS prices (
 
 INSERT INTO prices (key, amount) VALUES
   ('unit_100', 0), ('unit_200', 0), ('unit_500', 0), ('unit_max', 0),
-  ('delivery', 0), ('waitress', 0), ('kosher', 0)
+  ('delivery', 0), ('waitress', 0), ('kosher', 0), ('vat_rate', 18)
 ON CONFLICT (key) DO NOTHING;
+
+-- The owner's client list, and the only place a SUMIT customer id can
+-- live. SUMIT's /accounting/customers/ has create and update but no list
+-- and no search, so a client that exists there can only be found again by
+-- an id we stored when it was created
+CREATE TABLE IF NOT EXISTS clients (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT,
+  email TEXT,
+  sumit_customer_id BIGINT UNIQUE,
+  notes TEXT,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Every SUMIT document we have seen, mirrored locally.
+--
+-- A mirror rather than a live read for two reasons. /accounting/documents/
+-- list/ filters by type and date only -- there is no customer filter and no
+-- "modified since" -- so a per-client view has to bucket a window locally;
+-- and nothing on a render path may call SUMIT, the same rule the Google
+-- Sheet follows. Sync is a date window plus an upsert on document_id
+CREATE TABLE IF NOT EXISTS sumit_documents (
+  document_id BIGINT PRIMARY KEY,
+  document_number BIGINT,
+  type TEXT NOT NULL,
+  -- revenue / collection / quote / logistics / expense, from documentBucket
+  bucket TEXT NOT NULL,
+  date DATE,
+  due_date DATE,
+  sumit_customer_id BIGINT,
+  customer_name TEXT,
+  client_id INTEGER REFERENCES clients(id),
+  -- value is gross: SUMIT's CompanyValue includes VAT (verified against the
+  -- live account -- lines plus their stated VAT equal it). net_value and
+  -- vat_value come from getdetails, per revenue document, because the
+  -- listing carries neither and dividing by the standard rate would be
+  -- wrong for anything not standard-rated
+  value NUMERIC(12, 2),
+  net_value NUMERIC(12, 2),
+  vat_value NUMERIC(12, 2),
+  is_closed BOOLEAN,
+  is_draft BOOLEAN,
+  download_url TEXT,
+  payment_url TEXT,
+  external_reference TEXT,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS sumit_documents_client_idx ON sumit_documents (client_id);
+CREATE INDEX IF NOT EXISTS sumit_documents_date_idx ON sumit_documents (date);
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
@@ -187,6 +239,19 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_is_percent BOOLEAN NOT NULL
 -- delivery_cost is a hand-typed amount
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_option_id INTEGER REFERENCES delivery_options(id);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS kosher_cost NUMERIC(10, 2);
+
+-- How VAT applies to the order, and the rate it was booked at. The rate
+-- is copied onto the row rather than read from prices at display time --
+-- rates change, and an order agreed at one must not silently reprice
+-- when the country changes the other. 'included' is the default because
+-- that is what a registered business quotes
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;
+
+-- Which client the order belongs to. Nullable, and orders.customer stays
+-- free text beside it: the same rule customer_type follows, so a Sheet
+-- import can never be rejected by a name not on the list
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id);
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;
@@ -370,3 +435,9 @@ CREATE TABLE IF NOT EXISTS expenses (
   note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- The same two columns an order carries, for the same reason: a receipt
+-- from a registered supplier has VAT inside it, one from an unregistered
+-- supplier has none, and the amount alone says nothing about which
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;

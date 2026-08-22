@@ -6,7 +6,6 @@ import {
   PAYMENT_STATUS_LABEL,
   displayCount,
   formatOrderDate,
-  orderTotal,
   orderUnits,
   unitsPerPackageMap,
   type Order,
@@ -14,6 +13,7 @@ import {
 import type { Flavor, PackageType } from "@/lib/settings";
 import { UnitsIcon } from "@/lib/icons";
 import { HoverCard } from "@/components/HoverCard";
+import { useVatView } from "@/components/VatViewContext";
 import { StageChip } from "./StageChip";
 import { EventTypeChip } from "./EventTypeChip";
 import { ContentChips } from "./ContentChips";
@@ -48,6 +48,7 @@ export function OrderHoverCard({
   className?: string;
   children: ReactNode;
 }) {
+  const { forOrder } = useVatView();
   return (
     <HoverCard
       width={CARD_WIDTH}
@@ -114,7 +115,7 @@ export function OrderHoverCard({
                 sheet's Total — delivery no longer needs calling out beside
                 it, because it is part of the figure now. */}
             <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">
-              <span className="text-sm font-semibold text-ink">{currency(orderTotal(order))}</span>
+              <span className="text-sm font-semibold text-ink">{currency(forOrder(order))}</span>
               <span className="text-xs text-ink-soft">
                 {order.deposit > 0 ? `${currency(order.deposit)} deposit` : "no deposit"}
               </span>

@@ -5,31 +5,39 @@ import type { ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { Modal } from "@/components/Modal";
 import { Field, TextInput, SelectInput } from "@/components/Field";
+import { VAT_MODES, vatOn } from "@/lib/orderTypes";
 
-const emptyDraft = (): ExpenseInput => ({
+const emptyDraft = (vatRate: number): ExpenseInput => ({
   date: new Date().toISOString().slice(0, 10),
   categoryId: 0,
   amount: 0,
   paymentMethodId: null,
   staffId: null,
   note: "",
+  // Most receipts come from registered suppliers with VAT already inside
+  // the price. The ones that don't are why this is a field.
+  vatMode: "included",
+  vatRate,
 });
 
 export function ExpenseFormModal({
   categories,
   paymentMethods,
   staff,
+  vatRate,
   onClose,
   onSaved,
 }: {
   categories: ExpenseCategory[];
   paymentMethods: PaymentMethod[];
   staff: StaffAccount[];
+  /** Today's rate, copied onto the expense — see ExpenseInput.vatRate. */
+  vatRate: number;
   onClose: () => void;
   /** Called with the expense's date on success, so the caller can jump to that period. */
   onSaved: (date: string) => void;
 }) {
-  const [draft, setDraft] = useState<ExpenseInput>(emptyDraft());
+  const [draft, setDraft] = useState<ExpenseInput>(emptyDraft(vatRate));
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -73,6 +81,34 @@ export function ExpenseFormModal({
             value={draft.amount}
             onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
           />
+        </Field>
+        {/* What the amount above already contains. A receipt from an
+            unregistered supplier carries no VAT, and nothing about the
+            number says so — which is why the report cannot strip VAT from
+            a period without being told row by row. */}
+        <Field label="VAT">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {VAT_MODES.map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                title={mode.hint}
+                onClick={() => setDraft({ ...draft, vatMode: mode.id })}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                  draft.vatMode === mode.id
+                    ? "border-black bg-black text-cream"
+                    : "border-line text-ink-soft hover:border-ink"
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+            {draft.amount > 0 && draft.vatMode !== "exempt" && (
+              <span className="text-[11px] text-ink-soft">
+                ₪{vatOn(draft.amount, draft.vatMode, draft.vatRate).net.toLocaleString()} before VAT
+              </span>
+            )}
+          </div>
         </Field>
         <Field label="Payment method">
           <SelectInput

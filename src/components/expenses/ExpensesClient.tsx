@@ -9,6 +9,7 @@ import { EXPENSE_PALETTE } from "@/lib/chartPalette";
 import { Plus, Trash2 } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { ExpenseFormModal } from "./ExpenseFormModal";
+import { useVatView } from "@/components/VatViewContext";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
@@ -18,11 +19,14 @@ export function ExpensesClient({
   categories,
   paymentMethods,
   staff,
+  vatRate,
 }: {
   periods: ExpensePeriod[];
   categories: ExpenseCategory[];
   paymentMethods: PaymentMethod[];
   staff: StaffAccount[];
+  /** Today's VAT rate, stamped onto a new expense. */
+  vatRate: number;
 }) {
   const router = useRouter();
   const defaultPeriod = periods.find((p) => p.key !== "general" && p.entries.length > 0)?.key ?? periods[0]?.key;
@@ -30,18 +34,21 @@ export function ExpensesClient({
   const [adding, setAdding] = useState(false);
 
   const period = periods.find((p) => p.key === selectedKey) ?? periods[periods.length - 1];
+  // Per expense, not per total: a receipt from an unregistered supplier
+  // carries no VAT, so a month holding both has no single divisor.
+  const { forExpense, label: vatLabel } = useVatView();
 
   const slices: DonutSlice[] = useMemo(() => {
     const totals: Record<string, number> = {};
     for (const entry of period?.entries ?? []) {
-      totals[entry.categoryName] = (totals[entry.categoryName] ?? 0) + entry.amount;
+      totals[entry.categoryName] = (totals[entry.categoryName] ?? 0) + forExpense(entry);
     }
     return Object.entries(totals).map(([label, value], i) => ({
       label,
       value,
       color: EXPENSE_PALETTE[i % EXPENSE_PALETTE.length],
     }));
-  }, [period]);
+  }, [period, forExpense]);
 
   function refresh() {
     router.refresh();
@@ -80,7 +87,13 @@ export function ExpensesClient({
 
       <section className="min-w-0 rounded-card border border-line bg-card p-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold text-ink">{period?.label}</h2>
+          <div className="flex items-baseline gap-2">
+            <h2 className="font-display text-lg font-bold text-ink">{period?.label}</h2>
+            {/* Which convention these figures are in, beside them rather
+                than in a settings pane — the switch is in the nav and its
+                effect is here. */}
+            <span className="text-[11px] font-semibold text-ink-soft">{vatLabel}</span>
+          </div>
           <button
             onClick={() => setAdding(true)}
             className="flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
@@ -102,6 +115,7 @@ export function ExpensesClient({
             categories={categories}
             paymentMethods={paymentMethods}
             staff={staff}
+            vatRate={vatRate}
             onClose={() => setAdding(false)}
             onSaved={(date) => {
               setAdding(false);
@@ -113,7 +127,12 @@ export function ExpensesClient({
 
         <div className="mt-4 flex flex-col gap-1.5">
           {period?.entries.map((entry) => (
-            <ExpenseRow key={entry.key} entry={entry} onDelete={() => deleteEntry(entry.key)} />
+            <ExpenseRow
+              key={entry.key}
+              entry={entry}
+              value={forExpense(entry)}
+              onDelete={() => deleteEntry(entry.key)}
+            />
           ))}
           {period?.entries.length === 0 && (
             <p className="text-sm text-ink-soft">No expenses logged for this period yet.</p>
@@ -131,7 +150,16 @@ export function ExpensesClient({
   );
 }
 
-function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void }) {
+function ExpenseRow({
+  entry,
+  value,
+  onDelete,
+}: {
+  entry: Expense;
+  /** The amount in the current VAT convention — see ExpensesClient. */
+  value: number;
+  onDelete: () => void;
+}) {
   return (
     <div className="hover-line group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 text-sm">
       <div className="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
@@ -162,7 +190,7 @@ function ExpenseRow({ entry, onDelete }: { entry: Expense; onDelete: () => void 
         )}
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <span className="font-semibold text-ink">{currency(entry.amount)}</span>
+        <span className="font-semibold text-ink">{currency(value)}</span>
         {entry.editable && (
           <button
             onClick={onDelete}

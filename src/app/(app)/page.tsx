@@ -1,14 +1,16 @@
 import { getYearlyFinancials, MONTH_NAMES_EN } from "@/lib/financials";
 import { getOrders, orderMonth, orderDay, orderUnits, orderFlavorUnits } from "@/lib/orders";
-import { isBooked, orderTotal, stageMap } from "@/lib/orderTypes";
+import { isBooked, orderNet, orderTotal, stageMap } from "@/lib/orderTypes";
 import { getFlavors, getPackageTypes, getProductionStages } from "@/lib/settings";
+import { getVatView } from "@/lib/vatViewServer";
 import { DashboardClient, type FlavorLine, type OrderPreview } from "@/components/dashboard/DashboardClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const vatView = await getVatView();
   const [financials, orders, flavors, packageTypes, stages] = await Promise.all([
-    getYearlyFinancials(),
+    getYearlyFinancials(vatView),
     getOrders(),
     getFlavors(true),
     // Archived included, like getFlavors(true) above: these resolve
@@ -55,9 +57,10 @@ export default async function DashboardPage() {
         customerType: order.customerType,
         location: order.location,
         guests: order.guests,
-        // What the order is worth, extras and discount included — the
-        // same figure the KPI tiles above the list total up.
-        totalAmount: orderTotal(order),
+        // What the order is worth, extras and discount included — in the
+        // same convention as the KPI tiles above the list, which come from
+        // financials and follow the viewer's VAT choice.
+        totalAmount: vatView === "net" ? orderNet(order) : orderTotal(order),
         units: orderUnits(order.packageLines, unitsByPackageType),
       };
     })
