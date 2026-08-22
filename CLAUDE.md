@@ -689,15 +689,29 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
-- **An expense row is columns, and the description is its subject.**
-  Date (no year — one season, so four repeated characters per line is
-  noise), category as a chip, then what it was for, set larger and darker
-  than anything around it. Staff and payment method sit right, just before
-  the amount, as icon chips: they *qualify* an expense rather than identify
-  it. The trash is a column of its own inside the row and appears on
-  hover — outside it, the amounts above and below shifted as the mouse
+- **An expense row is columns, and the business it was paid to is its
+  subject.** Date (no year — one season, so four repeated characters per
+  line is noise), category as a chip, the supplier set darker than
+  anything around it, then what it bought, quieter beside it. Those last
+  two were one field (`note`) until `expenses.business` existed, which
+  made a single string answer two questions and left the shop buried
+  mid-sentence and unscannable. Staff and payment method sit right, just
+  before the amount, as icon chips: they *qualify* an expense rather than
+  identify it. The trash is a column of its own inside the row and appears
+  on hover — outside it, the amounts above and below shifted as the mouse
   moved, and on a trash can the word "Delete" is what the icon already
-  says.
+  says. The row's "open this expense" button rides **inside the date cell**,
+  beside the button that changes the date: as a column of its own between
+  the date and the category it spent a column and a gutter — most of the
+  gap between them — on a hover-only affordance. It stays on that side and
+  nowhere near the trash, which is why it was there to begin with.
+- **`expenses.business` is free text, like `orders.customer`.** A supplier
+  is named on a receipt rather than chosen from the owner's lists, and a
+  one-off shop must never be the reason a row cannot be saved.
+  `scripts/migrate-019-expense-business.sql` adds the column and
+  deliberately back-fills nothing: a name is not reliably separable from a
+  description by punctuation, and half-parsing every row would leave the
+  owner correcting more lines than typing them.
 - **A click-to-edit cell shows a hover fill** (`.editable-cell`, unlayered
   in `globals.css` beside `.hover-line` so it beats Tailwind's utilities
   without `!important`), in whichever tone the surface is — the dark half

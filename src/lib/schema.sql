@@ -448,3 +448,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS expenses_sheet_key_idx ON expenses (sheet_key)
 
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_mode TEXT NOT NULL DEFAULT 'included';
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFAULT 0;
+
+-- Who the money went to. Free text and not a list: a supplier is named on
+-- a receipt, not chosen from the owner's lists, and a one-off shop must
+-- never be a reason a row cannot be saved. `note` is the description of
+-- what was bought and nothing else -- the two answer different questions
+-- and were one field for as long as there was only one of them.
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS business TEXT;

@@ -13,6 +13,7 @@ const emptyDraft = (vatRate: number): ExpenseInput => ({
   amount: 0,
   paymentMethodId: null,
   staffId: null,
+  business: "",
   note: "",
   // Most receipts come from registered suppliers with VAT already inside
   // the price. The ones that don't are why this is a field.
@@ -49,6 +50,7 @@ export function ExpenseFormModal({
           amount: expense.amount,
           paymentMethodId: expense.paymentMethodId,
           staffId: expense.staffId,
+          business: expense.business,
           note: expense.note,
           vatMode: expense.vatMode,
           // The rate it was recorded at, not today's — the same
@@ -165,7 +167,16 @@ export function ExpenseFormModal({
             ))}
           </SelectInput>
         </Field>
-        <Field label="Note">
+        {/* Who took the money, and what it bought — two questions, so two
+            fields. The description used to answer both, which left the
+            supplier buried mid-sentence and unsearchable. */}
+        <Field label="Business">
+          <TextInput
+            value={draft.business}
+            onChange={(e) => setDraft({ ...draft, business: e.target.value })}
+          />
+        </Field>
+        <Field label="Description">
           <TextInput value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
         </Field>
         {/* Right-aligned, Save last — the same corner every popup uses. */}

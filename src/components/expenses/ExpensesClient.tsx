@@ -134,6 +134,7 @@ export function ExpensesClient({
         amount: entry.amount,
         paymentMethodId: entry.paymentMethodId,
         staffId: entry.staffId,
+        business: entry.business,
         note: entry.note,
         vatMode: entry.vatMode,
         vatRate: entry.vatRate,
@@ -172,8 +173,8 @@ export function ExpensesClient({
             {/* Which convention these figures are in, beside them rather
                 than in a settings pane — the switch is in the nav and its
                 effect is here. */}
-            <span className="text-[11px] font-semibold text-ink-soft">{vatLabel}</span>
             <span className="text-sm font-semibold text-ink tabular-nums">{currency(total)}</span>
+            <span className="text-[11px] font-semibold text-ink-soft">{vatLabel}</span>
           </div>
           <div className="flex items-center gap-2">
             <FilterDropdown
@@ -266,7 +267,7 @@ export function ExpensesClient({
                   className="hover-line flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left"
                 >
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
-                    {entry.note || entry.categoryName}
+                    {entry.business || entry.note || entry.categoryName}
                   </span>
                   <span className="shrink-0 text-xs font-bold text-ink tabular-nums">
                     {currency(forExpense(entry))}
@@ -306,11 +307,14 @@ export function ExpensesClient({
  * One expense, as columns rather than a run of text.
  *
  * The order is what the eye needs in the order it needs it: **when**, in
- * what **category**, then **what it was for** — which is the line's
- * subject and is set larger and darker than anything around it. Who paid
- * and how ride right, just before the amount, because they qualify the
- * expense rather than identify it; both are chips with an icon, so they
- * read as attributes at a glance instead of two more strings.
+ * what **category**, **which business** — the line's subject, set darker
+ * than anything around it — and then **what it bought**, quieter beside
+ * it. Those last two were one field until an expense could name its
+ * supplier, which made a single string answer two questions and left the
+ * shop buried mid-sentence. Who paid and how ride right, just before the
+ * amount, because they qualify the expense rather than identify it; both
+ * are chips with an icon, so they read as attributes at a glance instead
+ * of two more strings.
  *
  * The date drops its year. Everything here is one season, and the year
  * repeated on every row is four characters of noise per line.
@@ -348,7 +352,7 @@ function ExpenseRow({
         if ((event.target as HTMLElement).closest("button, input, select, a")) return;
         onOpen();
       }}
-      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[5.25rem_9rem_1fr_auto_auto] items-center gap-x-3 rounded-xl border border-line px-3 py-2 text-sm"
+      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[5.25rem_9rem_minmax(0,1fr)_minmax(0,1.6fr)_auto_auto] items-center gap-x-2 rounded-xl border border-line px-3 py-2 text-sm"
     >
       {/*
         Date, description and amount are the row: when, what for, what it
@@ -372,13 +376,28 @@ function ExpenseRow({
         />
       </span>
 
-      {/* The subject of the line, and the one thing that says what this
-          expense actually was. */}
+      {/* Who took the money — the subject of the line, and what the eye
+          lands on when scanning for a supplier. */}
       <span className="min-w-0">
         <EditableCell
           displayValue={
             <span className="block truncate font-semibold text-ink">
-              {entry.note || <span className="font-normal text-ink-soft/60">Add a description</span>}
+              {entry.business || <span className="font-normal text-ink-soft/60">Add a business</span>}
+            </span>
+          }
+          editValue={entry.business}
+          onSave={(raw) => onPatch({ business: raw })}
+        />
+      </span>
+
+      {/* What it bought, and only that. It used to carry the supplier too,
+          which made one field answer two questions and left neither
+          readable down a column. */}
+      <span className="min-w-0">
+        <EditableCell
+          displayValue={
+            <span className="block truncate text-ink-soft">
+              {entry.note || <span className="text-ink-soft/60">Add a description</span>}
             </span>
           }
           editValue={entry.note}
