@@ -8,7 +8,9 @@ import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
 interface SyncResult {
   documents: number;
   revenueDetailed: number;
+  detailsDeferred: number;
   clientsLinked: number;
+  callsUsed: number;
   from: string;
   to: string;
 }
@@ -21,7 +23,17 @@ interface SyncResult {
  * the only way to notice a document, and this button is what makes "I just
  * issued an invoice" instant instead of tomorrow.
  */
-export function SumitSyncPanel({ lastSync, documentCount }: { lastSync: string | null; documentCount: number }) {
+export function SumitSyncPanel({
+  lastSync,
+  documentCount,
+  usage,
+}: {
+  lastSync: string | null;
+  documentCount: number;
+  /** This month's metered calls — see sumitBudget.ts. */
+  usage: { used: number; budget: number; limit: number; failed: number };
+}) {
+  const spent = usage.used >= usage.budget;
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
@@ -57,7 +69,7 @@ export function SumitSyncPanel({ lastSync, documentCount }: { lastSync: string |
         description={<>Copied here so clients and orders can show them. Nothing is ever written to SUMIT.</>}
         action={<button
           onClick={() => run()}
-          disabled={busy}
+          disabled={busy || spent}
           className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
@@ -69,12 +81,40 @@ export function SumitSyncPanel({ lastSync, documentCount }: { lastSync: string |
         {lastSync ? `, last synced ${new Date(lastSync).toLocaleString()}` : ""}.
       </p>
 
+      {/*
+        The meter, in the open. SUMIT's plan includes 250 calls a month and
+        charges ₪0.09 past that — a limit nobody can see is one you find
+        out about by exceeding it, which is exactly what happened in August.
+      */}
+      <div className="mt-4 flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between text-xs">
+          <span className="font-semibold text-ink">
+            {usage.used} of {usage.budget} calls this month
+          </span>
+          <span className="text-ink-soft">
+            plan allows {usage.limit}
+            {usage.failed > 0 && ` · ${usage.failed} failed (they count too)`}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-black/10">
+          <div
+            className={`h-full rounded-full transition-all ${spent ? "bg-red-700" : "bg-accent"}`}
+            style={{ width: `${Math.min(100, (usage.used / usage.budget) * 100)}%` }}
+          />
+        </div>
+        {spent && (
+          <p className="text-[11px] font-semibold text-red-700">
+            Budget spent — syncing is paused until the 1st. Calls past the plan cost ₪0.09 each.
+          </p>
+        )}
+      </div>
+
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {/* The routine sync looks back 90 days. Everything is for the first
             run, and for the rare case of a document backdated past that. */}
         <button
           onClick={() => run(3650)}
-          disabled={busy}
+          disabled={busy || spent}
           className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-60"
         >
           Sync everything
@@ -83,11 +123,15 @@ export function SumitSyncPanel({ lastSync, documentCount }: { lastSync: string |
 
       {result && (
         <p className="mt-3 text-xs font-semibold text-ink">
-          {result.documents} documents from {result.from} to {result.to}.
+          {result.documents} documents from {result.from} to {result.to}, for {result.callsUsed}{" "}
+          {result.callsUsed === 1 ? "call" : "calls"}.
           <span className="font-medium text-ink-soft">
             {" "}
-            {result.revenueDetailed} priced with VAT detail
-            {result.clientsLinked > 0 && `, ${result.clientsLinked} clients linked to SUMIT by name`}.
+            {result.revenueDetailed} newly priced with VAT detail
+            {result.clientsLinked > 0 && `, ${result.clientsLinked} clients linked to SUMIT by name`}
+            {result.detailsDeferred > 0 &&
+              `. ${result.detailsDeferred} left without a breakdown — the budget ran out, they'll be picked up next run`}
+            .
           </span>
         </p>
       )}

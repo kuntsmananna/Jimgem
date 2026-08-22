@@ -161,6 +161,23 @@ CREATE TABLE IF NOT EXISTS clients (
 -- "modified since" -- so a per-client view has to bucket a window locally;
 -- and nothing on a render path may call SUMIT, the same rule the Google
 -- Sheet follows. Sync is a date window plus an upsert on document_id
+-- Every call made to SUMIT, because the plan meters them: 250 a month,
+-- then 0.09 ILS each. Counted here rather than asked of SUMIT, which has
+-- no endpoint for it and would spend a call answering.
+--
+-- Failed calls are recorded too. SUMIT meters those as well -- its own log
+-- shows a rejected query sitting in the month's total beside the
+-- successful ones
+CREATE TABLE IF NOT EXISTS sumit_api_calls (
+  id BIGSERIAL PRIMARY KEY,
+  called_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  endpoint TEXT NOT NULL,
+  ok BOOLEAN NOT NULL,
+  error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS sumit_api_calls_month_idx ON sumit_api_calls (called_at);
+
 CREATE TABLE IF NOT EXISTS sumit_documents (
   document_id BIGINT PRIMARY KEY,
   document_number BIGINT,

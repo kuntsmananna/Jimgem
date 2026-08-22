@@ -1,6 +1,7 @@
 import { getDb } from "./db";
 import { getClients, setSumitCustomerId } from "./clients";
 import { normalizeClientName } from "./clientName";
+import { remainingSumitCalls } from "./sumitBudget";
 import {
   documentBucket,
   documentTypeName,
@@ -22,16 +23,26 @@ import {
  * is what makes doing so cheap.
  */
 
-/** How far back a routine sync looks. A full history is asked for explicitly. */
-const DEFAULT_WINDOW_DAYS = 90;
+/**
+ * How far back a routine sync looks.
+ *
+ * 30 days, not 90. A document does not change after it is issued, so a
+ * wider window re-reads settled history — and the listing costs a call per
+ * page whether or not anything in it is new.
+ */
+const DEFAULT_WINDOW_DAYS = 30;
 
 /** Documents are dated forward sometimes — a window that ends today misses them. */
 const FORWARD_DAYS = 365;
 
 export interface SumitSyncResult {
   documents: number;
+  /** Revenue documents whose net and VAT were fetched on this run. */
   revenueDetailed: number;
+  /** Revenue documents left without a breakdown because the budget ran out. */
+  detailsDeferred: number;
   clientsLinked: number;
+  callsUsed: number;
   from: string;
   to: string;
 }
@@ -58,13 +69,38 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
   const clientsLinked = await linkClientsByName(documents);
   const clientIdByCustomer = await clientIdsBySumitCustomer();
 
+  /*
+   * A document's lines never change once it is issued, so its breakdown is
+   * fetched exactly once, ever. This is the whole difference between a
+   * sync that costs ~90 calls a night and one that costs one or two: the
+   * first version re-fetched every invoice in the window on every run.
+   */
+  const alreadyDetailed = await documentIdsWithDetails();
+
+  /*
+   * And it stops before the month's budget does. A sync that dies halfway
+   * through a batch leaves the mirror half-written and says nothing
+   * useful; one that fetches what it can afford and reports what it
+   * skipped can simply be run again next month, or after the reset.
+   *
+   * One call is kept back for the listing itself, which has already
+   * happened by the time we get here.
+   */
+  let detailBudget = Math.max(0, (await remainingSumitCalls()) - 1);
+
   let revenueDetailed = 0;
+  let detailsDeferred = 0;
   const rows: unknown[][] = [];
   for (const document of documents) {
     const bucket = documentBucket(document.Type);
     let net: number | null = null;
     let vat: number | null = null;
-    if (bucket === "revenue") {
+    const needsDetail = bucket === "revenue" && !alreadyDetailed.has(document.DocumentID);
+
+    if (needsDetail && detailBudget <= 0) {
+      detailsDeferred += 1;
+    } else if (needsDetail) {
+      detailBudget -= 1;
       try {
         const details = await getDocumentDetails(document.DocumentID);
         const items = details.Items ?? [];
@@ -74,9 +110,11 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
       } catch {
         // One document refusing its details is not a reason to lose the
         // sync: the gross value is stored either way, and the next run
-        // tries again.
+        // tries again because net_value is still null.
+        detailsDeferred += 1;
       }
     }
+
     rows.push([
       document.DocumentID,
       document.DocumentNumber,
@@ -99,7 +137,31 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
   }
 
   await upsertDocuments(rows);
-  return { documents: rows.length, revenueDetailed, clientsLinked, from, to };
+  return {
+    documents: rows.length,
+    revenueDetailed,
+    detailsDeferred,
+    clientsLinked,
+    // The listing, plus one per breakdown actually fetched.
+    callsUsed: 1 + revenueDetailed,
+    from,
+    to,
+  };
+}
+
+/**
+ * Documents whose net and VAT are already stored.
+ *
+ * Read from our own mirror rather than re-asked of SUMIT, which is the
+ * point: a breakdown that has been fetched once never needs fetching
+ * again.
+ */
+async function documentIdsWithDetails(): Promise<Set<number>> {
+  const db = getDb();
+  const { rows } = await db.query<{ document_id: string }>(
+    "SELECT document_id FROM sumit_documents WHERE net_value IS NOT NULL",
+  );
+  return new Set(rows.map((row) => Number(row.document_id)));
 }
 
 const COLUMNS = [
@@ -130,8 +192,19 @@ const COLUMNS = [
 async function upsertDocuments(rows: unknown[][]): Promise<void> {
   if (rows.length === 0) return;
   const db = getDb();
+  /*
+   * `coalesce` on the two breakdown columns: a run that didn't fetch a
+   * document's details sends nulls for them, and a plain assignment would
+   * wipe a breakdown fetched last month — then fetch it again next run,
+   * forever. Everything else is overwritten, since the listing is the
+   * newer truth for it.
+   */
   const updates = COLUMNS.filter((column) => column !== "document_id")
-    .map((column) => `${column} = EXCLUDED.${column}`)
+    .map((column) =>
+      column === "net_value" || column === "vat_value"
+        ? `${column} = coalesce(EXCLUDED.${column}, sumit_documents.${column})`
+        : `${column} = EXCLUDED.${column}`,
+    )
     .join(", ");
 
   for (let start = 0; start < rows.length; start += 50) {

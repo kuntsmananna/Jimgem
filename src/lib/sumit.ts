@@ -11,6 +11,8 @@
  * out of SUMIT (see scripts/sumit-probe.mts); nothing here writes to it.
  */
 
+import { assertWithinSumitBudget, recordSumitCall } from "./sumitBudget";
+
 const API_BASE = "https://api.sumit.co.il";
 
 /** Paging maxes out at 1000 per page (Core_Typed.Paging). */
@@ -51,20 +53,38 @@ interface SumitEnvelope<T> {
  * on the endpoint, hence the two-way comparison.
  */
 export async function sumitPost<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+  /*
+   * Every call is metered — 250 a month, then ₪0.09 each — so the budget
+   * is checked here rather than at each call site. One gate means a new
+   * caller cannot forget it, and a failed call still counts: SUMIT meters
+   * those too, which is why the recording below runs on both paths.
+   */
+  await assertWithinSumitBudget();
+  const endpoint = path.replace(/^\/|\/$/g, "");
+
+  // A network failure never reached SUMIT, so nothing was metered and
+  // nothing is recorded — it simply throws.
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ ...body, Credentials: credentials() }),
   });
+
   if (!response.ok) {
-    throw new Error(`SUMIT ${path} returned HTTP ${response.status} ${response.statusText}`);
+    const message = `SUMIT ${path} returned HTTP ${response.status} ${response.statusText}`;
+    await recordSumitCall(endpoint, false, message);
+    throw new Error(message);
   }
+
   const envelope = (await response.json()) as SumitEnvelope<T>;
   const status = String(envelope.Status);
   if (status !== "Success" && status !== "0") {
     const detail = envelope.UserErrorMessage ?? envelope.TechnicalErrorDetails ?? "no detail given";
+    await recordSumitCall(endpoint, false, detail);
     throw new Error(`SUMIT ${path} failed (${status}): ${detail}`);
   }
+
+  await recordSumitCall(endpoint, true);
   return envelope.Data as T;
 }
 

@@ -26,6 +26,7 @@ import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
 import { getLastSumitSync, getSumitDocuments } from "@/lib/sumitSync";
+import { getSumitUsage } from "@/lib/sumitBudget";
 import { SumitProbePanel } from "@/components/settings/SumitProbePanel";
 import { SumitSyncPanel } from "@/components/settings/SumitSyncPanel";
 import { ArchivedPanel } from "@/components/settings/ArchivedPanel";
@@ -34,7 +35,7 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -50,6 +51,7 @@ export default async function SettingsPage() {
       getArchivedItems(),
       getLastSumitSync(),
       getSumitDocuments(),
+      getSumitUsage(),
     ]);
   const sumitDocumentCount = sumitDocuments.length;
 
@@ -134,7 +136,7 @@ export default async function SettingsPage() {
           content: (
             <div className="columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <ImportPanel />
-              <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} />
+              <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} usage={sumitUsage} />
               <SumitProbePanel />
               <ArchivedPanel items={archived} />
             </div>

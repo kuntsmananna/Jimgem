@@ -568,6 +568,26 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **Every SUMIT call is metered, and the budget is enforced in code.** The
+  plan includes **250 calls a month**, then ₪0.09 each. August ran to 328
+  before anyone noticed, because nothing could see the meter: the probe
+  cost 184 (each run fired 15 `documents/list` calls — 7 expense types × 2
+  windows — plus up to 13 `getentity` reads), and the document sync cost
+  138 by running twice at 69 calls each. `sumitBudget.ts` records every
+  call in `sumit_api_calls` and `sumitPost` refuses once the month's
+  ceiling is reached — one gate, so a new caller cannot forget it.
+  **Failed calls are recorded too**: SUMIT meters those as well, as its own
+  log shows. 25 of the 250 are held back for the card terminal, whose calls
+  come out of the same allowance and which we cannot see.
+- **A document's breakdown is fetched once, ever.** `net_value`/`vat_value`
+  come from `getdetails`, and a document's lines never change after it is
+  issued — so the sync skips any document that already has them, and the
+  upsert `coalesce`s those two columns so a run that didn't fetch them
+  cannot blank what an earlier run stored. That single rule is the
+  difference between ~90 calls a night and one or two. The window is **30
+  days**, not 90, for the same reason: a wider one re-reads settled
+  history. A run also stops before the budget does and reports what it
+  deferred, rather than dying mid-batch.
 - **SUMIT's documents are mirrored into `sumit_documents`, never read on a
   render path.** `sumitSync.ts` is the only module besides the probe that
   imports `sumit.ts`, the same structural rule that keeps the Google Sheet
