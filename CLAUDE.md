@@ -849,6 +849,17 @@ iteration (not guessed) — define these as `@theme` tokens in
 | `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |
 | `SUMIT_API_KEY` | SUMIT API key secret | no (SUMIT probe only, for now) |
 
+## Shipping
+
+**Work lands on `main`, not on a review branch.** The owner watches the
+deployed app rather than a diff, so a change that only exists on a feature
+branch is a change they cannot see. Build on the session's branch, then
+fast-forward `main` onto it and push both — no pull request, and no
+waiting to be asked. This is the owner's own instruction and it stands
+until they say otherwise, so what goes to `main` has to be finished:
+lint clean, `npm run build` green, and any migration it needs called out
+by name so it can be run against the database first.
+
 ## Versioning
 
 The nav shows `v<package.json version>` and nothing else — the build's
