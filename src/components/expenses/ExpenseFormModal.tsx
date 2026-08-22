@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ExpenseInput } from "@/lib/expenses";
+import type { Expense, ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { Modal } from "@/components/Modal";
 import { Field, TextInput, SelectInput } from "@/components/Field";
@@ -21,6 +21,7 @@ const emptyDraft = (vatRate: number): ExpenseInput => ({
 });
 
 export function ExpenseFormModal({
+  expense,
   categories,
   paymentMethods,
   staff,
@@ -28,6 +29,8 @@ export function ExpenseFormModal({
   onClose,
   onSaved,
 }: {
+  /** Omit to add a new expense, pass one to edit it. */
+  expense?: Expense;
   categories: ExpenseCategory[];
   paymentMethods: PaymentMethod[];
   staff: StaffAccount[];
@@ -37,14 +40,30 @@ export function ExpenseFormModal({
   /** Called with the expense's date on success, so the caller can jump to that period. */
   onSaved: (date: string) => void;
 }) {
-  const [draft, setDraft] = useState<ExpenseInput>(emptyDraft(vatRate));
+  const isEdit = !!expense;
+  const [draft, setDraft] = useState<ExpenseInput>(
+    expense
+      ? {
+          date: expense.date,
+          categoryId: expense.categoryId ?? 0,
+          amount: expense.amount,
+          paymentMethodId: expense.paymentMethodId,
+          staffId: expense.staffId,
+          note: expense.note,
+          vatMode: expense.vatMode,
+          // The rate it was recorded at, not today's — the same
+          // copy-not-link rule the order form follows.
+          vatRate: expense.vatRate,
+        }
+      : emptyDraft(vatRate),
+  );
   const [busy, setBusy] = useState(false);
 
   async function submit() {
     if (!draft.categoryId || draft.amount <= 0) return;
     setBusy(true);
-    await fetch("/api/expenses", {
-      method: "POST",
+    await fetch(isEdit ? `/api/expenses/${expense.key}` : "/api/expenses", {
+      method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft),
     });
@@ -53,7 +72,7 @@ export function ExpenseFormModal({
   }
 
   return (
-    <Modal title="Add expense" onClose={onClose}>
+    <Modal title={isEdit ? "Edit expense" : "Add expense"} onClose={onClose}>
       <div className="flex flex-col gap-3">
         <Field label="Date">
           <TextInput
@@ -162,7 +181,7 @@ export function ExpenseFormModal({
             disabled={busy}
             className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
           >
-            Save expense
+            {isEdit ? "Save" : "Save expense"}
           </button>
         </div>
       </div>

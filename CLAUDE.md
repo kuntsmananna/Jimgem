@@ -689,6 +689,23 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **An expense row is columns, and the description is its subject.**
+  Date (no year — one season, so four repeated characters per line is
+  noise), category as a chip, then what it was for, set larger and darker
+  than anything around it. Staff and payment method sit right, just before
+  the amount, as icon chips: they *qualify* an expense rather than identify
+  it. The trash is a column of its own inside the row and appears on
+  hover — outside it, the amounts above and below shifted as the mouse
+  moved, and on a trash can the word "Delete" is what the icon already
+  says.
+- **An expense edits two ways.** Clicking the row opens it in the same
+  modal that adds one (`ExpenseFormModal` takes an optional `expense`);
+  category, description, staff, method and amount also edit in place
+  through the Orders table's `EditableCell`, since a typo shouldn't need a
+  popup. An inline edit sends the whole row — the route takes a complete
+  `ExpenseInput` — rather than adding a partial-update path.
+- **Sheet-derived expenses stay read-only** (`editable: false`): they are a
+  month's total, not a row, and there is nothing to write back to.
 - **Everything archived is recoverable from Settings → Data → Archived**,
   with restore and a hard delete. One panel rather than a "show archived"
   footer in each of the nine panes — archiving is rare and restoring

@@ -10,6 +10,14 @@ export interface Expense {
   /** "YYYY-MM-DD" for DB expenses; "YYYY-MM" for Sheet ones — the Sheet has no per-item day (see CLAUDE.md). */
   date: string;
   categoryName: string;
+  /**
+   * The ids behind those names, so a row can be edited without looking
+   * them up again. Null on a Sheet-derived item, which has no DB row and
+   * therefore nothing to edit.
+   */
+  categoryId: number | null;
+  paymentMethodId: number | null;
+  staffId: number | null;
   amount: number;
   paymentMethodName: string | null;
   staffName: string | null;
@@ -65,6 +73,9 @@ function mapExpense(
     source: "db",
     date: row.date,
     categoryName: categoryNameById.get(row.category_id) ?? "Other",
+    categoryId: row.category_id,
+    paymentMethodId: row.payment_method_id,
+    staffId: row.staff_id,
     amount: Number(row.amount),
     paymentMethodName: row.payment_method_id ? (paymentMethodNameById.get(row.payment_method_id) ?? null) : null,
     staffName: row.staff_id ? (staffNameById.get(row.staff_id) ?? null) : null,
@@ -195,6 +206,9 @@ export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
         source: "sheet",
         date: key,
         categoryName: item.category,
+        categoryId: null,
+        paymentMethodId: null,
+        staffId: null,
         amount: item.amount,
         paymentMethodName: null,
         staffName: null,
@@ -255,6 +269,9 @@ export async function getExpensePeriods(): Promise<ExpensePeriod[]> {
       key: item.key,
       source: "sheet" as const,
       date: "",
+      categoryId: null,
+      paymentMethodId: null,
+      staffId: null,
       // All-time rolls every legacy month together, so there is no one
       // date to test: these predate the DB expenses entirely and are
       // treated as pre-registration.
