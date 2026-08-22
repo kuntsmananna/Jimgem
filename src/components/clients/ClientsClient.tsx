@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, Mail, Link2, Users } from "lucide-react";
+import { Phone, Mail, Link2, Users, Archive, Clock, Coins, ArrowDownAZ } from "lucide-react";
 import type { ClientWithStats } from "@/lib/clients";
 import { looksLikeSameClient } from "@/lib/clientName";
 import { SERIES_COLORS } from "@/lib/chartPalette";
@@ -40,6 +40,17 @@ export interface ClientOrderLine {
   booked: boolean;
   balance: number;
 }
+
+/**
+ * How the list can be ordered. Each carries an icon, because three words
+ * in a row of pills say what they sort by but not *that* they sort —
+ * the mark is what makes the group read as one control.
+ */
+const SORTS = [
+  { id: "recent", label: "Recent", icon: Clock },
+  { id: "spend", label: "Spend", icon: Coins },
+  { id: "name", label: "A–Z", icon: ArrowDownAZ },
+] as const;
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
@@ -141,18 +152,18 @@ export function ClientsClient({
               />
               {/* The sort states its colours in the band's own pair, so it
                   follows the lid rather than needing its own black. */}
-              {(["recent", "spend", "name"] as const).map((option) => (
+              {SORTS.map(({ id, label, icon: Icon }) => (
                 <button
-                  key={option}
-                  onClick={() => setSort(option)}
-                  aria-pressed={sort === option}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    sort === option
-                      ? "bg-band-ink text-band"
-                      : "text-band-ink/60 hover:text-band-ink"
+                  key={id}
+                  onClick={() => setSort(id)}
+                  aria-pressed={sort === id}
+                  title={`Sort by ${label.toLowerCase()}`}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    sort === id ? "bg-band-ink text-band" : "text-band-ink/60 hover:text-band-ink"
                   }`}
                 >
-                  {option === "recent" ? "Recent" : option === "spend" ? "Spend" : "A–Z"}
+                  <Icon size={13} />
+                  {label}
                 </button>
               ))}
             </div>
@@ -340,6 +351,32 @@ function ClientModal({
     onSaved();
   }
 
+  /**
+   * Archive, never delete — the rule every owner-managed list follows.
+   * Orders point at their client, so a hard delete would either orphan
+   * them or cascade and take real history with it. Archiving takes the
+   * client off this list and out of the order form's picker, and leaves
+   * every order they placed exactly as recorded; Settings → Data →
+   * Archived is where they come back from.
+   */
+  async function archive() {
+    if (
+      !confirm(
+        `Archive "${client.name}"?\n\nThey leave the client list and the order form's picker. Their orders keep them exactly as recorded, and Settings → Data → Archived is where they come back from.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    await fetch(`/api/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: true }),
+    });
+    setBusy(false);
+    onSaved();
+  }
+
   return (
     <Modal title={client.name} onClose={onClose}>
       <div className="flex flex-col gap-4">
@@ -476,8 +513,22 @@ function ClientModal({
           </div>
         </div>
 
-        {/* Bottom-right, Save last — the same corner every popup uses. */}
-        <div className="flex justify-end gap-2">
+        {/*
+          Save keeps the bottom-right corner every popup uses. Archiving
+          sits at the far left of the same row, as far from Save as the row
+          allows: it is the one button here that changes what the page
+          shows rather than what the client says.
+        */}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={archive}
+            disabled={busy}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-black/[0.06] hover:text-ink disabled:opacity-60"
+          >
+            <Archive size={13} />
+            Archive
+          </button>
+          <div className="flex gap-2">
           <button
             onClick={onClose}
             className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
@@ -491,6 +542,7 @@ function ClientModal({
           >
             {busy ? "Saving…" : "Save"}
           </button>
+          </div>
         </div>
       </div>
     </Modal>

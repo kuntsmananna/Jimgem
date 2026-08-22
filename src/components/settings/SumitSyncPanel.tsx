@@ -31,9 +31,9 @@ export function SumitSyncPanel({
   lastSync: string | null;
   documentCount: number;
   /** This month's metered calls — see sumitBudget.ts. */
-  usage: { used: number; budget: number; limit: number; failed: number };
+  usage: { used: number; budget: number; limit: number; failed: number; available: boolean };
 }) {
-  const spent = usage.used >= usage.budget;
+  const spent = usage.available && usage.used >= usage.budget;
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
@@ -87,6 +87,17 @@ export function SumitSyncPanel({
         out about by exceeding it, which is exactly what happened in August.
       */}
       <div className="mt-4 flex flex-col gap-1.5">
+        {/* The meter can only report what it has recorded. Until migration
+            020 has been run against this database there is no log to read,
+            and saying "0 of 225" would be a reassuring lie. */}
+        {!usage.available ? (
+          <p className="text-[11px] text-ink-soft">
+            Calls aren&apos;t being counted yet — run{" "}
+            <code className="font-semibold">scripts/migrate-020-sumit-call-log.sql</code> against
+            the database and the meter appears here.
+          </p>
+        ) : (
+        <>
         <div className="flex items-baseline justify-between text-xs">
           <span className="font-semibold text-ink">
             {usage.used} of {usage.budget} calls this month
@@ -106,6 +117,8 @@ export function SumitSyncPanel({
           <p className="text-[11px] font-semibold text-red-700">
             Budget spent — syncing is paused until the 1st. Calls past the plan cost ₪0.09 each.
           </p>
+        )}
+        </>
         )}
       </div>
 

@@ -361,8 +361,11 @@ function NoteHint({ note }: { note: string }) {
  *
  * `EditableCell` speaks strings, so the boolean has to be encoded
  * somewhere — here, once, rather than at each column that needs one.
- * Yes/No rather than a tick, because in a checkbox column "no" and
- * "nobody has asked yet" look identical.
+ * A "yes" is written out and a "no" is a dash. Down a column where most
+ * orders are neither kosher nor delivered, "No" repeated forty times is
+ * forty words the eye has to read to find the two that say Yes; a dash
+ * says the same thing without asking to be read. The dropdown still says
+ * No in full, because there the two options have to be told apart.
  */
 const YES_NO = [
   { value: "no", label: "No" },
@@ -372,7 +375,7 @@ const YES_NO = [
 function YesNoCell({ value, onSave }: { value: boolean; onSave: (value: boolean) => Promise<void> }) {
   return (
     <EditableCell
-      displayValue={value ? "Yes" : "No"}
+      displayValue={value ? "Yes" : <span className="text-ink-soft/50">–</span>}
       editValue={value ? "yes" : "no"}
       options={YES_NO}
       onSave={(raw) => onSave(raw === "yes")}

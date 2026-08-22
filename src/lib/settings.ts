@@ -712,6 +712,10 @@ const ARCHIVED_SOURCES: { resource: string; listName: string; table: string; lab
   { resource: "deliveries", listName: "Delivery", table: "delivery_options", labelColumn: "name" },
   { resource: "payment-methods", listName: "Payment methods", table: "payment_methods", labelColumn: "name" },
   { resource: "expense-categories", listName: "Expense categories", table: "expense_categories", labelColumn: "name" },
+  // Clients archive from their own page rather than a Settings pane, but
+  // they come back the same way as everything else — a row that can be
+  // retired and has no entry here is a row that vanishes for good.
+  { resource: "clients", listName: "Clients", table: "clients", labelColumn: "name" },
 ];
 
 export async function getArchivedItems(): Promise<ArchivedItem[]> {

@@ -351,16 +351,6 @@ export function OrdersClient({
                 toolbar on a control changed a few times a day and left
                 nothing to centre the view switcher in. */}
             <div className="flex flex-1 flex-wrap items-center gap-2">
-              {/* Ahead of the filters because it is the widest net: the
-                  dropdowns narrow what is already on screen, this decides
-                  what is on screen at all. */}
-              <SearchInput
-                value={query}
-                onChange={setQuery}
-                placeholder="Search orders"
-                label="Search orders by customer, type, location or note"
-                className="w-44"
-              />
               {view === "calendar" ? (
                 // Two options, both always worth seeing — a toggle says
                 // that at a glance where a dropdown hides half of it.
@@ -397,7 +387,19 @@ export function OrdersClient({
                 is, so it sits in the middle rather than in a corner. */}
             <PillGroup items={VIEWS} value={view} onChange={setView} />
 
-            <div className="flex flex-1 justify-end">
+            {/* Search sits in the gap between the view switcher and Add
+                order, rather than at the head of the filters: it is the
+                widest net on the page — it runs before every filter and
+                narrows the board and the calendar too — and the left group
+                is already three controls that each narrow the one before. */}
+            <div className="flex flex-1 items-center justify-end gap-3">
+              <SearchInput
+                value={query}
+                onChange={setQuery}
+                placeholder="Search orders"
+                label="Search orders by customer, type, location or note"
+                className="w-48"
+              />
               <button
                 onClick={() => setAdding(true)}
                 className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"

@@ -176,9 +176,12 @@ export function DashboardClient({
             {m.monthLabel}
           </button>
         ))}
+        {/* Which convention the money is in, at the top right of the page
+            rather than on a line of its own above the tiles: it qualifies
+            every figure below it, and a full-width row spent on six words
+            pushed the tiles down for nothing. */}
+        <p className="ml-auto shrink-0 text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
       </div>
-
-      <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
       <div className="grid grid-cols-4 gap-4">
         {KPI_TILES.map(({ metric, label, tile, Icon, format }) => (
           <KpiTile

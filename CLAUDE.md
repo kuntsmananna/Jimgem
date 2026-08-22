@@ -519,6 +519,13 @@ iteration (not guessed) — define these as `@theme` tokens in
   rest, so a deliberate 70/30 stays 7:3 instead of flattening to thirds.
   Adding a zero-unit flavour instead read as the click being ignored, and
   left you hand-reducing another flavour to make room.
+- **A client archives from their own page**, with the button at the far
+  left of the modal's save row — as far from Save as the row allows.
+  `clients` is in `ARCHIVED_SOURCES` like every other list, so Settings →
+  Data → Archived restores them; a row that can be retired and is missing
+  from that list is a row that vanishes for good. The hard delete beside
+  it is refused by the database while any order still points at the
+  client, which is the intended answer, not a bug.
 - **Every owner-managed list archives, never deletes** — flavors, order
   types, package types, payment methods, expense categories and presets
   all carry `archived_at`. An order references its package and event type,
@@ -588,6 +595,15 @@ iteration (not guessed) — define these as `@theme` tokens in
   days**, not 90, for the same reason: a wider one re-reads settled
   history. A run also stops before the budget does and reports what it
   deferred, rather than dying mid-batch.
+- **The call meter degrades rather than taking Settings down.**
+  `getSumitUsage` returns `available: false` when `sumit_api_calls` is
+  missing (migration 020 not yet run against this database) instead of
+  throwing, and `assertWithinSumitBudget` enforces nothing while it is
+  unavailable — refusing every call because the meter is unbuilt is a
+  worse failure than the one the meter prevents. The panel says the log
+  isn't there and names the migration. A migration that ships with code but
+  is applied by hand means the two are briefly out of step, and eight
+  unrelated panes should not go down with the one that noticed.
 - **SUMIT's documents are mirrored into `sumit_documents`, never read on a
   render path.** `sumitSync.ts` is the only module besides the probe that
   imports `sumit.ts`, the same structural rule that keeps the Google Sheet
@@ -711,6 +727,10 @@ iteration (not guessed) — define these as `@theme` tokens in
   make a call site say which list it means.
 - **Orders, Expenses and Clients each carry one search box**
   (`SearchInput` + `matchesSearch` in `src/components/SearchInput.tsx`).
+  It is the one field in the app that wears a stroke: every other sits in
+  a sheet where an outline would be an edge too many, while this one sits
+  alone in a toolbar with nothing around it to say where it starts. On
+  Orders it sits between the view switcher and Add order.
   The needle is split on whitespace and every term has to appear
   somewhere in the row's joined fields, so "anna 054" finds the same row
   as "054 anna" — a name and a phone are two facts about one client, not

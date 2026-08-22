@@ -42,7 +42,12 @@ export function SearchInput({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className="input w-full py-1.5 pr-7 pl-7.5 text-xs"
+        // A stroke, unlike every other field in the app: those sit in a
+        // sheet where an outline would be one edge too many, while this one
+        // sits alone in a toolbar with nothing around it to say where it
+        // starts. `border-ink/15` rather than `border-line` so it is also
+        // visible on the Clients band, which is close to `line` in tone.
+        className="input w-full border-ink/15 py-1.5 pr-7 pl-7.5 text-xs focus:border-accent"
         // Escape clears rather than closing anything: this sits inside
         // pages whose overlays also listen for it, and a search box that
         // swallowed the key would strand a half-typed query.

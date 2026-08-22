@@ -47,7 +47,38 @@ export interface SumitUsage {
   byEndpoint: { endpoint: string; calls: number }[];
   /** Failed calls still count — SUMIT logs and meters them. */
   failed: number;
+  /**
+   * False when the log table isn't there yet — migration 020 hasn't been
+   * run against this database. Everything else then reads as zero, which
+   * is honest: nothing has been counted.
+   */
+  available: boolean;
 }
+
+/**
+ * Is this the log table simply not existing yet?
+ *
+ * A migration that ships with the code but is run by hand against the
+ * database means the two are briefly out of step, and the meter is the
+ * one thing on Settings that must not take the page down with it — nine
+ * other panes have nothing to do with SUMIT. Postgres says 42P01 for an
+ * undefined table; the message is checked too, because the HTTP driver
+ * does not always carry the code through.
+ */
+function isMissingCallLog(error: unknown): boolean {
+  const code = (error as { code?: string })?.code;
+  const message = error instanceof Error ? error.message : String(error);
+  return code === "42P01" || /sumit_api_calls.*does not exist/i.test(message);
+}
+
+const NOTHING_COUNTED: SumitUsage = {
+  used: 0,
+  budget: SUMIT_CALL_BUDGET,
+  limit: SUMIT_MONTHLY_LIMIT,
+  byEndpoint: [],
+  failed: 0,
+  available: false,
+};
 
 /** The calendar month a call belongs to, as "YYYY-MM". */
 function currentPeriod(): string {
@@ -62,14 +93,20 @@ function currentPeriod(): string {
  */
 export async function getSumitUsage(): Promise<SumitUsage> {
   const db = getDb();
-  const { rows } = await db.query<{ endpoint: string; calls: string; failed: string }>(
-    `SELECT endpoint, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS failed
-       FROM sumit_api_calls
-      WHERE to_char(called_at, 'YYYY-MM') = $1
-      GROUP BY endpoint
-      ORDER BY count(*) DESC`,
-    [currentPeriod()],
-  );
+  let rows: { endpoint: string; calls: string; failed: string }[];
+  try {
+    ({ rows } = await db.query<{ endpoint: string; calls: string; failed: string }>(
+      `SELECT endpoint, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS failed
+         FROM sumit_api_calls
+        WHERE to_char(called_at, 'YYYY-MM') = $1
+        GROUP BY endpoint
+        ORDER BY count(*) DESC`,
+      [currentPeriod()],
+    ));
+  } catch (error) {
+    if (!isMissingCallLog(error)) throw error;
+    return NOTHING_COUNTED;
+  }
   const byEndpoint = rows.map((row) => ({ endpoint: row.endpoint, calls: Number(row.calls) }));
   return {
     used: byEndpoint.reduce((sum, row) => sum + row.calls, 0),
@@ -77,6 +114,7 @@ export async function getSumitUsage(): Promise<SumitUsage> {
     limit: SUMIT_MONTHLY_LIMIT,
     byEndpoint,
     failed: rows.reduce((sum, row) => sum + Number(row.failed), 0),
+    available: true,
   };
 }
 
@@ -94,8 +132,12 @@ export async function remainingSumitCalls(): Promise<number> {
 
 /** Refuses the call when the month is spent. Called by `sumitPost`, nowhere else. */
 export async function assertWithinSumitBudget(): Promise<void> {
-  const { used, budget } = await getSumitUsage();
-  if (used >= budget) throw new SumitBudgetError(used);
+  const { used, budget, available } = await getSumitUsage();
+  // Nothing to enforce while the log table is missing: refusing every call
+  // because the meter is unbuilt would be a worse failure than the one the
+  // meter exists to prevent. `recordSumitCall` already swallows the same
+  // absence, so calls simply go uncounted until the migration is run.
+  if (available && used >= budget) throw new SumitBudgetError(used);
 }
 
 /**
