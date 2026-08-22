@@ -105,6 +105,26 @@ export async function getSumitUsage(): Promise<SumitUsage> {
     ));
   } catch (error) {
     if (!isMissingCallLog(error)) throw error;
+    /*
+     * Say so in the log, and name the database while doing it.
+     *
+     * Degrading quietly is right for the page and wrong for diagnosis: a
+     * missing table here is almost always the migration having been run
+     * against a different Neon branch, and the one fact that settles it is
+     * which database the app is actually talking to. One extra query, only
+     * on the path that is already broken.
+     */
+    try {
+      const { rows } = await db.query<{ db: string; schema: string }>(
+        "SELECT current_database() AS db, current_schema() AS schema",
+      );
+      console.error(
+        `SUMIT call log missing: no sumit_api_calls in ${rows[0]?.db}.${rows[0]?.schema} — ` +
+          "run scripts/migrate-020-sumit-call-log.sql against that database.",
+      );
+    } catch {
+      console.error("SUMIT call log missing: sumit_api_calls does not exist.");
+    }
     return NOTHING_COUNTED;
   }
   const byEndpoint = rows.map((row) => ({ endpoint: row.endpoint, calls: Number(row.calls) }));
