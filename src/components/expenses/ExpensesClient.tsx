@@ -348,7 +348,7 @@ function ExpenseRow({
         if ((event.target as HTMLElement).closest("button, input, select, a")) return;
         onOpen();
       }}
-      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[6.5rem_2rem_9rem_1fr_auto_auto] items-center gap-x-3 rounded-xl border border-line px-3 py-2 text-sm"
+      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[5.25rem_9rem_1fr_auto_auto] items-center gap-x-3 rounded-xl border border-line px-3 py-2 text-sm"
     >
       {/*
         Date, description and amount are the row: when, what for, what it
@@ -357,21 +357,7 @@ function ExpenseRow({
         No year — the period says which one, and repeating it on every row
         is noise down the column.
       */}
-      <DateCell date={entry.date} onChange={(date) => onPatch({ date })} />
-
-      {/* Opening the row lives here rather than beside the trash: two
-          icons a few pixels apart, one of them destructive, is a mis-click
-          waiting to happen. There is room on this side and none there. */}
-      <span className="flex justify-center">
-        <button
-          onClick={onOpen}
-          title="Open this expense"
-          aria-label="Open this expense"
-          className="invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
-        >
-          <Maximize2 size={13} />
-        </button>
-      </span>
+      <DateCell date={entry.date} onChange={(date) => onPatch({ date })} onOpen={onOpen} />
 
       {/* A chip, because a category is a class the row belongs to rather
           than a value it holds — the same reasoning the order type chip
@@ -469,11 +455,19 @@ function ExpenseRow({
  * rather than beside it: `showPicker()` needs a real date input, and one
  * that is only a target would take space on every row for nothing.
  */
-function DateCell({ date, onChange }: { date: string; onChange: (date: string) => void }) {
+function DateCell({
+  date,
+  onChange,
+  onOpen,
+}: {
+  date: string;
+  onChange: (date: string) => void;
+  onOpen: () => void;
+}) {
   const input = useRef<HTMLInputElement>(null);
 
   return (
-    <span className="flex shrink-0 items-center gap-1">
+    <span className="flex shrink-0 items-center gap-0.5">
       <span className="font-semibold text-ink tabular-nums">{formatOrderDate(date)}</span>
       <span className="relative">
         <button
@@ -496,6 +490,19 @@ function DateCell({ date, onChange }: { date: string; onChange: (date: string) =
           aria-hidden
         />
       </span>
+      {/* Opening the row rides here rather than beside the trash: two
+          icons a few pixels apart, one of them destructive, is a mis-click
+          waiting to happen. It used to be a column of its own between the
+          date and the category, which spent a column and a gutter — most
+          of the empty stretch between them — on a hover-only affordance. */}
+      <button
+        onClick={onOpen}
+        title="Open this expense"
+        aria-label="Open this expense"
+        className="invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+      >
+        <Maximize2 size={13} />
+      </button>
     </span>
   );
 }

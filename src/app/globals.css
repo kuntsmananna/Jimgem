@@ -340,6 +340,17 @@ body {
   background-color: transparent;
 }
 
+/*
+ * ...including inside a hovered line, where the ghost-hover rule above
+ * (`.hover-line:hover button:hover`) would otherwise draw that second box
+ * back in — it matches an editable cell too, and at a weight this rule has
+ * to out-score rather than rely on order.
+ */
+.orders-rows > tr:hover .editable-cell.is-chip:hover,
+.hover-line:hover .editable-cell.is-chip:hover {
+  background-color: transparent;
+}
+
 .editable-cell.is-chip:hover .chip-neutral {
   background-color: --alpha(var(--color-ink) / 14%);
 }
