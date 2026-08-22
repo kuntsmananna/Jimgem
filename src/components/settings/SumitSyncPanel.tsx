@@ -75,7 +75,7 @@ export function SumitSyncPanel({ lastSync, documentCount }: { lastSync: string |
         <button
           onClick={() => run(3650)}
           disabled={busy}
-          className="rounded-full border border-cream/40 px-3 py-1 text-xs font-semibold text-cream transition hover:bg-cream/15 disabled:opacity-60"
+          className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-60"
         >
           Sync everything
         </button>

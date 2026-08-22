@@ -253,8 +253,11 @@ export function OrderForm({
   // A segmented pill rather than folder tabs: at the title's own height,
   // beside it, the joined-baseline treatment had no panel edge left to
   // sit on and read as three loose buttons.
+  // The track is white rather than cream: it sits inside the dialog's
+  // header band, which is itself a shade of the cream, and two tones that
+  // close together read as one smudged pill.
   const tabs = (
-    <div role="tablist" className="flex items-center gap-0.5 rounded-full bg-cream p-0.5">
+    <div role="tablist" className="flex items-center gap-0.5 rounded-full bg-card p-0.5">
       {TABS.map(({ id, label }) => (
         <button
           key={id}

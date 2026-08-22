@@ -974,9 +974,12 @@ title, what the pane is for, and its one action, drawn in
 cream-on-black, so the band can be re-lit — light band, ink text — by
 changing the pair in `globals.css` and nothing else: the title, the
 description, the action pill (`PANE_ACTION_CLASS`) and the popup's close
-button all state their colours as those two. The band is **a darker cast
-of the app's own cream, not black** — black is a fourth colour, and
-against warm cream it reads as a hole in the page. A heading set on the same cream as its list read as the
+button all state their colours as those two. The band is **the cream one
+shade down (`#E5D6CD`) with ordinary ink on it, not black** — owner-picked
+from seven candidates; black was a fourth colour, and against warm cream
+it read as a hole in the page. The order form's tab strip, which sits
+inside a popup's band, took a white track for the same reason: cream on a
+cream-derived band is one smudged pill. A heading set on the same cream as its list read as the
 list's first row; a band gives each pane a lid, so a column of them scans
 as separate things. A header button takes `PANE_ACTION_CLASS` — the same
 pill reversed. **Data lays out in two columns** like Lists, packed by
