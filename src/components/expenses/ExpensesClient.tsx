@@ -7,13 +7,18 @@ import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/setting
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
-import { CalendarDays, CreditCard, Maximize2, Plus, Trash2, UserRound } from "lucide-react";
+import { CalendarDays, ChevronsLeft, ChevronsRight, CreditCard, Maximize2, Plus, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { EditableCell } from "@/components/orders/EditableCell";
 import { FilterDropdown } from "@/components/orders/Dropdown";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
+import {
+  EXPENSE_PANES_COOKIE,
+  serializeCollapsedPanes,
+  type ExpensePane,
+} from "@/lib/expensePanes";
 
 /**
  * Amounts carry their agorot when they have any — ₪12,344.67 — and drop
@@ -28,6 +33,7 @@ export function ExpensesClient({
   paymentMethods,
   staff,
   vatRate,
+  collapsedPanes,
 }: {
   periods: ExpensePeriod[];
   categories: ExpenseCategory[];
@@ -35,6 +41,8 @@ export function ExpensesClient({
   staff: StaffAccount[];
   /** Today's VAT rate, stamped onto a new expense. */
   vatRate: number;
+  /** Folded when the page loaded, read from the cookie — see expensePanes.ts. */
+  collapsedPanes: ExpensePane[];
 }) {
   const router = useRouter();
   const defaultPeriod = periods.find((p) => p.key !== "general" && p.entries.length > 0)?.key ?? periods[0]?.key;
@@ -43,6 +51,22 @@ export function ExpensesClient({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   /** Empty means every category — the same default the Orders filters use. */
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<ExpensePane>>(() => new Set(collapsedPanes));
+
+  /**
+   * Fold a side pane away, or bring it back.
+   *
+   * Written straight to the cookie rather than through a route and a
+   * `router.refresh()`: nothing on the server depends on this — the page
+   * only reads it to decide what to paint first — so re-rendering the page
+   * to change a grid template would cost a round trip for nothing.
+   */
+  function togglePane(pane: ExpensePane) {
+    const next = new Set(collapsed);
+    if (!next.delete(pane)) next.add(pane);
+    setCollapsed(next);
+    document.cookie = `${EXPENSE_PANES_COOKIE}=${serializeCollapsedPanes(next)}; path=/; max-age=31536000; samesite=lax`;
+  }
 
   const period = periods.find((p) => p.key === selectedKey) ?? periods[periods.length - 1];
   // Per expense, not per total: a receipt from an unregistered supplier
@@ -144,27 +168,45 @@ export function ExpensesClient({
     refresh();
   }
 
+  const periodsFolded = collapsed.has("periods");
+  const chartsFolded = collapsed.has("charts");
+
   return (
     // The breakdown pane gives up width to the list: a donut reads fine
     // small, and the list is where every column had to fight for room.
-    <div className="grid grid-cols-[200px_2.2fr_0.85fr] gap-6">
-      <section className="min-w-0 rounded-card border border-line bg-card p-4">
-        <h2 className="px-2 font-display text-base font-bold text-ink">Periods</h2>
-        <ul className="mt-2 flex flex-col gap-1">
-          {periods.map((p) => (
-            <li key={p.key}>
-              <button
-                onClick={() => setSelectedKey(p.key)}
-                className={`hover-line flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm ${
-                  selectedKey === p.key ? "bg-black text-cream" : "text-ink"
-                }`}
-              >
-                <span>{p.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+    // Either flank folds to a rail, and the middle takes what it leaves —
+    // the template is computed rather than written as a class, because
+    // Tailwind cannot generate one that changes at runtime.
+    <div
+      className="grid gap-6"
+      style={{
+        gridTemplateColumns: `${periodsFolded ? RAIL_WIDTH : "200px"} 2.2fr ${chartsFolded ? RAIL_WIDTH : "0.85fr"}`,
+      }}
+    >
+      {periodsFolded ? (
+        <PaneRail label={period?.label ?? "Periods"} side="left" onExpand={() => togglePane("periods")} />
+      ) : (
+        <section className="min-w-0 rounded-card border border-line bg-card p-4">
+          <div className="flex items-center justify-between gap-1 px-2">
+            <h2 className="font-display text-base font-bold text-ink">Periods</h2>
+            <FoldButton side="left" title="Fold the periods away" onClick={() => togglePane("periods")} />
+          </div>
+          <ul className="mt-2 flex flex-col gap-1">
+            {periods.map((p) => (
+              <li key={p.key}>
+                <button
+                  onClick={() => setSelectedKey(p.key)}
+                  className={`hover-line flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm ${
+                    selectedKey === p.key ? "bg-black text-cream" : "text-ink"
+                  }`}
+                >
+                  <span>{p.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="min-w-0 rounded-card border border-line bg-card p-6">
         <div className="flex items-center justify-between gap-3">
@@ -244,62 +286,138 @@ export function ExpensesClient({
         </div>
       </section>
 
-      <div className="flex min-w-0 flex-col gap-6">
-        <section className="min-w-0 rounded-card border border-line bg-card p-6">
-          <h2 className="font-display text-base font-bold text-ink">Category breakdown</h2>
-          <div className="mt-4">
-            <DonutChart slices={slices} />
-          </div>
-        </section>
+      {chartsFolded ? (
+        <PaneRail label="Charts" side="right" onExpand={() => togglePane("charts")} />
+      ) : (
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6">
+            {/* The fold sits on the first card's heading because it is the
+                top of the column — one control for all three, where the eye
+                already is when it reaches them. */}
+            <div className="flex items-center justify-between gap-1">
+              <h2 className="font-display text-base font-bold text-ink">Category breakdown</h2>
+              <FoldButton side="right" title="Fold the charts away" onClick={() => togglePane("charts")} />
+            </div>
+            <div className="mt-4">
+              <DonutChart slices={slices} />
+            </div>
+          </section>
 
-        {/*
-          Where the money went, biggest first. A donut answers "which
-          category", this answers "which expense" — the one that is usually
-          behind a month looking heavier than it should.
-        */}
-        <section className="min-w-0 rounded-card border border-line bg-card p-6">
-          <h2 className="font-display text-base font-bold text-ink">Biggest expenses</h2>
-          <ul className="mt-3 flex flex-col">
-            {biggest.map((entry) => (
-              <li key={entry.key}>
-                <button
-                  onClick={() => setEditingKey(entry.key)}
-                  className="hover-line flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left"
-                >
-                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
-                    {entry.business || entry.note || entry.categoryName}
-                  </span>
-                  <span className="shrink-0 text-xs font-bold text-ink tabular-nums">
-                    {currency(forExpense(entry))}
-                  </span>
-                </button>
-              </li>
-            ))}
-            {biggest.length === 0 && <p className="text-sm text-ink-soft">Nothing in this period.</p>}
-          </ul>
-        </section>
+          {/*
+            Where the money went, biggest first. A donut answers "which
+            category", this answers "which expense" — the one that is usually
+            behind a month looking heavier than it should.
+          */}
+          <section className="min-w-0 rounded-card border border-line bg-card p-6">
+            <h2 className="font-display text-base font-bold text-ink">Biggest expenses</h2>
+            <ul className="mt-3 flex flex-col">
+              {biggest.map((entry) => (
+                <li key={entry.key}>
+                  <button
+                    onClick={() => setEditingKey(entry.key)}
+                    className="hover-line flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
+                      {entry.business || entry.note || entry.categoryName}
+                    </span>
+                    <span className="shrink-0 text-xs font-bold text-ink tabular-nums">
+                      {currency(forExpense(entry))}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {biggest.length === 0 && <p className="text-sm text-ink-soft">Nothing in this period.</p>}
+            </ul>
+          </section>
 
-        {/*
-          Cumulative, not per-day: the question a period asks is "how fast
-          is this adding up", and a bar per day answers a different one —
-          most days are empty, and the ones that aren't say nothing about
-          where the total is heading.
-        */}
-        <section className="min-w-0 rounded-card border border-line bg-card p-6">
-          <h2 className="font-display text-base font-bold text-ink">Spend so far</h2>
-          <p className="mt-0.5 mb-3 text-xs text-ink-soft">Adding up across the period.</p>
-          {cumulative.values.length > 1 ? (
-            <LineChart
-              series={[{ label: "Spent", color: SERIES_COLORS.jasmine, values: cumulative.values }]}
-              xLabels={cumulative.labels}
-              height={150}
-            />
-          ) : (
-            <p className="text-sm text-ink-soft">Not enough dated expenses to plot yet.</p>
-          )}
-        </section>
-      </div>
+          {/*
+            Cumulative, not per-day: the question a period asks is "how fast
+            is this adding up", and a bar per day answers a different one —
+            most days are empty, and the ones that aren't say nothing about
+            where the total is heading.
+          */}
+          <section className="min-w-0 rounded-card border border-line bg-card p-6">
+            <h2 className="font-display text-base font-bold text-ink">Spend so far</h2>
+            <p className="mt-0.5 mb-3 text-xs text-ink-soft">Adding up across the period.</p>
+            {cumulative.values.length > 1 ? (
+              <LineChart
+                series={[{ label: "Spent", color: SERIES_COLORS.jasmine, values: cumulative.values }]}
+                xLabels={cumulative.labels}
+                height={150}
+              />
+            ) : (
+              <p className="text-sm text-ink-soft">Not enough dated expenses to plot yet.</p>
+            )}
+          </section>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Wide enough for the fold arrow plus its target — see PaneRail. */
+const RAIL_WIDTH = "2.5rem";
+
+/**
+ * A folded pane, still on the page.
+ *
+ * The whole rail is the button that brings it back, and it carries the
+ * pane's name turned on its side: a bare arrow says something is hidden
+ * without saying what, and the periods rail says which period is showing,
+ * which is the one thing the pane was answering while it was open.
+ *
+ * The label reads bottom-to-top (`vertical-rl` turned 180°), the way a
+ * book spine does.
+ */
+function PaneRail({
+  label,
+  side,
+  onExpand,
+}: {
+  label: string;
+  /** Which flank it sits on — the arrow points back out toward the pane. */
+  side: "left" | "right";
+  onExpand: () => void;
+}) {
+  const Arrow = side === "left" ? ChevronsRight : ChevronsLeft;
+  return (
+    <button
+      onClick={onExpand}
+      title={`Show ${label}`}
+      aria-label={`Show ${label}`}
+      className="flex min-w-0 flex-col items-center gap-3 rounded-card border border-line bg-card py-3 text-ink-soft transition hover:bg-black/5 hover:text-ink"
+    >
+      <Arrow size={15} />
+      <span
+        className="truncate text-[11px] font-bold tracking-[0.14em] uppercase"
+        style={{ writingMode: "vertical-rl", rotate: "180deg" }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** The fold control inside an open pane, pointing at the edge it folds to. */
+function FoldButton({
+  side,
+  title,
+  onClick,
+}: {
+  side: "left" | "right";
+  title: string;
+  onClick: () => void;
+}) {
+  const Arrow = side === "left" ? ChevronsLeft : ChevronsRight;
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="rounded-full p-1 text-ink-soft transition hover:bg-black/5 hover:text-ink"
+    >
+      <Arrow size={15} />
+    </button>
   );
 }
 

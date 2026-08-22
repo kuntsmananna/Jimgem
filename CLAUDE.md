@@ -689,6 +689,18 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **Both of the Expenses page's flanks fold away.** The periods rail and
+  the charts column answer questions asked far less often than "what is on
+  this row", and together they take a third of the width from the list,
+  which is the page. Each folds to a 2.5rem rail carrying its name turned
+  on its side — a bare arrow says something is hidden without saying what,
+  and the periods rail names the period on screen, which is what the pane
+  was answering while it was open. The choice is a **cookie**
+  (`expensePanes.ts`), read by the server page and handed to the client as
+  its opening state, for the reason `vatView` is a cookie: read in the
+  browser instead, the layout would paint wide and then snap. Toggling
+  writes the cookie directly and never calls `router.refresh()` — nothing
+  on the server depends on it beyond that first paint.
 - **An expense row is columns, and the business it was paid to is its
   subject.** Date (no year — one season, so four repeated characters per
   line is noise), category as a chip, the supplier set darker than
