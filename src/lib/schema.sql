@@ -154,6 +154,43 @@ CREATE TABLE IF NOT EXISTS clients (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Every SUMIT document we have seen, mirrored locally.
+--
+-- A mirror rather than a live read for two reasons. /accounting/documents/
+-- list/ filters by type and date only -- there is no customer filter and no
+-- "modified since" -- so a per-client view has to bucket a window locally;
+-- and nothing on a render path may call SUMIT, the same rule the Google
+-- Sheet follows. Sync is a date window plus an upsert on document_id
+CREATE TABLE IF NOT EXISTS sumit_documents (
+  document_id BIGINT PRIMARY KEY,
+  document_number BIGINT,
+  type TEXT NOT NULL,
+  -- revenue / collection / quote / logistics / expense, from documentBucket
+  bucket TEXT NOT NULL,
+  date DATE,
+  due_date DATE,
+  sumit_customer_id BIGINT,
+  customer_name TEXT,
+  client_id INTEGER REFERENCES clients(id),
+  -- value is gross: SUMIT's CompanyValue includes VAT (verified against the
+  -- live account -- lines plus their stated VAT equal it). net_value and
+  -- vat_value come from getdetails, per revenue document, because the
+  -- listing carries neither and dividing by the standard rate would be
+  -- wrong for anything not standard-rated
+  value NUMERIC(12, 2),
+  net_value NUMERIC(12, 2),
+  vat_value NUMERIC(12, 2),
+  is_closed BOOLEAN,
+  is_draft BOOLEAN,
+  download_url TEXT,
+  payment_url TEXT,
+  external_reference TEXT,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS sumit_documents_client_idx ON sumit_documents (client_id);
+CREATE INDEX IF NOT EXISTS sumit_documents_date_idx ON sumit_documents (date);
+
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   date DATE NOT NULL,

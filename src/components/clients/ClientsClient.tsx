@@ -13,6 +13,20 @@ import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { useVatView } from "@/components/VatViewContext";
 import { formatOrderDate } from "@/lib/orderTypes";
 
+/** A SUMIT document, flattened for this page. */
+export interface ClientDocumentLine {
+  documentId: number;
+  documentNumber: number | null;
+  type: string;
+  bucket: string;
+  date: string | null;
+  clientId: number | null;
+  value: number;
+  isClosed: boolean;
+  downloadUrl: string | null;
+  paymentUrl: string | null;
+}
+
 /** One of a client's orders, flattened for this page. */
 export interface ClientOrderLine {
   key: string;
@@ -38,12 +52,15 @@ const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
 export function ClientsClient({
   clients,
   lines,
+  documents,
   months,
   newOrders,
   returningOrders,
 }: {
   clients: ClientWithStats[];
   lines: ClientOrderLine[];
+  /** Mirrored SUMIT documents — see sumitSync.ts. */
+  documents: ClientDocumentLine[];
   months: string[];
   newOrders: number[];
   returningOrders: number[];
@@ -66,6 +83,18 @@ export function ClientsClient({
     for (const list of map.values()) list.sort((a, b) => b.date.localeCompare(a.date));
     return map;
   }, [lines]);
+
+  const documentsByClient = useMemo(() => {
+    const map = new Map<number, ClientDocumentLine[]>();
+    for (const document of documents) {
+      if (document.clientId === null) continue;
+      const list = map.get(document.clientId) ?? [];
+      list.push(document);
+      map.set(document.clientId, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    return map;
+  }, [documents]);
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -224,6 +253,7 @@ export function ClientsClient({
         <ClientModal
           client={open}
           orders={ordersByClient.get(open.id) ?? []}
+          documents={documentsByClient.get(open.id) ?? []}
           similar={clients.filter((other) => other.id !== open.id && looksLikeSameClient(other.name, open.name))}
           onClose={() => setOpenId(null)}
           onSaved={() => {
@@ -267,12 +297,14 @@ function Tile({
 function ClientModal({
   client,
   orders,
+  documents,
   similar,
   onClose,
   onSaved,
 }: {
   client: ClientWithStats;
   orders: ClientOrderLine[];
+  documents: ClientDocumentLine[];
   /** Clients whose names look like longer or shorter forms of this one. */
   similar: ClientWithStats[];
   onClose: () => void;
@@ -370,6 +402,68 @@ function ClientModal({
             </div>
           ))}
           {orders.length === 0 && <p className="px-3 py-4 text-sm text-ink-soft">No orders yet.</p>}
+        </div>
+
+        {/*
+          What SUMIT holds for them. Read from the local mirror, so this
+          shows whatever the last sync saw rather than costing a call every
+          time a client is opened. A payment link is offered on anything
+          still open — it is the fastest way to chase money, and SUMIT puts
+          one on every document it issues.
+        */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-bold tracking-[0.1em] text-ink-soft uppercase">SUMIT documents</span>
+          <div className="max-h-40 overflow-auto rounded-xl border border-line">
+            {documents.map((document) => (
+              <div
+                key={document.documentId}
+                className="flex items-center gap-3 border-b border-line px-3 py-2 last:border-b-0"
+              >
+                <span className="w-16 shrink-0 text-xs text-ink-soft tabular-nums">
+                  {document.date ? formatOrderDate(document.date) : "—"}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-ink">
+                  {document.type}
+                  {document.documentNumber !== null && (
+                    <span className="text-ink-soft"> #{document.documentNumber}</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-sm font-semibold text-ink tabular-nums">
+                  {currency(document.value)}
+                </span>
+                {document.bucket !== "revenue" && document.isClosed && (
+                  <span className="shrink-0 text-[11px] font-semibold text-accent">paid</span>
+                )}
+                {document.paymentUrl && !document.isClosed && (
+                  <a
+                    href={document.paymentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 text-[11px] font-semibold text-accent hover:underline"
+                  >
+                    pay link
+                  </a>
+                )}
+                {document.downloadUrl && (
+                  <a
+                    href={document.downloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 text-[11px] font-semibold text-ink-soft hover:text-ink"
+                  >
+                    PDF
+                  </a>
+                )}
+              </div>
+            ))}
+            {documents.length === 0 && (
+              <p className="px-3 py-4 text-sm text-ink-soft">
+                {client.sumitCustomerId
+                  ? "Nothing synced for them yet."
+                  : "Not linked to SUMIT — they link themselves when a document is issued under this exact name, or on the next sync."}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Bottom-right, Save last — the same corner every popup uses. */}

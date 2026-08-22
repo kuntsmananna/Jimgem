@@ -3,6 +3,7 @@ import { getOrders, orderMonth } from "@/lib/orders";
 import { getProductionStages } from "@/lib/settings";
 import { isBooked, orderBalance, stageMap } from "@/lib/orderTypes";
 import { MONTH_NAMES_EN } from "@/lib/financials";
+import { getSumitDocuments } from "@/lib/sumitSync";
 import { getVatView } from "@/lib/vatViewServer";
 import { ClientsClient, type ClientOrderLine } from "@/components/clients/ClientsClient";
 
@@ -10,10 +11,13 @@ export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
   const vatView = await getVatView();
-  const [clients, orders, stages] = await Promise.all([
+  const [clients, orders, stages, documents] = await Promise.all([
     getClientsWithStats(vatView),
     getOrders(),
     getProductionStages(true),
+    // From the local mirror, never SUMIT: nothing on a render path calls
+    // it (see sumitSync.ts).
+    getSumitDocuments(),
   ]);
   const stageIndex = stageMap(stages);
 
@@ -63,6 +67,21 @@ export default async function ClientsPage() {
     <ClientsClient
       clients={clients}
       lines={lines}
+      documents={documents.map((document) => ({
+        documentId: document.documentId,
+        documentNumber: document.documentNumber,
+        type: document.type,
+        bucket: document.bucket,
+        date: document.date,
+        clientId: document.clientId,
+        // Gross or net, in whatever convention the nav is set to — the
+        // mirror stores both, and a document with no detail yet falls back
+        // to what SUMIT reported.
+        value: vatView === "net" ? (document.netValue ?? document.value) : document.value,
+        isClosed: document.isClosed,
+        downloadUrl: document.downloadUrl,
+        paymentUrl: document.paymentUrl,
+      }))}
       months={months.map((month) => MONTH_NAMES_EN[month - 1])}
       newOrders={months.map((month) => newByMonth.get(month) ?? 0)}
       returningOrders={months.map((month) => returningByMonth.get(month) ?? 0)}

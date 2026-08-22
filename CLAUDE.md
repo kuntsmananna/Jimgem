@@ -510,6 +510,25 @@ iteration (not guessed) — define these as `@theme` tokens in
   repricing a preset never changes an order already booked — the same
   copy-not-link rule its recipe follows. A line with no copied price falls
   back to the tiers. `jellyTotal` is where the two meet.
+- **SUMIT's documents are mirrored into `sumit_documents`, never read on a
+  render path.** `sumitSync.ts` is the only module besides the probe that
+  imports `sumit.ts`, the same structural rule that keeps the Google Sheet
+  behind `sheetImport.ts`. Sync is **a date window plus an upsert on
+  `document_id`** because the API offers nothing better — no customer
+  filter, no "modified since" — so re-pulling a window is the only way to
+  notice a document that changed. 90 days by default; **Sync everything**
+  in Settings → Data is for the first run and for anything backdated.
+- **`value` is gross, `net_value` and `vat_value` come from `getdetails`.**
+  SUMIT's `CompanyValue` includes VAT (verified: a document reporting
+  ₪1,000 carries lines of ₪847 and VAT of ₪153). The listing carries no
+  breakdown, so each *revenue* document costs one extra call — and only
+  revenue ones, since a delivery note's VAT answers nothing. Dividing the
+  gross by the standard rate instead would be wrong for anything not
+  standard-rated.
+- **A client links itself to SUMIT by exact name, once.** The sync stores
+  `clients.sumit_customer_id` wherever a document's customer name
+  normalises to a client's — the only automatic link there can be, since
+  SUMIT cannot be searched. Near matches are left for a person.
 - **A client is a row, and `orders.client_id` points at it.** SUMIT's
   `/accounting/customers/` has create and update but **no list and no
   search**, so a customer over there can only be found again by an id
