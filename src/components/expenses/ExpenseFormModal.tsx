@@ -60,16 +60,27 @@ export function ExpenseFormModal({
       : emptyDraft(vatRate),
   );
   const [busy, setBusy] = useState(false);
+  const [conflict, setConflict] = useState<string | null>(null);
 
   async function submit() {
     if (!draft.categoryId || draft.amount <= 0) return;
     setBusy(true);
-    await fetch(isEdit ? `/api/expenses/${expense.key}` : "/api/expenses", {
+    setConflict(null);
+    // Editing sends the version this form was opened on, so a save built
+    // on values someone else has since changed is refused rather than
+    // written over theirs — see StaleWriteError in orders.ts.
+    const response = await fetch(isEdit ? `/api/expenses/${expense.key}` : "/api/expenses", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
+      body: JSON.stringify(isEdit ? { ...draft, expectedUpdatedAt: expense.updatedAt } : draft),
     });
     setBusy(false);
+    if (response.status === 409) {
+      // The popup stays open holding the draft: it is the only copy of
+      // this work until it is written somewhere.
+      setConflict(((await response.json()) as { error?: string }).error ?? "Someone else changed this expense.");
+      return;
+    }
     onSaved(draft.date);
   }
 
@@ -180,7 +191,12 @@ export function ExpenseFormModal({
           <TextInput value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
         </Field>
         {/* Right-aligned, Save last — the same corner every popup uses. */}
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {conflict && (
+            <span className="mr-auto text-xs font-semibold text-red-700" role="alert">
+              {conflict}
+            </span>
+          )}
           <button
             onClick={onClose}
             className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"

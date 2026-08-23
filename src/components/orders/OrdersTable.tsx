@@ -77,11 +77,20 @@ export function OrdersTable({
   async function saveField(order: Order, patch: Partial<OrderInput>) {
     // Every order is a DB row since the import change, so a single-field
     // patch is all the API needs — no full-row replace, no override path.
-    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
+    // `expectedUpdatedAt` is the version this row was rendered from: an
+    // inline edit is quick, but the page it sits on can be an hour old.
+    const response = await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "patch", ...patch }),
+      body: JSON.stringify({ mode: "patch", ...patch, expectedUpdatedAt: order.updatedAt }),
     });
+    // A refused edit is announced rather than swallowed: the cell has
+    // already shown the new value, so saying nothing would leave a number
+    // on screen that isn't in the database. `onChanged` re-reads the row
+    // and puts the real one back.
+    if (response.status === 409) {
+      alert(((await response.json()) as { error?: string }).error ?? "Someone else changed this order.");
+    }
     onChanged();
   }
 

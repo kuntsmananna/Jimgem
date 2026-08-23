@@ -398,6 +398,16 @@ export interface Order {
   notes: string;
   /** True when best-effort parsing of a Sheet row's פירוט text found little/nothing reliable. */
   needsReview: boolean;
+  /**
+   * When the row last changed, as the database reports it.
+   *
+   * A form sends this back with its save and the UPDATE matches on it, so
+   * a save built from values that have since moved on changes nothing and
+   * says so — see `StaleWriteError` in orders.ts. Two people work this
+   * dashboard and a save writes the whole row: without this the later save
+   * silently wins.
+   */
+  updatedAt: string;
 }
 
 export interface OrderInput {

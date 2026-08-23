@@ -164,10 +164,13 @@ export function ExpensesClient({
    * needing a partial-update path of its own.
    */
   async function patch(entry: Expense, change: Partial<Record<string, unknown>>) {
-    await fetch(`/api/expenses/${entry.key}`, {
+    const response = await fetch(`/api/expenses/${entry.key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        // The version this row was rendered from, so an edit built on a
+        // stale page is refused rather than written over someone else's.
+        expectedUpdatedAt: entry.updatedAt,
         date: entry.date,
         categoryId: entry.categoryId,
         amount: entry.amount,
@@ -180,6 +183,9 @@ export function ExpensesClient({
         ...change,
       }),
     });
+    if (response.status === 409) {
+      alert(((await response.json()) as { error?: string }).error ?? "Someone else changed this expense.");
+    }
     refresh();
   }
 

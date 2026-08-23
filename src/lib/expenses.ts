@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { MONTH_NAMES_EN } from "./financials";
 import { getExpenseCategories, getPaymentMethods, getStaff } from "./settings";
 import { vatOn, type VatMode } from "./orderTypes";
+import { isoStamp, StaleWriteError } from "./orders";
 
 export interface Expense {
   /** The DB row id, as a string. Every expense is a row. */
@@ -43,6 +44,12 @@ export interface Expense {
   netAmount: number;
   /** True when `note` is a best-effort, unverified match from a Sheet comment — see financials.ts's SheetExpenseItem. */
   noteUnverified: boolean;
+  /**
+   * When the row last changed. Sent back with a save so the UPDATE can
+   * match on it and refuse to write over someone else's edit — see
+   * `StaleWriteError` in orders.ts.
+   */
+  updatedAt: string;
 }
 
 export interface ExpenseInput {
@@ -69,6 +76,8 @@ interface DbExpenseRow {
   sheet_key: string | null;
   vat_mode: VatMode | null;
   vat_rate: string | null;
+  /** A Date from the driver — see isoStamp in orders.ts. */
+  updated_at: string | Date;
 }
 
 function mapExpense(
@@ -96,6 +105,7 @@ function mapExpense(
     // to take VAT back out rather than how to add it on.
     netAmount: vatOn(Number(row.amount), row.vat_mode ?? "included", Number(row.vat_rate ?? 0)).net,
     noteUnverified: false,
+    updatedAt: isoStamp(row.updated_at),
   };
 }
 
@@ -136,6 +146,7 @@ interface RawDbExpenseRow {
   staff_id: number | null;
   business: string | null;
   note: string | null;
+  updated_at: string | Date;
 }
 
 /** For createExpense/updateExpense's return value — resolves names for just the one affected row. */
@@ -155,26 +166,38 @@ export async function createExpense(input: ExpenseInput): Promise<Expense> {
   return mapSingleExpense(rows[0]);
 }
 
-export async function updateExpense(id: number, input: ExpenseInput): Promise<Expense> {
+/**
+ * `expectedUpdatedAt` is the version the form was built from: pass it and
+ * a save whose row has since changed is refused rather than applied over
+ * the other person's edit. Omit it and the write is unconditional.
+ */
+export async function updateExpense(
+  id: number,
+  input: ExpenseInput,
+  expectedUpdatedAt?: string,
+): Promise<Expense> {
   const db = getDb();
+  const values: unknown[] = [
+    input.date,
+    input.categoryId,
+    input.amount,
+    input.paymentMethodId,
+    input.staffId,
+    input.business,
+    input.note,
+    input.vatMode,
+    input.vatRate,
+    id,
+  ];
+  const fresh = expectedUpdatedAt ? ` AND updated_at = $${values.push(expectedUpdatedAt)}` : "";
   const { rows } = await db.query<RawDbExpenseRow>(
     `UPDATE expenses SET date = $1, category_id = $2, amount = $3, payment_method_id = $4, staff_id = $5,
-            business = $6, note = $7, vat_mode = $8, vat_rate = $9
-     WHERE id = $10
+            business = $6, note = $7, vat_mode = $8, vat_rate = $9, updated_at = now()
+     WHERE id = $10${fresh}
      RETURNING *`,
-    [
-      input.date,
-      input.categoryId,
-      input.amount,
-      input.paymentMethodId,
-      input.staffId,
-      input.business,
-      input.note,
-      input.vatMode,
-      input.vatRate,
-      id,
-    ],
+    values,
   );
+  if (rows.length === 0) throw new StaleWriteError("expense");
   return mapSingleExpense(rows[0]);
 }
 

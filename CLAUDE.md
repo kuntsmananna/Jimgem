@@ -764,6 +764,25 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **A save is refused if the row moved on** (`StaleWriteError` in
+  `orders.ts`). Two people work this dashboard and a save writes the whole
+  row, so without this the later save silently takes the earlier one's
+  edits with it. `orders.updated_at` and `expenses.updated_at` are the
+  version; a form sends the one it opened with as `expectedUpdatedAt`, the
+  UPDATE matches on it, and the route answers **409** with a sentence
+  rather than 500 — nothing failed, the caller's copy is just stale. On a
+  popup the message shows and **the popup stays open**: the draft is the
+  only copy of that work. The guard is optional per call, because the
+  batch actions write rows nobody opened.
+  In `updateOrder` it is repeated on every CTE
+  (`EXISTS (SELECT 1 FROM updated_order)`), not just the UPDATE: the
+  deletes and inserts that follow have no data dependency on it, so left
+  alone a stale save would rewrite the package lines while the order row
+  kept the other person's values. The columns are **`TIMESTAMPTZ(3)`** —
+  the value round-trips through JSON and a JS `Date`, which holds
+  milliseconds, so microsecond precision would come back short and report
+  a conflict on every save. `scripts/migrate-023-stale-save-guard.sql`
+  adds them.
 - **Orders, Expenses and Clients each carry one search box**
   (`SearchInput` + `matchesSearch` in `src/components/SearchInput.tsx`).
   It is the one field in the app that wears a stroke: every other sits in

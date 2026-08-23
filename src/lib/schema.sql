@@ -477,3 +477,10 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DE
 -- what was bought and nothing else -- the two answer different questions
 -- and were one field for as long as there was only one of them.
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS business TEXT;
+
+-- When the row last changed, so a save can tell whether it is writing over
+-- someone else's edit. Two people work this dashboard and a save writes the
+-- whole row, so without this the later save silently wins -- see
+-- scripts/migrate-023-stale-save-guard.sql
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now();
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now();

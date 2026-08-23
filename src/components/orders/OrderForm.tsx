@@ -197,6 +197,14 @@ export function OrderForm({
   const [manual, setManual] = useState<ReadonlySet<AmountKey>>(initial.manual);
   const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
   const [busy, setBusy] = useState(false);
+  /**
+   * Set when the save was refused because someone else changed the order
+   * while this form was open. It stays until the form is closed: the draft
+   * is still on screen and still unsaved, and the one thing that must not
+   * happen is the message vanishing while the work it describes is still
+   * at risk.
+   */
+  const [conflict, setConflict] = useState<string | null>(null);
   /*
    * The phone for a client this order is about to create. Held here rather
    * than on the draft because it belongs to the *client*, not the order —
@@ -281,6 +289,7 @@ export function OrderForm({
   async function submit() {
     if (!canSave) return;
     setBusy(true);
+    setConflict(null);
     /*
      * A name nobody has ordered under before becomes a client now, at
      * save, rather than as it was typed. If this fails the order is still
@@ -302,12 +311,28 @@ export function OrderForm({
       }
     }
     // "replace" is explicit: this sends the whole order, not a patch.
-    await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
+    // `expectedUpdatedAt` is the version this form was opened on, so the
+    // save is refused rather than applied if someone else has since
+    // changed the order — see StaleWriteError in orders.ts.
+    const response = await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "replace", ...priced, clientId, packageLines: toPackageLines(lines) }),
+      body: JSON.stringify({
+        mode: "replace",
+        ...priced,
+        clientId,
+        packageLines: toPackageLines(lines),
+        ...(isEdit ? { expectedUpdatedAt: order!.updatedAt } : {}),
+      }),
     });
     setBusy(false);
+    if (response.status === 409) {
+      // The form stays open holding the draft: it is the only copy of this
+      // work now, and closing it would be the loss the guard exists to
+      // prevent.
+      setConflict(((await response.json()) as { error?: string }).error ?? "Someone else changed this order.");
+      return;
+    }
     onSaved();
   }
 
@@ -389,8 +414,13 @@ export function OrderForm({
           after reading the form, and every popup in the app puts them
           there. Save is last, nearest the corner. */}
       <div className="mt-6 flex items-center gap-2">
+        {conflict && (
+          <span className="text-xs font-semibold text-red-700" role="alert">
+            {conflict}
+          </span>
+        )}
         {/* Nothing here saves as you type, so say so while it's still fixable. */}
-        {dirty && (
+        {!conflict && dirty && (
           <span className="text-xs font-semibold text-amber-700" role="status">
             Unsaved changes
           </span>

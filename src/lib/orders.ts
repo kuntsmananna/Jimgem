@@ -71,10 +71,38 @@ const COLUMN_FOR_FIELD: Record<EditableField, string> = {
   notes: "notes",
 };
 
+/**
+ * Thrown when a write is built from a version of the row that has since
+ * changed — someone else saved it while this form was open.
+ *
+ * Refusing is the whole point: a save here writes every column, so
+ * applying it would take the other person's edit with it, silently and
+ * with nothing left to notice it by.
+ */
+/**
+ * The row's version as one string, whatever the driver handed over.
+ *
+ * `timestamptz` arrives as a JS `Date`, which holds milliseconds — which
+ * is why the column is `TIMESTAMPTZ(3)`: at the default microsecond
+ * precision the value that goes back to Postgres is a fraction short of
+ * the one stored, and every save reports a conflict that isn't there.
+ */
+export function isoStamp(value: string | Date): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+export class StaleWriteError extends Error {
+  constructor(what: string) {
+    super(`Someone else changed this ${what} while you had it open.`);
+    this.name = "StaleWriteError";
+  }
+}
+
 /** Patches individual fields on one order, leaving its content lines untouched. */
 export async function updateOrderFields(
   id: number,
   patch: Partial<Record<EditableField, string | number | boolean | null>>,
+  expectedUpdatedAt?: string,
 ): Promise<void> {
   const entries = (Object.entries(patch) as [EditableField, string | number | boolean | null][]).filter(
     ([field]) => field in COLUMN_FOR_FIELD,
@@ -83,10 +111,16 @@ export async function updateOrderFields(
 
   const db = getDb();
   const assignments = entries.map(([field], i) => `${COLUMN_FOR_FIELD[field]} = $${i + 2}`);
-  await db.query(`UPDATE orders SET ${assignments.join(", ")} WHERE id = $1`, [
-    id,
-    ...entries.map(([, value]) => value),
-  ]);
+  const values = [id, ...entries.map(([, value]) => value)];
+  // The guard is optional so a caller with no version to offer — a batch
+  // action over rows it never opened — still writes, rather than every
+  // caller having to fake a timestamp to get through.
+  const guard = expectedUpdatedAt ? ` AND updated_at = $${values.push(expectedUpdatedAt)}` : "";
+  const { rows } = await db.query(
+    `UPDATE orders SET ${assignments.join(", ")}, updated_at = now() WHERE id = $1${guard} RETURNING id`,
+    values,
+  );
+  if (rows.length === 0 && expectedUpdatedAt) throw new StaleWriteError("order");
 }
 
 interface DbOrderRow {
@@ -118,6 +152,8 @@ interface DbOrderRow {
   sheet_row: number | null;
   details: string | null;
   needs_review: boolean;
+  /** timestamptz comes back from the driver as a Date, not a string. */
+  updated_at: string | Date;
 }
 
 interface DbPackageLineRow {
@@ -223,6 +259,7 @@ function mapDbOrder(
     productionStatus: row.production_status,
     notes: row.notes ?? "",
     needsReview: row.needs_review,
+    updatedAt: isoStamp(row.updated_at),
   };
 }
 
@@ -419,25 +456,53 @@ export async function createOrder(input: OrderInput): Promise<Order> {
   return mapDbOrder(rows[0], input.packageLines, input.displays);
 }
 
-export async function updateOrder(id: number, input: OrderInput): Promise<Order> {
+export async function updateOrder(
+  id: number,
+  input: OrderInput,
+  /**
+   * The `updatedAt` the form was built from. Pass it and the write is
+   * refused if the row has moved on since; omit it and the write applies
+   * unconditionally, which is what a caller with no version in hand — the
+   * batch actions — needs.
+   */
+  expectedUpdatedAt?: string,
+): Promise<Order> {
   const db = getDb();
   const arrays = toLineArrays(input);
   // The id takes the first slot past the order's own values, so the
   // arrays start one later.
   const $ = arrayPlaceholders(2);
   const orderId = after(1);
+  const values = [...orderValues(input), id, ...arrayValues(arrays)];
+
+  /*
+   * The guard, and why it is repeated on every CTE below rather than
+   * stated once on the UPDATE.
+   *
+   * A stale UPDATE simply matches nothing — but the deletes and inserts
+   * that follow are separate statements against the same tables, with no
+   * data dependency on it. Left alone they would happily wipe the order's
+   * package lines and write this form's version of them while the order
+   * row itself kept the other person's values: the worst of both saves.
+   * `EXISTS (SELECT 1 FROM updated_order)` makes each of them depend on
+   * the UPDATE having matched, so a stale save is a no-op in full.
+   */
+  const fresh = expectedUpdatedAt
+    ? ` AND updated_at = $${values.push(expectedUpdatedAt)}`
+    : "";
+  const applied = expectedUpdatedAt ? " AND EXISTS (SELECT 1 FROM updated_order)" : "";
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH updated_order AS (
-       UPDATE orders SET ${ORDER_ASSIGNMENTS}
-       WHERE id = ${orderId}
+       UPDATE orders SET ${ORDER_ASSIGNMENTS}, updated_at = now()
+       WHERE id = ${orderId}${fresh}
        RETURNING *
      ), deleted_lines AS (
        -- Flavour rows go with them, via ON DELETE CASCADE.
-       DELETE FROM order_package_lines WHERE order_id = ${orderId}
+       DELETE FROM order_package_lines WHERE order_id = ${orderId}${applied}
        RETURNING 1
      ), deleted_displays AS (
-       DELETE FROM order_displays WHERE order_id = ${orderId}
+       DELETE FROM order_displays WHERE order_id = ${orderId}${applied}
        RETURNING 1
      ), new_lines AS (
        INSERT INTO order_package_lines (order_id, package_type_id, quantity, package_price, position)
@@ -446,11 +511,12 @@ export async function updateOrder(id: number, input: OrderInput): Promise<Order>
        -- always-true condition on deleted_lines: CTEs with no data dependency
        -- between them run in an unspecified order, so this forces the delete
        -- to happen before the insert (otherwise it could wipe out the new rows)
-       WHERE (SELECT count(*) FROM deleted_lines) >= 0
+       WHERE (SELECT count(*) FROM deleted_lines) >= 0${applied}
        RETURNING id, position
      ), new_flavors AS (
        -- No such guard needed here: the join on new_lines is a real data
-       -- dependency, so this cannot run before the lines exist.
+       -- dependency, so this cannot run before the lines exist — and if the
+       -- save was stale, new_lines is empty and so is this.
        INSERT INTO order_package_line_flavors (line_id, flavor_id, units, position)
        SELECT new_lines.id, f.flavor_id, f.units, f.pos
        FROM unnest(${$.flavorLinePositions}::int[], ${$.flavorIds}::int[], ${$.flavorUnits}::int[], ${$.flavorPositions}::int[]) AS f(line_pos, flavor_id, units, pos)
@@ -461,12 +527,13 @@ export async function updateOrder(id: number, input: OrderInput): Promise<Order>
        SELECT ${orderId}, d.option_id, d.qty
        FROM unnest(${$.displayOptionIds}::int[], ${$.displayQuantities}::int[]) AS d(option_id, qty)
        -- Same guard, same reason: nothing links these to the delete above.
-       WHERE (SELECT count(*) FROM deleted_displays) >= 0
+       WHERE (SELECT count(*) FROM deleted_displays) >= 0${applied}
        RETURNING 1
      )
      SELECT * FROM updated_order`,
-    [...orderValues(input), id, ...arrayValues(arrays)],
+    values,
   );
+  if (rows.length === 0) throw new StaleWriteError("order");
   return mapDbOrder(rows[0], input.packageLines, input.displays);
 }
 
