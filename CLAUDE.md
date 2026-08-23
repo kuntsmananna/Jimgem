@@ -595,6 +595,27 @@ iteration (not guessed) — define these as `@theme` tokens in
   **Failed calls are recorded too**: SUMIT meters those as well, as its own
   log shows. 25 of the 250 are held back for the card terminal, whose calls
   come out of the same allowance and which we cannot see.
+- **The meter is counted in the process and written behind it.** The gate
+  runs before every SUMIT call, so asking the database each time made a
+  90-call sync 90 aggregate scans over a table that same run was growing.
+  `sumitBudget.ts` seeds the month's count once per process, increments it
+  synchronously in `recordSumitCall`, and drops it on a month rollover;
+  every `getSumitUsage` — the Settings meter, once per render — re-seeds it,
+  so a warm instance that missed another instance's calls corrects itself
+  rather than drifting, and the 25-call reserve covers the gap in between.
+  The row itself is written **without being awaited**, which is what takes
+  a Neon round trip out from between every pair of calls — so anything that
+  makes SUMIT calls ends with `flushSumitCalls()`, because a serverless
+  instance can be frozen the moment it answers and an unwritten call is
+  exactly the one that pushes a later month over.
+- **What a run cost is measured, never counted up by hand.** `callsUsed`
+  is `sumitCallsUsed()` before and after, because the meter already knows:
+  it counts every page of a listing (`listDocuments` pages, so "the listing
+  is one call" was true only while it fitted in one) and every `getdetails`
+  including the ones that threw. A refused breakdown is therefore
+  `detailsFailed`, apart from `detailsDeferred` — one waits for next
+  month's budget, the other for an answer from SUMIT, and the call was
+  spent either way.
 - **A document's breakdown is fetched once, ever.** `net_value`/`vat_value`
   come from `getdetails`, and a document's lines never change after it is
   issued — so the sync skips any document that already has them, and the

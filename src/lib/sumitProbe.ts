@@ -14,6 +14,7 @@
  * designed panel, because it is a throwaway diagnostic whose output is
  * meant to be copied out and read once, not lived with.
  */
+import { SUMIT_CALL_BUDGET, flushSumitCalls, sumitCallsUsed } from "./sumitBudget";
 import {
   listDocuments,
   listFolders,
@@ -70,7 +71,28 @@ export interface SumitProbeOptions {
   dateFrom?: string;
 }
 
+/**
+ * Runs the probe and says what it cost.
+ *
+ * The probe is the most expensive thing in the integration — one listing
+ * per expense type plus an entity read each — so the report ends with the
+ * meter's own figure for it rather than leaving it to be worked out from
+ * the log afterwards. The flush is what makes that figure complete: the
+ * log writes are fired without being waited for, and a serverless instance
+ * can be frozen the moment it answers.
+ */
 export async function runSumitProbe(options: SumitProbeOptions = {}): Promise<string> {
+  const before = await sumitCallsUsed();
+  try {
+    const report = await probe(options);
+    const spent = (await sumitCallsUsed()) - before;
+    return `${report}\n\nThis run spent ${spent} of the month's ${SUMIT_CALL_BUDGET} SUMIT calls.`;
+  } finally {
+    await flushSumitCalls();
+  }
+}
+
+async function probe(options: SumitProbeOptions): Promise<string> {
   const dateFrom = options.dateFrom ?? "2015-01-01";
   // A year ahead: documents can be dated forward, and a missed one would
   // silently shrink every total below.

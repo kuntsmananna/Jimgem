@@ -11,6 +11,7 @@ interface SyncResult {
   documents: number;
   revenueDetailed: number;
   detailsDeferred: number;
+  detailsFailed: number;
   clientsLinked: number;
   callsUsed: number;
   from: string;
@@ -158,6 +159,8 @@ export function SumitSyncPanel({
             {result.clientsLinked > 0 && `, ${result.clientsLinked} clients linked to SUMIT by name`}
             {result.detailsDeferred > 0 &&
               `. ${result.detailsDeferred} left without a breakdown — the budget ran out, they'll be picked up next run`}
+            {result.detailsFailed > 0 &&
+              `. ${result.detailsFailed} refused their breakdown — the call was spent, the next run tries again`}
             .
           </span>
         </p>

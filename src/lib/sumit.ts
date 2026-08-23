@@ -11,7 +11,7 @@
  * out of SUMIT (see scripts/sumit-probe.mts); nothing here writes to it.
  */
 
-import { assertWithinSumitBudget, recordSumitCall } from "./sumitBudget";
+import { assertWithinSumitBudget, flushSumitCalls, recordSumitCall } from "./sumitBudget";
 
 const API_BASE = "https://api.sumit.co.il";
 
@@ -72,7 +72,11 @@ export async function sumitPost<T>(path: string, body: Record<string, unknown> =
 
   if (!response.ok) {
     const message = `SUMIT ${path} returned HTTP ${response.status} ${response.statusText}`;
-    await recordSumitCall(endpoint, false, message);
+    recordSumitCall(endpoint, false, message);
+    // Flushed before throwing: a failure often ends the whole run, so
+    // there may be nothing left to wait for the record of the call that
+    // caused it — and a failed call is metered like any other.
+    await flushSumitCalls();
     throw new Error(message);
   }
 
@@ -80,11 +84,15 @@ export async function sumitPost<T>(path: string, body: Record<string, unknown> =
   const status = String(envelope.Status);
   if (status !== "Success" && status !== "0") {
     const detail = envelope.UserErrorMessage ?? envelope.TechnicalErrorDetails ?? "no detail given";
-    await recordSumitCall(endpoint, false, detail);
+    recordSumitCall(endpoint, false, detail);
+    await flushSumitCalls();
     throw new Error(`SUMIT ${path} failed (${status}): ${detail}`);
   }
 
-  await recordSumitCall(endpoint, true);
+  // Counted now, written to the log in the background — see
+  // `recordSumitCall`. The gate reads the count, not the table, so
+  // nothing here waits on a round trip it does not need.
+  recordSumitCall(endpoint, true);
   return envelope.Data as T;
 }
 

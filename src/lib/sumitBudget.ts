@@ -43,8 +43,6 @@ export interface SumitUsage {
   used: number;
   budget: number;
   limit: number;
-  /** What the month has spent, by endpoint, heaviest first. */
-  byEndpoint: { endpoint: string; calls: number }[];
   /** Failed calls still count — SUMIT logs and meters them. */
   failed: number;
   /**
@@ -78,30 +76,46 @@ const NOTHING_COUNTED: SumitUsage = {
   used: 0,
   budget: SUMIT_CALL_BUDGET,
   limit: SUMIT_MONTHLY_LIMIT,
-  byEndpoint: [],
   failed: 0,
   available: false,
 };
 
+/** The calendar month a call belongs to, as "YYYY-MM". */
+function currentPeriod(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
 /**
- * What this month has cost so far.
+ * The month's count, held in the process.
+ *
+ * The gate runs before *every* SUMIT call, and asking the database each
+ * time made a 90-call sync 90 aggregate scans over a table that same run
+ * is growing. So the count is read once, then kept: `recordSumitCall`
+ * increments it, and it is thrown away on a month rollover. Any read of
+ * `getSumitUsage` — the Settings meter, once per render — re-seeds it from
+ * the database, so a warm process that missed another instance's calls
+ * corrects itself rather than drifting for as long as it stays up. The
+ * 25-call reserve is what covers the drift in between.
+ */
+let counted: { period: string; used: number } | null = null;
+
+/**
+ * What this month has cost so far, asked of the database.
  *
  * Counted from our own log rather than asked of SUMIT — asking would
  * itself be a call, and there is no endpoint for it anyway.
  */
 export async function getSumitUsage(): Promise<SumitUsage> {
   const db = getDb();
-  let rows: { endpoint: string; calls: string; failed: string }[];
+  let rows: { calls: string; failed: string }[];
   try {
-    ({ rows } = await db.query<{ endpoint: string; calls: string; failed: string }>(
+    ({ rows } = await db.query<{ calls: string; failed: string }>(
       // `called_at >= date_trunc(...)` rather than `to_char(...) = 'YYYY-MM'`:
       // the same month, but a range the `sumit_api_calls_month_idx` index
       // migration 020 ships can actually be used for.
-      `SELECT endpoint, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS failed
+      `SELECT count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS failed
          FROM sumit_api_calls
-        WHERE called_at >= date_trunc('month', now())
-        GROUP BY endpoint
-        ORDER BY count(*) DESC`,
+        WHERE called_at >= date_trunc('month', now())`,
     ));
   } catch (error) {
     if (!isMissingCallLog(error)) throw error;
@@ -132,17 +146,44 @@ export async function getSumitUsage(): Promise<SumitUsage> {
         console.error("SUMIT call log missing: sumit_api_calls does not exist.");
       }
     }
+    // Deliberately not cached: the table's absence is a misconfiguration
+    // about to be fixed, and a process that remembered it would keep the
+    // meter dark for as long as it stayed warm after the migration ran.
+    counted = null;
     return NOTHING_COUNTED;
   }
-  const byEndpoint = rows.map((row) => ({ endpoint: row.endpoint, calls: Number(row.calls) }));
+  const used = Number(rows[0]?.calls ?? 0);
+  counted = { period: currentPeriod(), used };
   return {
-    used: byEndpoint.reduce((sum, row) => sum + row.calls, 0),
+    used,
     budget: SUMIT_CALL_BUDGET,
     limit: SUMIT_MONTHLY_LIMIT,
-    byEndpoint,
-    failed: rows.reduce((sum, row) => sum + Number(row.failed), 0),
+    failed: Number(rows[0]?.failed ?? 0),
     available: true,
   };
+}
+
+/**
+ * The month's count as this process knows it — free once seeded.
+ *
+ * `available` is false only while the log table is missing, in which case
+ * there is nothing to enforce and nothing to report.
+ */
+async function usedThisMonth(): Promise<{ used: number; available: boolean }> {
+  const period = currentPeriod();
+  if (counted?.period === period) return { used: counted.used, available: true };
+  const usage = await getSumitUsage();
+  return { used: usage.used, available: usage.available };
+}
+
+/**
+ * How many calls this month has spent, including any still being written
+ * to the log. Exact, and free after the first call of a run — which is
+ * what lets the sync report what it cost rather than guessing.
+ */
+export async function sumitCallsUsed(): Promise<number> {
+  const { used } = await usedThisMonth();
+  return used;
 }
 
 /**
@@ -153,22 +194,31 @@ export async function getSumitUsage(): Promise<SumitUsage> {
  * sync that says what it skipped is far better than an exception.
  */
 export async function remainingSumitCalls(): Promise<number> {
-  const { used, budget } = await getSumitUsage();
-  return Math.max(0, budget - used);
+  const { used } = await usedThisMonth();
+  return Math.max(0, SUMIT_CALL_BUDGET - used);
 }
 
 /** Refuses the call when the month is spent. Called by `sumitPost`, nowhere else. */
 export async function assertWithinSumitBudget(): Promise<void> {
-  const { used, budget, available } = await getSumitUsage();
+  const { used, available } = await usedThisMonth();
   // Nothing to enforce while the log table is missing: refusing every call
   // because the meter is unbuilt would be a worse failure than the one the
   // meter exists to prevent. `recordSumitCall` already swallows the same
   // absence, so calls simply go uncounted until the migration is run.
-  if (available && used >= budget) throw new SumitBudgetError(used);
+  if (available && used >= SUMIT_CALL_BUDGET) throw new SumitBudgetError(used);
 }
+
+/** Log writes in flight, so a burst can wait for its own record of itself. */
+const pending = new Set<Promise<void>>();
 
 /**
  * Records a call that was actually made.
+ *
+ * Counting is synchronous — the in-process figure is what the gate reads,
+ * so it is right the instant the call is made — while the row is written
+ * without being waited for. A sync spends its time on SUMIT and on the
+ * document upserts, and blocking each call on its own INSERT put a Neon
+ * round trip between every pair of them.
  *
  * Failures are recorded too, because SUMIT meters them: its own log shows
  * our rejected `SupplierPayment` query and a bad CRM read sitting in the
@@ -177,13 +227,34 @@ export async function assertWithinSumitBudget(): Promise<void> {
  * Never throws. A logging failure must not lose the caller's result, and
  * an uncounted call is a smaller problem than a broken sync.
  */
-export async function recordSumitCall(endpoint: string, ok: boolean, error?: string): Promise<void> {
-  try {
-    await getDb().query(
-      "INSERT INTO sumit_api_calls (endpoint, ok, error) VALUES ($1, $2, $3)",
-      [endpoint, ok, error?.slice(0, 500) ?? null],
+export function recordSumitCall(endpoint: string, ok: boolean, error?: string): void {
+  const period = currentPeriod();
+  counted = counted?.period === period ? { period, used: counted.used + 1 } : counted;
+
+  const write = getDb()
+    .query("INSERT INTO sumit_api_calls (endpoint, ok, error) VALUES ($1, $2, $3)", [
+      endpoint,
+      ok,
+      error?.slice(0, 500) ?? null,
+    ])
+    .then(
+      () => {},
+      (failure) => {
+        console.error("Failed to record a SUMIT call:", failure);
+      },
     );
-  } catch (failure) {
-    console.error("Failed to record a SUMIT call:", failure);
-  }
+  pending.add(write);
+  void write.finally(() => pending.delete(write));
+}
+
+/**
+ * Waits for the log writes still in flight.
+ *
+ * Called at the end of anything that makes SUMIT calls. Without it a
+ * serverless instance can be frozen the moment it answers, with the last
+ * call of the request recorded nowhere — and an uncounted call is exactly
+ * the one that pushes a later month past the ceiling.
+ */
+export async function flushSumitCalls(): Promise<void> {
+  while (pending.size > 0) await Promise.all([...pending]);
 }

@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { getClients, setSumitCustomerId } from "./clients";
 import { normalizeClientName } from "./clientName";
-import { remainingSumitCalls } from "./sumitBudget";
+import { flushSumitCalls, remainingSumitCalls, sumitCallsUsed } from "./sumitBudget";
 import {
   documentBucket,
   documentTypeName,
@@ -41,6 +41,13 @@ export interface SumitSyncResult {
   revenueDetailed: number;
   /** Revenue documents left without a breakdown because the budget ran out. */
   detailsDeferred: number;
+  /**
+   * Revenue documents whose breakdown SUMIT refused. Counted apart from
+   * the deferred ones because they are a different fact and get a
+   * different sentence: one waits for next month, the other for an answer
+   * from SUMIT — and the call was spent either way.
+   */
+  detailsFailed: number;
   clientsLinked: number;
   callsUsed: number;
   from: string;
@@ -65,17 +72,31 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
   const from = isoDay(new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000));
   const to = isoDay(new Date(Date.now() + FORWARD_DAYS * 24 * 60 * 60 * 1000));
 
-  const documents = await listDocuments({ dateFrom: from, dateTo: to, includeDrafts: true });
-  const clientsLinked = await linkClientsByName(documents);
-  const clientIdByCustomer = await clientIdsBySumitCustomer();
-
   /*
    * A document's lines never change once it is issued, so its breakdown is
    * fetched exactly once, ever. This is the whole difference between a
    * sync that costs ~90 calls a night and one that costs one or two: the
    * first version re-fetched every invoice in the window on every run.
+   *
+   * Started before the listing rather than after it: it answers a question
+   * about our own mirror, so it owes SUMIT nothing and can run while the
+   * slow part is in flight.
    */
-  const alreadyDetailed = await documentIdsWithDetails();
+  const detailedIds = documentIdsWithDetails();
+  // A rejection must not go unhandled while the listing below is awaited.
+  // The no-op handler marks it handled; awaiting `detailedIds` still throws.
+  detailedIds.catch(() => {});
+
+  const callsBefore = await sumitCallsUsed();
+  const documents = await listDocuments({ dateFrom: from, dateTo: to, includeDrafts: true });
+
+  // These two are serial on purpose: the second reads the links the first
+  // has just written.
+  const clientsLinked = await linkClientsByName(documents);
+  const [clientIdByCustomer, alreadyDetailed] = await Promise.all([
+    clientIdsBySumitCustomer(),
+    detailedIds,
+  ]);
 
   /*
    * And it stops before the month's budget does. A sync that dies halfway
@@ -83,13 +104,15 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
    * useful; one that fetches what it can afford and reports what it
    * skipped can simply be run again next month, or after the reset.
    *
-   * One call is kept back for the listing itself, which has already
-   * happened by the time we get here.
+   * Asked *after* the listing, so the listing's own calls are already in
+   * the count — however many pages it took. Subtracting a hardcoded one
+   * for it was right only while it fitted in a single page.
    */
-  let detailBudget = Math.max(0, (await remainingSumitCalls()) - 1);
+  let detailBudget = await remainingSumitCalls();
 
   let revenueDetailed = 0;
   let detailsDeferred = 0;
+  let detailsFailed = 0;
   const rows: unknown[][] = [];
   for (const document of documents) {
     const bucket = documentBucket(document.Type);
@@ -110,8 +133,10 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
       } catch {
         // One document refusing its details is not a reason to lose the
         // sync: the gross value is stored either way, and the next run
-        // tries again because net_value is still null.
-        detailsDeferred += 1;
+        // tries again because net_value is still null. The call itself was
+        // spent — SUMIT meters a refusal — which is why `callsUsed` is
+        // measured rather than derived from `revenueDetailed`.
+        detailsFailed += 1;
       }
     }
 
@@ -137,13 +162,22 @@ export async function syncSumitDocuments(options: { windowDays?: number } = {}):
   }
 
   await upsertDocuments(rows);
+  await flushSumitCalls();
+
   return {
     documents: rows.length,
     revenueDetailed,
     detailsDeferred,
+    detailsFailed,
     clientsLinked,
-    // The listing, plus one per breakdown actually fetched.
-    callsUsed: 1 + revenueDetailed,
+    /*
+     * Measured, not counted up by hand. The meter already records every
+     * call this run made — every page of the listing, and every
+     * `getdetails` including the ones that threw — so the difference
+     * across the run is exact where `1 + revenueDetailed` was a guess that
+     * a second page or a failed detail quietly falsified.
+     */
+    callsUsed: (await sumitCallsUsed()) - callsBefore,
     from,
     to,
   };
