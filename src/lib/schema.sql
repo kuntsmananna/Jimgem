@@ -494,4 +494,12 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ(3);
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ(3);
 CREATE INDEX IF NOT EXISTS orders_live_idx ON orders (date DESC) WHERE deleted_at IS NULL;
+
+-- Who changed the row last, as a name rather than a staff id: it records
+-- who did it at the time, and should keep saying that if the person is
+-- later renamed (scripts/migrate-025-edited-by.sql)
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_by TEXT;
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_by TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now();
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_by TEXT;
 CREATE INDEX IF NOT EXISTS expenses_live_idx ON expenses (date DESC) WHERE deleted_at IS NULL;

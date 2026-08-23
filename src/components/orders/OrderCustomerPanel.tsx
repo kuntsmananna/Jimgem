@@ -5,7 +5,7 @@ import {
   type OrderInput,
   type PaymentStatus,
 } from "@/lib/orderTypes";
-import { MapPin } from "lucide-react";
+import { ExternalLink, MapPin } from "lucide-react";
 import { TextInput, TextArea } from "@/components/Field";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
@@ -90,6 +90,26 @@ export function OrderCustomerPanel({
           and the location box says "Location" until it has one, behind a
           pin so it reads as a place rather than as more free text.
         */}
+        {/*
+          The way to the client's own card, once the order has one.
+          Deliberately a new tab: this popup is holding unsaved work, and a
+          link that navigated away from it would trade an order for a
+          lookup. Under the name rather than beside it — the name is a
+          headline and a link tucked into its baseline would be read as
+          part of it.
+        */}
+        {draft.clientId !== null && (
+          <a
+            href={`/clients?client=${draft.clientId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1.5 flex w-fit items-center gap-1 text-[11px] font-semibold text-accent hover:underline"
+          >
+            <ExternalLink size={11} />
+            Open client card
+          </a>
+        )}
+
         <div className="mt-2.5 flex items-center gap-2.5">
           <TextInput
             type="date"

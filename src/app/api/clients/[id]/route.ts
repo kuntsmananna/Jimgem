@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { archiveClient, updateClient } from "@/lib/clients";
+import { currentEditor } from "@/lib/editor";
 
 export const runtime = "nodejs";
 
@@ -27,13 +28,17 @@ export async function PATCH(request: NextRequest, context: RouteContext<"/api/cl
       return NextResponse.json({ error: "A client needs a name." }, { status: 400 });
     }
     return NextResponse.json(
-      await updateClient(id, {
-        name,
-        phone: String(body.phone ?? ""),
-        email: String(body.email ?? ""),
-        source: String(body.source ?? ""),
-        notes: String(body.notes ?? ""),
-      }),
+      await updateClient(
+        id,
+        {
+          name,
+          phone: String(body.phone ?? ""),
+          email: String(body.email ?? ""),
+          source: String(body.source ?? ""),
+          notes: String(body.notes ?? ""),
+        },
+        await currentEditor(),
+      ),
     );
   } catch (error) {
     console.error("Failed to update client:", error);

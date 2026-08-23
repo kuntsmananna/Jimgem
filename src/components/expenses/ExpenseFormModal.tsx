@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Expense, ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { Redo2, Undo2 } from "lucide-react";
+import { LastEdited } from "@/components/LastEdited";
 import { Modal } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
@@ -237,6 +238,7 @@ export function ExpenseFormModal({
             {isEdit ? "Save" : "Save expense"}
           </button>
         </div>
+        {isEdit && <LastEdited at={expense.updatedAt} by={expense.updatedBy} />}
       </div>
     </Modal>
   );

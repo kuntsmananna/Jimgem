@@ -9,6 +9,8 @@ import {
   type ProductionStatus,
 } from "@/lib/orders";
 
+import { currentEditor } from "@/lib/editor";
+
 export const runtime = "nodejs";
 
 type BatchBody =
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No orders selected." }, { status: 400 });
   }
 
+  const editor = await currentEditor();
   try {
     if (body.action === "duplicate") {
       const results = await Promise.allSettled(ids.map((id) => duplicateOrder(id)));
@@ -52,9 +55,9 @@ export async function POST(request: NextRequest) {
 
     const affected =
       body.action === "paymentStatus"
-        ? await setPaymentStatusMany(ids, body.status)
+        ? await setPaymentStatusMany(ids, body.status, editor)
         : body.action === "productionStatus"
-          ? await setProductionStatusMany(ids, body.status)
+          ? await setProductionStatusMany(ids, body.status, editor)
           : body.action === "restore"
             ? await restoreOrdersMany(ids)
             : await deleteOrdersMany(ids);

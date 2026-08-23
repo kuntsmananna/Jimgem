@@ -17,6 +17,7 @@ import {
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
 import { Redo2, Undo2 } from "lucide-react";
+import { LastEdited } from "@/components/LastEdited";
 import { useModalHeaderSlot } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { OrderCustomerPanel } from "./OrderCustomerPanel";
@@ -514,6 +515,10 @@ export function OrderForm({
           {isEdit ? "Save changes" : "Save order"}
         </button>
       </div>
+
+      {/* Below the work and at half strength: it answers "did you touch
+          this?" without ever being what the popup is for. */}
+      {isEdit && <LastEdited at={order!.updatedAt} by={order!.updatedBy} />}
     </>
   );
 }

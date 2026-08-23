@@ -17,6 +17,7 @@ export function EditableCell({
   type = "text",
   options,
   chip = false,
+  renderIdle,
   onSave,
 }: {
   displayValue: React.ReactNode;
@@ -25,6 +26,15 @@ export function EditableCell({
   options?: { value: string; label: string }[];
   /** True when the value is drawn as a chip — see `.is-chip` in globals.css. */
   chip?: boolean;
+  /**
+   * Draws the idle cell yourself, and says when editing starts.
+   *
+   * For a value that is more than a value — the customer name is also a
+   * link to the client — where clicking it has to do the other thing and
+   * editing needs a control of its own. The editing half stays here, so
+   * only the display is the caller's problem.
+   */
+  renderIdle?: (startEditing: () => void) => React.ReactNode;
   onSave: (raw: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -38,13 +48,16 @@ export function EditableCell({
     setEditing(false);
   }
 
+  function startEditing() {
+    setValue(editValue);
+    setEditing(true);
+  }
+
   if (!editing) {
+    if (renderIdle) return <>{renderIdle(startEditing)}</>;
     return (
       <button
-        onClick={() => {
-          setValue(editValue);
-          setEditing(true);
-        }}
+        onClick={startEditing}
         // `editable-cell` (globals.css) is what makes "this can be
         // edited" visible on hover, on cream and on the black a hovered
         // row turns.

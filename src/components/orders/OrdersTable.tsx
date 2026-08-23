@@ -14,7 +14,8 @@ import {
   type OrderInput,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
-import { Info } from "lucide-react";
+import Link from "next/link";
+import { Info, Pencil } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
@@ -188,10 +189,45 @@ export function OrdersTable({
                 </td>
                 <td className="px-2 py-2">
                   <div className="flex items-center gap-1.5">
+                    {/*
+                      The name is two things at once: the client it belongs
+                      to, and a value that gets corrected. Clicking it goes
+                      to the client — the more useful of the two, and the
+                      one there was no way to reach from here — so editing
+                      moves to a pencil that appears with the row's other
+                      hover controls.
+
+                      An order booked before the client list existed has no
+                      client to open, so it stays plain text and only the
+                      pencil applies.
+                    */}
                     <EditableCell
                       displayValue={order.customer || "(no name)"}
                       editValue={order.customer}
                       onSave={(raw) => saveField(order, { customer: raw })}
+                      renderIdle={(startEditing) => (
+                        <span className="flex min-w-0 items-center gap-1">
+                          {order.clientId === null ? (
+                            <span className="truncate">{order.customer || "(no name)"}</span>
+                          ) : (
+                            <Link
+                              href={`/clients?client=${order.clientId}`}
+                              title={`Open ${order.customer}'s client card`}
+                              className="truncate hover:underline"
+                            >
+                              {order.customer || "(no name)"}
+                            </Link>
+                          )}
+                          <button
+                            onClick={startEditing}
+                            title="Rename the customer on this order"
+                            aria-label="Edit the customer name"
+                            className="invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                        </span>
+                      )}
                     />
                     {/*
                       The note lives behind an icon rather than under the

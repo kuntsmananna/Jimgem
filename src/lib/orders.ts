@@ -103,6 +103,7 @@ export async function updateOrderFields(
   id: number,
   patch: Partial<Record<EditableField, string | number | boolean | null>>,
   expectedUpdatedAt?: string,
+  editor?: string,
 ): Promise<void> {
   const entries = (Object.entries(patch) as [EditableField, string | number | boolean | null][]).filter(
     ([field]) => field in COLUMN_FOR_FIELD,
@@ -111,13 +112,14 @@ export async function updateOrderFields(
 
   const db = getDb();
   const assignments = entries.map(([field], i) => `${COLUMN_FOR_FIELD[field]} = $${i + 2}`);
-  const values = [id, ...entries.map(([, value]) => value)];
+  const values: unknown[] = [id, ...entries.map(([, value]) => value)];
+  const editorAt = `$${values.push(editor ?? null)}`;
   // The guard is optional so a caller with no version to offer — a batch
   // action over rows it never opened — still writes, rather than every
   // caller having to fake a timestamp to get through.
   const guard = expectedUpdatedAt ? ` AND updated_at = $${values.push(expectedUpdatedAt)}` : "";
   const { rows } = await db.query(
-    `UPDATE orders SET ${assignments.join(", ")}, updated_at = now() WHERE id = $1${guard} RETURNING id`,
+    `UPDATE orders SET ${assignments.join(", ")}, updated_at = now(), updated_by = ${editorAt} WHERE id = $1${guard} RETURNING id`,
     values,
   );
   if (rows.length === 0 && expectedUpdatedAt) throw new StaleWriteError("order");
@@ -154,6 +156,7 @@ interface DbOrderRow {
   needs_review: boolean;
   /** timestamptz comes back from the driver as a Date, not a string. */
   updated_at: string | Date;
+  updated_by: string | null;
 }
 
 interface DbPackageLineRow {
@@ -260,6 +263,7 @@ function mapDbOrder(
     notes: row.notes ?? "",
     needsReview: row.needs_review,
     updatedAt: isoStamp(row.updated_at),
+    updatedBy: row.updated_by ?? "",
   };
 }
 
@@ -300,15 +304,29 @@ async function affectedRows(text: string, params: unknown[]): Promise<number> {
   return rows.length;
 }
 
-export function setPaymentStatusMany(ids: number[], status: PaymentStatus): Promise<number> {
-  return affectedRows("UPDATE orders SET payment_status = $1 WHERE id = ANY($2) RETURNING id", [status, ids]);
+// A batch action is an edit like any other, so it stamps the row the same
+// way a form save does — otherwise "last edited by" would quietly skip the
+// changes made from the toolbar.
+export function setPaymentStatusMany(
+  ids: number[],
+  status: PaymentStatus,
+  editor?: string,
+): Promise<number> {
+  return affectedRows(
+    "UPDATE orders SET payment_status = $1, updated_at = now(), updated_by = $3 WHERE id = ANY($2) RETURNING id",
+    [status, ids, editor ?? null],
+  );
 }
 
-export function setProductionStatusMany(ids: number[], status: ProductionStatus): Promise<number> {
-  return affectedRows("UPDATE orders SET production_status = $1 WHERE id = ANY($2) RETURNING id", [
-    status,
-    ids,
-  ]);
+export function setProductionStatusMany(
+  ids: number[],
+  status: ProductionStatus,
+  editor?: string,
+): Promise<number> {
+  return affectedRows(
+    "UPDATE orders SET production_status = $1, updated_at = now(), updated_by = $3 WHERE id = ANY($2) RETURNING id",
+    [status, ids, editor ?? null],
+  );
 }
 
 /**
@@ -446,15 +464,19 @@ function orderValues(input: OrderInput) {
 /** `after(1)` is the first placeholder past the order's own values. */
 const after = (offset: number) => `$${ORDER_FIELDS.length + offset}`;
 
-export async function createOrder(input: OrderInput): Promise<Order> {
+export async function createOrder(input: OrderInput, editor?: string): Promise<Order> {
   const db = getDb();
   const arrays = toLineArrays(input);
   const $ = arrayPlaceholders(1);
+  // Appended past the order's values and the line arrays, so it cannot
+  // collide with either — the same push-and-name trick updateOrder uses.
+  const values: unknown[] = [...orderValues(input), ...arrayValues(arrays)];
+  const editorAt = `$${values.push(editor ?? null)}`;
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH new_order AS (
-       INSERT INTO orders (${ORDER_COLUMNS})
-       VALUES (${ORDER_PLACEHOLDERS})
+       INSERT INTO orders (${ORDER_COLUMNS}, updated_by)
+       VALUES (${ORDER_PLACEHOLDERS}, ${editorAt})
        RETURNING *
      ), new_lines AS (
        INSERT INTO order_package_lines (order_id, package_type_id, quantity, package_price, position)
@@ -474,7 +496,7 @@ export async function createOrder(input: OrderInput): Promise<Order> {
        RETURNING 1
      )
      SELECT * FROM new_order`,
-    [...orderValues(input), ...arrayValues(arrays)],
+    values,
   );
   return mapDbOrder(rows[0], input.packageLines, input.displays);
 }
@@ -489,6 +511,8 @@ export async function updateOrder(
    * batch actions — needs.
    */
   expectedUpdatedAt?: string,
+  /** Who is saving, for the "last edited by" line. */
+  editor?: string,
 ): Promise<Order> {
   const db = getDb();
   const arrays = toLineArrays(input);
@@ -496,7 +520,9 @@ export async function updateOrder(
   // arrays start one later.
   const $ = arrayPlaceholders(2);
   const orderId = after(1);
-  const values = [...orderValues(input), id, ...arrayValues(arrays)];
+  const values: unknown[] = [...orderValues(input), id, ...arrayValues(arrays)];
+  // Whoever is signed in, recorded as a name — see migration 025.
+  const editorAt = `$${values.push(editor ?? null)}`;
 
   /*
    * The guard, and why it is repeated on every CTE below rather than
@@ -517,7 +543,7 @@ export async function updateOrder(
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH updated_order AS (
-       UPDATE orders SET ${ORDER_ASSIGNMENTS}, updated_at = now()
+       UPDATE orders SET ${ORDER_ASSIGNMENTS}, updated_at = now(), updated_by = ${editorAt}
        WHERE id = ${orderId}${fresh}
        RETURNING *
      ), deleted_lines AS (

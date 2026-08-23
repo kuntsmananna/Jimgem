@@ -799,6 +799,30 @@ iteration (not guessed) — define these as `@theme` tokens in
   React stays in step. Snapshots are whole copies of the state, capped at
   `LIMIT` — the alternative, storing inverse operations, needs every call
   site to describe its own undo and quietly lies when one forgets.
+- **Every row says when it last changed and who changed it**
+  (`updated_by`, added by `scripts/migrate-025-edited-by.sql`; clients gain
+  `updated_at` there too). Stored as a **name, not a staff id**: it records
+  who did it *at the time* and should keep saying so if the person is later
+  renamed — the opposite of `expenses.staff_id`, which points at a person
+  the row is *about*. `currentEditor()` in `src/lib/editor.ts` is the one
+  place a route asks who is signed in, and the batch actions stamp it too,
+  or "last edited by" would quietly skip everything done from the toolbar.
+  `LastEdited` draws it at the bottom of the order, expense and client
+  popups, at half strength: it answers "did you touch this?" without ever
+  being what the popup is for. Same-day edits read as "today at 14:32",
+  because that is what a person means.
+- **The customer name on the Orders table is a link to their client card**,
+  with editing moved to a pencil that appears with the row's other hover
+  controls. Clicking a name is far more often "who is this?" than "let me
+  retype it", and the client card had no way in from the orders list at
+  all. An order with no `clientId` — booked before the client list existed
+  — stays plain text with just the pencil. `EditableCell`'s `renderIdle`
+  is what makes that possible: the caller draws the idle cell and says when
+  editing starts, and the editing half stays shared. The order popup links
+  to the same card **in a new tab**, since that popup is holding unsaved
+  work.
+- **`/clients?client=<id>` opens that card**, read once at mount like the
+  Orders page's `?order=`.
 - **A save is refused if the row moved on** (`StaleWriteError` in
   `orders.ts`). Two people work this dashboard and a save writes the whole
   row, so without this the later save silently takes the earlier one's

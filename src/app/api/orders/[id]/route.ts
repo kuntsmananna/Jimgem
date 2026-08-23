@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { StaleWriteError, updateOrder, updateOrderFields, type OrderInput, type EditableField } from "@/lib/orders";
+import { currentEditor } from "@/lib/editor";
 
 export const runtime = "nodejs";
 
@@ -29,12 +30,13 @@ type UpdateBody = { expectedUpdatedAt?: string } & (
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const { id } = await ctx.params;
   const body = (await request.json()) as UpdateBody;
+  const editor = await currentEditor();
   try {
     if (body.mode === "replace") {
-      return NextResponse.json(await updateOrder(Number(id), body, body.expectedUpdatedAt));
+      return NextResponse.json(await updateOrder(Number(id), body, body.expectedUpdatedAt, editor));
     }
     if (body.mode === "patch") {
-      await updateOrderFields(Number(id), body, body.expectedUpdatedAt);
+      await updateOrderFields(Number(id), body, body.expectedUpdatedAt, editor);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: 'Body needs a "mode" of "replace" or "patch".' }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, getClients } from "@/lib/clients";
+import { currentEditor } from "@/lib/editor";
 
 export const runtime = "nodejs";
 
@@ -21,13 +22,16 @@ export async function POST(request: NextRequest) {
 
   try {
     return NextResponse.json(
-      await createClient({
-        name,
-        phone: String(body.phone ?? ""),
-        email: String(body.email ?? ""),
-        source: String(body.source ?? ""),
-        notes: String(body.notes ?? ""),
-      }),
+      await createClient(
+        {
+          name,
+          phone: String(body.phone ?? ""),
+          email: String(body.email ?? ""),
+          source: String(body.source ?? ""),
+          notes: String(body.notes ?? ""),
+        },
+        await currentEditor(),
+      ),
     );
   } catch (error) {
     console.error("Failed to create client:", error);

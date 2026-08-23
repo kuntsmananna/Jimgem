@@ -50,6 +50,8 @@ export interface Expense {
    * `StaleWriteError` in orders.ts.
    */
   updatedAt: string;
+  /** Who saved it last, by name — see Order.updatedBy. */
+  updatedBy: string;
 }
 
 export interface ExpenseInput {
@@ -78,6 +80,7 @@ interface DbExpenseRow {
   vat_rate: string | null;
   /** A Date from the driver — see isoStamp in orders.ts. */
   updated_at: string | Date;
+  updated_by: string | null;
 }
 
 function mapExpense(
@@ -106,6 +109,7 @@ function mapExpense(
     netAmount: vatOn(Number(row.amount), row.vat_mode ?? "included", Number(row.vat_rate ?? 0)).net,
     noteUnverified: false,
     updatedAt: isoStamp(row.updated_at),
+    updatedBy: row.updated_by ?? "",
   };
 }
 
@@ -148,6 +152,7 @@ interface RawDbExpenseRow {
   business: string | null;
   note: string | null;
   updated_at: string | Date;
+  updated_by: string | null;
 }
 
 /** For createExpense/updateExpense's return value — resolves names for just the one affected row. */
@@ -156,13 +161,13 @@ async function mapSingleExpense(row: RawDbExpenseRow): Promise<Expense> {
   return mapExpense(row, names.categoryNameById, names.paymentMethodNameById, names.staffNameById);
 }
 
-export async function createExpense(input: ExpenseInput): Promise<Expense> {
+export async function createExpense(input: ExpenseInput, editor?: string): Promise<Expense> {
   const db = getDb();
   const { rows } = await db.query<RawDbExpenseRow>(
-    `INSERT INTO expenses (date, category_id, amount, payment_method_id, staff_id, business, note, vat_mode, vat_rate)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO expenses (date, category_id, amount, payment_method_id, staff_id, business, note, vat_mode, vat_rate, updated_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.business, input.note, input.vatMode, input.vatRate],
+    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.business, input.note, input.vatMode, input.vatRate, editor ?? null],
   );
   return mapSingleExpense(rows[0]);
 }
@@ -176,6 +181,8 @@ export async function updateExpense(
   id: number,
   input: ExpenseInput,
   expectedUpdatedAt?: string,
+  /** Who is saving, for the "last edited by" line. */
+  editor?: string,
 ): Promise<Expense> {
   const db = getDb();
   const values: unknown[] = [
@@ -190,10 +197,12 @@ export async function updateExpense(
     input.vatRate,
     id,
   ];
+  const editorAt = `$${values.push(editor ?? null)}`;
   const fresh = expectedUpdatedAt ? ` AND updated_at = $${values.push(expectedUpdatedAt)}` : "";
   const { rows } = await db.query<RawDbExpenseRow>(
     `UPDATE expenses SET date = $1, category_id = $2, amount = $3, payment_method_id = $4, staff_id = $5,
-            business = $6, note = $7, vat_mode = $8, vat_rate = $9, updated_at = now()
+            business = $6, note = $7, vat_mode = $8, vat_rate = $9, updated_at = now(),
+            updated_by = ${editorAt}
      WHERE id = $10${fresh}
      RETURNING *`,
     values,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateExpense, deleteExpense, restoreExpense, type ExpenseInput } from "@/lib/expenses";
 import { StaleWriteError } from "@/lib/orders";
+import { currentEditor } from "@/lib/editor";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expens
       await restoreExpense(Number(id));
       return NextResponse.json({ id: Number(id), restored: true });
     }
-    const expense = await updateExpense(Number(id), body, body.expectedUpdatedAt);
+    const expense = await updateExpense(Number(id), body, body.expectedUpdatedAt, await currentEditor());
     return NextResponse.json(expense);
   } catch (error) {
     // 409, not 500: the write was refused because the row moved on — see

@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { getOrders } from "./orders";
 import { orderNet, orderTotal, type Order } from "./orderTypes";
 import { normalizeClientName } from "./clientName";
+import { isoStamp } from "./orders";
 import type { VatView } from "./vatView";
 
 /**
@@ -28,6 +29,9 @@ export interface Client {
    */
   source: string;
   archivedAt: string | null;
+  /** When the row last changed, and who changed it — see Order.updatedAt. */
+  updatedAt: string;
+  updatedBy: string;
 }
 
 export interface ClientInput {
@@ -57,6 +61,8 @@ interface ClientRow {
   notes: string | null;
   source: string | null;
   archived_at: string | null;
+  updated_at: string | Date;
+  updated_by: string | null;
 }
 
 function mapClient(row: ClientRow): Client {
@@ -71,6 +77,8 @@ function mapClient(row: ClientRow): Client {
     notes: row.notes ?? "",
     source: row.source ?? "",
     archivedAt: row.archived_at,
+    updatedAt: isoStamp(row.updated_at),
+    updatedBy: row.updated_by ?? "",
   };
 }
 
@@ -123,25 +131,29 @@ export async function getClientsWithStats(vatView: VatView = "gross"): Promise<C
   });
 }
 
-export async function createClient(input: ClientInput): Promise<Client> {
+export async function createClient(input: ClientInput, editor?: string): Promise<Client> {
   const db = getDb();
   const { rows } = await db.query<ClientRow>(
-    `INSERT INTO clients (name, phone, email, source, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    `INSERT INTO clients (name, phone, email, source, notes, updated_by)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [
       input.name.trim(),
       input.phone.trim() || null,
       input.email.trim() || null,
       input.source.trim() || null,
       input.notes.trim() || null,
+      editor ?? null,
     ],
   );
   return mapClient(rows[0]);
 }
 
-export async function updateClient(id: number, input: ClientInput): Promise<Client> {
+export async function updateClient(id: number, input: ClientInput, editor?: string): Promise<Client> {
   const db = getDb();
   const { rows } = await db.query<ClientRow>(
-    `UPDATE clients SET name = $1, phone = $2, email = $3, source = $4, notes = $5 WHERE id = $6 RETURNING *`,
+    `UPDATE clients SET name = $1, phone = $2, email = $3, source = $4, notes = $5,
+            updated_at = now(), updated_by = $7
+     WHERE id = $6 RETURNING *`,
     [
       input.name.trim(),
       input.phone.trim() || null,
@@ -149,6 +161,7 @@ export async function updateClient(id: number, input: ClientInput): Promise<Clie
       input.source.trim() || null,
       input.notes.trim() || null,
       id,
+      editor ?? null,
     ],
   );
   return mapClient(rows[0]);

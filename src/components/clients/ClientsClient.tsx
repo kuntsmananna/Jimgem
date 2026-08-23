@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Phone, Mail, Link2, Users, Archive, Clock, Coins, ArrowDownAZ } from "lucide-react";
 import { Segmented } from "@/components/orders/OrderSheet";
 import type { ClientWithStats } from "@/lib/clients";
@@ -10,6 +10,7 @@ import { SERIES_COLORS } from "@/lib/chartPalette";
 import { LineChart } from "@/components/charts/LineChart";
 import { Modal } from "@/components/Modal";
 import { Field, TextInput } from "@/components/Field";
+import { LastEdited } from "@/components/LastEdited";
 import { PaneHeader } from "@/components/Pane";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
@@ -56,6 +57,27 @@ const SORTS = [
   { value: "name" as const, text: "A–Z", icon: <ArrowDownAZ size={13} /> },
 ];
 
+/**
+ * The list's columns, in one place: the header row and every client row
+ * lay themselves out with `LIST_COLUMNS`, so a width changed in one is
+ * changed in both. Six unlabelled numbers were readable only to whoever
+ * built them.
+ *
+ * Each carries the sentence its figure means. The header shows it on
+ * hover, and so does the cell — a number in a row is where the question
+ * "what is this?" actually gets asked.
+ */
+const LIST_COLUMNS = "grid-cols-[2fr_9rem_5rem_7rem_7rem_6rem]";
+
+const COLUMN_HELP = {
+  name: "The client, as they are stored. Renaming one renames them everywhere.",
+  phone: "Their phone number — also what the search box matches on.",
+  orders: "How many orders they have placed, offers included.",
+  spent: "What those orders come to, in the VAT convention set in the nav.",
+  last: "The date of their most recent order.",
+  due: "Still owed across their booked orders — the total less any deposit. Quotes are not counted.",
+} as const;
+
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
 
@@ -87,8 +109,19 @@ export function ClientsClient({
 }) {
   const router = useRouter();
   const { label: vatLabel } = useVatView();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState<number | null>(null);
+  /*
+   * `?client=<id>` opens that card directly — the Orders table's customer
+   * name and the order popup both link here. Read once, at mount: arriving
+   * from one of those links is a navigation, so the component mounts
+   * fresh; reading it on every render would fight anyone who then closed
+   * the card. The same rule the Orders page's `?order=` follows.
+   */
+  const [openId, setOpenId] = useState<number | null>(() => {
+    const wanted = Number(searchParams.get("client"));
+    return Number.isInteger(wanted) && wanted > 0 ? wanted : null;
+  });
   const [sort, setSort] = useState<"recent" | "spend" | "name">("recent");
 
   const live = useMemo(() => clients.filter((client) => !client.archivedAt), [clients]);
@@ -160,6 +193,18 @@ export function ClientsClient({
         />
 
         <div className="flex flex-col">
+          {/* Titles, at the quietest weight the app has: they name the
+              columns without competing with the rows they head. */}
+          <div
+            className={`grid ${LIST_COLUMNS} items-center gap-3 border-b border-line px-2 pb-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-soft/70 uppercase`}
+          >
+            <span title={COLUMN_HELP.name}>Client</span>
+            <span title={COLUMN_HELP.phone}>Phone</span>
+            <span title={COLUMN_HELP.orders}>Orders</span>
+            <span title={COLUMN_HELP.spent}>Spent</span>
+            <span title={COLUMN_HELP.last}>Last order</span>
+            <span title={COLUMN_HELP.due}>Due</span>
+          </div>
           {shown.map((client) => {
             const theirs = ordersByClient.get(client.id) ?? [];
             const balance = theirs.reduce((sum, line) => sum + Math.max(0, line.balance), 0);
@@ -167,18 +212,25 @@ export function ClientsClient({
               <button
                 key={client.id}
                 onClick={() => setOpenId(client.id)}
-                className="hover-line grid grid-cols-[2fr_9rem_5rem_7rem_7rem_6rem] items-center gap-3 rounded-lg px-2 py-2 text-left"
+                className={`hover-line grid ${LIST_COLUMNS} items-center gap-3 rounded-lg px-2 py-2 text-left`}
               >
-                <span className="min-w-0 truncate text-sm font-semibold text-ink">{client.name}</span>
-                <span className="truncate text-xs text-ink-soft tabular-nums">{client.phone || "—"}</span>
-                <span className="text-xs text-ink-soft tabular-nums">{client.orderCount || "—"}</span>
-                <span className="text-sm font-semibold text-ink tabular-nums">
+                <span className="min-w-0 truncate text-sm font-semibold text-ink" title={COLUMN_HELP.name}>
+                  {client.name}
+                </span>
+                <span className="truncate text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.phone}>
+                  {client.phone || "—"}
+                </span>
+                <span className="text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.orders}>
+                  {client.orderCount || "—"}
+                </span>
+                <span className="text-sm font-semibold text-ink tabular-nums" title={COLUMN_HELP.spent}>
                   {client.orderCount ? currency(client.totalSpent) : "—"}
                 </span>
-                <span className="text-xs text-ink-soft tabular-nums">
+                <span className="text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.last}>
                   {client.lastOrderDate ? formatOrderDate(client.lastOrderDate) : "—"}
                 </span>
                 <span
+                  title={COLUMN_HELP.due}
                   className={`text-xs font-semibold tabular-nums ${balance > 0 ? "text-ink" : "text-ink-soft"}`}
                 >
                   {balance > 0 ? currency(balance) : "—"}
@@ -201,20 +253,34 @@ export function ClientsClient({
         <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
 
         <div className="grid grid-cols-2 gap-3">
-          <Tile label="Clients" value={nf.format(live.length)} note={`${withOrders} have ordered`} tile="peach" />
+          <Tile
+            label="Clients"
+            value={nf.format(live.length)}
+            note={`${withOrders} have ordered`}
+            help="Everyone on the list who hasn't been archived — including those who have never ordered."
+            tile="peach"
+          />
           <Tile
             label="Repeat rate"
             value={withOrders > 0 ? `${Math.round((repeat / withOrders) * 100)}%` : "—"}
             note={`${repeat} came back`}
+            help="The share of clients who have ordered more than once — whether the business is compounding."
             tile="mint"
           />
           <Tile
             label="Average client"
             value={withOrders > 0 ? currency(totalSpent / withOrders) : "—"}
             note="of those who ordered"
+            help="Total spend divided by the clients who have actually ordered — the ones who never did would drag it down without meaning anything."
             tile="lavender"
           />
-          <Tile label="Outstanding" value={currency(owed)} note="booked, not yet paid" tile="sage" />
+          <Tile
+            label="Outstanding"
+            value={currency(owed)}
+            note="booked, not yet paid"
+            help="What is still owed across every booked order — the total less any deposit. Quotes are not counted."
+            tile="sage"
+          />
         </div>
 
         <section className="min-w-0 rounded-card border border-line bg-card p-5">
@@ -280,15 +346,18 @@ function Tile({
   label,
   value,
   note,
+  help,
   tile,
 }: {
   label: string;
   value: string;
   note: string;
+  /** The sentence behind the number, on hover — see COLUMN_HELP. */
+  help: string;
   tile: "peach" | "mint" | "lavender" | "sage";
 }) {
   return (
-    <div className="rounded-card p-5" style={{ background: `var(--color-tile-${tile})` }}>
+    <div title={help} className="rounded-card p-5" style={{ background: `var(--color-tile-${tile})` }}>
       <p className="text-xs font-semibold text-ink/70">{label}</p>
       <p className="mt-1 font-display text-2xl font-extrabold text-ink tabular-nums">{value}</p>
       <p className="mt-0.5 text-[11px] text-ink/60">{note}</p>
@@ -544,6 +613,7 @@ function ClientModal({
             {busy ? "Saving…" : "Save"}
           </button>
         </div>
+        <LastEdited at={client.updatedAt} by={client.updatedBy} />
       </div>
     </Modal>
   );

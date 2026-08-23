@@ -408,6 +408,12 @@ export interface Order {
    * silently wins.
    */
   updatedAt: string;
+  /**
+   * Who saved it last, by name — empty for a row last touched before this
+   * was recorded. A name rather than a staff id on purpose: it says who
+   * did it *at the time* and keeps saying so if they are later renamed.
+   */
+  updatedBy: string;
 }
 
 export interface OrderInput {
