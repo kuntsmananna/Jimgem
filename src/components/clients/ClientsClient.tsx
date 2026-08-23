@@ -13,6 +13,7 @@ import { PaneHeader } from "@/components/Pane";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { useVatView } from "@/components/VatViewContext";
 import { formatOrderDate } from "@/lib/orderTypes";
+import { count, currency } from "@/lib/money";
 
 /** A SUMIT document, flattened for this page. */
 export interface ClientDocumentLine {
@@ -75,8 +76,7 @@ const COLUMN_HELP = {
   due: "Still owed across their booked orders — the total less any deposit. Quotes are not counted.",
 } as const;
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
+
 
 /**
  * The Clients page: the list on the left with most of the width, every
@@ -172,7 +172,7 @@ export function ClientsClient({
         <PaneHeader
           title={
             <>
-              Clients <span className="font-normal opacity-60">({nf.format(shown.length)})</span>
+              Clients <span className="font-normal opacity-60">({count(shown.length)})</span>
             </>
           }
           action={
@@ -252,7 +252,7 @@ export function ClientsClient({
         <div className="grid grid-cols-2 gap-3">
           <Tile
             label="Clients"
-            value={nf.format(live.length)}
+            value={count(live.length)}
             note={`${withOrders} have ordered`}
             help="Everyone on the list who hasn't been archived — including those who have never ordered."
             tile="peach"
@@ -292,7 +292,7 @@ export function ClientsClient({
             ]}
             xLabels={months}
             height={150}
-            valueFormat={(v) => `${nf.format(v)} orders`}
+            valueFormat={(v) => `${count(v)} orders`}
           />
         </section>
 

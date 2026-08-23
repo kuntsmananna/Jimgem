@@ -4,14 +4,14 @@ import { useState } from "react";
 import { Phone, Mail, Link2, Users, Archive, UserRound } from "lucide-react";
 import type { Client } from "@/lib/clients";
 import { Modal } from "@/components/Modal";
+import { currency } from "@/lib/money";
 import { Field, TextInput } from "@/components/Field";
 import { LastEdited } from "@/components/LastEdited";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { formatOrderDate } from "@/lib/orderTypes";
 import type { ClientDocumentLine, ClientOrderLine } from "./ClientsClient";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
+
 
 /**
  * One client: their details, editable, and every order they have placed.

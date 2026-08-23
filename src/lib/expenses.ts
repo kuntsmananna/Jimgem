@@ -2,7 +2,8 @@ import { getDb } from "./db";
 import { MONTH_NAMES_EN } from "./financials";
 import { getExpenseCategories, getPaymentMethods, getStaff } from "./settings";
 import { vatOn, type VatMode } from "./orderTypes";
-import { isoStamp, StaleWriteError } from "./orders";
+import { StaleWriteError } from "./orders";
+import { isoStamp } from "./stamp";
 
 export interface Expense {
   /** The DB row id, as a string. Every expense is a row. */
@@ -78,7 +79,7 @@ interface DbExpenseRow {
   sheet_key: string | null;
   vat_mode: VatMode | null;
   vat_rate: string | null;
-  /** A Date from the driver — see isoStamp in orders.ts. */
+  /** A Date from the driver — see isoStamp in stamp.ts. */
   updated_at: string | Date;
   updated_by: string | null;
 }

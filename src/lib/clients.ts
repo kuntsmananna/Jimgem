@@ -2,7 +2,7 @@ import { getDb } from "./db";
 import { getOrders } from "./orders";
 import { orderNet, orderTotal, type Order } from "./orderTypes";
 import { normalizeClientName } from "./clientName";
-import { isoStamp } from "./orders";
+import { isoStamp } from "./stamp";
 import type { VatView } from "./vatView";
 
 /**
