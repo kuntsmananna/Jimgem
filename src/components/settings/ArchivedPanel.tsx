@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw, Trash2 } from "lucide-react";
 import type { ArchivedItem } from "@/lib/settings";
-import { PaneHeader } from "./Pane";
+import { PaneHeader } from "@/components/Pane";
 
 /**
  * Settings → Data → Archived. Everything retired from every list, in one

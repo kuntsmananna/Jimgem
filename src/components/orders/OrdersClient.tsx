@@ -140,6 +140,7 @@ export function OrdersClient({
    * for, what kind of event, where it is going, and the note. Not the
    * money or the dates, which have columns and a scope of their own.
    */
+  const needle = query.trim();
   const bySearch = useMemo(
     () =>
       orders.filter((o) => matchesSearch(query, [o.customer, o.customerType, o.location, o.notes])),
@@ -426,8 +427,8 @@ export function OrdersClient({
                 // A search that finds nothing is its own answer: pointing
                 // at the time scope would send you widening a window that
                 // was never the reason the table is empty.
-                query.trim() && bySearch.length === 0
-                  ? `Nothing matches “${query.trim()}”.`
+                needle && bySearch.length === 0
+                  ? `Nothing matches “${needle}”.`
                   : filtered.length > 0
                     ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
                     : "No orders match these filters."

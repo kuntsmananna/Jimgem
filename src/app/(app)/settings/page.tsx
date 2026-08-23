@@ -137,7 +137,7 @@ export default async function SettingsPage() {
             <div className="columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <ImportPanel />
               <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} usage={sumitUsage} />
-              <SumitProbePanel />
+              <SumitProbePanel usage={sumitUsage} />
               <ArchivedPanel items={archived} />
             </div>
           ),

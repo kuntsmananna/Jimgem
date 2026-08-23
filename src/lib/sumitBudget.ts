@@ -71,6 +71,9 @@ function isMissingCallLog(error: unknown): boolean {
   return code === "42P01" || /sumit_api_calls.*does not exist/i.test(message);
 }
 
+/** So the diagnostic below is written once a process, not once a call. */
+let loggedMissingCallLog = false;
+
 const NOTHING_COUNTED: SumitUsage = {
   used: 0,
   budget: SUMIT_CALL_BUDGET,
@@ -79,11 +82,6 @@ const NOTHING_COUNTED: SumitUsage = {
   failed: 0,
   available: false,
 };
-
-/** The calendar month a call belongs to, as "YYYY-MM". */
-function currentPeriod(): string {
-  return new Date().toISOString().slice(0, 7);
-}
 
 /**
  * What this month has cost so far.
@@ -96,12 +94,14 @@ export async function getSumitUsage(): Promise<SumitUsage> {
   let rows: { endpoint: string; calls: string; failed: string }[];
   try {
     ({ rows } = await db.query<{ endpoint: string; calls: string; failed: string }>(
+      // `called_at >= date_trunc(...)` rather than `to_char(...) = 'YYYY-MM'`:
+      // the same month, but a range the `sumit_api_calls_month_idx` index
+      // migration 020 ships can actually be used for.
       `SELECT endpoint, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS failed
          FROM sumit_api_calls
-        WHERE to_char(called_at, 'YYYY-MM') = $1
+        WHERE called_at >= date_trunc('month', now())
         GROUP BY endpoint
         ORDER BY count(*) DESC`,
-      [currentPeriod()],
     ));
   } catch (error) {
     if (!isMissingCallLog(error)) throw error;
@@ -114,16 +114,23 @@ export async function getSumitUsage(): Promise<SumitUsage> {
      * which database the app is actually talking to. One extra query, only
      * on the path that is already broken.
      */
-    try {
-      const { rows } = await db.query<{ db: string; schema: string }>(
-        "SELECT current_database() AS db, current_schema() AS schema",
-      );
-      console.error(
-        `SUMIT call log missing: no sumit_api_calls in ${rows[0]?.db}.${rows[0]?.schema} — ` +
-          "run scripts/migrate-020-sumit-call-log.sql against that database.",
-      );
-    } catch {
-      console.error("SUMIT call log missing: sumit_api_calls does not exist.");
+    // Once per process, not once per call: the table's absence cannot
+    // change mid-run, and `sumitPost` asks before every SUMIT call — so
+    // logging it each time would put a spare round trip and a line of noise
+    // in front of each one.
+    if (!loggedMissingCallLog) {
+      loggedMissingCallLog = true;
+      try {
+        const { rows } = await db.query<{ db: string; schema: string }>(
+          "SELECT current_database() AS db, current_schema() AS schema",
+        );
+        console.error(
+          `SUMIT call log missing: no sumit_api_calls in ${rows[0]?.db}.${rows[0]?.schema} — ` +
+            "run scripts/migrate-020-sumit-call-log.sql against that database.",
+        );
+      } catch {
+        console.error("SUMIT call log missing: sumit_api_calls does not exist.");
+      }
     }
     return NOTHING_COUNTED;
   }

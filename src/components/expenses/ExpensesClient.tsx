@@ -53,6 +53,7 @@ export function ExpensesClient({
   /** Empty means every category — the same default the Orders filters use. */
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
+  const needle = query.trim();
   const [collapsed, setCollapsed] = useState<Set<ExpensePane>>(() => new Set(collapsedPanes));
 
   /**
@@ -299,8 +300,8 @@ export function ExpensesClient({
           ))}
           {entries.length === 0 && (
             <p className="text-sm text-ink-soft">
-              {query.trim()
-                ? `Nothing matches “${query.trim()}” this period.`
+              {needle
+                ? `Nothing matches “${needle}” this period.`
                 : categoryFilter.size > 0
                   ? "Nothing in those categories this period."
                   : "No expenses logged for this period yet."}

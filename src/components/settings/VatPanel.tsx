@@ -2,7 +2,7 @@
 
 import { VAT_MODES, VAT_REGISTERED_FROM, type Prices } from "@/lib/orderTypes";
 import { RateList, patchRate } from "./RateList";
-import { PaneHeader } from "./Pane";
+import { PaneHeader } from "@/components/Pane";
 
 /**
  * Settings → Lists → VAT. One rate, and what it means.

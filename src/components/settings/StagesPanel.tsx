@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductionStage } from "@/lib/orderTypes";
 import { ArchiveButton } from "./ArchiveButton";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 interface StageDraft {
   label: string;

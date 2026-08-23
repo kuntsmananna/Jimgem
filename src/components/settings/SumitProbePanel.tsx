@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Check, Copy, Loader2, Radar } from "lucide-react";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import type { SumitUsage } from "@/lib/sumitBudget";
 
 /**
  * Runs the read-only SUMIT probe and shows its report. Deliberately a raw
@@ -10,7 +11,11 @@ import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
  * designing the integration, meant to be read once and copied out, and a
  * fixed-width report survives that trip where a laid-out one wouldn't.
  */
-export function SumitProbePanel() {
+export function SumitProbePanel({ usage }: { usage: SumitUsage }) {
+  // The meter governs the probe too, not just the sync. It is the heavier
+  // spender of the two, so a live button at 225/225 would promise a report
+  // that `sumitPost` refuses on its first call and throws away.
+  const spent = usage.available && usage.used >= usage.budget;
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +65,7 @@ export function SumitProbePanel() {
         description={<>Reconnaissance for designing the integration. Read-only, and it goes away once that is built.</>}
         action={<button
           onClick={runProbe}
-          disabled={busy}
+          disabled={busy || spent}
           className={`flex items-center gap-2 ${PANE_ACTION_CLASS} disabled:opacity-60`}
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Radar size={15} />}
@@ -80,6 +85,12 @@ export function SumitProbePanel() {
         250 SUMIT calls, and repeated runs are most of why August went over. It answers questions about the integration&apos;s
         design, not about the business — nothing here changes what the app shows.
       </p>
+
+      {spent && (
+        <p className="mt-2 text-[11px] font-semibold text-red-700">
+          The month&apos;s call budget is spent, so the probe is paused until the 1st.
+        </p>
+      )}
 
       <div className="mt-4 flex items-center gap-3">
 

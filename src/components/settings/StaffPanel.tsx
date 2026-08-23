@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffAccount } from "@/lib/settings";
-import { PaneHeader } from "./Pane";
+import { PaneHeader } from "@/components/Pane";
 
 export function StaffPanel({ items }: { items: StaffAccount[] }) {
   const router = useRouter();

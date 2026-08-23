@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Loader2 } from "lucide-react";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 interface ImportResult {
   ordersImported: number;

@@ -14,7 +14,7 @@ import {
 import { packageTypeIconElement } from "@/lib/icons";
 import { FlavorRow } from "@/components/orders/PackageLineEditor";
 import { TrayPreview } from "@/components/orders/TrayPreview";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 /**
  * A preset being edited, held in **units of one package** rather than in

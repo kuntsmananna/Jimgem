@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, Mail, Link2, Users, Archive, Clock, Coins, ArrowDownAZ } from "lucide-react";
+import { Segmented } from "@/components/orders/OrderSheet";
 import type { ClientWithStats } from "@/lib/clients";
 import { looksLikeSameClient } from "@/lib/clientName";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import { LineChart } from "@/components/charts/LineChart";
 import { Modal } from "@/components/Modal";
 import { Field, TextInput } from "@/components/Field";
-import { PaneHeader } from "@/components/settings/Pane";
+import { PaneHeader } from "@/components/Pane";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { useVatView } from "@/components/VatViewContext";
@@ -42,15 +43,18 @@ export interface ClientOrderLine {
 }
 
 /**
- * How the list can be ordered. Each carries an icon, because three words
- * in a row of pills say what they sort by but not *that* they sort —
- * the mark is what makes the group read as one control.
+ * How the list can be ordered, as the app's own three-option track.
+ *
+ * `Segmented` rather than a fourth hand-written pill row: it takes its
+ * tones from the surface it sits on, which is exactly what these need
+ * inside the header band. Each option carries an icon, because three
+ * words in a row say what they sort by but not *that* they sort.
  */
 const SORTS = [
-  { id: "recent", label: "Recent", icon: Clock },
-  { id: "spend", label: "Spend", icon: Coins },
-  { id: "name", label: "A–Z", icon: ArrowDownAZ },
-] as const;
+  { value: "recent" as const, text: "Recent", icon: <Clock size={13} /> },
+  { value: "spend" as const, text: "Spend", icon: <Coins size={13} /> },
+  { value: "name" as const, text: "A–Z", icon: <ArrowDownAZ size={13} /> },
+];
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(Math.round(n))}`;
@@ -150,22 +154,7 @@ export function ClientsClient({
                 label="Search clients by name, phone or email"
                 className="w-48"
               />
-              {/* The sort states its colours in the band's own pair, so it
-                  follows the lid rather than needing its own black. */}
-              {SORTS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setSort(id)}
-                  aria-pressed={sort === id}
-                  title={`Sort by ${label.toLowerCase()}`}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    sort === id ? "bg-band-ink text-band" : "text-band-ink/60 hover:text-band-ink"
-                  }`}
-                >
-                  <Icon size={13} />
-                  {label}
-                </button>
-              ))}
+              <Segmented label="Sort clients" value={sort} options={SORTS} onChange={setSort} size="md" />
             </div>
           }
         />
@@ -372,7 +361,9 @@ function ClientModal({
     await fetch(`/api/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ archived: true }),
+      // `archive`, the key the settings routes already use for the other
+      // eight lists — one convention rather than two.
+      body: JSON.stringify({ archive: true }),
     });
     setBusy(false);
     onSaved();
@@ -530,16 +521,15 @@ function ClientModal({
           allows: it is the one button here that changes what the page
           shows rather than what the client says.
         */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex justify-end gap-2">
           <button
             onClick={archive}
             disabled={busy}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-black/[0.06] hover:text-ink disabled:opacity-60"
+            className="mr-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-black/[0.06] hover:text-ink disabled:opacity-60"
           >
             <Archive size={13} />
             Archive
           </button>
-          <div className="flex gap-2">
           <button
             onClick={onClose}
             className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
@@ -553,7 +543,6 @@ function ClientModal({
           >
             {busy ? "Saving…" : "Save"}
           </button>
-          </div>
         </div>
       </div>
     </Modal>

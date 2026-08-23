@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderType } from "@/lib/settings";
 import { ORDER_TYPE_ICON_KEYS, orderTypeIconElement } from "@/lib/icons";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 const DEFAULT_COLOR = "#f6d9a8";
 

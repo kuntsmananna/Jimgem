@@ -325,9 +325,12 @@ body {
 }
 
 /* Ghost hover states nested inside a dark line — the table's
-   click-to-edit cells tint themselves with black, invisible here. */
-.orders-rows > tr:hover button:hover,
-.hover-line:hover button:hover {
+   click-to-edit cells tint themselves with black, invisible here.
+   A cell whose value is a chip is excluded at the source rather than
+   out-scored by a second rule below: it deepens the chip instead of
+   drawing a box, and one mechanism should stay one rule. */
+.orders-rows > tr:hover button:hover:not(.editable-cell.is-chip),
+.hover-line:hover button:hover:not(.editable-cell.is-chip) {
   background-color: --alpha(var(--color-cream) / 16%);
 }
 
@@ -353,20 +356,10 @@ body {
 /*
  * A cell whose value is already a chip says "editable" by deepening the
  * chip, not by drawing a second box around it — two nested rounded shapes
- * read as a bug, and the chip is the target either way.
+ * read as a bug, and the chip is the target either way. The ghost-hover
+ * rule above excludes the same case, so this holds on the dark half too.
  */
 .editable-cell.is-chip:hover {
-  background-color: transparent;
-}
-
-/*
- * ...including inside a hovered line, where the ghost-hover rule above
- * (`.hover-line:hover button:hover`) would otherwise draw that second box
- * back in — it matches an editable cell too, and at a weight this rule has
- * to out-score rather than rely on order.
- */
-.orders-rows > tr:hover .editable-cell.is-chip:hover,
-.hover-line:hover .editable-cell.is-chip:hover {
   background-color: transparent;
 }
 

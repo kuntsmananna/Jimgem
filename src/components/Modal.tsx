@@ -3,6 +3,7 @@
 import { createContext, useContext, useState } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayDismiss } from "./useOverlayDismiss";
+import { BAND_CLASS } from "./Pane";
 
 /**
  * The empty middle of the modal's title row, offered to whatever is
@@ -60,23 +61,24 @@ export function Modal({
         className={`max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
       >
         {/*
-          The title row is a band, the same lid every Settings pane wears
-          (`PaneHeader`) and in the same two tokens — a popup opens over a
-          page of cream cards and needs a top edge of its own, or its first
-          line reads as one more row of whatever is behind it.
+          The title row wears the same lid every pane does — `BAND_CLASS`,
+          so the geometry and the tones are stated in one place — and
+          arranges its own contents: a popup opens over a page of cream
+          cards and needs a top edge of its own, or its first line reads as
+          one more row of whatever is behind it.
 
           Title and close both take equal space so whatever sits in the
           slot is centred on the dialog, not on the gap left over after a
           title of whatever length.
         */}
-        <div className="-mx-6 -mt-6 mb-4 flex items-center gap-4 rounded-t-card bg-band px-6 py-4">
-          <h2 className="flex-1 truncate font-display text-lg font-bold text-band-ink">{title}</h2>
+        <div className={`${BAND_CLASS} flex items-center gap-4`}>
+          <h2 className="flex-1 truncate font-display text-lg font-bold">{title}</h2>
           <div ref={setSlot} className="flex shrink-0 items-center" />
           <div className="flex flex-1 justify-end">
             <button
               onClick={onClose}
               aria-label="Close"
-              className="rounded-full px-2 py-1 text-lg font-semibold text-band-ink/70 transition hover:bg-band-ink/15 hover:text-band-ink"
+              className="rounded-full px-2 py-1 text-lg font-semibold opacity-70 transition hover:bg-band-ink/15 hover:opacity-100"
             >
               ×
             </button>

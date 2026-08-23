@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import { TextInput } from "@/components/Field";
 
 /**
  * The one search field, shared by Orders, Expenses and Clients.
@@ -36,7 +37,10 @@ export function SearchInput({
         aria-hidden
         className="pointer-events-none absolute left-2.5 text-current opacity-50"
       />
-      <input
+      {/* `TextInput` rather than a bare `.input`, which is the rule the
+          primitive exists for: it carries the placeholder that
+          `:placeholder-shown` needs to classify the field. */}
+      <TextInput
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -47,7 +51,7 @@ export function SearchInput({
         // sits alone in a toolbar with nothing around it to say where it
         // starts. `border-ink/15` rather than `border-line` so it is also
         // visible on the Clients band, which is close to `line` in tone.
-        className="input w-full border-ink/15 py-1.5 pr-7 pl-7.5 text-xs focus:border-accent"
+        className="w-full border-ink/15 py-1.5 pr-7 pl-7.5 text-xs focus:border-accent"
         // Escape clears rather than closing anything: this sits inside
         // pages whose overlays also listen for it, and a search box that
         // swallowed the key would strand a half-typed query.

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PricedOption } from "@/lib/orderTypes";
 import { ArchiveButton } from "./ArchiveButton";
 import { RateList, patchRate } from "./RateList";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 /**
  * A list of named things with a price each — displays, and delivery

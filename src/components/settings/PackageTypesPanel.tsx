@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PackageType } from "@/lib/settings";
 import { packageTypeIconElement } from "@/lib/icons";
 import { ArchiveButton } from "./ArchiveButton";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 export function PackageTypesPanel({ items }: { items: PackageType[] }) {
   const router = useRouter();

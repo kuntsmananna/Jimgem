@@ -4,7 +4,7 @@ import { useState, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { ArchiveButton } from "./ArchiveButton";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
 type Resource = "payment-methods" | "expense-categories";
 

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
-import { PANE_ACTION_CLASS, PaneHeader } from "./Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import type { SumitUsage } from "@/lib/sumitBudget";
 import { InfoTip } from "@/components/InfoTip";
 
 interface SyncResult {
@@ -32,7 +33,7 @@ export function SumitSyncPanel({
   lastSync: string | null;
   documentCount: number;
   /** This month's metered calls — see sumitBudget.ts. */
-  usage: { used: number; budget: number; limit: number; failed: number; available: boolean };
+  usage: SumitUsage;
 }) {
   const spent = usage.available && usage.used >= usage.budget;
   const router = useRouter();
@@ -69,7 +70,7 @@ export function SumitSyncPanel({
         title="SUMIT documents"
         description={<>Copied here so clients and orders can show them. Nothing is ever written to SUMIT.</>}
         action={
-          <div className="flex items-center gap-2 text-band-ink">
+          <div className="flex items-center gap-2">
             <InfoTip
               label="Sync now"
               text="Reads the documents SUMIT issued in the last 30 days — and up to a year ahead, since invoices get dated forward — into Jimgem's copy, adding new ones and updating any that changed. One API call, plus one per invoice whose VAT breakdown has never been fetched."

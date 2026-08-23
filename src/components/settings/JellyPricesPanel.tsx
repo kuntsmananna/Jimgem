@@ -3,7 +3,7 @@
 import { UNIT_TIERS, type Prices } from "@/lib/orderTypes";
 import type { ContentPreset } from "@/lib/settings";
 import { RateList, patchRate } from "./RateList";
-import { PaneHeader } from "./Pane";
+import { PaneHeader } from "@/components/Pane";
 
 /**
  * Settings → Lists → Jelly prices. What the jelly itself costs.

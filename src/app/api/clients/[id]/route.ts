@@ -16,9 +16,11 @@ export async function PATCH(request: NextRequest, context: RouteContext<"/api/cl
   const body = await request.json();
 
   try {
-    if (typeof body.archived === "boolean") {
-      await archiveClient(id, body.archived);
-      return NextResponse.json({ id, archived: body.archived });
+    // `archive`, the same key /api/settings/[resource]/[id] takes for the
+    // other eight lists, so archiving speaks one convention app-wide.
+    if (typeof body.archive === "boolean") {
+      await archiveClient(id, body.archive);
+      return NextResponse.json({ id, archived: body.archive });
     }
     const name = String(body.name ?? "").trim();
     if (!name) {

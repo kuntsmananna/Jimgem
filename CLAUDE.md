@@ -530,7 +530,9 @@ iteration (not guessed) — define these as `@theme` tokens in
   left of the modal's save row — as far from Save as the row allows.
   `clients` is in `ARCHIVED_SOURCES` like every other list, so Settings →
   Data → Archived restores them; a row that can be retired and is missing
-  from that list is a row that vanishes for good. The hard delete beside
+  from that list is a row that vanishes for good. The route takes
+  `{ archive: boolean }`, the same key `/api/settings/[resource]/[id]`
+  uses for the other eight lists. The hard delete beside
   it is refused by the database while any order still points at the
   client, which is the intended answer, not a bug.
 - **Every owner-managed list archives, never deletes** — flavors, order
@@ -1055,8 +1057,9 @@ scope beside it: with two options both worth seeing, a dropdown hides
 half the control.
 
 **Every Settings pane wears a header band** (`PaneHeader` in
-`settings/Pane.tsx`), **and so does every popup** (`Modal`'s title row)
-**and the Clients list**:
+`src/components/Pane.tsx` — outside `settings/`, because three surfaces
+wear it), **and so does every popup** (`Modal`'s title row, through the
+shared `BAND_CLASS`) **and the Clients list**:
 title, what the pane is for, and its one action, drawn in
 `--color-band` / `--color-band-ink`. Two tokens rather than
 cream-on-black, so the band can be re-lit — light band, ink text — by

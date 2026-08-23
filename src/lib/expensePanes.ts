@@ -29,6 +29,6 @@ export function parseCollapsedPanes(value: string | undefined): ExpensePane[] {
   return PANES.filter((pane) => folded.includes(pane));
 }
 
-export function serializeCollapsedPanes(panes: Iterable<ExpensePane>): string {
-  return PANES.filter((pane) => new Set(panes).has(pane)).join(",");
+export function serializeCollapsedPanes(panes: Set<ExpensePane>): string {
+  return PANES.filter((pane) => panes.has(pane)).join(",");
 }
