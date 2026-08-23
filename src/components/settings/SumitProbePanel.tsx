@@ -46,7 +46,17 @@ export function SumitProbePanel() {
   return (
     <section className="min-w-0 rounded-card border border-line bg-card p-6">
       <PaneHeader
-        title="SUMIT"
+        title={
+          <span className="flex items-center gap-2">
+            SUMIT probe
+            {/* The one control in Settings that can spend most of a month's
+                API budget in a single press, so it says so before it is
+                pressed rather than in the meter afterwards. */}
+            <span className="rounded-full bg-tile-peach px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] text-ink uppercase">
+              Advanced only
+            </span>
+          </span>
+        }
         description={<>Reconnaissance for designing the integration. Read-only, and it goes away once that is built.</>}
         action={<button
           onClick={runProbe}
@@ -61,6 +71,14 @@ export function SumitProbePanel() {
         Looks at what SUMIT holds — documents, customers, expenses by month — and lines it up against the orders here.
         Read-only: nothing is written to SUMIT or to this database. It exists to design the integration, and goes away
         once that&apos;s built.
+      </p>
+
+      {/* Stated as a cost, not as a scolding: the number is what makes the
+          warning act on anyone, and it is the reason August went over. */}
+      <p className="mt-3 rounded-xl bg-tile-peach px-3 py-2 text-xs font-medium text-ink">
+        <span className="font-bold">Don&apos;t press this in normal use.</span> One run spends about 30 of the month&apos;s
+        250 SUMIT calls, and repeated runs are most of why August went over. It answers questions about the integration&apos;s
+        design, not about the business — nothing here changes what the app shows.
       </p>
 
       <div className="mt-4 flex items-center gap-3">

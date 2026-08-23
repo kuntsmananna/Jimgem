@@ -595,6 +595,15 @@ iteration (not guessed) — define these as `@theme` tokens in
   days**, not 90, for the same reason: a wider one re-reads settled
   history. A run also stops before the budget does and reports what it
   deferred, rather than dying mid-batch.
+- **The probe is marked "Advanced only" and says what it costs.** One run
+  spends about 30 of the month's 250 calls, which is most of how August
+  went over; the pane states that as a number in a highlighted note,
+  because a number is what makes a warning act on anyone. August's
+  pre-meter total is entered in the log by
+  `scripts/migrate-021-sumit-august-baseline.sql` as one row per call —
+  the shape the table stores — so the meter reads 328 rather than a
+  reassuring 0 for a month already past its limit. Nothing clears them:
+  usage is counted per calendar month, so they leave on 1 September.
 - **The call meter degrades rather than taking Settings down.**
   `getSumitUsage` returns `available: false` when `sumit_api_calls` is
   missing (migration 020 not yet run against this database) instead of
