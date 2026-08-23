@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
+  isBooked,
+  orderBalance,
   stageMap,
   unitsPerPackageMap,
   type Order,
@@ -25,6 +27,8 @@ import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
+import { ClientModal } from "@/components/clients/ClientModal";
+import { looksLikeSameClient } from "@/lib/clientName";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -130,6 +134,15 @@ export function OrdersClient({
   const [openKey, setOpenKey] = useState<string | null>(() => searchParams.get("order"));
   const [query, setQuery] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
+  /**
+   * The client whose card is open over the table.
+   *
+   * Opened here rather than by navigating to /clients: the question a
+   * customer name raises is "who is this?", asked while working the orders
+   * list — and answering it by throwing the page away, with its scope, its
+   * search and its scroll position, is a poor trade for one lookup.
+   */
+  const [openClientId, setOpenClientId] = useState<number | null>(null);
   const undoToast = useUndoToast();
   const [batchNote, setBatchNote] = useState<string | null>(null);
 
@@ -197,6 +210,7 @@ export function OrdersClient({
   );
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
+  const openClient = openClientId === null ? null : (clients.find((c) => c.id === openClientId) ?? null);
 
   const paymentOptions = useMemo(
     () =>
@@ -298,6 +312,38 @@ export function OrdersClient({
   return (
     <div className="flex flex-col gap-5">
       <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
+
+      {/*
+        Their card, over the table. The orders it lists come from the ones
+        already on this page rather than a second read, and it gets no
+        `documents` — the Orders page does not load SUMIT's mirror, and the
+        section hides itself rather than reporting nothing synced.
+      */}
+      {openClient && (
+        <ClientModal
+          client={openClient}
+          orders={orders
+            .filter((order) => order.clientId === openClient.id)
+            .map((order) => ({
+              key: order.key,
+              clientId: openClient.id,
+              date: order.date,
+              customer: order.customer,
+              customerType: order.customerType,
+              productionStatus: order.productionStatus,
+              booked: isBooked(order, stageIndex),
+              balance: isBooked(order, stageIndex) ? orderBalance(order) : 0,
+            }))}
+          similar={clients.filter(
+            (other) => other.id !== openClient.id && looksLikeSameClient(other.name, openClient.name),
+          )}
+          onClose={() => setOpenClientId(null)}
+          onSaved={() => {
+            setOpenClientId(null);
+            refresh();
+          }}
+        />
+      )}
       {batchNote && (
         <p className="text-xs font-semibold text-ink-soft">
           {batchNote}{" "}
@@ -446,6 +492,7 @@ export function OrdersClient({
               onToggleAll={toggleAll}
               onChanged={refresh}
               onOpen={setOpenKey}
+              onOpenClient={setOpenClientId}
               emptyNote={
                 // A search that finds nothing is its own answer: pointing
                 // at the time scope would send you widening a window that

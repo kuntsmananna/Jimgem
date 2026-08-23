@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import type { Order, Rates } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
+import { ClipboardList } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { OrderForm } from "./OrderForm";
 
@@ -37,7 +38,12 @@ export function OrderFormModal({
   }, [dirty, onClose]);
 
   return (
-    <Modal title={order ? "Edit order" : "Add order"} onClose={requestClose} wide>
+    <Modal
+      title={order ? "Edit order" : "Add order"}
+      icon={<ClipboardList size={17} />}
+      onClose={requestClose}
+      wide
+    >
       <OrderForm
         order={order}
         flavors={flavors}

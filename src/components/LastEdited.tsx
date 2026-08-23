@@ -15,7 +15,10 @@ export function LastEdited({ at, by }: { at: string; by: string }) {
   if (!when) return null;
 
   return (
-    <p className="mt-4 text-[11px] text-ink-soft/60">
+    // On the save row, at its left end, rather than on a line of its own:
+    // it is a caption, and a caption should not make a popup taller. The
+    // row already reserves this height for the buttons.
+    <p className="mr-auto text-[11px] text-ink-soft/60">
       Last edited {when}
       {by ? ` by ${by}` : ""}
     </p>

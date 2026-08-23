@@ -29,11 +29,20 @@ export function useModalHeaderSlot(): HTMLElement | null {
 
 export function Modal({
   title,
+  icon,
   onClose,
   children,
   wide = false,
 }: {
   title: string;
+  /**
+   * What kind of popup this is, as a mark before the title.
+   *
+   * Two popups can be open at once — a client card over an order form —
+   * and both are a band with a name on it. The icon is what tells them
+   * apart at a glance, before the name has been read.
+   */
+  icon?: React.ReactNode;
   onClose: () => void;
   children: React.ReactNode;
   wide?: boolean;
@@ -72,7 +81,10 @@ export function Modal({
           title of whatever length.
         */}
         <div className={`${BAND_CLASS} flex items-center gap-4`}>
-          <h2 className="flex-1 truncate font-display text-lg font-bold">{title}</h2>
+          <h2 className="flex flex-1 items-center gap-2 truncate font-display text-lg font-bold">
+            {icon && <span className="shrink-0 opacity-70">{icon}</span>}
+            <span className="truncate">{title}</span>
+          </h2>
           <div ref={setSlot} className="flex shrink-0 items-center" />
           <div className="flex flex-1 justify-end">
             <button

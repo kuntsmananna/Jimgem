@@ -497,7 +497,10 @@ export function OrderForm({
           <span className="text-xs text-ink-soft">Add a customer name to save</span>
         )}
 
-        <span className="flex-1" />
+        {/* At the row's left end, where it costs no height: a caption
+            should not make an already tall popup taller. */}
+        {isEdit && <LastEdited at={order!.updatedAt} by={order!.updatedBy} />}
+        {!isEdit && <span className="flex-1" />}
         <button
           onClick={onCancel}
           className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
@@ -516,9 +519,6 @@ export function OrderForm({
         </button>
       </div>
 
-      {/* Below the work and at half strength: it answers "did you touch
-          this?" without ever being what the popup is for. */}
-      {isEdit && <LastEdited at={order!.updatedAt} by={order!.updatedBy} />}
     </>
   );
 }

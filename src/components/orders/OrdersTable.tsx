@@ -14,7 +14,6 @@ import {
   type OrderInput,
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
-import Link from "next/link";
 import { Info, Pencil } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
@@ -42,6 +41,7 @@ export function OrdersTable({
   onToggleAll,
   onChanged,
   onOpen,
+  onOpenClient,
   emptyNote,
 }: {
   orders: Order[];
@@ -56,6 +56,8 @@ export function OrdersTable({
   onToggleAll: () => void;
   onChanged: () => void;
   onOpen: (key: string) => void;
+  /** Opens that client's card over this page — see OrdersClient. */
+  onOpenClient: (clientId: number) => void;
   /** What to say when nothing is in view — names the active time scope. */
   emptyNote: string;
 }) {
@@ -210,13 +212,13 @@ export function OrdersTable({
                           {order.clientId === null ? (
                             <span className="truncate">{order.customer || "(no name)"}</span>
                           ) : (
-                            <Link
-                              href={`/clients?client=${order.clientId}`}
+                            <button
+                              onClick={() => onOpenClient(order.clientId!)}
                               title={`Open ${order.customer}'s client card`}
                               className="truncate hover:underline"
                             >
                               {order.customer || "(no name)"}
-                            </Link>
+                            </button>
                           )}
                           <button
                             onClick={startEditing}

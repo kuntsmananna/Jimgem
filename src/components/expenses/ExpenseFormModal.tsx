@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Expense, ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
-import { Redo2, Undo2 } from "lucide-react";
+import { Receipt, Redo2, Undo2 } from "lucide-react";
 import { LastEdited } from "@/components/LastEdited";
 import { Modal } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
@@ -91,7 +91,7 @@ export function ExpenseFormModal({
   }
 
   return (
-    <Modal title={isEdit ? "Edit expense" : "Add expense"} onClose={onClose}>
+    <Modal title={isEdit ? "Edit expense" : "Add expense"} icon={<Receipt size={17} />} onClose={onClose}>
       <div className="fields-lit flex flex-col gap-3">
         <Field label="Date">
           <TextInput
@@ -198,8 +198,9 @@ export function ExpenseFormModal({
         </Field>
         {/* Right-aligned, Save last — the same corner every popup uses. */}
         <div className="mt-2 flex items-center justify-end gap-2">
+          {isEdit && <LastEdited at={expense.updatedAt} by={expense.updatedBy} />}
           {/* Same pair as the order form, in the same corner of the row. */}
-          <span className="mr-auto flex items-center gap-0.5">
+          <span className={`flex items-center gap-0.5 ${isEdit ? "" : "mr-auto"}`}>
             <button
               onClick={form.undo}
               disabled={!form.canUndo}
@@ -238,7 +239,6 @@ export function ExpenseFormModal({
             {isEdit ? "Save" : "Save expense"}
           </button>
         </div>
-        {isEdit && <LastEdited at={expense.updatedAt} by={expense.updatedBy} />}
       </div>
     </Modal>
   );

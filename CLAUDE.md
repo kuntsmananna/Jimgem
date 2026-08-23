@@ -807,10 +807,22 @@ iteration (not guessed) — define these as `@theme` tokens in
   the row is *about*. `currentEditor()` in `src/lib/editor.ts` is the one
   place a route asks who is signed in, and the batch actions stamp it too,
   or "last edited by" would quietly skip everything done from the toolbar.
-  `LastEdited` draws it at the bottom of the order, expense and client
-  popups, at half strength: it answers "did you touch this?" without ever
-  being what the popup is for. Same-day edits read as "today at 14:32",
+  `LastEdited` draws it at the **left end of each popup's save row** — a
+  caption should not make a popup taller, and that row already reserves
+  the height — at half strength: it answers "did you touch this?" without
+  ever being what the popup is for. It shows nothing at all for a row
+  saved before this was recorded, which is every row until its next save. Same-day edits read as "today at 14:32",
   because that is what a person means.
+- **A popup wears a mark for what it is** (`Modal`'s `icon`) — a clipboard
+  for an order, a person for a client, a receipt for an expense. Two can be
+  open at once, since the client card opens over the order form, and both
+  are otherwise a band with a name on it.
+- **The client card is one component, opened from two pages**
+  (`clients/ClientModal.tsx`). On Clients it comes with SUMIT's documents;
+  on Orders it doesn't, and the `documents` prop is optional so that
+  section disappears rather than reporting "nothing synced yet", which
+  would be a different claim. The orders it lists come from whatever page
+  opened it, not a second read.
 - **The customer name on the Orders table is a link to their client card**,
   with editing moved to a pencil that appears with the row's other hover
   controls. Clicking a name is far more often "who is this?" than "let me
@@ -818,9 +830,12 @@ iteration (not guessed) — define these as `@theme` tokens in
   all. An order with no `clientId` — booked before the client list existed
   — stays plain text with just the pencil. `EditableCell`'s `renderIdle`
   is what makes that possible: the caller draws the idle cell and says when
-  editing starts, and the editing half stays shared. The order popup links
-  to the same card **in a new tab**, since that popup is holding unsaved
-  work.
+  editing starts, and the editing half stays shared. It opens **over the
+  orders page**, not by navigating to `/clients`: the question a name
+  raises is "who is this?", asked while working the list, and answering it
+  by throwing the page away — its scope, its search, its scroll position —
+  is a poor trade for one lookup. The order popup links to the same card
+  **in a new tab**, since that popup is holding unsaved work.
 - **`/clients?client=<id>` opens that card**, read once at mount like the
   Orders page's `?order=`.
 - **A save is refused if the row moved on** (`StaleWriteError` in
