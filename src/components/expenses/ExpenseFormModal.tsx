@@ -3,7 +3,9 @@
 import { useState } from "react";
 import type { Expense, ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
+import { Redo2, Undo2 } from "lucide-react";
 import { Modal } from "@/components/Modal";
+import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
 import { VAT_MODES, vatOn } from "@/lib/orderTypes";
 
@@ -42,7 +44,7 @@ export function ExpenseFormModal({
   onSaved: (date: string) => void;
 }) {
   const isEdit = !!expense;
-  const [draft, setDraft] = useState<ExpenseInput>(
+  const form = useUndoable<ExpenseInput>(
     expense
       ? {
           date: expense.date,
@@ -59,6 +61,9 @@ export function ExpenseFormModal({
         }
       : emptyDraft(vatRate),
   );
+  const draft = form.value;
+  const setDraft = form.set;
+  useUndoShortcuts(form.undo, form.redo);
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
 
@@ -192,8 +197,29 @@ export function ExpenseFormModal({
         </Field>
         {/* Right-aligned, Save last — the same corner every popup uses. */}
         <div className="mt-2 flex items-center justify-end gap-2">
+          {/* Same pair as the order form, in the same corner of the row. */}
+          <span className="mr-auto flex items-center gap-0.5">
+            <button
+              onClick={form.undo}
+              disabled={!form.canUndo}
+              title="Undo (⌘Z)"
+              aria-label="Undo"
+              className="rounded-full p-1.5 text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-25 disabled:hover:bg-transparent"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              onClick={form.redo}
+              disabled={!form.canRedo}
+              title="Redo (⇧⌘Z)"
+              aria-label="Redo"
+              className="rounded-full p-1.5 text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-25 disabled:hover:bg-transparent"
+            >
+              <Redo2 size={14} />
+            </button>
+          </span>
           {conflict && (
-            <span className="mr-auto text-xs font-semibold text-red-700" role="alert">
+            <span className="text-xs font-semibold text-red-700" role="alert">
               {conflict}
             </span>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   type Order,
@@ -16,7 +16,9 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
+import { Redo2, Undo2 } from "lucide-react";
 import { useModalHeaderSlot } from "@/components/Modal";
+import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { OrderCustomerPanel } from "./OrderCustomerPanel";
 import { OrderEventPanel } from "./OrderEventPanel";
 import { OrderMoneyRail } from "./OrderMoneyRail";
@@ -190,12 +192,46 @@ export function OrderForm({
     const jelly = jellyTotal(toPackageLines(lines), packed, rates.prices);
     return { draft, lines, payload: serialize(draft, lines), manual: manualAmounts(draft, rates, jelly) };
   });
-  const [draft, setDraft] = useState<OrderInput>(initial.draft);
-  // Grows as amounts are typed over, and shrinks when one is handed back
-  // to the rate. Held here rather than in `draft` because it describes how
-  // the draft is being edited, not anything the order stores.
-  const [manual, setManual] = useState<ReadonlySet<AmountKey>>(initial.manual);
-  const [lines, setLines] = useState<DraftPackageLine[]>(initial.lines);
+  /*
+   * The three pieces of the form, under one undo history.
+   *
+   * One history rather than three, because a step back has to be
+   * consistent: the flavour split drives the unit count, the unit count
+   * drives the price, and which amounts are hand-set says how the price is
+   * read. Undoing any of those without the others would leave the form
+   * saying something nobody typed.
+   *
+   * `manual` rides along for the same reason — it describes how the draft
+   * is being edited rather than anything the order stores, but an undo
+   * that restored an amount and left it flagged as hand-set would put the
+   * money back and then refuse to recompute it.
+   */
+  const form = useUndoable<{
+    draft: OrderInput;
+    lines: DraftPackageLine[];
+    // Readonly here, like the prop the rail takes: the set is replaced on
+    // every change, never mutated, which is what makes a snapshot of it a
+    // snapshot rather than a live reference into the present.
+    manual: ReadonlySet<AmountKey>;
+  }>({ draft: initial.draft, lines: initial.lines, manual: initial.manual });
+  const { draft, lines, manual } = form.value;
+  const setForm = form.set;
+
+  // The panels take plain setters and know nothing about the history.
+  const setDraft = useCallback(
+    (next: OrderInput) => setForm((state) => ({ ...state, draft: next })),
+    [setForm],
+  );
+  const setLines = useCallback(
+    (next: DraftPackageLine[]) => setForm((state) => ({ ...state, lines: next })),
+    [setForm],
+  );
+  const setManual = useCallback(
+    (next: ReadonlySet<AmountKey>) => setForm((state) => ({ ...state, manual: next })),
+    [setForm],
+  );
+
+  useUndoShortcuts(form.undo, form.redo);
   const [busy, setBusy] = useState(false);
   /**
    * Set when the save was refused because someone else changed the order
@@ -414,6 +450,33 @@ export function OrderForm({
           after reading the form, and every popup in the app puts them
           there. Save is last, nearest the corner. */}
       <div className="mt-6 flex items-center gap-2">
+        {/*
+          The shortcut, made visible. ⌘Z is what anyone reaches for, but a
+          control nobody can see is a control nobody knows is there — and
+          the pair also gives the answer to "what did I just change?" on a
+          form with three tabs, where the change undone may be on a tab
+          that isn't open.
+        */}
+        <span className="flex items-center gap-0.5">
+          <button
+            onClick={form.undo}
+            disabled={!form.canUndo}
+            title="Undo (⌘Z)"
+            aria-label="Undo"
+            className="rounded-full p-1.5 text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-25 disabled:hover:bg-transparent"
+          >
+            <Undo2 size={14} />
+          </button>
+          <button
+            onClick={form.redo}
+            disabled={!form.canRedo}
+            title="Redo (⇧⌘Z)"
+            aria-label="Redo"
+            className="rounded-full p-1.5 text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-25 disabled:hover:bg-transparent"
+          >
+            <Redo2 size={14} />
+          </button>
+        </span>
         {conflict && (
           <span className="text-xs font-semibold text-red-700" role="alert">
             {conflict}

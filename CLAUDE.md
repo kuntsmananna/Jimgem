@@ -764,6 +764,23 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **A form remembers where it has been** (`useUndoable` +
+  `useUndoShortcuts` in `src/components/useUndoable.ts`). ⌘Z / Ctrl+Z
+  steps back, ⇧⌘Z forward, and the same pair sits as buttons in the
+  popup's save row — a shortcut nobody can see is a shortcut nobody uses,
+  and on a three-tab form the change being undone may be on a tab that
+  isn't open. **The order form keeps one history over `draft`, `lines` and
+  `manual` together**, not three: the flavour split drives the unit count,
+  the count drives the price, and `manual` says how the price is read, so a
+  step back that moved one without the others would leave the form saying
+  something nobody typed. Changes within `COALESCE_MS` replace the top of
+  the stack rather than pushing, so typing a name is one step and not
+  fourteen. The shortcut deliberately **does nothing while the caret is in
+  a text field**: the browser's own undo works there at character and
+  selection level, and a controlled input's native undo fires `input`, so
+  React stays in step. Snapshots are whole copies of the state, capped at
+  `LIMIT` — the alternative, storing inverse operations, needs every call
+  site to describe its own undo and quietly lies when one forgets.
 - **A save is refused if the row moved on** (`StaleWriteError` in
   `orders.ts`). Two people work this dashboard and a save writes the whole
   row, so without this the later save silently takes the earlier one's
