@@ -764,6 +764,24 @@ iteration (not guessed) — define these as `@theme` tokens in
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **Deleting puts a row aside** (`orders.deleted_at`, `expenses.deleted_at`
+  — `scripts/migrate-024-soft-delete.sql`). The row keeps its id, so
+  restoring one brings back *the same* order — its package lines, its
+  client, any SUMIT document still pointing at it — which a re-insert
+  never could. Every read filters `deleted_at IS NULL`, with **one
+  deliberate exception**: `sheetImport.ts` looks at every order row
+  including deleted ones, or deleting an imported order would just
+  re-import it on the next run. Nothing purges them; at this size keeping
+  them costs nothing and "what happened to that order" is a question that
+  gets asked.
+- **The confirmation in front of a delete is gone, replaced by an Undo
+  after it** (`UndoToast` + `useUndoToast`). A confirm asks everyone to
+  prove they meant it every time and is clicked through unread by the
+  second week; the bar asks nothing and is there for the one time in fifty
+  that the click was wrong. It lingers `LINGER_MS` and then only hides the
+  *offer* — the row stays recoverable in the database either way. Portalled
+  and fixed like `HoverCard`, because by then the row that raised it is
+  gone from the page.
 - **A form remembers where it has been** (`useUndoable` +
   `useUndoShortcuts` in `src/components/useUndoable.ts`). ⌘Z / Ctrl+Z
   steps back, ⇧⌘Z forward, and the same pair sits as buttons in the

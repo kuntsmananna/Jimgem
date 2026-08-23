@@ -24,6 +24,7 @@ import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
+import { UndoToast, useUndoToast } from "@/components/UndoToast";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -129,6 +130,7 @@ export function OrdersClient({
   const [openKey, setOpenKey] = useState<string | null>(() => searchParams.get("order"));
   const [query, setQuery] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
+  const undoToast = useUndoToast();
   const [batchNote, setBatchNote] = useState<string | null>(null);
 
   /**
@@ -267,14 +269,35 @@ export function OrdersClient({
     refresh();
   }
 
+  /**
+   * Deletes, and offers the way back.
+   *
+   * No confirmation in front of it any more: an order is put aside rather
+   * than destroyed (migration 024), so the honest control is an Undo
+   * afterwards rather than a dialog asking everyone to prove they meant it
+   * every time — which is the one that gets clicked through unread.
+   *
+   * The ids are captured before the batch clears the selection, because
+   * they are what Undo has to restore.
+   */
   async function batchDelete() {
-    const count = selectedKeys.size;
-    if (!confirm(`Delete ${count} ${count === 1 ? "order" : "orders"}? This can't be undone.`)) return;
+    const ids = Array.from(selectedKeys).map(Number);
+    const count = ids.length;
     await runBatch({ action: "delete" }, "deleted");
+    undoToast.show(`${count} ${count === 1 ? "order" : "orders"} deleted`, async () => {
+      await fetch("/api/orders/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", ids }),
+      });
+      setBatchNote(null);
+      refresh();
+    });
   }
 
   return (
     <div className="flex flex-col gap-5">
+      <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
       {batchNote && (
         <p className="text-xs font-semibold text-ink-soft">
           {batchNote}{" "}

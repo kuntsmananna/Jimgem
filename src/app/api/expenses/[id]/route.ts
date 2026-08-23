@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateExpense, deleteExpense, type ExpenseInput } from "@/lib/expenses";
+import { updateExpense, deleteExpense, restoreExpense, type ExpenseInput } from "@/lib/expenses";
 import { StaleWriteError } from "@/lib/orders";
 
 export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
   const { id } = await ctx.params;
-  const body = (await request.json()) as ExpenseInput & { expectedUpdatedAt?: string };
+  const body = (await request.json()) as ExpenseInput & {
+    expectedUpdatedAt?: string;
+    /** The other half of DELETE — see migration 024. */
+    restore?: boolean;
+  };
   try {
+    if (body.restore) {
+      await restoreExpense(Number(id));
+      return NextResponse.json({ id: Number(id), restored: true });
+    }
     const expense = await updateExpense(Number(id), body, body.expectedUpdatedAt);
     return NextResponse.json(expense);
   } catch (error) {

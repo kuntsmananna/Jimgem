@@ -13,6 +13,7 @@ import { formatOrderDate } from "@/lib/orderTypes";
 import { EditableCell } from "@/components/orders/EditableCell";
 import { FilterDropdown } from "@/components/orders/Dropdown";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
+import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 import {
@@ -54,6 +55,7 @@ export function ExpensesClient({
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const needle = query.trim();
+  const undoToast = useUndoToast();
   const [collapsed, setCollapsed] = useState<Set<ExpensePane>>(() => new Set(collapsedPanes));
 
   /**
@@ -150,10 +152,23 @@ export function ExpensesClient({
     router.refresh();
   }
 
+  /**
+   * Deletes, and offers the way back — see batchDelete on the Orders page
+   * for why the confirmation went away with it: the row is put aside, not
+   * destroyed, so an Undo afterwards is both truer and less in the way
+   * than a dialog in front of every delete.
+   */
   async function deleteEntry(key: string) {
-    if (!confirm("Delete this expense?")) return;
     await fetch(`/api/expenses/${key}`, { method: "DELETE" });
     refresh();
+    undoToast.show("Expense deleted", async () => {
+      await fetch(`/api/expenses/${key}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restore: true }),
+      });
+      refresh();
+    });
   }
 
   /**
@@ -204,6 +219,7 @@ export function ExpensesClient({
         gridTemplateColumns: `${periodsFolded ? RAIL_WIDTH : "200px"} 2.2fr ${chartsFolded ? RAIL_WIDTH : "0.85fr"}`,
       }}
     >
+      <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
       {periodsFolded ? (
         <PaneRail label={period?.label ?? "Periods"} side="left" onExpand={() => togglePane("periods")} />
       ) : (

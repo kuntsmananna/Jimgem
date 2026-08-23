@@ -197,7 +197,7 @@ async function getDbExpensesForRollup(): Promise<DbExpenseForRollup[]> {
     amount: string;
     vat_mode: VatMode | null;
     vat_rate: string | null;
-  }>("SELECT date, category_id, amount, vat_mode, vat_rate FROM expenses");
+  }>("SELECT date, category_id, amount, vat_mode, vat_rate FROM expenses WHERE deleted_at IS NULL");
 
   return rows
     .map((row) => {

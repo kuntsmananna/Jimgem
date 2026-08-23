@@ -128,7 +128,8 @@ async function getNameMaps() {
 async function getDbExpenses(): Promise<Expense[]> {
   const db = getDb();
   const [{ rows }, names] = await Promise.all([
-    db.query<DbExpenseRow>("SELECT * FROM expenses ORDER BY date DESC, id DESC"),
+    // Deleted expenses are put aside, not destroyed — migration 024.
+    db.query<DbExpenseRow>("SELECT * FROM expenses WHERE deleted_at IS NULL ORDER BY date DESC, id DESC"),
     getNameMaps(),
   ]);
   return rows.map((row) => mapExpense(row, names.categoryNameById, names.paymentMethodNameById, names.staffNameById));
@@ -201,9 +202,19 @@ export async function updateExpense(
   return mapSingleExpense(rows[0]);
 }
 
+/**
+ * Puts the expense aside rather than destroying it: the row keeps its id,
+ * so restoring it brings back the same expense — see migration 024.
+ */
 export async function deleteExpense(id: number): Promise<void> {
   const db = getDb();
-  await db.query("DELETE FROM expenses WHERE id = $1", [id]);
+  await db.query("UPDATE expenses SET deleted_at = now() WHERE id = $1", [id]);
+}
+
+/** The other direction, for the Undo beside "Expense deleted". */
+export async function restoreExpense(id: number): Promise<void> {
+  const db = getDb();
+  await db.query("UPDATE expenses SET deleted_at = NULL WHERE id = $1", [id]);
 }
 
 export interface ExpensePeriod {

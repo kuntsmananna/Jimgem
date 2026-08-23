@@ -335,6 +335,9 @@ async function importOrders(spreadsheetId: string, year: number) {
   const [sheetOrders, overrides, { rows: existingRows }] = await Promise.all([
     readSheetOrders(spreadsheetId),
     getOverridesBySheetRow(db),
+    // Deliberately *not* filtered by deleted_at: an imported order that
+    // someone deleted on purpose must stay imported, or the next run would
+    // simply bring it back. Every other read of orders filters them out.
     db.query<{ sheet_row: number }>("SELECT sheet_row FROM orders WHERE sheet_row IS NOT NULL"),
   ]);
 

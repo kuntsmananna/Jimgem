@@ -272,7 +272,10 @@ export async function getOrders(): Promise<Order[]> {
   const db = getDb();
   const [{ rows: orderRows }, { rows: lineRows }, { rows: flavorRows }, { rows: displayRows }] =
     await Promise.all([
-      db.query<DbOrderRow>("SELECT * FROM orders ORDER BY date DESC, id DESC"),
+      // Deleted orders are put aside, not destroyed — see migration 024.
+      // Every read of orders filters them out; the importer is the one
+      // exception, and says why where it does it.
+      db.query<DbOrderRow>("SELECT * FROM orders WHERE deleted_at IS NULL ORDER BY date DESC, id DESC"),
       db.query<DbPackageLineRow>("SELECT * FROM order_package_lines"),
       db.query<DbLineFlavorRow>("SELECT * FROM order_package_line_flavors"),
       db.query<DbDisplayRow>("SELECT * FROM order_displays"),
@@ -308,8 +311,28 @@ export function setProductionStatusMany(ids: number[], status: ProductionStatus)
   ]);
 }
 
+/**
+ * Puts orders aside. They keep their id, their package lines and their
+ * client, so restoring one brings back the same order rather than a copy
+ * of it — which is what makes "Undo" honest and what a re-insert could
+ * never be.
+ *
+ * Already-deleted rows are excluded so the count is what this action did,
+ * not how many ids were passed.
+ */
 export function deleteOrdersMany(ids: number[]): Promise<number> {
-  return affectedRows("DELETE FROM orders WHERE id = ANY($1) RETURNING id", [ids]);
+  return affectedRows(
+    "UPDATE orders SET deleted_at = now() WHERE id = ANY($1) AND deleted_at IS NULL RETURNING id",
+    [ids],
+  );
+}
+
+/** The other direction, for the Undo beside "3 orders deleted". */
+export function restoreOrdersMany(ids: number[]): Promise<number> {
+  return affectedRows(
+    "UPDATE orders SET deleted_at = NULL WHERE id = ANY($1) AND deleted_at IS NOT NULL RETURNING id",
+    [ids],
+  );
 }
 
 /**
@@ -538,15 +561,14 @@ export async function updateOrder(
 }
 
 export async function deleteOrder(id: number): Promise<void> {
-  const db = getDb();
-  await db.query("DELETE FROM orders WHERE id = $1", [id]);
+  await deleteOrdersMany([id]);
 }
 
 export async function duplicateOrder(id: number): Promise<Order> {
   const db = getDb();
   const [{ rows: orderRows }, { rows: lineRows }, { rows: flavorRows }, { rows: displayRows }] =
     await Promise.all([
-      db.query<DbOrderRow>("SELECT * FROM orders WHERE id = $1", [id]),
+      db.query<DbOrderRow>("SELECT * FROM orders WHERE id = $1 AND deleted_at IS NULL", [id]),
       db.query<DbPackageLineRow>("SELECT * FROM order_package_lines WHERE order_id = $1", [id]),
       db.query<DbLineFlavorRow>(
         `SELECT f.* FROM order_package_line_flavors f

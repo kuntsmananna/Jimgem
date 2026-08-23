@@ -484,3 +484,14 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS business TEXT;
 -- scripts/migrate-023-stale-save-guard.sql
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now();
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now();
+
+-- Deleting puts a row aside rather than destroying it: the row keeps its
+-- id, so its lines, its client and any SUMIT document still point at the
+-- same order when it comes back. Every read filters deleted_at IS NULL --
+-- except the Sheet importer, which must see deleted rows or it would
+-- re-import an order that was deleted on purpose
+-- (scripts/migrate-024-soft-delete.sql)
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ(3);
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ(3);
+CREATE INDEX IF NOT EXISTS orders_live_idx ON orders (date DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS expenses_live_idx ON expenses (date DESC) WHERE deleted_at IS NULL;

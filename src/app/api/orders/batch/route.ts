@@ -3,6 +3,7 @@ import {
   setPaymentStatusMany,
   setProductionStatusMany,
   deleteOrdersMany,
+  restoreOrdersMany,
   duplicateOrder,
   type PaymentStatus,
   type ProductionStatus,
@@ -14,7 +15,10 @@ type BatchBody =
   | { action: "paymentStatus"; ids: number[]; status: PaymentStatus }
   | { action: "productionStatus"; ids: number[]; status: ProductionStatus }
   | { action: "duplicate"; ids: number[] }
-  | { action: "delete"; ids: number[] };
+  | { action: "delete"; ids: number[] }
+  // The other half of delete: a deleted order is put aside, not destroyed,
+  // so undoing one is a write of its own rather than a re-insert.
+  | { action: "restore"; ids: number[] };
 
 /**
  * Applies one action to a selection of orders, reporting how many landed
@@ -51,7 +55,9 @@ export async function POST(request: NextRequest) {
         ? await setPaymentStatusMany(ids, body.status)
         : body.action === "productionStatus"
           ? await setProductionStatusMany(ids, body.status)
-          : await deleteOrdersMany(ids);
+          : body.action === "restore"
+            ? await restoreOrdersMany(ids)
+            : await deleteOrdersMany(ids);
 
     return NextResponse.json({
       succeeded: affected,
