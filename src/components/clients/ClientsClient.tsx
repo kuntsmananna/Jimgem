@@ -335,6 +335,7 @@ function ClientModal({
     name: client.name,
     phone: client.phone,
     email: client.email,
+    source: client.source,
     notes: client.notes,
   });
   const [busy, setBusy] = useState(false);
@@ -399,6 +400,16 @@ function ClientModal({
             />
           </Field>
         </div>
+        {/* Free text, not a list of channels: the useful answer is usually
+            a sentence ("saw us at Noa's wedding"), and a fixed list would
+            file it under whichever bucket is nearest and lose it. */}
+        <Field label="Where they came from">
+          <TextInput
+            value={draft.source}
+            onChange={(e) => setDraft({ ...draft, source: e.target.value })}
+            placeholder="Instagram, Google, a friend…"
+          />
+        </Field>
         <Field label="Notes">
           <TextInput value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
         </Field>

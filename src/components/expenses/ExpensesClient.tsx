@@ -560,10 +560,9 @@ function ExpenseRow({
             )
           }
           editValue={String(entry.staffId ?? "")}
-          options={[
-            { value: "", label: "—" },
-            ...staff.map((person) => ({ value: String(person.id), label: person.name })),
-          ]}
+          // No blank option here: `EditableCell` already offers one, and
+          // two dashes in a row of four choices reads as a bug.
+          options={staff.map((person) => ({ value: String(person.id), label: person.name }))}
           onSave={(raw) => onPatch({ staffId: raw ? Number(raw) : null })}
         />
         <EditableCell
@@ -576,10 +575,7 @@ function ExpenseRow({
             )
           }
           editValue={String(entry.paymentMethodId ?? "")}
-          options={[
-            { value: "", label: "—" },
-            ...paymentMethods.map((method) => ({ value: String(method.id), label: method.name })),
-          ]}
+          options={paymentMethods.map((method) => ({ value: String(method.id), label: method.name }))}
           onSave={(raw) => onPatch({ paymentMethodId: raw ? Number(raw) : null })}
         />
       </span>

@@ -29,6 +29,7 @@ export async function PATCH(request: NextRequest, context: RouteContext<"/api/cl
         name,
         phone: String(body.phone ?? ""),
         email: String(body.email ?? ""),
+        source: String(body.source ?? ""),
         notes: String(body.notes ?? ""),
       }),
     );

@@ -519,6 +519,13 @@ iteration (not guessed) — define these as `@theme` tokens in
   rest, so a deliberate 70/30 stays 7:3 instead of flattening to thirds.
   Adding a zero-unit flavour instead read as the click being ignored, and
   left you hand-reducing another flavour to make room.
+- **`clients.source` is where they came from**, free text like
+  `orders.customer` and `expenses.business` — Instagram, a Google search, a
+  friend, a wedding they ate at. Not a list of channels: the useful answer
+  is usually a sentence, and a fixed list files it under whichever bucket
+  is nearest and loses it. `scripts/migrate-022-client-source.sql` adds the
+  column and back-fills nothing, because where a client came from is only
+  ever known by asking.
 - **A client archives from their own page**, with the button at the far
   left of the modal's save row — as far from Save as the row allows.
   `clients` is in `ARCHIVED_SOURCES` like every other list, so Settings →

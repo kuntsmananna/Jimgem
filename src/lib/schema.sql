@@ -154,6 +154,11 @@ CREATE TABLE IF NOT EXISTS clients (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- How they found us -- Instagram, a Google search, a friend, a wedding
+-- they ate at. Free text and not a list: the real answer is usually a
+-- sentence, and a list would force it into whichever bucket is nearest
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS source TEXT;
+
 -- Every SUMIT document we have seen, mirrored locally.
 --
 -- A mirror rather than a live read for two reasons. /accounting/documents/

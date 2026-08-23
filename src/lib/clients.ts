@@ -20,6 +20,13 @@ export interface Client {
   /** The id SUMIT returned, or null while the client has never transacted. */
   sumitCustomerId: number | null;
   notes: string;
+  /**
+   * How they found us — Instagram, a Google search, a friend, a wedding
+   * they ate at. Free text, like `orders.customer` and
+   * `expenses.business`: the real answer is usually a sentence, and a list
+   * would force it into whichever bucket is nearest.
+   */
+  source: string;
   archivedAt: string | null;
 }
 
@@ -27,6 +34,7 @@ export interface ClientInput {
   name: string;
   phone: string;
   email: string;
+  source: string;
   notes: string;
 }
 
@@ -47,6 +55,7 @@ interface ClientRow {
   email: string | null;
   sumit_customer_id: string | number | null;
   notes: string | null;
+  source: string | null;
   archived_at: string | null;
 }
 
@@ -60,6 +69,7 @@ function mapClient(row: ClientRow): Client {
     // identifier, but everything that consumes it wants a number.
     sumitCustomerId: row.sumit_customer_id === null ? null : Number(row.sumit_customer_id),
     notes: row.notes ?? "",
+    source: row.source ?? "",
     archivedAt: row.archived_at,
   };
 }
@@ -116,8 +126,14 @@ export async function getClientsWithStats(vatView: VatView = "gross"): Promise<C
 export async function createClient(input: ClientInput): Promise<Client> {
   const db = getDb();
   const { rows } = await db.query<ClientRow>(
-    `INSERT INTO clients (name, phone, email, notes) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [input.name.trim(), input.phone.trim() || null, input.email.trim() || null, input.notes.trim() || null],
+    `INSERT INTO clients (name, phone, email, source, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [
+      input.name.trim(),
+      input.phone.trim() || null,
+      input.email.trim() || null,
+      input.source.trim() || null,
+      input.notes.trim() || null,
+    ],
   );
   return mapClient(rows[0]);
 }
@@ -125,8 +141,15 @@ export async function createClient(input: ClientInput): Promise<Client> {
 export async function updateClient(id: number, input: ClientInput): Promise<Client> {
   const db = getDb();
   const { rows } = await db.query<ClientRow>(
-    `UPDATE clients SET name = $1, phone = $2, email = $3, notes = $4 WHERE id = $5 RETURNING *`,
-    [input.name.trim(), input.phone.trim() || null, input.email.trim() || null, input.notes.trim() || null, id],
+    `UPDATE clients SET name = $1, phone = $2, email = $3, source = $4, notes = $5 WHERE id = $6 RETURNING *`,
+    [
+      input.name.trim(),
+      input.phone.trim() || null,
+      input.email.trim() || null,
+      input.source.trim() || null,
+      input.notes.trim() || null,
+      id,
+    ],
   );
   return mapClient(rows[0]);
 }
@@ -154,7 +177,7 @@ export async function findOrCreateClientByName(name: string, phone = ""): Promis
   if (!wanted) throw new Error("A client needs a name.");
   const existing = (await getClients(true)).find((client) => normalizeClientName(client.name) === wanted);
   if (existing) return existing;
-  return createClient({ name, phone, email: "", notes: "" });
+  return createClient({ name, phone, email: "", source: "", notes: "" });
 }
 
 /** Stores the id SUMIT handed back, which is the only way to find them again. */

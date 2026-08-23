@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
         name,
         phone: String(body.phone ?? ""),
         email: String(body.email ?? ""),
+        source: String(body.source ?? ""),
         notes: String(body.notes ?? ""),
       }),
     );
