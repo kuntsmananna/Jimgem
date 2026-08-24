@@ -1252,9 +1252,16 @@ Kanban cards and the Orders table both show **units, not flavour chips**
 — see the `ContentChips` notes above. Only Kanban and the calendar's
 hover card still draw the chips.
 
-**Every popup puts its buttons bottom-right, Save last.** The order form
-keeps its status text ("Unsaved changes", "Add a customer name to save")
-on the left of that row.
+**Every popup puts its buttons bottom-right, Save last**, and all three
+build that row the same way: the `LastEdited` caption at the left end,
+then the undo pair (`UndoRedo`, shared by the two forms that have a
+history) and whatever the form has to say — "Unsaved changes", "Add a
+customer name to save", a stale-save refusal — then **an unconditional
+`flex-1` spacer**, then Cancel and Save. The spacer is unconditional
+because everything left of it is not: a row saved before `updated_by`
+existed draws no caption, and a spacer that vanished with it would move
+the buttons. The client card's Archive is the one extra, sitting first
+after the caption — as far from Save as the row allows.
 
 `orders.ts` derives everything an order's INSERT and UPDATE need — the
 column list, the `$n` placeholders, the `SET col = $n` clause, the values

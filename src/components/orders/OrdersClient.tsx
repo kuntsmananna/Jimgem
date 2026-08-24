@@ -212,6 +212,33 @@ export function OrdersClient({
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
   const openClient = openClientId === null ? null : (clients.find((c) => c.id === openClientId) ?? null);
 
+  /*
+   * What the open client's card shows.
+   *
+   * Derived plainly, not through `useMemo`: this project builds with the
+   * React Compiler, which memoises this for us — and a hand-written memo
+   * here made it skip optimising the whole component, because its
+   * dependency on the per-render `stageIndex` map is one the compiler
+   * cannot prove safe.
+   */
+  const clientCard = openClient && {
+    lines: orders
+      .filter((order) => order.clientId === openClient.id)
+      .map((order) => {
+        const booked = isBooked(order, stageIndex);
+        return {
+          key: order.key,
+          date: order.date,
+          customer: order.customer,
+          customerType: order.customerType,
+          balance: booked ? orderBalance(order) : 0,
+        };
+      }),
+    similar: clients.filter(
+      (other) => other.id !== openClient.id && looksLikeSameClient(other.name, openClient.name),
+    ),
+  };
+
   const paymentOptions = useMemo(
     () =>
       optionsWithCounts(
@@ -319,24 +346,11 @@ export function OrdersClient({
         `documents` — the Orders page does not load SUMIT's mirror, and the
         section hides itself rather than reporting nothing synced.
       */}
-      {openClient && (
+      {openClient && clientCard && (
         <ClientModal
           client={openClient}
-          orders={orders
-            .filter((order) => order.clientId === openClient.id)
-            .map((order) => ({
-              key: order.key,
-              clientId: openClient.id,
-              date: order.date,
-              customer: order.customer,
-              customerType: order.customerType,
-              productionStatus: order.productionStatus,
-              booked: isBooked(order, stageIndex),
-              balance: isBooked(order, stageIndex) ? orderBalance(order) : 0,
-            }))}
-          similar={clients.filter(
-            (other) => other.id !== openClient.id && looksLikeSameClient(other.name, openClient.name),
-          )}
+          orders={clientCard.lines}
+          similar={clientCard.similar}
           onClose={() => setOpenClientId(null)}
           onSaved={() => {
             setOpenClientId(null);

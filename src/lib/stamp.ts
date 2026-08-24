@@ -14,11 +14,10 @@
  * the one stored, and every save reports a conflict that isn't there.
  */
 export function isoStamp(value: string | Date | null | undefined): string {
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? "" : value.toISOString();
-  }
-  if (!value) return reportUnstampable(value);
-  const parsed = new Date(value);
+  // `?? NaN` rather than letting a null through: `new Date(null)` is the
+  // epoch, which would report 1970 as a row's last edit instead of saying
+  // it doesn't know. A Date copies through the same constructor.
+  const parsed = new Date(value ?? NaN);
   return Number.isNaN(parsed.getTime()) ? reportUnstampable(value) : parsed.toISOString();
 }
 

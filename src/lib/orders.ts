@@ -102,11 +102,11 @@ export async function updateOrderFields(
   const db = getDb();
   const assignments = entries.map(([field], i) => `${COLUMN_FOR_FIELD[field]} = $${i + 2}`);
   const values: unknown[] = [id, ...entries.map(([, value]) => value)];
-  const editorAt = `$${values.push(editor ?? null)}`;
+  const editorAt = bind(values, editor ?? null);
   // The guard is optional so a caller with no version to offer — a batch
   // action over rows it never opened — still writes, rather than every
   // caller having to fake a timestamp to get through.
-  const guard = expectedUpdatedAt ? ` AND updated_at = $${values.push(expectedUpdatedAt)}` : "";
+  const guard = expectedUpdatedAt ? ` AND updated_at = ${bind(values, expectedUpdatedAt)}` : "";
   const { rows } = await db.query(
     `UPDATE orders SET ${assignments.join(", ")}, updated_at = now(), updated_by = ${editorAt} WHERE id = $1${guard} RETURNING id`,
     values,
@@ -450,6 +450,18 @@ function orderValues(input: OrderInput) {
   return ORDER_FIELDS.map((f) => f.value(input));
 }
 
+/**
+ * Appends a value and names the placeholder it just took.
+ *
+ * `Array.push` returns the new length, which is also the 1-based `$n` of
+ * what was pushed — true, and not obvious, and restated at six call sites
+ * before it had a name. Anything appended past a statement's fixed values
+ * goes through here.
+ */
+export function bind(values: unknown[], value: unknown): string {
+  return `$${values.push(value)}`;
+}
+
 /** `after(1)` is the first placeholder past the order's own values. */
 const after = (offset: number) => `$${ORDER_FIELDS.length + offset}`;
 
@@ -460,7 +472,7 @@ export async function createOrder(input: OrderInput, editor?: string): Promise<O
   // Appended past the order's values and the line arrays, so it cannot
   // collide with either — the same push-and-name trick updateOrder uses.
   const values: unknown[] = [...orderValues(input), ...arrayValues(arrays)];
-  const editorAt = `$${values.push(editor ?? null)}`;
+  const editorAt = bind(values, editor ?? null);
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH new_order AS (
@@ -511,7 +523,7 @@ export async function updateOrder(
   const orderId = after(1);
   const values: unknown[] = [...orderValues(input), id, ...arrayValues(arrays)];
   // Whoever is signed in, recorded as a name — see migration 025.
-  const editorAt = `$${values.push(editor ?? null)}`;
+  const editorAt = bind(values, editor ?? null);
 
   /*
    * The guard, and why it is repeated on every CTE below rather than
@@ -525,9 +537,7 @@ export async function updateOrder(
    * `EXISTS (SELECT 1 FROM updated_order)` makes each of them depend on
    * the UPDATE having matched, so a stale save is a no-op in full.
    */
-  const fresh = expectedUpdatedAt
-    ? ` AND updated_at = $${values.push(expectedUpdatedAt)}`
-    : "";
+  const fresh = expectedUpdatedAt ? ` AND updated_at = ${bind(values, expectedUpdatedAt)}` : "";
   const applied = expectedUpdatedAt ? " AND EXISTS (SELECT 1 FROM updated_order)" : "";
 
   const { rows } = await db.query<DbOrderRow>(

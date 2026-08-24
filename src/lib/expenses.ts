@@ -2,7 +2,7 @@ import { getDb } from "./db";
 import { MONTH_NAMES_EN } from "./financials";
 import { getExpenseCategories, getPaymentMethods, getStaff } from "./settings";
 import { vatOn, type VatMode } from "./orderTypes";
-import { StaleWriteError } from "./orders";
+import { bind, StaleWriteError } from "./orders";
 import { isoStamp } from "./stamp";
 
 export interface Expense {
@@ -198,8 +198,8 @@ export async function updateExpense(
     input.vatRate,
     id,
   ];
-  const editorAt = `$${values.push(editor ?? null)}`;
-  const fresh = expectedUpdatedAt ? ` AND updated_at = $${values.push(expectedUpdatedAt)}` : "";
+  const editorAt = bind(values, editor ?? null);
+  const fresh = expectedUpdatedAt ? ` AND updated_at = ${bind(values, expectedUpdatedAt)}` : "";
   const { rows } = await db.query<RawDbExpenseRow>(
     `UPDATE expenses SET date = $1, category_id = $2, amount = $3, payment_method_id = $4, staff_id = $5,
             business = $6, note = $7, vat_mode = $8, vat_rate = $9, updated_at = now(),

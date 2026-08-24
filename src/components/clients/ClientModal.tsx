@@ -30,7 +30,12 @@ export function ClientModal({
   onSaved,
 }: {
   client: Client;
-  orders: ClientOrderLine[];
+  /**
+   * Only what the card draws. Narrower than `ClientOrderLine` on purpose:
+   * the Orders page builds these from the orders already on screen, and a
+   * wider type would have it synthesising fields nothing here reads.
+   */
+  orders: Pick<ClientOrderLine, "key" | "date" | "customer" | "customerType" | "balance">[];
   /**
    * Omit where they are not loaded — the Orders page opens this card
    * without a SUMIT read. The section then disappears rather than
@@ -242,13 +247,16 @@ export function ClientModal({
         )}
 
         {/*
-          Save keeps the bottom-right corner every popup uses. Archiving
-          sits at the far left of the same row, as far from Save as the row
-          allows: it is the one button here that changes what the page
-          shows rather than what the client says.
+          The same row every popup uses: the caption at the left where it
+          costs no height, then Save in the bottom-right corner, with the
+          spacer between them unconditional because the caption is not —
+          an unstamped client would otherwise pull the buttons left.
+
+          Archiving is the first button after the caption, as far from Save
+          as the row allows: it is the one button here that changes what the
+          page shows rather than what the client says.
         */}
-        <div className="flex items-center justify-end gap-2">
-          {/* Left end of the save row, costing no height of its own. */}
+        <div className="flex items-center gap-2">
           <LastEdited at={client.updatedAt} by={client.updatedBy} />
           <button
             onClick={archive}
@@ -258,6 +266,7 @@ export function ClientModal({
             <Archive size={13} />
             Archive
           </button>
+          <span className="flex-1" />
           <button
             onClick={onClose}
             className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"

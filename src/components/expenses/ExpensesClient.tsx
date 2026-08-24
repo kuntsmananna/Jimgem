@@ -14,6 +14,7 @@ import { EditableCell } from "@/components/orders/EditableCell";
 import { FilterDropdown } from "@/components/orders/Dropdown";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
+import { staleWriteMessage } from "@/components/staleWrite";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 import {
@@ -198,9 +199,8 @@ export function ExpensesClient({
         ...change,
       }),
     });
-    if (response.status === 409) {
-      alert(((await response.json()) as { error?: string }).error ?? "Someone else changed this expense.");
-    }
+    const stale = await staleWriteMessage(response, "expense");
+    if (stale) alert(stale);
     refresh();
   }
 

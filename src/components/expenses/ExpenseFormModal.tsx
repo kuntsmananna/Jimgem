@@ -3,8 +3,10 @@
 import { useState } from "react";
 import type { Expense, ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
-import { Receipt, Redo2, Undo2 } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { LastEdited } from "@/components/LastEdited";
+import { UndoRedo } from "@/components/UndoRedo";
+import { staleWriteMessage } from "@/components/staleWrite";
 import { Modal } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
@@ -81,10 +83,11 @@ export function ExpenseFormModal({
       body: JSON.stringify(isEdit ? { ...draft, expectedUpdatedAt: expense.updatedAt } : draft),
     });
     setBusy(false);
-    if (response.status === 409) {
-      // The popup stays open holding the draft: it is the only copy of
-      // this work until it is written somewhere.
-      setConflict(((await response.json()) as { error?: string }).error ?? "Someone else changed this expense.");
+    // The popup stays open holding the draft: it is the only copy of
+    // this work until it is written somewhere.
+    const stale = await staleWriteMessage(response, "expense");
+    if (stale) {
+      setConflict(stale);
       return;
     }
     onSaved(draft.date);
@@ -196,35 +199,19 @@ export function ExpenseFormModal({
         <Field label="Description">
           <TextInput value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
         </Field>
-        {/* Right-aligned, Save last — the same corner every popup uses. */}
-        <div className="mt-2 flex items-center justify-end gap-2">
+        {/* The same row as the order form's: the caption at the left where
+            it costs no height, the undo pair and anything the form has to
+            say beside it, then Save last in the corner every popup uses.
+            The spacer is unconditional because the caption is not. */}
+        <div className="mt-2 flex items-center gap-2">
           {isEdit && <LastEdited at={expense.updatedAt} by={expense.updatedBy} />}
-          {/* Same pair as the order form, in the same corner of the row. */}
-          <span className={`flex items-center gap-0.5 ${isEdit ? "" : "mr-auto"}`}>
-            <button
-              onClick={form.undo}
-              disabled={!form.canUndo}
-              title="Undo (⌘Z)"
-              aria-label="Undo"
-              className="rounded-full p-1.5 text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-25 disabled:hover:bg-transparent"
-            >
-              <Undo2 size={14} />
-            </button>
-            <button
-              onClick={form.redo}
-              disabled={!form.canRedo}
-              title="Redo (⇧⌘Z)"
-              aria-label="Redo"
-              className="rounded-full p-1.5 text-ink-soft transition hover:bg-black/5 hover:text-ink disabled:opacity-25 disabled:hover:bg-transparent"
-            >
-              <Redo2 size={14} />
-            </button>
-          </span>
+          <UndoRedo form={form} />
           {conflict && (
             <span className="text-xs font-semibold text-red-700" role="alert">
               {conflict}
             </span>
           )}
+          <span className="flex-1" />
           <button
             onClick={onClose}
             className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"

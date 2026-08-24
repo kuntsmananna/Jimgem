@@ -19,6 +19,7 @@ import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { HoverCard } from "@/components/HoverCard";
+import { staleWriteMessage } from "@/components/staleWrite";
 import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
@@ -91,9 +92,8 @@ export function OrdersTable({
     // already shown the new value, so saying nothing would leave a number
     // on screen that isn't in the database. `onChanged` re-reads the row
     // and puts the real one back.
-    if (response.status === 409) {
-      alert(((await response.json()) as { error?: string }).error ?? "Someone else changed this order.");
-    }
+    const stale = await staleWriteMessage(response, "order");
+    if (stale) alert(stale);
     onChanged();
   }
 
