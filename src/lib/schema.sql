@@ -115,13 +115,6 @@ CREATE TABLE IF NOT EXISTS delivery_options (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS order_displays (
-  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  display_option_id INTEGER NOT NULL REFERENCES display_options(id),
-  quantity INTEGER NOT NULL,
-  PRIMARY KEY (order_id, display_option_id)
-);
-
 -- The owner's standard rates, one row per priced thing, used to fill an
 -- order's money side as it is typed. A fixed set of keys rather than a
 -- list the owner adds to, because each key is wired to a specific field
@@ -290,6 +283,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS orders_sheet_row_idx ON orders (sheet_row) WHE
 -- Total units come from the packaging lines alone, the flavour breakdown
 -- from the flavour lines alone, so neither double-counts the other. The
 -- form requires the two to agree before it will save.
+-- Which displays an order carries, and how many of each. After `orders`
+-- rather than beside `display_options`, because it references both and
+-- migrate.mjs runs this file top to bottom: declared earlier, the foreign
+-- key to a table that does not exist yet takes the statement down and the
+-- table is silently missing from a database built from scratch.
+CREATE TABLE IF NOT EXISTS order_displays (
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  display_option_id INTEGER NOT NULL REFERENCES display_options(id),
+  quantity INTEGER NOT NULL,
+  PRIMARY KEY (order_id, display_option_id)
+);
+
 CREATE TABLE IF NOT EXISTS order_content_lines (
   id SERIAL PRIMARY KEY,
   order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -503,3 +508,41 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS updated_by TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now();
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_by TEXT;
 CREATE INDEX IF NOT EXISTS expenses_live_idx ON expenses (date DESC) WHERE deleted_at IS NULL;
+
+-- The safety net, in two halves.
+--
+-- row_revisions is an append-only record of every insert, update and
+-- delete on the tables that hold real data, written by database triggers
+-- rather than by the app -- so there is no write path that can forget,
+-- including a batch action and a statement typed into the database
+-- console. db_snapshots is a nightly copy of everything, kept 14 deep.
+--
+-- The tables are here so a database built from scratch has them. The
+-- triggers and the undo_txid() function are NOT: migrate.mjs splits this
+-- file on semicolons, which would cut a plpgsql body in half. They live
+-- in scripts/migrate-026-row-revisions.sql, which is run whole
+CREATE TABLE IF NOT EXISTS row_revisions (
+  id BIGSERIAL PRIMARY KEY,
+  txid BIGINT NOT NULL,
+  recorded_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  table_name TEXT NOT NULL,
+  row_key JSONB NOT NULL,
+  action TEXT NOT NULL,
+  before JSONB,
+  after JSONB,
+  changed_by TEXT
+);
+CREATE INDEX IF NOT EXISTS row_revisions_recorded_idx ON row_revisions (recorded_at DESC);
+CREATE INDEX IF NOT EXISTS row_revisions_txid_idx ON row_revisions (txid);
+CREATE INDEX IF NOT EXISTS row_revisions_row_idx ON row_revisions (table_name, row_key);
+
+CREATE TABLE IF NOT EXISTS db_snapshots (
+  id SERIAL PRIMARY KEY,
+  taken_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  app_version TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'nightly',
+  row_counts JSONB NOT NULL,
+  bytes INTEGER NOT NULL,
+  data JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS db_snapshots_taken_idx ON db_snapshots (taken_at DESC);

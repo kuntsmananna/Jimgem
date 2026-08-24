@@ -30,12 +30,16 @@ import { getSumitUsage } from "@/lib/sumitBudget";
 import { SumitProbePanel } from "@/components/settings/SumitProbePanel";
 import { SumitSyncPanel } from "@/components/settings/SumitSyncPanel";
 import { ArchivedPanel } from "@/components/settings/ArchivedPanel";
+import { BackupPanel } from "@/components/settings/BackupPanel";
+import { HistoryPanel } from "@/components/settings/HistoryPanel";
+import { listSnapshots, snapshotsAvailable } from "@/lib/backup";
+import { getHistory } from "@/lib/history";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, snapshotsArmed, history] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -52,6 +56,9 @@ export default async function SettingsPage() {
       getLastSumitSync(),
       getSumitDocuments(),
       getSumitUsage(),
+      listSnapshots(),
+      snapshotsAvailable(),
+      getHistory(),
     ]);
   const sumitDocumentCount = sumitDocuments.length;
 
@@ -138,6 +145,8 @@ export default async function SettingsPage() {
               <ImportPanel />
               <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} usage={sumitUsage} />
               <SumitProbePanel usage={sumitUsage} />
+              <BackupPanel snapshots={snapshots} armed={snapshotsArmed} />
+              <HistoryPanel history={history} />
               <ArchivedPanel items={archived} />
             </div>
           ),

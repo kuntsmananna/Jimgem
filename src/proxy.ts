@@ -25,9 +25,12 @@ export const config = {
     /*
      * Match all routes except:
      * - /login (the page itself, to avoid a redirect loop)
+     * - /api/backup/cron, which is called by the schedule rather than by a
+     *   person: it has no session to present, and carries the cron secret
+     *   instead — the route refuses to run without it.
      * - Next.js internals (_next/static, _next/image)
      * - favicon.ico and other static files
      */
-    "/((?!login|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|api/backup/cron|_next/static|_next/image|favicon.ico).*)",
   ],
 };

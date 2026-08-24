@@ -771,6 +771,48 @@ compares identity, and a panel builds a fresh draft before every call.
   `display_options` are the same shape (`PricedOption`), so they share the
   Settings pane and the CRUD in `settings.ts`; the type aliases are what
   make a call site say which list it means.
+- **Two automatic safety nets, and neither is a chore.** Soft delete
+  covers "that row shouldn't be gone"; these cover the other two — "that
+  row shouldn't say *that*", and "something has been wrong for a while and
+  I don't know since when".
+  - **`row_revisions` records every write, and the database records it,
+    not the app.** Triggers on all eighteen tables that hold real data
+    append the whole row before and after
+    (`scripts/migrate-026-row-revisions.sql`), so there is no write path
+    that can forget: a batch action, a hand-run migration and an UPDATE
+    typed into the Neon console all appear. Rows written by one save share
+    a `txid`, which is what makes **`SELECT undo_txid(<id>)`** possible —
+    it reverses that whole save, an order and its package lines and their
+    flavours together, and records the reversal as its own change so it can
+    be undone in turn. The order of the reversal is not free: a cascading
+    delete logs the parent first, so deletes are re-inserted **forward**
+    through the log and everything else is undone **backward**, or a
+    flavour comes back before the line it hangs off. Verified against a
+    full `DELETE FROM orders`. Not watched: the two `sumit_*` tables, which
+    a nightly sync rewrites in bulk, and the legacy tables nothing reads.
+  - **`db_snapshots` is the whole database, copied nightly at 04:00 and
+    kept 14 deep** (`scripts/migrate-027-snapshots.sql`, `src/lib/backup.ts`).
+    The table list is read from `information_schema` at capture time, not
+    written out in code, so a table added next month is in the backup that
+    night; the file also carries the **order its tables must be written
+    back in**, computed from the live foreign keys, because a restore may
+    be reading it into an empty database. `scripts/restore-snapshot.mjs`
+    turns a downloaded backup into SQL — a whole restore or `--only` a few
+    tables — and prints it rather than running it: a restore is rare,
+    consequential and worth reading first, so there is no "just do it" flag.
+    Verified end to end, including a partial restore, against a real
+    Postgres.
+  - It is stored **in the database it copies**, which for one failure —
+    losing the Neon project — is circular. Neon's own point-in-time restore
+    covers that, and each snapshot downloads as a file. What this covers is
+    the likelier disaster by far: the data is all still there and some of it
+    is wrong.
+  - The nightly run is `vercel.json`'s cron calling `/api/backup/cron`,
+    which is the one route outside the session gate — a schedule has no
+    cookie — and **refuses to run at all without `CRON_SECRET`**, since an
+    open endpoint that copies the whole database on request is worse than a
+    backup that hasn't started. Settings → Data shows both: the backups
+    with what each holds, and the last changes with who made them.
 - **Deleting puts a row aside** (`orders.deleted_at`, `expenses.deleted_at`
   — `scripts/migrate-024-soft-delete.sql`). The row keeps its id, so
   restoring one brings back *the same* order — its package lines, its
@@ -1050,6 +1092,7 @@ compares identity, and a panel builds a fresh draft before every call.
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
 | `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |
 | `SUMIT_API_KEY` | SUMIT API key secret | no (SUMIT probe only, for now) |
+| `CRON_SECRET` | Shared secret the nightly backup checks — Vercel sends it as `Authorization: Bearer` on scheduled runs | yes, or the backup refuses to run |
 
 ## Shipping
 
@@ -1079,7 +1122,15 @@ the business, not about the code, so don't reach for it on your own.
 
 ## Commands
 
-`npm run dev` / `build` / `start` / `lint`
+`npm run dev` / `build` / `start` / `lint` / `test`
+
+`npm test` runs Vitest over the money math — `vatOn`, `orderSubtotal`,
+`orderDiscount`, `orderTotal`/`orderNet`, the unit tiers, `jellyTotal`
+and `repriceOrder`. Those and nothing else, deliberately: a mistake in
+them does not announce itself — the screen still shows a plausible
+figure and the report still adds up — and they are the part that needs
+no database and no browser to check. They are pure functions in
+`orderTypes.ts`, so a test is arithmetic against arithmetic.
 
 DB scripts: `npm run db:migrate` applies `src/lib/schema.sql`, `db:seed`
 seeds the value lists, `db:import` pulls the Sheet into Postgres.
@@ -1338,6 +1389,14 @@ spread beside it, for the same reason the form's other short lists are. Switchin
 exactly; switching back cannot — an arbitrary number rarely divides into
 whole packages, and rounding would change what the customer ordered — so
 it lands on one of the smallest package, to be adjusted.
+
+**`schema.sql` runs top to bottom, so a table must be declared after the
+tables it references.** `order_displays` sat 100 lines above `orders` and
+its foreign key took the statement down — on the production database it
+existed anyway (migration 012 built it), so the only thing that broke was
+building a database from scratch, which is exactly what a restore does.
+Verified by running the file into an empty database, which is worth doing
+after touching it.
 
 `migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
 a SQL comment truncates the statement after it** — keep comments in that
