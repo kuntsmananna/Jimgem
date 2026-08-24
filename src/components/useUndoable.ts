@@ -61,8 +61,11 @@ export function useUndoable<T>(initial: T): Undoable<T> {
     lastEdit.current = now;
     setState((state) => {
       const value = resolve(next, state.present);
-      // A setter that changed nothing is not a step: panels re-emit their
-      // whole draft on every keystroke, and a no-op would still push.
+      // A setter handed back the state it was given is not a step. The
+      // test is identity, not structure — a deep compare of the whole
+      // draft on every keystroke would cost more than the empty step it
+      // saves — so a caller that wants a no-op has to *not call*, rather
+      // than call with a freshly built copy of what is already here.
       if (Object.is(value, state.present)) return state;
       return {
         // Continuing a run advances the present and leaves the past alone,

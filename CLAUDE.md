@@ -230,7 +230,14 @@ iteration (not guessed) — define these as `@theme` tokens in
   piece sit on a cream panel and on the black rail without the call site
   saying which — a surface re-tones every field and toggle inside it by
   setting those properties once (see `.money-rail` in `globals.css`).
-- **Two shared pickers, one shape apart.** `ChipSpread` is the
+- **A picker says nothing when it is already the answer.** `ChipSpread` and
+`Segmented` fire `onChange` only on a change, because a click that
+re-announced the current value became a step in the order form's undo
+history — one identical to the present, so ⌘Z looked dead until it was
+pressed twice. `useUndoable` cannot catch that itself: its no-op guard
+compares identity, and a panel builds a fresh draft before every call.
+
+**Two shared pickers, one shape apart.** `ChipSpread` is the
   many-option one — order type, payment status, status, delivery, package
   size — and `Segmented` is the two-or-three-option track: Yes/No, ₪/%,
   units/percent, Package/Event. Both take a `size`, because the drift that
@@ -846,7 +853,10 @@ iteration (not guessed) — define these as `@theme` tokens in
   UPDATE matches on it, and the route answers **409** with a sentence
   rather than 500 — nothing failed, the caller's copy is just stale. On a
   popup the message shows and **the popup stays open**: the draft is the
-  only copy of that work. The guard is optional per call, because the
+  only copy of that work. `saveError` in `src/components/saveError.ts`
+  reads every write's answer, and **a popup stays open for any failure**,
+  not only a 409 — closing on a 500 would throw the draft away with
+  nothing written anywhere. The guard is optional per call, because the
   batch actions write rows nobody opened.
   In `updateOrder` it is repeated on every CTE
   (`EXISTS (SELECT 1 FROM updated_order)`), not just the UPDATE: the

@@ -156,11 +156,13 @@ export function Segmented<T extends string | boolean>({
       className="segmented flex shrink-0 items-center gap-0.5 rounded-full bg-current/8 p-0.5"
     >
       {options.map((option) => (
+        // Silent when the segment is already the answer, like ChipSpread:
+        // re-announcing the current value pushes an empty undo step.
         <button
           key={String(option.value)}
           type="button"
           aria-pressed={value === option.value}
-          onClick={() => onChange(option.value)}
+          onClick={() => { if (value !== option.value) onChange(option.value); }}
           className={`flex items-center gap-1.5 rounded-full font-bold whitespace-nowrap transition ${
             size === "md" ? "px-3.5 py-1 text-xs" : "px-2.5 py-0.5 text-[11px]"
           } ${

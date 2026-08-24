@@ -6,7 +6,7 @@ import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/setting
 import { Receipt } from "lucide-react";
 import { LastEdited } from "@/components/LastEdited";
 import { UndoRedo } from "@/components/UndoRedo";
-import { staleWriteMessage } from "@/components/staleWrite";
+import { saveError } from "@/components/saveError";
 import { Modal } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
@@ -68,12 +68,12 @@ export function ExpenseFormModal({
   const setDraft = form.set;
   useUndoShortcuts(form.undo, form.redo);
   const [busy, setBusy] = useState(false);
-  const [conflict, setConflict] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
 
   async function submit() {
     if (!draft.categoryId || draft.amount <= 0) return;
     setBusy(true);
-    setConflict(null);
+    setFailed(null);
     // Editing sends the version this form was opened on, so a save built
     // on values someone else has since changed is refused rather than
     // written over theirs — see StaleWriteError in orders.ts.
@@ -84,10 +84,11 @@ export function ExpenseFormModal({
     });
     setBusy(false);
     // The popup stays open holding the draft: it is the only copy of
-    // this work until it is written somewhere.
-    const stale = await staleWriteMessage(response, "expense");
-    if (stale) {
-      setConflict(stale);
+    // this work until it is written somewhere — on a refused save and on
+    // a failed one alike.
+    const failure = await saveError(response, "expense");
+    if (failure) {
+      setFailed(failure);
       return;
     }
     onSaved(draft.date);
@@ -206,9 +207,9 @@ export function ExpenseFormModal({
         <div className="mt-2 flex items-center gap-2">
           {isEdit && <LastEdited at={expense.updatedAt} by={expense.updatedBy} />}
           <UndoRedo form={form} />
-          {conflict && (
+          {failed && (
             <span className="text-xs font-semibold text-red-700" role="alert">
-              {conflict}
+              {failed}
             </span>
           )}
           <span className="flex-1" />

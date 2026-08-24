@@ -18,7 +18,7 @@ import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
 import { LastEdited } from "@/components/LastEdited";
 import { UndoRedo } from "@/components/UndoRedo";
-import { staleWriteMessage } from "@/components/staleWrite";
+import { saveError } from "@/components/saveError";
 import { useModalHeaderSlot } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { OrderCustomerPanel } from "./OrderCustomerPanel";
@@ -222,38 +222,38 @@ export function OrderForm({
   /*
    * The panels take plain setters and know nothing about the history.
    *
-   * Each hands back the state it was given when its own piece hasn't
-   * moved, which is what keeps `useUndoable`'s no-op guard alive: spreading
-   * unconditionally allocates a fresh outer object every time, so the guard
-   * would compare two objects that are never the same one and every
-   * re-emitted draft would push a step nobody took.
+   * Deliberately no "did this actually change?" guard here: every panel
+   * builds a fresh object, array or Set before calling back, so comparing
+   * references would never be true and comparing structures would mean
+   * deep-equalling the whole draft on every keystroke. A control that has
+   * nothing to report says nothing instead — see `ChipSpread` and
+   * `Segmented`, which is where a click on the already-chosen option used
+   * to become a step in the history.
    */
   const setDraft = useCallback(
-    (next: OrderInput) =>
-      setForm((state) => (Object.is(state.draft, next) ? state : { ...state, draft: next })),
+    (next: OrderInput) => setForm((state) => ({ ...state, draft: next })),
     [setForm],
   );
   const setLines = useCallback(
-    (next: DraftPackageLine[]) =>
-      setForm((state) => (Object.is(state.lines, next) ? state : { ...state, lines: next })),
+    (next: DraftPackageLine[]) => setForm((state) => ({ ...state, lines: next })),
     [setForm],
   );
   const setManual = useCallback(
-    (next: ReadonlySet<AmountKey>) =>
-      setForm((state) => (Object.is(state.manual, next) ? state : { ...state, manual: next })),
+    (next: ReadonlySet<AmountKey>) => setForm((state) => ({ ...state, manual: next })),
     [setForm],
   );
 
   useUndoShortcuts(form.undo, form.redo);
   const [busy, setBusy] = useState(false);
   /**
-   * Set when the save was refused because someone else changed the order
-   * while this form was open. It stays until the form is closed: the draft
-   * is still on screen and still unsaved, and the one thing that must not
+   * Set when the save did not go through — someone else changed the order
+   * while this form was open, or the write failed outright. Either way the
+   * form stays open holding the draft, which is the only copy of this
+   * work. It stays until the form is closed: the one thing that must not
    * happen is the message vanishing while the work it describes is still
    * at risk.
    */
-  const [conflict, setConflict] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
   /*
    * The phone for a client this order is about to create. Held here rather
    * than on the draft because it belongs to the *client*, not the order —
@@ -338,7 +338,7 @@ export function OrderForm({
   async function submit() {
     if (!canSave) return;
     setBusy(true);
-    setConflict(null);
+    setFailed(null);
     /*
      * A name nobody has ordered under before becomes a client now, at
      * save, rather than as it was typed. If this fails the order is still
@@ -377,10 +377,10 @@ export function OrderForm({
     setBusy(false);
     // The form stays open holding the draft: it is the only copy of this
     // work now, and closing it would be the loss the guard exists to
-    // prevent.
-    const stale = await staleWriteMessage(response, "order");
-    if (stale) {
-      setConflict(stale);
+    // prevent — on a refused save and on a failed one alike.
+    const failure = await saveError(response, "order");
+    if (failure) {
+      setFailed(failure);
       return;
     }
     onSaved();
@@ -469,13 +469,13 @@ export function OrderForm({
         {isEdit && <LastEdited at={order!.updatedAt} by={order!.updatedBy} />}
         {/* The shortcut, made visible — see UndoRedo. */}
         <UndoRedo form={form} />
-        {conflict && (
+        {failed && (
           <span className="text-xs font-semibold text-red-700" role="alert">
-            {conflict}
+            {failed}
           </span>
         )}
         {/* Nothing here saves as you type, so say so while it's still fixable. */}
-        {!conflict && dirty && (
+        {!failed && dirty && (
           <span className="text-xs font-semibold text-amber-700" role="status">
             Unsaved changes
           </span>

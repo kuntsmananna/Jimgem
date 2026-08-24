@@ -215,11 +215,12 @@ export function OrdersClient({
   /*
    * What the open client's card shows.
    *
-   * Derived plainly, not through `useMemo`: this project builds with the
-   * React Compiler, which memoises this for us — and a hand-written memo
-   * here made it skip optimising the whole component, because its
-   * dependency on the per-render `stageIndex` map is one the compiler
-   * cannot prove safe.
+   * Derived plainly, not through `useMemo`. It is a filter over the orders
+   * already on screen and runs only while a card is open, which is cheaper
+   * than the memo would have been anyway — and `eslint-plugin-react-hooks`
+   * rejected the memo outright: depending on the per-render `stageIndex`
+   * map is memoisation it cannot prove safe, and one such memo makes it
+   * give up on the whole component.
    */
   const clientCard = openClient && {
     lines: orders

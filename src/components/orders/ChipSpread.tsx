@@ -109,7 +109,14 @@ export function ChipSpread({
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => onChange(option.value)}
+              /*
+                Silent when the chip is already the answer. A picker that
+                re-announced the value it is showing looked harmless until
+                the order form grew an undo history: the click pushed a
+                step identical to the present, and ⌘Z appeared to do
+                nothing because its first press undid that non-event.
+              */
+              onClick={() => { if (!on) onChange(option.value); }}
               title={option.retired ? `${option.label} — no longer on the list` : option.label}
               /*
                 `keeps-color` because a chosen chip's fill *is* the answer:
