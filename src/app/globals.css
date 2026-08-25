@@ -182,26 +182,15 @@ body {
   }
 
   /*
-   * Orders table row focus. Hovering a row brings it forward and lets the
-   * others recede, so the eye lands on one line in a dense table.
+   * The open order's row keeps a tint while its popup is up, so it is
+   * clear which line the popup belongs to once it is dismissed.
    *
-   * Done in CSS rather than by tracking the hovered row in React: that
-   * re-rendered every row (~80 rows × 13 cells) on each row-to-row mouse
-   * move. `tbody:hover` matches while the pointer is anywhere in the
-   * table, so the un-hovered rows dim only during a hover, never at rest.
+   * The table used to fade every other row to 55% while one was hovered.
+   * The hovered row already turns solid black (see `.hover-line` below),
+   * which is emphasis enough — the fade dimmed the whole rest of the
+   * table on the way past, which is most of what the eye is doing on a
+   * list you are scanning rather than reading.
    */
-  .orders-rows:hover > tr {
-    opacity: 0.55;
-    transition:
-      opacity 120ms ease,
-      background-color 120ms ease;
-  }
-
-  .orders-rows:hover > tr:hover,
-  .orders-rows > tr.is-open {
-    opacity: 1;
-  }
-
   .orders-rows > tr.is-open {
     background-color: --alpha(var(--color-accent) / 7%);
   }

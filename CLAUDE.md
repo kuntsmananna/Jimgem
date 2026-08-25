@@ -322,7 +322,10 @@ compares identity, and a panel builds a fresh draft before every call.
   the half-typed order behind it.
 - Hovering a line — an orders-table row, a Kanban card, a calendar pill,
   an expense row, a settings list item — turns it **solid black with
-  light text**. One mechanism in `globals.css`: add `.hover-line` to the
+  light text**, and that is the whole of the emphasis: the Orders table
+  used to fade every *other* row to 55% at the same time, which dimmed the
+  bulk of the table on the way past, and scanning a list is most of what
+  anyone is doing on that page. One mechanism in `globals.css`: add `.hover-line` to the
   element (the Orders table gets it via `.orders-rows > tr` instead,
   since a `<tr>` can't carry the transition cleanly). That block sits
   **outside every `@layer` on purpose** — Tailwind's utilities live in
