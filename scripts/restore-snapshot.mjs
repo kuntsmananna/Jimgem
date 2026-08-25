@@ -37,6 +37,10 @@ const tableOrder = snapshot.tableOrder ?? Object.keys(data);
 
 const tables = tableOrder.filter((table) => data[table] && (!only || only.includes(table)));
 
+/** Not a bcrypt hash at all, so `compare` against it is always false. */
+const UNUSABLE_HASH = "'!'";
+
+const warnings = [];
 const out = [];
 out.push(`-- Restored from a Jimgem backup taken ${snapshot.takenAt} on ${snapshot.appVersion}.`);
 out.push(`-- ${tables.length} tables, ${tables.reduce((n, t) => n + data[t].length, 0)} rows.`);
@@ -55,6 +59,22 @@ for (const table of tables) {
   const rows = data[table];
   if (rows.length === 0) continue;
   const columns = Object.keys(rows[0]);
+  /*
+   * A downloaded backup has the login hashes stripped out of it (see
+   * getSnapshotDocument), and staff.password_hash is NOT NULL — so the
+   * rows are restored with a hash that cannot match anything, and both
+   * logins are set again by hand afterwards. Failing closed: an account
+   * nobody can sign into is the right state for one restored from a file
+   * that never carried its password.
+   */
+  const blankedLogins = table === "staff" && !columns.includes("password_hash");
+  if (blankedLogins) {
+    columns.push("password_hash");
+    warnings.push(
+      `-- NOTE: ${rows.length} staff rows come back with no usable password (the download redacts it).`,
+      "--       Set each one afterwards, e.g. from Settings > Team, before anyone tries to sign in.",
+    );
+  }
   // The column list is the same for every row of a table; built once
   // rather than re-quoted and re-joined a few thousand times.
   const columnList = columns.map(quoteName).join(", ");
@@ -63,7 +83,9 @@ for (const table of tables) {
   for (const row of rows) {
     out.push(
       `INSERT INTO ${quoteName(table)} (${columnList}) VALUES (${columns
-        .map((column) => literal(row[column]))
+        .map((column) =>
+          blankedLogins && column === "password_hash" ? UNUSABLE_HASH : literal(row[column]),
+        )
         .join(", ")});`,
     );
   }
@@ -81,7 +103,8 @@ for (const table of tables) {
 }
 out.push("");
 out.push("COMMIT;");
-console.log(out.join("\n"));
+// Warnings first, where they will be read, rather than buried mid-file.
+console.log([...warnings, ...out].join("\n"));
 
 function flagValue(argv, name) {
   const at = argv.indexOf(name);

@@ -822,6 +822,17 @@ compares identity, and a panel builds a fresh draft before every call.
     consequential and worth reading first, so there is no "just do it" flag.
     Verified end to end, including a partial restore, against a real
     Postgres.
+  - **Nothing that leaves carries a login.** `staff.password_hash` is in
+    the stored snapshot, because a restore has to put the accounts back —
+    but `getSnapshotDocument` strips it from a *downloaded* file, and the
+    trigger never records it at all (a reset would otherwise write the old
+    and the new hash into a log that keeps everything and shows it on a
+    Settings pane). Two known usernames plus an offline bcrypt hash is a
+    cracking exercise, not a backup. So a restore from a downloaded file
+    comes back with both logins unusable — `restore-snapshot.mjs` writes
+    `'!'`, which no password can match, and says so at the top of the SQL —
+    and they are set again by hand. Failing closed is the right state for
+    an account restored from a file that never held its password.
   - It is stored **in the database it copies**, which for one failure —
     losing the Neon project — is circular. Neon's own point-in-time restore
     covers that, and each snapshot downloads as a file. What this covers is

@@ -66,11 +66,15 @@ const SUBJECTS: Record<string, string> = {
 };
 
 /**
- * The stamps every save writes. They are the answer to "who and when",
- * which each row already carries at its end — listing them among the
- * fields that moved would bury the edit under its own bookkeeping.
+ * Fields no change list should carry.
+ *
+ * The two stamps are the answer to "who and when", which each row already
+ * carries at its end — listing them among the fields that moved would
+ * bury the edit under its own bookkeeping. `password_hash` is here for a
+ * different reason: the trigger stops recording it (migration 026), and
+ * this makes sure the rows logged before that fix stay off the screen.
  */
-const BOOKKEEPING = new Set(["updated_at", "updated_by"]);
+const BOOKKEEPING = new Set(["updated_at", "updated_by", "password_hash"]);
 
 export async function getHistory(limit = 12): Promise<History> {
   const db = getDb();

@@ -197,16 +197,49 @@ export async function listSnapshots(): Promise<Snapshots> {
 }
 
 /**
- * One snapshot's payload, as the JSON text it was stored as.
+ * One snapshot's payload, as a file to keep somewhere else — with the
+ * login hashes taken out of it.
  *
- * `data::text` rather than `data`: the driver would otherwise parse a
- * megabyte of JSON into objects for the sole purpose of having it
- * stringified straight back into the response body.
+ * The stored copy holds every column, because a restore has to put the
+ * accounts back as they were. A *downloaded* copy is a different thing:
+ * it is meant to leave, onto a laptop and into whatever the owner keeps
+ * it in, and nothing that leaves should carry `staff.password_hash`.
+ * Two known usernames and an offline bcrypt hash is a password-cracking
+ * exercise, not a backup.
+ *
+ * So a restore from a downloaded file comes back with both logins blank
+ * and they are set again by hand — one statement, against two accounts,
+ * on the rare day the whole database has to be rebuilt from a file. See
+ * scripts/restore-snapshot.mjs, which says so where it matters.
+ *
+ * Redacted here rather than at capture, because the hash sitting inside
+ * the database it already lives in is not an exposure; the copy walking
+ * out of the building is.
  */
 export async function getSnapshotDocument(id: number): Promise<string | null> {
   const db = getDb();
+  // `data::text` rather than `data`: only the staff rows need touching,
+  // and the driver would otherwise parse a megabyte of JSON into objects
+  // for the sake of a couple of fields.
   const { rows } = await db.query<{ data: string }>(
-    `SELECT data::text AS data FROM db_snapshots WHERE id = $1`,
+    // Rebuilt in the database rather than in Node: only the staff rows
+    // are touched, and the alternative is parsing a megabyte of JSON into
+    // objects for the sake of one field. The CASE leaves a document that
+    // has no staff array exactly as it is — `jsonb_set` would otherwise
+    // add an empty one that was never in the backup.
+    `SELECT CASE
+              WHEN data -> 'data' ? 'staff' THEN jsonb_set(
+                data,
+                '{data,staff}',
+                COALESCE(
+                  (SELECT jsonb_agg(person - 'password_hash')
+                     FROM jsonb_array_elements(data -> 'data' -> 'staff') AS person),
+                  '[]'::jsonb
+                )
+              )
+              ELSE data
+            END::text AS data
+       FROM db_snapshots WHERE id = $1`,
     [id],
   );
   return rows[0]?.data ?? null;

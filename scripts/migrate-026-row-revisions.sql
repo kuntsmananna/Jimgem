@@ -57,6 +57,15 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- A login hash is not history either, and this log keeps everything
+  -- forever and shows it on a Settings pane. Dropping the column keeps
+  -- the record of a name or username changing and stores no credential:
+  -- an old bcrypt hash is exactly as crackable as the current one.
+  IF TG_TABLE_NAME = 'staff' THEN
+    old_row := old_row - 'password_hash';
+    new_row := new_row - 'password_hash';
+  END IF;
+
   -- The key columns this table was watched with, read off the row. One
   -- aggregate rather than a loop: this runs on every write in the
   -- database, and there is nothing here a loop says better.
@@ -113,6 +122,16 @@ SELECT watch_table('staff', 'id');
 -- Deliberately not watched: sumit_documents and sumit_api_calls, which a
 -- nightly sync rewrites in bulk and which are a mirror of someone else's
 -- record anyway, and the legacy tables nothing reads.
+
+-- Anything the log recorded before the rule above existed. A hash that
+-- was already written stays crackable, so a re-run scrubs it; the log
+-- keeps the rest of what those rows said. Idempotent -- rows without the
+-- key are left alone by `-`.
+UPDATE row_revisions
+   SET before = before - 'password_hash',
+       after = after - 'password_hash'
+ WHERE table_name = 'staff'
+   AND (before ? 'password_hash' OR after ? 'password_hash');
 
 -- What happened lately, in the form you would want to read it.
 --
