@@ -34,6 +34,7 @@ export { nf };
 export function GroupLabel({
   children,
   rule = true,
+  icon,
 }: {
   children: React.ReactNode;
   /**
@@ -42,6 +43,13 @@ export function GroupLabel({
    * separate it from, and drawn anyway it reads as an empty section.
    */
   rule?: boolean;
+  /**
+   * A mark before the words, for a heading that names a *thing* rather
+   * than a part of the form — Delivery is the one with a truck. Here
+   * rather than at the call site so the icon sits on the text's own
+   * baseline grid whatever the heading is.
+   */
+  icon?: React.ReactNode;
 }) {
   /*
    * Full strength, where the rows under it are dimmed. It had this the
@@ -55,9 +63,10 @@ export function GroupLabel({
   return (
     <span
       className={`text-[10.5px] font-extrabold tracking-[0.14em] uppercase ${
-        rule ? "mt-1.5 mb-2.5 block border-b border-current/12 pb-2" : ""
-      }`}
+        icon ? "inline-flex items-center gap-1.5" : ""
+      } ${rule ? "mt-1.5 mb-2.5 block border-b border-current/12 pb-2" : ""}`}
     >
+      {icon}
       {children}
     </span>
   );

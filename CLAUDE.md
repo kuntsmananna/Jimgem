@@ -271,7 +271,8 @@ compares identity, and a panel builds a fresh draft before every call.
   chips already carry the colour on that screen.
 - **A heading is only ruled where it heads several rows.** `GroupLabel`
   takes `rule={false}` for a group that is one row with its control beside
-  it (Getting it there), and `FieldLabel` is the caption for a single
+  it (Delivery, which also wears a truck — `GroupLabel`'s optional
+  `icon`), and `FieldLabel` is the caption for a single
   field (Notes) — a rule over one box separates it from nothing. The
   Customer tab has no headings at all: the dialog is titled "Edit order",
   its first line is the customer's name at 28px, and the date and location
@@ -1245,7 +1246,8 @@ everywhere — the Settings pane, this filter and the table's column — after
 a spell where the same list answered to Status, Stage and Statuses on
 three different screens. It defaults to `ACTIVE_STAGES` — every stage except Delivered, derived from
 `PRODUCTION_STATUS_LABEL` so a stage added later shows up rather than
-hiding — which keeps the old default (62 of 79 orders are delivered)
+hiding — which keeps the old default (most of the 57 orders are
+delivered)
 while also answering "show me the offers". Kanban ignores it: its columns
 already *are* the stages, and hiding one would leave the board unable to
 show work it exists to track.
@@ -1320,7 +1322,7 @@ the latest few still needing work — so it now includes delivered ones,
 which "all orders in May" would otherwise leave out. It **fills the pane
 and scrolls inside it**: the scroller is absolutely positioned in a box
 claiming only a minimum height, so the charts beside it set the height and
-the list takes it. Sized by its own content instead, all-time's 79 rows
+the list takes it. Sized by its own content instead, all-time's 57 rows
 would drive the row and strand those charts at the top of a very long
 page; capped at a fixed height, it left a third of the pane empty. Each
 row shows `orderTotal`, matching the KPI tiles above it.

@@ -7,6 +7,7 @@ import {
   type OrderInput,
   type Rates,
 } from "@/lib/orderTypes";
+import { Truck } from "lucide-react";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
 import { GroupLabel, SheetRow, YesNo } from "./OrderSheet";
 import { NumberStepper } from "./PackageLineEditor";
@@ -104,7 +105,9 @@ export function OrderEventPanel({
         group with one empty row in it.
       */}
       <section className="flex min-w-0 items-center justify-between gap-4">
-        <GroupLabel rule={false}>Getting it there</GroupLabel>
+        <GroupLabel rule={false} icon={<Truck size={13} />}>
+          Delivery
+        </GroupLabel>
         {/*
           A destination sets the price; "Other" turns delivery on with
           none, which is the hand-typed case — an order can be booked for
