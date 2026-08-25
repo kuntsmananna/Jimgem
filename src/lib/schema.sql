@@ -520,14 +520,21 @@ CREATE INDEX IF NOT EXISTS expenses_live_idx ON expenses (date DESC) WHERE delet
 -- The tables are here so a database built from scratch has them. The
 -- triggers and the undo_txid() function are NOT: migrate.mjs splits this
 -- file on semicolons, which would cut a plpgsql body in half. They live
--- in scripts/migrate-026-row-revisions.sql, which is run whole
+-- in scripts/migrate-026-row-revisions.sql, which is run whole.
+--
+-- THESE TWO TABLE DECLARATIONS ARE ALSO IN THAT MIGRATION, WORD FOR WORD,
+-- AND HAVE TO STAY THAT WAY. An existing database gets them from the
+-- migration and a new one from this file, both as CREATE TABLE IF NOT
+-- EXISTS -- so whichever ran first wins and the other is a silent no-op.
+-- Two copies that drift means which constraints a database ends up with
+-- depends on the order somebody happened to run two files in
 CREATE TABLE IF NOT EXISTS row_revisions (
   id BIGSERIAL PRIMARY KEY,
   txid BIGINT NOT NULL,
   recorded_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
   table_name TEXT NOT NULL,
   row_key JSONB NOT NULL,
-  action TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('insert', 'update', 'delete')),
   before JSONB,
   after JSONB,
   changed_by TEXT

@@ -11,7 +11,7 @@
  * decode is worse than one they can read.
  */
 export function LastEdited({ at, by }: { at: string; by: string }) {
-  const when = describe(at);
+  const when = whenText(at);
   if (!when) return null;
 
   return (
@@ -28,10 +28,18 @@ export function LastEdited({ at, by }: { at: string; by: string }) {
 }
 
 /**
+ * When something happened, as a person would say it.
+ *
+ * Exported because it is the app's one answer to that: the Settings
+ * panes that list backups and recent changes ask the same question about
+ * the same kind of stamp, and a bare `Intl` format there would print
+ * "25 Aug, 14:32" for something that happened ten minutes ago while the
+ * popup for that very row says "today at 14:32".
+ *
  * Null for a stamp that cannot be read, rather than "Invalid Date": a row
  * from before this was recorded should say nothing at all.
  */
-function describe(at: string): string | null {
+export function whenText(at: string): string | null {
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) return null;
 
@@ -54,6 +62,13 @@ function describe(at: string): string | null {
  * Built once. `Intl` formatters are the costly part of this function, and
  * the popup it sits in re-renders on every keystroke.
  */
+/** The date alone, for a caption that is about a day rather than a moment. */
+export function dayText(at: string): string | null {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return null;
+  return (date.getFullYear() === new Date().getFullYear() ? DAY : DAY_WITH_YEAR).format(date);
+}
+
 const CLOCK = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 const DAY_WITH_YEAR = new Intl.DateTimeFormat("en-GB", {

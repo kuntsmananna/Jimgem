@@ -58,3 +58,20 @@ export function PaneHeader({
  */
 export const PANE_ACTION_CLASS =
   "rounded-full bg-band-ink px-3 py-1 text-xs font-semibold text-band transition hover:bg-band-ink/85";
+
+/**
+ * "This pane's table isn't there yet — run that migration."
+ *
+ * A migration ships with the code and is applied by hand, so a pane can
+ * outrun its own table by a few minutes. Each such pane says the same
+ * thing in the same tone, and in the app's own tile colour rather than a
+ * raw amber picked per pane: the two that say it are reporting a chore,
+ * not an alarm.
+ */
+export function MigrationNeeded({ script }: { script: string }) {
+  return (
+    <p className="mt-3 rounded-lg bg-tile-peach px-3 py-2 text-xs font-semibold text-ink" role="status">
+      Not recording yet — run <code className="font-mono">{script}</code> against the database.
+    </p>
+  );
+}

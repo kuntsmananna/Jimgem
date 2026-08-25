@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { getDb, isMissingTable, reportMissingTable } from "./db";
 
 /**
  * SUMIT's calls are metered, and the meter is small.
@@ -53,25 +53,6 @@ export interface SumitUsage {
   available: boolean;
 }
 
-/**
- * Is this the log table simply not existing yet?
- *
- * A migration that ships with the code but is run by hand against the
- * database means the two are briefly out of step, and the meter is the
- * one thing on Settings that must not take the page down with it — nine
- * other panes have nothing to do with SUMIT. Postgres says 42P01 for an
- * undefined table; the message is checked too, because the HTTP driver
- * does not always carry the code through.
- */
-function isMissingCallLog(error: unknown): boolean {
-  const code = (error as { code?: string })?.code;
-  const message = error instanceof Error ? error.message : String(error);
-  return code === "42P01" || /sumit_api_calls.*does not exist/i.test(message);
-}
-
-/** So the diagnostic below is written once a process, not once a call. */
-let loggedMissingCallLog = false;
-
 const NOTHING_COUNTED: SumitUsage = {
   used: 0,
   budget: SUMIT_CALL_BUDGET,
@@ -118,34 +99,11 @@ export async function getSumitUsage(): Promise<SumitUsage> {
         WHERE called_at >= date_trunc('month', now())`,
     ));
   } catch (error) {
-    if (!isMissingCallLog(error)) throw error;
-    /*
-     * Say so in the log, and name the database while doing it.
-     *
-     * Degrading quietly is right for the page and wrong for diagnosis: a
-     * missing table here is almost always the migration having been run
-     * against a different Neon branch, and the one fact that settles it is
-     * which database the app is actually talking to. One extra query, only
-     * on the path that is already broken.
-     */
-    // Once per process, not once per call: the table's absence cannot
-    // change mid-run, and `sumitPost` asks before every SUMIT call — so
-    // logging it each time would put a spare round trip and a line of noise
-    // in front of each one.
-    if (!loggedMissingCallLog) {
-      loggedMissingCallLog = true;
-      try {
-        const { rows } = await db.query<{ db: string; schema: string }>(
-          "SELECT current_database() AS db, current_schema() AS schema",
-        );
-        console.error(
-          `SUMIT call log missing: no sumit_api_calls in ${rows[0]?.db}.${rows[0]?.schema} — ` +
-            "run scripts/migrate-020-sumit-call-log.sql against that database.",
-        );
-      } catch {
-        console.error("SUMIT call log missing: sumit_api_calls does not exist.");
-      }
-    }
+    if (!isMissingTable(error, "sumit_api_calls")) throw error;
+    // Said in the server log once a process — `sumitPost` asks before
+    // every SUMIT call, so logging each time would put a spare round trip
+    // and a line of noise in front of all of them.
+    await reportMissingTable("sumit_api_calls", "scripts/migrate-020-sumit-call-log.sql");
     // Deliberately not cached: the table's absence is a misconfiguration
     // about to be fixed, and a process that remembered it would keep the
     // meter dark for as long as it stayed warm after the migration ran.

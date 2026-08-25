@@ -25,11 +25,15 @@ if (!file) {
 
 const only = flagValue(flags, "--only")?.split(",").map((name) => name.trim());
 const snapshot = JSON.parse(readFileSync(file, "utf8"));
-const { data, tableOrder = Object.keys(snapshot.data ?? {}) } = snapshot;
+const data = snapshot.data;
 if (!data) {
   console.error("That file has no `data` — is it a Jimgem backup?");
   process.exit(1);
 }
+// Every backup carries the order its tables must be written back in;
+// falling back to whatever order the keys happen to be in is the best
+// that can be done for a file from before that was recorded.
+const tableOrder = snapshot.tableOrder ?? Object.keys(data);
 
 const tables = tableOrder.filter((table) => data[table] && (!only || only.includes(table)));
 
@@ -51,11 +55,14 @@ for (const table of tables) {
   const rows = data[table];
   if (rows.length === 0) continue;
   const columns = Object.keys(rows[0]);
+  // The column list is the same for every row of a table; built once
+  // rather than re-quoted and re-joined a few thousand times.
+  const columnList = columns.map(quoteName).join(", ");
   out.push("");
   out.push(`-- ${table}: ${rows.length} rows`);
   for (const row of rows) {
     out.push(
-      `INSERT INTO ${quoteName(table)} (${columns.map(quoteName).join(", ")}) VALUES (${columns
+      `INSERT INTO ${quoteName(table)} (${columnList}) VALUES (${columns
         .map((column) => literal(row[column]))
         .join(", ")});`,
     );

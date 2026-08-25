@@ -1,4 +1,5 @@
-import { getDb } from "./db";
+import { getDb, isMissingTable, reportMissingTable } from "./db";
+import { isoStamp } from "./stamp";
 import { APP_VERSION_LABEL } from "./version";
 
 /**
@@ -80,16 +81,29 @@ export async function captureSnapshot(kind: "nightly" | "manual" = "nightly"): P
       ORDER BY table_name`,
   );
 
-  const data: Record<string, unknown[]> = {};
-  const rowCounts: Record<string, number> = {};
-  for (const { table_name: table } of tables) {
-    if (SKIP.has(table)) continue;
+  /*
+   * Every table at once, not one after another.
+   *
+   * Each read is its own HTTP round trip on this driver, so twenty-one of
+   * them in sequence is a second of doing nothing but waiting. They do not
+   * depend on each other, and reading them concurrently also *narrows* the
+   * window the copy is taken across rather than widening it: a snapshot
+   * spread over a second is less of one picture than a snapshot spread
+   * over a few milliseconds.
+   */
+  const wanted = tables.map(({ table_name }) => table_name).filter((table) => !SKIP.has(table));
+  const contents = await Promise.all(
     // The table name comes from information_schema, not from anything a
     // caller typed, and is quoted on the way in regardless.
-    const { rows } = await db.query(`SELECT * FROM "${table.replace(/"/g, '""')}"`);
-    data[table] = rows;
-    rowCounts[table] = rows.length;
-  }
+    wanted.map((table) => db.query(`SELECT * FROM "${table.replace(/"/g, '""')}"`)),
+  );
+
+  const data: Record<string, unknown[]> = {};
+  const rowCounts: Record<string, number> = {};
+  wanted.forEach((table, at) => {
+    data[table] = contents[at]!.rows;
+    rowCounts[table] = contents[at]!.rows.length;
+  });
 
   const { rows: edges } = await db.query<{ child: string; parent: string }>(
     `SELECT conrelid::regclass::text AS child, confrelid::regclass::text AS parent
@@ -105,7 +119,10 @@ export async function captureSnapshot(kind: "nightly" | "manual" = "nightly"): P
   const { rows } = await db.query<{ id: number; taken_at: string }>(
     `INSERT INTO db_snapshots (app_version, kind, row_counts, bytes, data)
      VALUES ($1, $2, $3::jsonb, $4, $5::jsonb) RETURNING id, taken_at`,
-    [APP_VERSION_LABEL, kind, JSON.stringify(rowCounts), document.length, document],
+    // Bytes, not `document.length`: that counts UTF-16 units, and a
+    // Hebrew customer name is one unit and two bytes — so the size the
+    // pane prints would read up to half of what the copy actually is.
+    [APP_VERSION_LABEL, kind, JSON.stringify(rowCounts), Buffer.byteLength(document), document],
   );
 
   // Pruned after the write, never before: a run that fails leaves the
@@ -119,19 +136,33 @@ export async function captureSnapshot(kind: "nightly" | "manual" = "nightly"): P
 
   return {
     id: rows[0]!.id,
-    takenAt: new Date(rows[0]!.taken_at).toISOString(),
+    takenAt: isoStamp(rows[0]!.taken_at),
     appVersion: APP_VERSION_LABEL,
     kind,
     rowCounts,
-    bytes: document.length,
+    bytes: Buffer.byteLength(document),
   };
 }
 
 /**
  * The list, without the payloads — a snapshot is most of a megabyte and
  * the pane only ever shows its shape.
+ *
+ * `available` rides inside the answer rather than being a second question
+ * asked of `information_schema`, which is how `getSumitUsage` and
+ * `getHistory` report the same thing: one query knows both, and two
+ * mechanisms for one fact can disagree — the pane would then read
+ * "nothing taken yet, the first lands tonight", which is the most
+ * reassuring of the possible answers, in the case where something is
+ * actually wrong.
  */
-export async function listSnapshots(): Promise<SnapshotSummary[]> {
+export interface Snapshots {
+  /** False until migration 027 has been run against this database. */
+  available: boolean;
+  snapshots: SnapshotSummary[];
+}
+
+export async function listSnapshots(): Promise<Snapshots> {
   const db = getDb();
   try {
     const { rows } = await db.query<{
@@ -142,41 +173,41 @@ export async function listSnapshots(): Promise<SnapshotSummary[]> {
       row_counts: Record<string, number>;
       bytes: number;
     }>(
+      // Every column but `data`, which is the whole point of the table and
+      // has no business crossing the wire to draw a list.
       `SELECT id, taken_at, app_version, kind, row_counts, bytes
          FROM db_snapshots ORDER BY taken_at DESC`,
     );
-    return rows.map((row) => ({
-      id: row.id,
-      takenAt: new Date(row.taken_at).toISOString(),
-      appVersion: row.app_version,
-      kind: row.kind,
-      rowCounts: row.row_counts,
-      bytes: row.bytes,
-    }));
-  } catch {
-    // Migration 027 not run against this database yet. The pane says so
-    // rather than taking the Settings page down with it — the same rule
-    // the SUMIT meter follows.
-    return [];
+    return {
+      available: true,
+      snapshots: rows.map((row) => ({
+        id: row.id,
+        takenAt: isoStamp(row.taken_at),
+        appVersion: row.app_version,
+        kind: row.kind,
+        rowCounts: row.row_counts,
+        bytes: row.bytes,
+      })),
+    };
+  } catch (error) {
+    if (!isMissingTable(error, "db_snapshots")) throw error;
+    await reportMissingTable("db_snapshots", "scripts/migrate-027-snapshots.sql");
+    return { available: false, snapshots: [] };
   }
 }
 
-/** One snapshot's payload, as the JSON text it was stored as. */
+/**
+ * One snapshot's payload, as the JSON text it was stored as.
+ *
+ * `data::text` rather than `data`: the driver would otherwise parse a
+ * megabyte of JSON into objects for the sole purpose of having it
+ * stringified straight back into the response body.
+ */
 export async function getSnapshotDocument(id: number): Promise<string | null> {
   const db = getDb();
-  const { rows } = await db.query<{ data: unknown }>(`SELECT data FROM db_snapshots WHERE id = $1`, [id]);
-  if (rows.length === 0) return null;
-  return JSON.stringify(rows[0]!.data);
-}
-
-/** Whether the snapshot table exists at all — see `listSnapshots`. */
-export async function snapshotsAvailable(): Promise<boolean> {
-  const db = getDb();
-  const { rows } = await db.query<{ exists: boolean }>(
-    `SELECT EXISTS (
-       SELECT 1 FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'db_snapshots'
-     ) AS exists`,
+  const { rows } = await db.query<{ data: string }>(
+    `SELECT data::text AS data FROM db_snapshots WHERE id = $1`,
+    [id],
   );
-  return rows[0]?.exists === true;
+  return rows[0]?.data ?? null;
 }

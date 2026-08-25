@@ -42,3 +42,56 @@ export function getDb(): Db {
     },
   };
 }
+
+/**
+ * Is this error simply a table that isn't there yet?
+ *
+ * Migrations ship with the code and are run by hand against the database,
+ * so the two are briefly out of step — and the pane that noticed should
+ * say so rather than taking eight unrelated panes down with it. Every
+ * caller that degrades on a missing table asks here, because the check is
+ * not obvious: Postgres says 42P01, but the HTTP driver does not always
+ * carry the code through, so the message is tested too.
+ *
+ * Named per table on purpose. A bare catch would report a connection
+ * failure, a permission error or a typo in the query as "run the
+ * migration", which sends the owner to re-run something already applied
+ * while the real fault goes unmentioned. Anything else is rethrown.
+ */
+export function isMissingTable(error: unknown, table: string): boolean {
+  const code = (error as { code?: string })?.code;
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    (code === "42P01" && message.includes(table)) ||
+    new RegExp(`${table}.*does not exist`, "i").test(message)
+  );
+}
+
+/** Tables already reported, so the diagnostic is written once a process. */
+const reported = new Set<string>();
+
+/**
+ * Say in the server log that a table is missing, and name the database
+ * while doing it.
+ *
+ * Degrading quietly is right for the page and wrong for diagnosis: a
+ * missing table is almost always the migration having been run against a
+ * different Neon branch, and the one fact that settles it is which
+ * database the app is actually talking to. One extra query, only on the
+ * path that is already broken, and only the first time — a table's
+ * absence cannot change mid-process.
+ */
+export async function reportMissingTable(table: string, migration: string): Promise<void> {
+  if (reported.has(table)) return;
+  reported.add(table);
+  try {
+    const { rows } = await getDb().query<{ db: string; schema: string }>(
+      "SELECT current_database() AS db, current_schema() AS schema",
+    );
+    console.error(
+      `Missing table ${table} in ${rows[0]?.db}.${rows[0]?.schema} — run ${migration} against that database.`,
+    );
+  } catch {
+    console.error(`Missing table ${table} — run ${migration} against that database.`);
+  }
+}

@@ -15,6 +15,12 @@
 -- Idempotent: re-running replaces the functions and re-attaches the
 -- triggers without touching what is already logged.
 
+-- This declaration and db_snapshots' in migration 027 are repeated word
+-- for word in src/lib/schema.sql, which is where a database built from
+-- scratch gets them; both are IF NOT EXISTS, so whichever file runs first
+-- wins and the other is a no-op. Keep the two copies identical -- drifted,
+-- which constraints a database ends up with would depend on the order
+-- somebody happened to run them in.
 CREATE TABLE IF NOT EXISTS row_revisions (
   id BIGSERIAL PRIMARY KEY,
   -- Every row written by one save shares a transaction id, which is what
@@ -41,9 +47,8 @@ LANGUAGE plpgsql AS $fn$
 DECLARE
   old_row JSONB := CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE to_jsonb(OLD) END;
   new_row JSONB := CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE to_jsonb(NEW) END;
-  identity JSONB := '{}'::JSONB;
   present JSONB := COALESCE(new_row, old_row);
-  key_column TEXT;
+  identity JSONB;
 BEGIN
   -- An UPDATE that changed nothing is not history. Saves rewrite whole
   -- rows, so this is the common case and logging it would bury the ones
@@ -52,9 +57,10 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  FOREACH key_column IN ARRAY TG_ARGV LOOP
-    identity := identity || jsonb_build_object(key_column, present -> key_column);
-  END LOOP;
+  -- The key columns this table was watched with, read off the row. One
+  -- aggregate rather than a loop: this runs on every write in the
+  -- database, and there is nothing here a loop says better.
+  SELECT jsonb_object_agg(k, present -> k) INTO identity FROM unnest(TG_ARGV) AS k;
 
   INSERT INTO row_revisions (txid, table_name, row_key, action, before, after, changed_by)
   VALUES (
@@ -109,8 +115,17 @@ SELECT watch_table('staff', 'id');
 -- record anyway, and the legacy tables nothing reads.
 
 -- What happened lately, in the form you would want to read it.
-CREATE OR REPLACE VIEW recent_changes AS
+--
+-- Dropped and rebuilt rather than CREATE OR REPLACE: replacing a view can
+-- only add columns at the end, so a re-run that changes the shape of this
+-- one fails otherwise. It holds no data of its own, so dropping it costs
+-- nothing
+DROP VIEW IF EXISTS recent_changes;
+CREATE VIEW recent_changes AS
 SELECT
+  -- The log's own key, so a reader has something single-column to
+  -- identify a line by rather than assembling one out of four fields
+  id,
   recorded_at,
   txid,
   table_name,
@@ -149,7 +164,7 @@ CREATE OR REPLACE FUNCTION undo_txid(_txid BIGINT) RETURNS INTEGER
 LANGUAGE plpgsql AS $fn$
 DECLARE
   revision RECORD;
-  columns TEXT;
+  columns TEXT[];
   reverted INTEGER := 0;
 BEGIN
   FOR revision IN
@@ -169,8 +184,11 @@ BEGIN
     ELSE
       -- Every column the row had, named twice: once as the target list
       -- and once as the source, which is how a multi-column assignment
-      -- takes a whole row from one subquery.
-      SELECT string_agg(quote_ident(c.column_name), ', ' ORDER BY c.ordinal_position)
+      -- takes a whole row from one subquery. Held as an array rather than
+      -- a joined string that has to be split apart again for the second
+      -- form — the split would come apart on a column name containing a
+      -- comma, and there is no reason to make that possible.
+      SELECT array_agg(quote_ident(c.column_name) ORDER BY c.ordinal_position)
         INTO columns
         FROM information_schema.columns c
        WHERE c.table_schema = 'public'
@@ -180,8 +198,8 @@ BEGIN
       EXECUTE format(
         'UPDATE %I t SET (%s) = (SELECT %s FROM jsonb_populate_record(NULL::%I, $1) r) WHERE to_jsonb(t) @> $2',
         revision.table_name,
-        columns,
-        (SELECT string_agg('r.' || part, ', ') FROM unnest(string_to_array(columns, ', ')) AS part),
+        array_to_string(columns, ', '),
+        'r.' || array_to_string(columns, ', r.'),
         revision.table_name
       ) USING revision.before, revision.row_key;
     END IF;

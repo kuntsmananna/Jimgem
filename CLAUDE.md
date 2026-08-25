@@ -650,6 +650,22 @@ compares identity, and a panel builds a fresh draft before every call.
   isn't there and names the migration. A migration that ships with code but
   is applied by hand means the two are briefly out of step, and eight
   unrelated panes should not go down with the one that noticed.
+- **A pane that outruns its own table degrades through one mechanism.**
+  `isMissingTable(error, table)` and `reportMissingTable(table, migration)`
+  in `db.ts` are what the SUMIT meter, the backups pane and the change log
+  all use: the check is **per table and rethrows anything else**, because a
+  bare `catch` reports a connection failure or a typo in the query as "run
+  the migration" — sending the owner to re-run something already applied
+  while the real fault goes unmentioned. `reportMissingTable` names the
+  *database* in the server log, once a process: a missing table is almost
+  always the migration having gone to a different Neon branch, and that is
+  the one fact which settles it. On screen it is `MigrationNeeded` in
+  `Pane.tsx`, in the app's tile colour — it reports a chore, not an alarm.
+  The availability flag rides **inside** the payload the query already
+  produced (`SumitUsage.available`, `Snapshots.available`,
+  `History.available`), never as a second existence check: two mechanisms
+  for one fact can disagree, and the reassuring answer is the one that
+  wins.
 - **SUMIT's documents are mirrored into `sumit_documents`, never read on a
   render path.** `sumitSync.ts` is the only module besides the probe that
   imports `sumit.ts`, the same structural rule that keeps the Google Sheet
@@ -862,6 +878,13 @@ compares identity, and a panel builds a fresh draft before every call.
   ever being what the popup is for. It shows nothing at all for a row
   saved before this was recorded, which is every row until its next save. Same-day edits read as "today at 14:32",
   because that is what a person means.
+- **When something happened is worded in one place.** `whenText` (and
+  `dayText` beside it) in `LastEdited.tsx` is what turns a stamp into
+  "today at 14:32" / "yesterday at 14:32" / "3 Aug at 14:32", and the
+  Settings panes that list backups and recent changes call it rather than
+  building an `Intl` formatter of their own — otherwise a change made ten
+  minutes ago reads "25 Aug, 14:32" on the pane whose whole job is "who
+  changed that, and when", while the popup for that very row says "today".
 - **A popup wears a mark for what it is** (`Modal`'s `icon`) — a clipboard
   for an order, a person for a client, a receipt for an expense. Two can be
   open at once, since the client card opens over the order form, and both
@@ -1397,6 +1420,14 @@ existed anyway (migration 012 built it), so the only thing that broke was
 building a database from scratch, which is exactly what a restore does.
 Verified by running the file into an empty database, which is worth doing
 after touching it.
+
+**`row_revisions` and `db_snapshots` are declared in both `schema.sql` and
+their migrations, word for word, and have to stay that way.** An existing
+database gets them from the migration and a new one from `schema.sql`,
+both as `CREATE TABLE IF NOT EXISTS` — so whichever ran first wins and the
+other is a silent no-op. They had already drifted once (only the migration
+carried the `CHECK` on `action`), which meant a database built from
+scratch — the restore path this exists to serve — got the weaker one.
 
 `migrate.mjs` splits `schema.sql` on semicolons, so **a semicolon inside
 a SQL comment truncates the statement after it** — keep comments in that

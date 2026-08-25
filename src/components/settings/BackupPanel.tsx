@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, DatabaseBackup, Download, Loader2 } from "lucide-react";
-import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { MigrationNeeded, PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 import { InfoTip } from "@/components/InfoTip";
-import type { SnapshotSummary } from "@/lib/backup";
+import { whenText } from "@/components/LastEdited";
+import type { Snapshots, SnapshotSummary } from "@/lib/backup";
 
 /**
  * The nightly backups, and what they hold.
@@ -19,7 +20,7 @@ import type { SnapshotSummary } from "@/lib/backup";
  * "Take one now" is for the minute before doing something risky. Restoring
  * is deliberately not a button anywhere — see the note in the pane.
  */
-export function BackupPanel({ snapshots, armed }: { snapshots: SnapshotSummary[]; armed: boolean }) {
+export function BackupPanel({ snapshots, available }: Snapshots) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +41,6 @@ export function BackupPanel({ snapshots, armed }: { snapshots: SnapshotSummary[]
       setBusy(false);
     }
   }
-
-  const latest = snapshots[0];
 
   return (
     <section className="min-w-0 rounded-card border border-line bg-card p-6">
@@ -67,14 +66,9 @@ export function BackupPanel({ snapshots, armed }: { snapshots: SnapshotSummary[]
         />
       </div>
 
-      {!armed && (
-        <p className="mt-3 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900">
-          Not armed yet — the snapshot table is missing. Run{" "}
-          <code className="font-mono">scripts/migrate-027-snapshots.sql</code> against the database.
-        </p>
-      )}
+      {!available && <MigrationNeeded script="scripts/migrate-027-snapshots.sql" />}
 
-      {armed && snapshots.length === 0 && (
+      {available && snapshots.length === 0 && (
         <p className="mt-3 text-xs font-semibold text-ink-soft">
           Nothing taken yet. The first one lands tonight, or press Take one now.
         </p>
@@ -83,17 +77,14 @@ export function BackupPanel({ snapshots, armed }: { snapshots: SnapshotSummary[]
       {snapshots.length > 0 && (
         <>
           <p className="mt-3 mb-1 text-[11px] font-extrabold tracking-wide text-ink-soft uppercase">
-            {latest && (
-              <>
-                Newest holds {orderCount(latest)} orders, {expenseCount(latest)} expenses
-              </>
-            )}
+            Newest holds {snapshots[0]!.rowCounts.orders ?? 0} orders,{" "}
+            {snapshots[0]!.rowCounts.expenses ?? 0} expenses
           </p>
           <ul className="divide-y divide-line/60">
             {snapshots.map((snapshot) => (
               <li key={snapshot.id} className="hover-line flex items-center gap-3 rounded-lg px-2 py-1.5 text-xs">
                 <CalendarClock size={13} className="shrink-0 text-ink-soft" />
-                <span className="font-semibold">{WHEN.format(new Date(snapshot.takenAt))}</span>
+                <span className="font-semibold">{whenText(snapshot.takenAt)}</span>
                 {snapshot.kind === "manual" && (
                   <span className="keeps-color chip-neutral rounded-full bg-black/[0.06] px-2 py-0.5 text-[10px] font-bold">
                     by hand
@@ -123,12 +114,3 @@ export function BackupPanel({ snapshots, armed }: { snapshots: SnapshotSummary[]
 
 const rows = (snapshot: SnapshotSummary) =>
   Object.values(snapshot.rowCounts).reduce((total, count) => total + count, 0);
-const orderCount = (snapshot: SnapshotSummary) => snapshot.rowCounts.orders ?? 0;
-const expenseCount = (snapshot: SnapshotSummary) => snapshot.rowCounts.expenses ?? 0;
-
-const WHEN = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
