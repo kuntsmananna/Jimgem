@@ -329,7 +329,12 @@ compares identity, and a panel builds a fresh draft before every call.
   screen pixels while `pathLength` normalises the path to one user unit —
   the two disagree and what is left when the animation ends is a line with
   a permanent gap in it. The fills sit inside the same clip, so a line and
-  the colour under it are uncovered by one moving edge.
+  the colour under it are uncovered by one moving edge. The clip is grown
+  `EDGE_BLEED` past the plot on every side, and the SVG carries
+  `overflow="visible"`, because the first and last points sit *on* the
+  viewBox edge so their x labels line up under them — which puts half a
+  stroke and a whole round cap outside the box, cropped flat by anything
+  that clips at it.
   One `prefers-reduced-motion` rule turns all of it off, and
   it lists the classes so a new entrance is covered without anyone
   remembering to.
@@ -1265,10 +1270,15 @@ operational ("an offer has units to make if it lands"), so it carries an
 the gap between Income and adding up the Amount column reads as an
 arithmetic bug.
 
-**The Orders toolbar rides inside the table column**, not across the page,
-so the summary rail beside it starts at the very top rather than level
-with the table's first row. That also lands "Add order" on the table's
-right edge, where the rail begins.
+**The Orders toolbar spans the page**, and is a `1fr auto 1fr` grid whose
+flanks may shrink. It used to ride inside the content column, which put
+"Add order" on the table's right edge where the rail begins — but that
+column is not the same width in every view, since the calendar drops the
+rail and takes the whole page, so switching views slid everything in the
+toolbar sideways. The grid is what pins the view switcher to the centre
+of the page: as flex children the two flanks would not shrink past their
+own contents, so whichever group was wider won and nudged the middle
+across — a little, but visibly, and differently on the calendar.
 
 Its left group is **which orders**, as three matching dropdowns: the time
 scope (`src/lib/orderScope.ts` — 14 days / this month / next month / all
@@ -1374,13 +1384,10 @@ would drive the row and strand those charts at the top of a very long
 page; capped at a fixed height, it left a third of the pane empty. Each
 row shows `orderTotal`, matching the KPI tiles above it.
 
-`OrdersSummary` is the rail beside the table and the board (not the
-calendar, which would then carry two different windows at once) — but
-**its 140px column is rendered in every view, empty on the calendar**.
-Collapsed, the content column beside it grew by 152px on the calendar and
-slid everything centred inside it, the view switcher most visibly, to a
-different place on the page: a control moving out from under the cursor
-that just pressed it. It is a
+`OrdersSummary` is the rail beside the table and the board — not the
+calendar, which would then carry two different windows at once, and which
+takes the whole page for its grid. Nothing in the toolbar moves when it
+does, because the toolbar is not in that row. It is a
 fixed 140px rather than a share of the page — 15% spent 180px of a 13"
 laptop on four short numbers, taken from the table that needs them. It
 totals **exactly the list on screen** — units, orders, mirrors, income —

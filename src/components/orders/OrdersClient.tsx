@@ -405,141 +405,154 @@ export function OrdersClient({
       )}
 
       {/*
-        The summary rides beside the table and the board, not the calendar
-        — but its column is there in every view, so switching views never
-        re-widths the page. See the aside below.
+        One toolbar row: filters, view switcher, add. Previously two rows —
+        a switcher row plus ten filter pills — which cost a lot of vertical
+        space above the table for controls used occasionally.
+
+        It spans the page rather than riding inside the content column. It
+        used to sit in the column, which put "Add order" on the table's
+        right edge where the rail begins — but the column is not the same
+        width in every view (the calendar drops the rail and takes the
+        page), so everything in the toolbar shifted as the view changed.
+        A control that moves out from under the cursor that just pressed
+        it is worse than a button not quite meeting an edge.
+
+        Three columns rather than two flanking `flex-1`s: `1fr auto 1fr`
+        with both sides allowed to shrink puts the switcher at the exact
+        centre of the page whatever the filters beside it happen to
+        contain. As flex children the flanks would not shrink past their
+        own contents, so the wider group won and nudged the middle across
+        — a little, but visibly, and differently on the calendar.
       */}
-      <div className="flex items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-5">
-          {/*
-            One toolbar row: filters, view switcher, add. Previously two rows
-            — a switcher row plus ten filter pills — which cost a lot of
-            vertical space above the table for controls used occasionally.
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        {/* When and what, together on the left: which orders are in play
+            at all, then which of those. The calendar has no time scope —
+            it navigates itself — so its first slot says how the grid is
+            drawn instead.
 
-            It rides inside the table column rather than spanning the page, so
-            the summary rail beside it starts at the very top instead of at the
-            table's first row. That also puts "Add order" on the table's right
-            edge, where the rail begins.
-          */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* When and what, together on the left: which orders are in play
-                at all, then which of those. The calendar has no time scope —
-                it navigates itself — so its first slot says how the grid is
-                drawn instead.
-
-                All three are the same dropdown, and each wears an icon
-                instead of its written name: the value is what changes and
-                what gets read, while "Payment:" and "Status:" were fixed
-                text costing more width than the values beside them. The
-                word survives as the pill's title and its accessible name.
-                The scope used to be four pills, which spent most of the
-                toolbar on a control changed a few times a day and left
-                nothing to centre the view switcher in. */}
-            <div className="flex flex-1 flex-wrap items-center gap-2">
-              {view === "calendar" ? (
-                // Two options, both always worth seeing — a toggle says
-                // that at a glance where a dropdown hides half of it.
-                <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
-              ) : (
-                <SelectDropdown
-                  label="When"
-                  icon={<CalendarRange size={13} />}
-                  options={SCOPES}
-                  value={scope}
-                  onChange={setScope}
-                  // "All time" narrows nothing, so it reads as unset.
-                  active={scope !== "all"}
-                />
-              )}
-              <FilterDropdown
-                label="Payment"
-                icon={<Wallet size={13} />}
-                options={paymentOptions}
-                selected={paymentFilter}
-                onChange={setPaymentFilter}
-              />
-              <FilterDropdown
-                label="Status"
-                icon={<ListChecks size={13} />}
-                options={stageOptions}
-                selected={stageFilter}
-                onChange={setStageFilter}
-              />
-            </div>
-
-            {/* Centred between the two flanks, which both take an equal
-                share of the free space — the view is what the whole page
-                is, so it sits in the middle rather than in a corner. */}
-            <PillGroup items={VIEWS} value={view} onChange={setView} />
-
-            {/* Search sits in the gap between the view switcher and Add
-                order, rather than at the head of the filters: it is the
-                widest net on the page — it runs before every filter and
-                narrows the board and the calendar too — and the left group
-                is already three controls that each narrow the one before. */}
-            <div className="flex flex-1 items-center justify-end gap-3">
-              <SearchInput
-                value={query}
-                onChange={setQuery}
-                placeholder="Search orders"
-                label="Search orders by customer, type, location or note"
-                className="w-48"
-              />
-              <button
-                onClick={() => setAdding(true)}
-                className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
-              >
-                <Plus size={15} />
-                Add order
-              </button>
-            </div>
-          </div>
-
-          {view === "table" && (
-            <OrdersTable
-              orders={inScope}
-              flavors={flavors}
-              packageTypes={packageTypes}
-              presets={presets}
-              selectedKeys={selectedKeys}
-              openKey={openKey}
-              onToggleSelect={toggleSelect}
-              onToggleAll={toggleAll}
-              onChanged={refresh}
-              onOpen={setOpenKey}
-              onOpenClient={setOpenClientId}
-              emptyNote={
-                // A search that finds nothing is its own answer: pointing
-                // at the time scope would send you widening a window that
-                // was never the reason the table is empty.
-                needle && bySearch.length === 0
-                  ? `Nothing matches “${needle}”.`
-                  : filtered.length > 0
-                    ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
-                    : "No orders match these filters."
-              }
+            All three are the same dropdown, and each wears an icon
+            instead of its written name: the value is what changes and
+            what gets read, while "Payment:" and "Status:" were fixed
+            text costing more width than the values beside them. The
+            word survives as the pill's title and its accessible name.
+            The scope used to be four pills, which spent most of the
+            toolbar on a control changed a few times a day and left
+            nothing to centre the view switcher in. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {view === "calendar" ? (
+            // Two options, both always worth seeing — a toggle says
+            // that at a glance where a dropdown hides half of it.
+            <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
+          ) : (
+            <SelectDropdown
+              label="When"
+              icon={<CalendarRange size={13} />}
+              options={SCOPES}
+              value={scope}
+              onChange={setScope}
+              // "All time" narrows nothing, so it reads as unset.
+              active={scope !== "all"}
             />
           )}
-          {view === "kanban" && (
-            <OrdersKanban
-              orders={inScope}
-              flavors={flavors}
-              packageTypes={packageTypes}
-              onChanged={refresh}
-              onOpen={setOpenKey}
-            />
-          )}
-          {view === "calendar" && (
-            <OrdersCalendar
-              orders={filtered}
-              flavors={flavors}
-              packageTypes={packageTypes}
-              mode={calendarMode}
-              onOpen={setOpenKey}
-            />
-          )}
+          <FilterDropdown
+            label="Payment"
+            icon={<Wallet size={13} />}
+            options={paymentOptions}
+            selected={paymentFilter}
+            onChange={setPaymentFilter}
+          />
+          <FilterDropdown
+            label="Status"
+            icon={<ListChecks size={13} />}
+            options={stageOptions}
+            selected={stageFilter}
+            onChange={setStageFilter}
+          />
         </div>
 
+        {/* The middle column, and so the centre of the page: the view
+            is what the whole page is, so it sits in the middle rather
+            than in a corner — and stays there when the view changes. */}
+        <PillGroup items={VIEWS} value={view} onChange={setView} />
+
+        {/* Search sits in the gap between the view switcher and Add
+            order, rather than at the head of the filters: it is the
+            widest net on the page — it runs before every filter and
+            narrows the board and the calendar too — and the left group
+            is already three controls that each narrow the one before. */}
+        <div className="flex min-w-0 items-center justify-end gap-3">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search orders"
+            label="Search orders by customer, type, location or note"
+            className="w-48"
+          />
+          <button
+            onClick={() => setAdding(true)}
+            className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
+          >
+            <Plus size={15} />
+            Add order
+          </button>
+        </div>
+      </div>
+
+    {/*
+      The summary rides beside the table and the board, not the calendar,
+      which navigates by its own month and would otherwise carry two
+      different windows at once — and which wants every pixel of the page
+      for its grid.
+    */}
+    <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
+
+        {view === "table" && (
+          <OrdersTable
+            orders={inScope}
+            flavors={flavors}
+            packageTypes={packageTypes}
+            presets={presets}
+            selectedKeys={selectedKeys}
+            openKey={openKey}
+            onToggleSelect={toggleSelect}
+            onToggleAll={toggleAll}
+            onChanged={refresh}
+            onOpen={setOpenKey}
+            onOpenClient={setOpenClientId}
+            emptyNote={
+              // A search that finds nothing is its own answer: pointing
+              // at the time scope would send you widening a window that
+              // was never the reason the table is empty.
+              needle && bySearch.length === 0
+                ? `Nothing matches “${needle}”.`
+                : filtered.length > 0
+                  ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
+                  : "No orders match these filters."
+            }
+          />
+        )}
+        {view === "kanban" && (
+          <OrdersKanban
+            orders={inScope}
+            flavors={flavors}
+            packageTypes={packageTypes}
+            onChanged={refresh}
+            onOpen={setOpenKey}
+          />
+        )}
+        {view === "calendar" && (
+          <OrdersCalendar
+            orders={filtered}
+            flavors={flavors}
+            packageTypes={packageTypes}
+            mode={calendarMode}
+            onOpen={setOpenKey}
+          />
+        )}
+      </div>
+
+      {view !== "calendar" && (
         <aside
           /*
            * A fixed 140px rather than a share of the page. It was 15%,
@@ -547,30 +560,20 @@ export function OrdersClient({
            * took them from the table beside it — the one thing on this
            * page that genuinely needs the width.
            *
-           * The column is always here, empty on the calendar, so the
-           * content beside it is the same width in all three views. Left
-           * to collapse, switching to the calendar widened that column by
-           * 152px and slid everything centred inside it — the view
-           * switcher most visibly — to a different place on the page,
-           * which is a control moving out from under the cursor that just
-           * pressed it.
+           * Gone entirely on the calendar, which takes the whole page
+           * for its grid. Nothing in the toolbar moves when it does,
+           * because the toolbar is no longer inside this row.
            */
           className="w-[140px] shrink-0"
         >
-          {/*
-            No rail on the calendar: it navigates by its own month, so a
-            rail counting a different window beside it would be two
-            answers to one question.
-          */}
-          {view !== "calendar" && (
-            <OrdersSummary
-              totals={totals}
-              previous={previousTotals}
-              scopeLabel={scopeLabel}
-              comparable={previous !== null}
-            />
-          )}
+          <OrdersSummary
+            totals={totals}
+            previous={previousTotals}
+            scopeLabel={scopeLabel}
+            comparable={previous !== null}
+          />
         </aside>
+      )}
       </div>
 
       {/*

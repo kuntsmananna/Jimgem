@@ -40,6 +40,16 @@ const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const LINE_WIDTH = 5.5;
 
 /**
+ * How far past the plot the reveal clip reaches, in viewBox units.
+ *
+ * Enough to cover a stroke drawn outside the box at either end. Generous
+ * on purpose: the x axis is 100 units stretched across the whole card, so
+ * a unit here is a few pixels, and being too small crops a line while
+ * being too large only starts the wipe an imperceptible moment early.
+ */
+const EDGE_BLEED = 6;
+
+/**
  * Peak opacity of the area beneath a line, by position in the series list.
  *
  * Every series gets a fill — that is the look — but only the first at full
@@ -128,6 +138,15 @@ export function LineChart({
           width="100%"
           height={height}
           preserveAspectRatio="none"
+          /*
+            The first and last points sit exactly on the viewBox edge, so
+            the x labels under them line up — which means half of a 5.5px
+            stroke, and the whole of its round cap, falls outside. Let it:
+            the alternative is insetting the plot, which would slide every
+            line a few pixels away from the label it belongs to. There is
+            card padding either side to spill into.
+          */
+          overflow="visible"
           onMouseLeave={() => setHoverIndex(null)}
         >
           <defs>
@@ -172,7 +191,19 @@ export function LineChart({
               `.motion-reveal`.
             */}
             <clipPath id={`${gradientId}-reveal`}>
-              <rect className="motion-reveal" x={0} y={0} width={width} height={height} />
+              {/*
+                Grown past the plot on every side, because the ends of the
+                lines are drawn outside it (see `overflow` above) and a
+                clip at the viewBox would put back exactly the cropping
+                that attribute exists to prevent.
+              */}
+              <rect
+                className="motion-reveal"
+                x={-EDGE_BLEED}
+                y={-EDGE_BLEED}
+                width={width + EDGE_BLEED * 2}
+                height={height + EDGE_BLEED * 2}
+              />
             </clipPath>
           </defs>
 
