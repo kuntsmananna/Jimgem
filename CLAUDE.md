@@ -1118,6 +1118,19 @@ compares identity, and a panel builds a fresh draft before every call.
 - No self-service signup and no account-deletion UI — exactly 2 staff
   accounts (Anna, Aviv), created by a manual DB insert, not seeded from
   env vars.
+- **Brute force is stopped at the edge, not in this code.** A Vercel
+  Firewall rule rate-limits `POST /login` — the path a Server Action
+  posts back to, and the only request that checks a password — to ten a
+  minute per IP. Nothing in the repo enforces it, so it is worth knowing
+  it exists: the app itself has no attempt counter, no lockout and no
+  delay, and two usernames are public knowledge. If the rule is ever
+  removed, that protection goes with it, and the replacement is a
+  `login_attempts` table rather than nothing.
+- **Nothing that leaves the database carries a password hash** — see the
+  backup and change-log notes in the Database section. `verifyCredentials`
+  also returns before reaching bcrypt for an unknown username, which is a
+  small timing oracle for enumerating the two names; comparing against a
+  dummy hash would close it.
 
 ## Environment variables
 
