@@ -452,10 +452,9 @@ body {
   from { opacity: 0; }
 }
 
-/* The line arrives by being drawn, left to right. See LineChart, which
-   sets pathLength="1" so one dash length covers any path. */
-@keyframes draw-in {
-  from { stroke-dashoffset: 1; }
+/* The chart arrives by being uncovered, left to right. */
+@keyframes reveal-in {
+  from { transform: scaleX(0); }
 }
 
 .motion-veil {
@@ -480,22 +479,25 @@ body {
 }
 
 /*
- * The area fill, which follows its line rather than leading it.
+ * The plot, wiped in from the left — a rect inside a `clipPath` that
+ * grows across it, so the line and the fill under it are uncovered
+ * together as one moving edge.
  *
- * Linear, and held back until the line is a third drawn: with the fill
- * fading in on its own schedule the chart painted its whole shape in the
- * first moments and then dragged a line through ground already coloured,
- * which reads as two unrelated things happening rather than one.
- * `backwards` keeps it invisible during the delay instead of flashing at
- * full strength for a frame first.
+ * Deliberately not the usual stroke-dash trick. These charts stretch
+ * (`preserveAspectRatio="none"`) and so their lines carry
+ * `vector-effect: non-scaling-stroke`, which measures the dash pattern in
+ * screen pixels while `pathLength` normalises the path to one user unit.
+ * The two disagree, and what is left behind when the animation ends is a
+ * dash and a gap: a line with a hole in it, permanently. A clip has no
+ * opinion about stroke geometry.
+ *
+ * `fill-box` so the origin is the rect's own left edge rather than the
+ * SVG's user-space zero.
  */
-.motion-wash {
-  animation: fade-in var(--motion-slow) linear 220ms backwards;
-}
-
-.motion-draw {
-  stroke-dasharray: 1;
-  animation: draw-in var(--motion-slow) var(--ease-draw);
+.motion-reveal {
+  transform-box: fill-box;
+  transform-origin: left;
+  animation: reveal-in var(--motion-slow) var(--ease-draw);
 }
 
 /*
@@ -513,12 +515,7 @@ body {
   .motion-drop,
   .motion-lift,
   .motion-fade,
-  .motion-wash,
-  .motion-draw {
+  .motion-reveal {
     animation: none;
-  }
-
-  .motion-draw {
-    stroke-dasharray: none;
   }
 }

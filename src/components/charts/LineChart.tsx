@@ -162,45 +162,51 @@ export function LineChart({
                 </linearGradient>
               </Fragment>
             ))}
+            {/*
+              The wipe that uncovers the plot, once, when the chart
+              arrives. A growing clip rather than a stroke-dash, because
+              these lines carry `vector-effect: non-scaling-stroke` and a
+              dash pattern under that is measured in screen pixels while
+              `pathLength` normalises the path to one unit — the two
+              disagree and leave a permanent gap in the line. See
+              `.motion-reveal`.
+            */}
+            <clipPath id={`${gradientId}-reveal`}>
+              <rect className="motion-reveal" x={0} y={0} width={width} height={height} />
+            </clipPath>
           </defs>
 
-          {/* Every fill first, then every stroke — otherwise a later
-              series' area washes over the line drawn before it. */}
-          {series.map((s, i) => {
-            const points = pointsFor(s);
-            if (points.length < 2) return null;
-            return (
+          {/* Fills and lines share the wipe, so the colour under a line is
+              uncovered by the same edge rather than arriving on its own. */}
+          <g clipPath={`url(#${gradientId}-reveal)`}>
+            {/* Every fill first, then every stroke — otherwise a later
+                series' area washes over the line drawn before it. */}
+            {series.map((s, i) => {
+              const points = pointsFor(s);
+              if (points.length < 2) return null;
+              return (
+                <path
+                  key={s.label}
+                  d={areaPath(points)}
+                  fill={`url(#${gradientId}-area-${i})`}
+                  stroke="none"
+                />
+              );
+            })}
+
+            {series.map((s, i) => (
               <path
                 key={s.label}
-                className="motion-wash"
-                d={areaPath(points)}
-                fill={`url(#${gradientId}-area-${i})`}
-                stroke="none"
+                d={smoothPath(pointsFor(s))}
+                fill="none"
+                stroke={`url(#${gradientId}-line-${i})`}
+                strokeWidth={LINE_WIDTH}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
               />
-            );
-          })}
-
-          {series.map((s, i) => (
-            /*
-              Drawn in, left to right, once when the chart arrives.
-              `pathLength="1"` re-scales the dash units so one dash covers
-              the whole line whatever its real length is — otherwise the
-              animation would need the measured length of each path, which
-              is a DOM read per series per render.
-            */
-            <path
-              key={s.label}
-              className="motion-draw"
-              pathLength={1}
-              d={smoothPath(pointsFor(s))}
-              fill="none"
-              stroke={`url(#${gradientId}-line-${i})`}
-              strokeWidth={LINE_WIDTH}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+            ))}
+          </g>
 
           {activePoint && (
             <line

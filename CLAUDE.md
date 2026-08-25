@@ -315,18 +315,22 @@ compares identity, and a panel builds a fresh draft before every call.
   `.motion-veil` and `.motion-rise` for a popup (the dim fades, the dialog
   rises 10px), `.motion-drop` for a popover under its trigger,
   `.motion-lift` for the undo bar coming up off the bottom edge,
-  `.motion-fade` for a hover card, and `.motion-draw`/`.motion-wash` for a
-  line chart. Nothing animates something the eye was already on — a table
+  `.motion-fade` for a hover card, and `.motion-reveal` for a line chart. Nothing animates something the eye was already on — a table
   row, a figure, a field — because movement in the middle of reading is an
   interruption. Durations are 110–170ms: past about 200ms a control used
   fifty times a day stops reading as polish and starts reading as lag. The
-  chart is the exception at 700ms, drawn once on a page you arrive at
+  chart is the exception at 700ms, arriving once on a page you come to
   rather than work in, and it has **its own easing** — `--ease-draw` is
   even-paced where `--ease-entrance` is front-loaded, which had the line
-  five-sixths finished a quarter of the way through and then crawling. The
-  area fill is linear and starts 220ms late, so the line leads and the
-  fill follows rather than the shape appearing whole under a line still
-  being drawn. One `prefers-reduced-motion` rule turns all of it off, and
+  five-sixths finished a quarter of the way through and then crawling. It
+  is **a clip wiping across, not a stroke-dash**: these charts stretch
+  (`preserveAspectRatio="none"`) so their lines carry
+  `vector-effect: non-scaling-stroke`, which measures a dash pattern in
+  screen pixels while `pathLength` normalises the path to one user unit —
+  the two disagree and what is left when the animation ends is a line with
+  a permanent gap in it. The fills sit inside the same clip, so a line and
+  the colour under it are uncovered by one moving edge.
+  One `prefers-reduced-motion` rule turns all of it off, and
   it lists the classes so a new entrance is covered without anyone
   remembering to.
 - Overlays (`Modal`, `OrderDetailsPane`) share `useOverlayDismiss` for
@@ -1371,7 +1375,12 @@ page; capped at a fixed height, it left a third of the pane empty. Each
 row shows `orderTotal`, matching the KPI tiles above it.
 
 `OrdersSummary` is the rail beside the table and the board (not the
-calendar, which would then carry two different windows at once). It is a
+calendar, which would then carry two different windows at once) — but
+**its 140px column is rendered in every view, empty on the calendar**.
+Collapsed, the content column beside it grew by 152px on the calendar and
+slid everything centred inside it, the view switcher most visibly, to a
+different place on the page: a control moving out from under the cursor
+that just pressed it. It is a
 fixed 140px rather than a share of the page — 15% spent 180px of a 13"
 laptop on four short numbers, taken from the table that needs them. It
 totals **exactly the list on screen** — units, orders, mirrors, income —

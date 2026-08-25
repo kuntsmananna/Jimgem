@@ -405,9 +405,9 @@ export function OrdersClient({
       )}
 
       {/*
-        The summary rides beside the table and the board, not the calendar:
-        a calendar navigates by its own month, so a rail counting a
-        different window next to it would be two answers to one question.
+        The summary rides beside the table and the board, not the calendar
+        — but its column is there in every view, so switching views never
+        re-widths the page. See the aside below.
       */}
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
@@ -540,24 +540,37 @@ export function OrdersClient({
           )}
         </div>
 
-        {view !== "calendar" && (
-          <aside
-            /*
-             * A fixed 140px rather than a share of the page. It was 15%,
-             * which on a 13" laptop spent 180px on four short numbers and
-             * took them from the table beside it — the one thing on this
-             * page that genuinely needs the width.
-             */
-            className="w-[140px] shrink-0"
-          >
+        <aside
+          /*
+           * A fixed 140px rather than a share of the page. It was 15%,
+           * which on a 13" laptop spent 180px on four short numbers and
+           * took them from the table beside it — the one thing on this
+           * page that genuinely needs the width.
+           *
+           * The column is always here, empty on the calendar, so the
+           * content beside it is the same width in all three views. Left
+           * to collapse, switching to the calendar widened that column by
+           * 152px and slid everything centred inside it — the view
+           * switcher most visibly — to a different place on the page,
+           * which is a control moving out from under the cursor that just
+           * pressed it.
+           */
+          className="w-[140px] shrink-0"
+        >
+          {/*
+            No rail on the calendar: it navigates by its own month, so a
+            rail counting a different window beside it would be two
+            answers to one question.
+          */}
+          {view !== "calendar" && (
             <OrdersSummary
               totals={totals}
               previous={previousTotals}
               scopeLabel={scopeLabel}
               comparable={previous !== null}
             />
-          </aside>
-        )}
+          )}
+        </aside>
       </div>
 
       {/*
