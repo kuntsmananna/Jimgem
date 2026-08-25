@@ -128,7 +128,7 @@ export function ClientPicker({
       </div>
 
       {open && matches.length > 0 && (
-        <ul className="absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-auto rounded-xl border border-line bg-card py-1 shadow-lg">
+        <ul className="motion-drop absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-auto rounded-xl border border-line bg-card py-1 shadow-lg">
           {matches.map((client) => (
             <li key={client.id}>
               <button

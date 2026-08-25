@@ -440,8 +440,11 @@ function PresetOverflow({
         // Right-aligned, so a list wider than a "+10" button grows back
         // over the chips it belongs to rather than off the panel's edge.
         <div
+          // A list that opens downward drops from the button it belongs
+          // to; one that has flipped upward only fades, since dropping
+          // would have it arrive from the side it is avoiding.
           className={`absolute right-0 z-30 w-64 rounded-2xl border border-line bg-card p-2 shadow-xl ${
-            up ? "bottom-full mb-1.5" : "top-full mt-1.5"
+            up ? "motion-fade bottom-full mb-1.5" : "motion-drop top-full mt-1.5"
           }`}
         >
           <label className="relative mb-1.5 flex items-center">

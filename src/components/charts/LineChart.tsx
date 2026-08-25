@@ -170,13 +170,28 @@ export function LineChart({
             const points = pointsFor(s);
             if (points.length < 2) return null;
             return (
-              <path key={s.label} d={areaPath(points)} fill={`url(#${gradientId}-area-${i})`} stroke="none" />
+              <path
+                key={s.label}
+                className="motion-wash"
+                d={areaPath(points)}
+                fill={`url(#${gradientId}-area-${i})`}
+                stroke="none"
+              />
             );
           })}
 
           {series.map((s, i) => (
+            /*
+              Drawn in, left to right, once when the chart arrives.
+              `pathLength="1"` re-scales the dash units so one dash covers
+              the whole line whatever its real length is — otherwise the
+              animation would need the measured length of each path, which
+              is a DOM read per series per render.
+            */
             <path
               key={s.label}
+              className="motion-draw"
+              pathLength={1}
               d={smoothPath(pointsFor(s))}
               fill="none"
               stroke={`url(#${gradientId}-line-${i})`}

@@ -63,7 +63,7 @@ export function UndoToast({ offer, onDismiss }: { offer: Offer | null; onDismiss
     // to the table row that raised it — which by then has been removed.
     <div
       role="status"
-      className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-5 text-cream shadow-xl"
+      className="motion-lift fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-5 text-cream shadow-xl"
     >
       <span className="text-xs font-semibold whitespace-nowrap">{offer.message}</span>
       <button

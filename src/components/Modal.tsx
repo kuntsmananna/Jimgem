@@ -52,7 +52,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="motion-veil fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -67,7 +67,7 @@ export function Modal({
           to travel the whole desk to read one order. The cap is where the
           form stops having anything to do with more width.
         */
-        className={`max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
+        className={`motion-rise max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
       >
         {/*
           The title row wears the same lid every pane does — `BAND_CLASS`,

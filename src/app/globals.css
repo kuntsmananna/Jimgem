@@ -382,3 +382,143 @@ body {
 .orders-rows > tr.is-offer:hover {
   border-left-color: --alpha(var(--color-cream) / 60%);
 }
+
+/*
+ * Motion.
+ *
+ * One vocabulary, four words, and every one of them answers the same
+ * question: where did this come from? A popup that appears between two
+ * frames has to be found; one that rises into place has already told you
+ * where it is. Nothing here animates a thing the eye was already on — the
+ * table, the numbers, the form fields — because motion in the middle of
+ * reading is an interruption, not an aid.
+ *
+ * Durations are short on purpose. Anything past ~200ms on a control you
+ * use fifty times a day stops reading as polish and starts reading as
+ * lag; the chart is the one exception, drawn once on a page you arrive at
+ * rather than work in.
+ *
+ * Outside every @layer, like the hover block above, so a utility class on
+ * the same element cannot out-weigh the entrance.
+ */
+:root {
+  /* Decelerating: fast to start, settling at the end — the shape of
+     something arriving rather than being thrown. */
+  --ease-entrance: cubic-bezier(0.22, 1, 0.36, 1);
+  /*
+   * The line's own easing, and deliberately not the one above. An
+   * entrance wants to arrive quickly and settle, which front-loads the
+   * movement — drawn with it, the chart's line was five-sixths finished
+   * a quarter of the way through and then crawled to the end. A drawn
+   * line is read along its length, so it wants an even pace: gentle at
+   * both ends, steady in the middle.
+   */
+  --ease-draw: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-fast: 110ms;
+  --motion: 170ms;
+  --motion-slow: 700ms;
+}
+
+@keyframes veil-in {
+  from { opacity: 0; }
+}
+
+/* Up and forward, a little. The scale is 2% — enough to read as arriving,
+   not enough to look like it bounced. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+/* Down from its trigger, since that is where it came from. */
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* Up from the edge of the screen, where the bar lives. */
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+/* The line arrives by being drawn, left to right. See LineChart, which
+   sets pathLength="1" so one dash length covers any path. */
+@keyframes draw-in {
+  from { stroke-dashoffset: 1; }
+}
+
+.motion-veil {
+  animation: veil-in var(--motion) var(--ease-entrance);
+}
+
+.motion-rise {
+  animation: rise-in var(--motion) var(--ease-entrance);
+}
+
+.motion-drop {
+  animation: drop-in var(--motion-fast) var(--ease-entrance);
+  transform-origin: top;
+}
+
+.motion-lift {
+  animation: lift-in var(--motion) var(--ease-entrance);
+}
+
+.motion-fade {
+  animation: fade-in var(--motion-fast) var(--ease-entrance);
+}
+
+/*
+ * The area fill, which follows its line rather than leading it.
+ *
+ * Linear, and held back until the line is a third drawn: with the fill
+ * fading in on its own schedule the chart painted its whole shape in the
+ * first moments and then dragged a line through ground already coloured,
+ * which reads as two unrelated things happening rather than one.
+ * `backwards` keeps it invisible during the delay instead of flashing at
+ * full strength for a frame first.
+ */
+.motion-wash {
+  animation: fade-in var(--motion-slow) linear 220ms backwards;
+}
+
+.motion-draw {
+  stroke-dasharray: 1;
+  animation: draw-in var(--motion-slow) var(--ease-draw);
+}
+
+/*
+ * Someone who has asked their system for less motion has asked for less
+ * motion. Kept as one rule rather than a variant per animation: a new
+ * entrance added later is covered without anyone remembering to.
+ *
+ * The transitions elsewhere (a row turning black, a field gaining focus)
+ * are left alone — they are colour changes on a control under the cursor,
+ * which is the case the setting is not about.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .motion-veil,
+  .motion-rise,
+  .motion-drop,
+  .motion-lift,
+  .motion-fade,
+  .motion-wash,
+  .motion-draw {
+    animation: none;
+  }
+
+  .motion-draw {
+    stroke-dasharray: none;
+  }
+}

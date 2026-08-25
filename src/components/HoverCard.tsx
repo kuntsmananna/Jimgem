@@ -62,7 +62,7 @@ export function HoverCard({
           <div
             role="tooltip"
             style={{ left: at.left, top: at.top, width }}
-            className="pointer-events-none fixed z-50 rounded-card border border-line bg-card p-4 shadow-xl"
+            className="motion-fade pointer-events-none fixed z-50 rounded-card border border-line bg-card p-4 shadow-xl"
           >
             {render()}
           </div>,

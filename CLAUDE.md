@@ -310,6 +310,25 @@ compares identity, and a panel builds a fresh draft before every call.
   (`totalAmount − deposit`) and never stored — **delivery is deliberately
   not in that sum**, since nothing in the data says whether it is included
   in the total or charged on top.
+- **Motion says where a thing came from, and nothing else moves.** Five
+  classes in `globals.css`, outside every layer like the hover block:
+  `.motion-veil` and `.motion-rise` for a popup (the dim fades, the dialog
+  rises 10px), `.motion-drop` for a popover under its trigger,
+  `.motion-lift` for the undo bar coming up off the bottom edge,
+  `.motion-fade` for a hover card, and `.motion-draw`/`.motion-wash` for a
+  line chart. Nothing animates something the eye was already on — a table
+  row, a figure, a field — because movement in the middle of reading is an
+  interruption. Durations are 110–170ms: past about 200ms a control used
+  fifty times a day stops reading as polish and starts reading as lag. The
+  chart is the exception at 700ms, drawn once on a page you arrive at
+  rather than work in, and it has **its own easing** — `--ease-draw` is
+  even-paced where `--ease-entrance` is front-loaded, which had the line
+  five-sixths finished a quarter of the way through and then crawling. The
+  area fill is linear and starts 220ms late, so the line leads and the
+  fill follows rather than the shape appearing whole under a line still
+  being drawn. One `prefers-reduced-motion` rule turns all of it off, and
+  it lists the classes so a new entrance is covered without anyone
+  remembering to.
 - Overlays (`Modal`, `OrderDetailsPane`) share `useOverlayDismiss` for
   Escape-to-close and a reference-counted body scroll lock. They nest —
   the details pane hosts a form that can open a modal — so the count is

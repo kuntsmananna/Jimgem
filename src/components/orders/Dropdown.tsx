@@ -63,7 +63,7 @@ function Dropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-30 mt-1 min-w-52 rounded-2xl border border-line bg-card p-1.5 shadow-xl">
+        <div className="motion-drop absolute top-full left-0 z-30 mt-1 min-w-52 rounded-2xl border border-line bg-card p-1.5 shadow-xl">
           {children(() => setOpen(false))}
         </div>
       )}
