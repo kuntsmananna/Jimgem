@@ -127,6 +127,21 @@ components, never by editing or prefixing an existing desktop class. Where
 a phone needs a different *tree* rather than a different look, that is
 `useIsMobile()` — not a rewritten desktop component.
 
+**Navigation on a phone is a bottom bar** (`src/components/MobileNav.tsx`,
+`md:hidden`), and the desktop header keeps only its wordmark below the
+breakpoint. Four targets: Orders, Expenses, Clients — the three the phone
+is actually for — and **More**, a sheet from the bottom edge holding
+Dashboard, Biz Plan, Settings, the VAT toggle, the version and sign-out.
+The desktop row is six pills plus four other things and needs ~1000px it
+cannot wrap; shrinking it was never the answer. Each bar cell is a quarter
+of the screen wide, because the app's icon buttons are 20-28px, which is a
+cursor's size and not a thumb's. `Nav.tsx` exports `VatViewToggle` and
+`initials` so the sheet uses the same two rather than growing copies — the
+VAT switch in particular has to live somewhere that is not a page, or two
+screens could disagree about what a shekel means. `main` carries
+`max-md:pb-28` and the bar `pb-[env(safe-area-inset-bottom)]`, so the last
+row clears both the bar and the home indicator.
+
 Groundwork that is already in (v0.43.0), all of it invisible on a laptop:
 - `src/app/layout.tsx` exports a `viewport`. `maximumScale` is deliberately
   **not** set: locking zoom is the usual cure for iOS magnifying a focused

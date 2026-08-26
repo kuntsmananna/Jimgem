@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { getOrderTypes, getProductionStages } from "@/lib/settings";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { Nav } from "@/components/Nav";
+import { MobileNav } from "@/components/MobileNav";
 import { OrderTypesProvider } from "@/components/OrderTypesContext";
 import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
 import { VatViewProvider } from "@/components/VatViewContext";
@@ -34,7 +35,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {/* Version lives in the nav so every page carries it, not just the
             Dashboard — it is how a deployed build is identified. */}
         <Nav name={session.name ?? ""} version={APP_VERSION_LABEL} />
-        <main className="px-6 py-8">{children}</main>
+        {/* The bottom bar and its More sheet, below the breakpoint only. */}
+        <MobileNav name={session.name ?? ""} version={APP_VERSION_LABEL} />
+        {/* The tail padding clears the bar, which is fixed over the page. */}
+        <main className="px-6 py-8 max-md:px-4 max-md:pb-28">{children}</main>
       </div>
       </VatViewProvider>
       </ProductionStagesProvider>

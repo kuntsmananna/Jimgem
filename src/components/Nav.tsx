@@ -21,7 +21,7 @@ const LINKS = [
  * Two words max, so "TMP QA" gives TQ and a one-word name gives one
  * letter rather than two from the same word.
  */
-function initials(name: string): string {
+export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "?";
   return words.slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
@@ -30,7 +30,11 @@ function initials(name: string): string {
 export function Nav({ name, version }: { name: string; version: string }) {
   const activeHref = usePathname();
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur">
+    /* Below the breakpoint this row keeps only the wordmark: the six
+       pills, the VAT toggle, the version, the name and sign-out are ~1000px
+       of content that cannot wrap, and they move to `MobileNav` — the bar
+       along the bottom and the sheet behind More. */
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4">
       <div className="flex items-center gap-8">
         {/* The mark itself, and still the way back to the Dashboard.
             Sized by height, and 40px rather than the 32 that would match
@@ -43,7 +47,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
         >
           <GemsLogo className="h-10 w-auto" />
         </Link>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 max-md:hidden">
           {LINKS.map((link) => {
             const active = link.href === "/" ? activeHref === "/" : activeHref.startsWith(link.href);
             return (
@@ -60,7 +64,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
           })}
         </nav>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 max-md:hidden">
         <VatViewToggle />
         {/* On every page rather than just the Dashboard — it's how you tell
             which version you're looking at. */}
@@ -107,7 +111,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
  * seeing, so a toggle rather than a dropdown — the same call the calendar's
  * Monthly/Weekly switch makes.
  */
-function VatViewToggle() {
+export function VatViewToggle() {
   const { view, setView } = useVatView();
   return (
     <div className="flex items-center rounded-full border border-line p-0.5" role="group" aria-label="VAT view">

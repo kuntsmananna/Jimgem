@@ -582,7 +582,7 @@ export function OrdersClient({
         rows you are selecting.
       */}
       {selectedKeys.size > 0 && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-6">
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-6 max-md:bottom-24">
           <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-black px-4 py-2 text-cream shadow-2xl">
             <span className="text-sm font-semibold">{selectedKeys.size} selected</span>
 
