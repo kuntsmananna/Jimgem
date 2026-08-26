@@ -44,6 +44,29 @@
   --radius-card: 1.25rem;
 }
 
+/*
+ * Hold the scrollbar's width whether or not there is one to show.
+ *
+ * The calendar is taller than the table, so moving between views gained
+ * and lost the page's scrollbar — and with it about 15px of viewport,
+ * which slid everything centred on the page by half that. The toolbar's
+ * switcher is centred on the page, so it was the visible casualty, but
+ * every view was shifting; the gutter is where that actually comes from.
+ *
+ * `overflow-y: scroll` where the property is unsupported: it costs a
+ * permanently visible track on browsers that draw one, which is the
+ * lesser of the two.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 body {
   background-color: var(--color-cream);
   color: var(--color-ink);

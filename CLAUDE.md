@@ -1270,6 +1270,13 @@ operational ("an offer has units to make if it lands"), so it carries an
 the gap between Income and adding up the Amount column reads as an
 arithmetic bug.
 
+**The page always holds the scrollbar's width** (`scrollbar-gutter: stable`
+on `html`, with `overflow-y: scroll` where that is unsupported). The
+calendar is taller than the table, so changing view gained and lost the
+scrollbar and with it ~15px of viewport, sliding everything centred on
+the page by half that. It reads as the view switcher drifting, because
+that is what sits in the middle, but every view was moving.
+
 **The Orders toolbar spans the page**, and is a `1fr auto 1fr` grid whose
 flanks may shrink. It used to ride inside the content column, which put
 "Add order" on the table's right edge where the rail begins — but that
