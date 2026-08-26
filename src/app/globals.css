@@ -129,6 +129,20 @@ body {
     @apply transition-colors;
     color: var(--field-tone);
     background-color: --alpha(var(--field-tone) / var(--field-fill));
+
+    /*
+     * 16px on a phone, whatever the desktop size says.
+     *
+     * iOS Safari magnifies the whole page when a field under 16px takes
+     * focus, and then leaves it magnified — every field in this app is
+     * 14px, so tapping any of them threw the layout sideways. The usual
+     * fix is `maximum-scale=1` in the viewport, which cures it by taking
+     * pinch-to-zoom away from everyone; growing the text two pixels on
+     * the one screen size that cares costs nothing instead.
+     */
+    @media (max-width: 767px) {
+      font-size: 1rem;
+    }
   }
 
   /*
@@ -310,6 +324,42 @@ body {
  * Inputs and selects opt out by not being in the match list at all: they
  * bring their own background the moment they're focused.
  */
+/*
+ * A control that waits for its row to be hovered, on a device that never
+ * hovers.
+ *
+ * Six of these carry the only path to something — selecting a row, which
+ * gates the whole bulk-action bar; renaming a customer; deleting an
+ * expense; changing its date; opening it; archiving a list row. Hidden
+ * behind a gesture a finger cannot make, that is not a subtle affordance
+ * but a missing feature, so where there is no pointer they are simply
+ * always there. Keyed on `hover: none` rather than on a narrow screen: a
+ * tablet with a mouse should keep the quiet version.
+ */
+@media (hover: none) {
+  .reveals-on-hover {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+/* The cell's own shape, which does not depend on having a mouse. */
+.editable-cell {
+  border-radius: 0.5rem;
+  transition: background-color 120ms ease;
+}
+
+/*
+ * Everything below is guarded on the pointer actually hovering.
+ *
+ * A touchscreen reports a "hover" on the element last tapped and keeps
+ * reporting it until something else is tapped, so on a phone these rules
+ * left one row stuck black and one cell stuck lit — the emphasis saying
+ * "here" about a place the finger left. `hover: hover` is true for a
+ * mouse and a trackpad and false for a finger, which is exactly the
+ * distinction these rules have always meant.
+ */
+@media (hover: hover) {
 .hover-line,
 .orders-rows > tr {
   transition:
@@ -356,11 +406,6 @@ body {
  * without !important — and the dark half is handled by the rule above,
  * which already covers every button inside a hovered line.
  */
-.editable-cell {
-  border-radius: 0.5rem;
-  transition: background-color 120ms ease;
-}
-
 .editable-cell:hover {
   background-color: --alpha(var(--color-ink) / 7%);
 }
@@ -381,6 +426,8 @@ body {
 
 .hover-line:hover .editable-cell.is-chip:hover .chip-neutral {
   background-color: --alpha(var(--color-cream) / 30%);
+}
+
 }
 
 /*

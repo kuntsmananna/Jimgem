@@ -169,7 +169,7 @@ export function OrdersTable({
                     aria-label={`Select ${order.customer || "order"}`}
                     // Revealed on hover so the column reads as data, not
                     // controls — but a ticked box always stays visible.
-                    className={isSelected ? "" : "invisible group-hover:visible"}
+                    className={isSelected ? "" : "reveals-on-hover invisible group-hover:visible"}
                   />
                 </td>
                 {/* Status leads the row: it is what the table is scanned
@@ -224,7 +224,7 @@ export function OrdersTable({
                             onClick={startEditing}
                             title="Rename the customer on this order"
                             aria-label="Edit the customer name"
-                            className="invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+                            className="reveals-on-hover invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
                           >
                             <Pencil size={11} />
                           </button>

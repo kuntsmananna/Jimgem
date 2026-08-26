@@ -5,6 +5,9 @@ import { useEffect, useRef } from "react";
 /** How many overlays are currently open. */
 let openCount = 0;
 
+/** Where the page was when the first of them opened. */
+let lockedAt = 0;
+
 /**
  * Escape-to-close plus a page scroll lock, shared by every overlay
  * (Modal, OrderDetailsPane).
@@ -34,13 +37,37 @@ export function useOverlayDismiss(onDismiss: () => void) {
     };
     document.addEventListener("keydown", onKey);
 
+    /*
+     * `overflow: hidden` alone holds the page on a desktop and does
+     * nothing on iOS Safari, where the page behind an overlay still
+     * rubber-band scrolls — and, having scrolled, is back at the top when
+     * the overlay closes. Taking the body out of flow is what actually
+     * stops it, and it costs the scroll position, so that is saved and
+     * restored. Only the outermost overlay does either: the count exists
+     * because overlays nest, and an inner one restoring the position
+     * would scroll the page while the outer is still open.
+     */
+    if (openCount === 0) {
+      lockedAt = window.scrollY;
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${lockedAt}px`;
+      document.body.style.insetInline = "0";
+    }
     openCount += 1;
-    document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", onKey);
       openCount -= 1;
-      if (openCount === 0) document.body.style.overflow = "";
+      if (openCount === 0) {
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.insetInline = "";
+        // Instant, not smooth: this is putting the page back where it
+        // already was, not travelling anywhere.
+        window.scrollTo({ top: lockedAt, behavior: "instant" });
+      }
     };
   }, []);
 }
@@ -68,7 +95,7 @@ export function usePopoverDismiss(
 
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (e: MouseEvent) => {
+    const onPointerDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) handler.current();
     };
     const onKey = (e: KeyboardEvent) => {
@@ -84,10 +111,13 @@ export function usePopoverDismiss(
       e.stopPropagation();
       handler.current();
     };
-    document.addEventListener("mousedown", onPointerDown);
+    // `pointerdown`, not `mousedown`: a touch only produces a mouse event
+    // as a delayed compatibility gesture, and not at all when the tap is
+    // consumed by a scroll — so on a phone the popover stayed open.
+    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey, true);
     };
   }, [open, ref]);

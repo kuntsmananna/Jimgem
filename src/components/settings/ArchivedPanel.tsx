@@ -83,7 +83,7 @@ export function ArchivedPanel({ items }: { items: ArchivedItem[] }) {
                   disabled={busy === key}
                   title={`Delete ${item.label}`}
                   aria-label={`Delete ${item.label}`}
-                  className="shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50"
+                  className="reveals-on-hover shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50"
                 >
                   <Trash2 size={13} />
                 </button>

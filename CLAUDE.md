@@ -120,11 +120,44 @@ something here isn't obvious.
 
 ## Styling conventions
 
-**Desktop-first for now** (explicit, temporary reversal of the more
-common mobile-first convention) — build and optimize for desktop only;
-mobile responsiveness is deferred until the desktop version is in use
-and settled. When mobile support resumes, this section should go back
-to mobile-first and this note should be removed.
+**Desktop is the settled version; mobile is being added beside it.** The
+rule while that is underway: **a mobile change must be additive.** Nothing
+above 768px may change, so mobile is written as `max-md:` variants and new
+components, never by editing or prefixing an existing desktop class. Where
+a phone needs a different *tree* rather than a different look, that is
+`useIsMobile()` — not a rewritten desktop component.
+
+Groundwork that is already in (v0.43.0), all of it invisible on a laptop:
+- `src/app/layout.tsx` exports a `viewport`. `maximumScale` is deliberately
+  **not** set: locking zoom is the usual cure for iOS magnifying a focused
+  field, and it works by taking pinch-to-zoom from everyone. `.input` grows
+  to 16px under 768px instead, which is the size Safari stops zooming at.
+- **`@media (hover: hover)` guards the hover block.** A touchscreen reports
+  a hover on whatever was last tapped and keeps reporting it, so `.hover-line`
+  left a row stuck black and `.editable-cell` left a cell stuck lit. The
+  cell's own `border-radius` stays outside the guard — that does not depend
+  on having a mouse.
+- **`.reveals-on-hover`** is on the seven controls that were
+  `invisible group-hover:visible`, and shows them wherever `hover: none`.
+  Six of them were the *only* path to something — selecting a row (which
+  gates the whole bulk-action bar), renaming a customer, deleting an
+  expense, re-dating it, opening it, archiving a list row. Keyed on the
+  pointer rather than the width, so a tablet with a mouse keeps the quiet
+  version.
+- **`HoverCard` opens on tap where there is no hover**, so the flavour
+  breakdown, the money on a Kanban card and the SUMIT cost notes stop being
+  unreachable. The branch does not exist on a mouse.
+- `usePopoverDismiss` listens on `pointerdown`, not `mousedown` — a touch
+  only produces a mouse event as a delayed compatibility gesture, and not
+  at all when the tap is consumed by a scroll.
+- The overlay scroll lock takes the body out of flow and restores the
+  scroll position. `overflow: hidden` alone does nothing on iOS Safari,
+  where the page behind a popup still rubber-bands and then comes back at
+  the top.
+- `src/components/useMediaQuery.ts` — `useMediaQuery`, `useCoarsePointer`,
+  `useIsMobile`. `useSyncExternalStore` so the server's answer (`false`,
+  i.e. desktop) is corrected on hydration in one pass rather than painting
+  twice.
 
 ### Design tokens
 

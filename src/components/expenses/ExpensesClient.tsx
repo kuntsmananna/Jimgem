@@ -616,7 +616,7 @@ function ExpenseRow({
           onClick={onDelete}
           title="Delete this expense"
           aria-label="Delete this expense"
-          className="invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+          className="reveals-on-hover invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
         >
           <Trash2 size={13} />
         </button>
@@ -653,7 +653,7 @@ function DateCell({
           onClick={() => input.current?.showPicker()}
           title="Change the date"
           aria-label="Change the date"
-          className="invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+          className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
         >
           <CalendarDays size={13} />
         </button>
@@ -678,7 +678,7 @@ function DateCell({
         onClick={onOpen}
         title="Open this expense"
         aria-label="Open this expense"
-        className="invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+        className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
       >
         <Maximize2 size={13} />
       </button>

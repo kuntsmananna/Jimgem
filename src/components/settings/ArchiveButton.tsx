@@ -59,7 +59,7 @@ export function ArchiveButton({
       disabled={busy}
       title={`Archive ${name}`}
       aria-label={`Archive ${name}`}
-      className="shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50"
+      className="reveals-on-hover shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50"
     >
       <Archive size={13} />
     </button>
