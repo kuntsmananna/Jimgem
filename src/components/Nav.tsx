@@ -114,7 +114,14 @@ export function Nav({ name, version }: { name: string; version: string }) {
 export function VatViewToggle() {
   const { view, setView } = useVatView();
   return (
-    <div className="flex items-center rounded-full border border-line p-0.5" role="group" aria-label="VAT view">
+    /*
+      Stated in `currentColor` and the `--segmented-*` pair rather than in
+      ink and cream, so the same toggle sits on the nav's cream and on the
+      black More sheet without either call site saying which. It is the
+      idiom `.money-rail` already uses for the fields and pickers inside
+      it: a surface re-tones what it contains by setting two properties.
+    */
+    <div className="segmented flex items-center rounded-full border border-current/20 p-0.5" role="group" aria-label="VAT view">
       {(["gross", "net"] as VatView[]).map((option) => (
         <button
           key={option}
@@ -123,7 +130,9 @@ export function VatViewToggle() {
           aria-pressed={view === option}
           title={option === "gross" ? "Show what customers pay" : "Show figures with VAT taken out"}
           className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-            view === option ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+            view === option
+              ? "bg-[var(--segmented-fill)] text-[var(--segmented-ink)]"
+              : "opacity-55 hover:opacity-100"
           }`}
         >
           {VAT_VIEW_LABEL[option]}

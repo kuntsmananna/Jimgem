@@ -61,7 +61,13 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
     <>
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-cream/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        /*
+          Black, like the app's other permanent chrome — the money rail and
+          every selected pill. It also separates the frame from the page:
+          everything above it is cream and belongs to the work, and the bar
+          is the thing that is always there.
+        */
+        className="on-ink fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-cream/15 pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {BAR.map((item) => (
           <BarItem key={item.href} {...item} active={isActive(item.href, path)} />
@@ -104,16 +110,18 @@ function BarItem({
 }) {
   const body = (
     <>
+      {/* Selected is the fill inverted — cream on the bar's black, which is
+          what "selected" looks like everywhere else in the app, read the
+          other way up. Unselected states its dimming as opacity so it
+          follows the surface rather than naming a colour. */}
       <span
         className={`flex h-8 w-14 items-center justify-center rounded-full transition ${
-          active ? "bg-black text-cream" : "text-ink-soft"
+          active ? "bg-cream text-ink" : "opacity-55"
         }`}
       >
         <Icon size={18} />
       </span>
-      <span className={`text-[10px] font-semibold ${active ? "text-ink" : "text-ink-soft"}`}>
-        {label}
-      </span>
+      <span className={`text-[10px] font-semibold ${active ? "" : "opacity-55"}`}>{label}</span>
     </>
   );
 
@@ -148,24 +156,24 @@ function MoreSheet({
   onClose: () => void;
 }) {
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} tone="ink">
       <>
         <div className="flex items-center gap-3 px-5 py-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-[11px] font-bold text-cream">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cream text-[11px] font-bold text-ink">
             {initials(name)}
           </span>
           <span className="flex-1 truncate text-sm font-semibold">{name}</span>
           <SheetClose onClose={onClose} />
         </div>
 
-        <div className="border-t border-line/60">
+        <div className="border-t border-cream/15">
           {MORE.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               onClick={onClose}
               className={`flex items-center gap-3 px-5 py-3.5 text-sm font-semibold ${
-                isActive(href, path) ? "text-ink" : "text-ink-soft"
+                isActive(href, path) ? "" : "opacity-60"
               }`}
             >
               <Icon size={17} />
@@ -179,17 +187,17 @@ function MoreSheet({
           it governs figures on four screens, and a per-page copy would let
           two of them disagree about what a shekel means.
         */}
-        <div className="flex items-center justify-between gap-3 border-t border-line/60 px-5 py-3.5">
-          <span className="text-sm font-semibold text-ink-soft">Money shown as</span>
+        <div className="flex items-center justify-between gap-3 border-t border-cream/15 px-5 py-3.5">
+          <span className="text-sm font-semibold opacity-60">Money shown as</span>
           <VatViewToggle />
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-line/60 px-5 py-3.5">
-          <span className="font-mono text-[11px] text-ink-soft/70 tabular-nums">{version}</span>
+        <div className="flex items-center justify-between gap-3 border-t border-cream/15 px-5 py-3.5">
+          <span className="font-mono text-[11px] tabular-nums opacity-50">{version}</span>
           <form action={logout}>
             <button
               type="submit"
-              className="flex items-center gap-2 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft"
+              className="flex items-center gap-2 rounded-full border border-cream/30 px-4 py-2 text-xs font-semibold"
             >
               <LogOut size={14} />
               Sign out

@@ -21,11 +21,19 @@ import { useOverlayDismiss } from "./useOverlayDismiss";
 export function Sheet({
   title,
   onClose,
+  tone = "cream",
   children,
 }: {
   /** Omitted where the sheet's own first row already says what it is. */
   title?: string;
   onClose: () => void;
+  /**
+   * `ink` for a sheet that is part of the app's chrome — the nav's More,
+   * which is the bottom bar opened up and wears the bar's black. `cream`
+   * for one holding controls over the page's own content, like the Orders
+   * filters, which belongs to the page rather than to the frame.
+   */
+  tone?: "cream" | "ink";
   children: React.ReactNode;
 }) {
   useOverlayDismiss(onClose);
@@ -37,7 +45,11 @@ export function Sheet({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="motion-rise max-h-[85dvh] w-full overflow-y-auto rounded-t-card border-t border-line bg-card pb-[env(safe-area-inset-bottom)]">
+      <div
+        className={`motion-rise max-h-[85dvh] w-full overflow-y-auto rounded-t-card border-t pb-[env(safe-area-inset-bottom)] ${
+          tone === "ink" ? "on-ink border-cream/15" : "border-line bg-card"
+        }`}
+      >
         {title !== undefined && (
           <div className="flex items-center gap-3 px-5 py-4">
             <h2 className="flex-1 truncate font-display text-base font-bold">{title}</h2>

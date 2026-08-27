@@ -279,9 +279,24 @@ body {
 
   }
 
-  .money-rail .segmented {
+  .money-rail .segmented,
+  .on-ink .segmented {
     --segmented-fill: var(--color-cream);
     --segmented-ink: var(--color-ink);
+  }
+
+  /*
+   * A black surface outside the order form: the phone's nav bar and the
+   * sheet behind More.
+   *
+   * The same trick `.money-rail` plays — a surface re-tones what it
+   * contains by setting the two `--segmented-*` properties once, instead
+   * of every control inside it carrying a second set of classes for the
+   * dark case. Anything drawn in `currentColor` and opacity follows
+   * automatically.
+   */
+  .on-ink {
+    @apply bg-ink text-cream;
   }
 
   .money-rail .input {

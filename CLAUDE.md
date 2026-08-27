@@ -166,8 +166,20 @@ menu: those are reached from the bottom edge and belong there. Both share
 behave identically.
 
 **Navigation on a phone is a bottom bar** (`src/components/MobileNav.tsx`,
-`md:hidden`), and the desktop header keeps only its wordmark below the
-breakpoint. Four targets: Orders, Expenses, Clients — the three the phone
+`md:hidden`), **drawn in black**, and the desktop header keeps only its
+wordmark below the breakpoint. Black because it is the app's one piece of
+permanent chrome: everything above it is cream and belongs to the work,
+and the bar is the thing that is always there. Selected inverts to a cream
+pill — the same "selected is the fill" rule the rest of the app follows,
+read the other way up — and unselected states its dimming as opacity so it
+follows the surface rather than naming a colour. The **More sheet wears
+the same black** (`Sheet`'s `tone="ink"`), because it is that bar opened
+up; the Orders filters sheet stays cream, being controls over the page's
+own content rather than part of the frame. `.on-ink` in `globals.css` is
+what re-tones them, by flipping the `--segmented-*` pair exactly the way
+`.money-rail` does — so `VatViewToggle`, restated in `currentColor` and
+those two properties, sits on either surface without its call site saying
+which. Four targets: Orders, Expenses, Clients — the three the phone
 is actually for — and **More**, a sheet from the bottom edge holding
 Dashboard, Biz Plan, Settings, the VAT toggle, the version and sign-out.
 The desktop row is six pills plus four other things and needs ~1000px it
