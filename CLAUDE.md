@@ -155,8 +155,20 @@ three filter dropdowns move into a **Filters sheet** carrying a count of
 how many are narrowing anything — behind a sheet, a filter left on is a
 filter nobody can see, and the stage one starts on. Add order becomes a
 floating button above the bar, because "take an order on the spot" is half
-the reason the phone layout exists. The 140px summary rail becomes one
-line of figures above the list.
+the reason the phone layout exists. The 140px summary rail becomes **four
+tiles, two by two**, in a low-contrast fill — one line of 11px text read
+as a caption on the search bar rather than as the figures it is, and four
+tiles across a 390px screen truncate a five-figure income. The **time
+scope is the first tile and is a control**: it is the thing most likely to
+be changed while reading those numbers, and behind the Filters sheet there
+was no sign the list was showing a window at all.
+
+**The day heading carries its weekday** (`orderWeekday` in
+`orderTypes.ts`) — "is that a Saturday" is most of what a queue of dates
+is read for. It is the one place the app depends on `orders.date`'s stored
+year, which for a Sheet-imported order is the year it was *imported*: the
+weekday is right for this season's orders and can be wrong on an old
+imported one, which is the price of showing it.
 
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and the Orders filters. `Modal` beside it is a

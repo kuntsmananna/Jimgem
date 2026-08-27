@@ -555,20 +555,43 @@ export function OrdersClient({
       </div>
 
       {/*
-        What the list on screen adds up to.
+        What the list on screen adds up to, across the width of it.
 
-        One line rather than the desktop's four tiles: the rail is a column
-        of right-aligned figures meant to be compared down its length, which
-        is a shape a phone has no room for — but the numbers themselves
-        answer "is this a busy fortnight", and that question does not stop
-        being asked away from a desk.
+        The desktop rail is a column of right-aligned figures meant to be
+        compared down its length, which a phone has no room for — but these
+        are the numbers that answer "is this a busy fortnight", and that
+        question does not stop being asked away from a desk. Tiles rather
+        than a line of small text, because at 11px they read as a caption on
+        the search bar rather than as the figures they are.
+
+        The scope leads and is a control, not a label: it is the thing most
+        likely to be changed while looking at these numbers, and it was
+        otherwise buried in the Filters sheet with no sign that the list was
+        showing a window at all.
       */}
-      <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-1 text-[11px] font-semibold text-ink-soft md:hidden">
-        <span className="font-extrabold tracking-[0.1em] uppercase">{scopeLabel}</span>
-        <span className="text-ink">{totals.units.toLocaleString("en-US")} units</span>
-        <span className="text-ink">{totals.orders} orders</span>
-        <span className="text-ink">₪{totals.income.toLocaleString("en-US")}</span>
-      </p>
+      {/*
+        Two by two, not four across: at 390px a quarter-width tile is about
+        80px, which truncates a five-figure income to "₪18,…" and wraps the
+        scope pill onto two lines. Half the width is enough for both, and a
+        second row costs less than a figure nobody can read.
+      */}
+      <div className="grid grid-cols-2 gap-2 md:hidden">
+        <div className="flex flex-col justify-between rounded-2xl bg-ink/[0.06] px-2.5 py-2">
+          <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">When</span>
+          <div className="-mx-1 mt-0.5">
+            <SelectDropdown
+              label="When"
+              options={SCOPES}
+              value={scope}
+              onChange={setScope}
+              active={scope !== "all"}
+            />
+          </div>
+        </div>
+        <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
+        <Figure label="Orders" value={String(totals.orders)} />
+        <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />
+      </div>
 
       {filtersOpen && (
         <Sheet title="Filters" onClose={() => setFiltersOpen(false)}>
@@ -828,6 +851,25 @@ function FilterRow({ label, children }: { label: string; children: React.ReactNo
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm font-semibold text-ink-soft">{label}</span>
       {children}
+    </div>
+  );
+}
+
+/**
+ * One figure in the phone's summary row.
+ *
+ * A low-contrast fill rather than a bordered card: four bordered boxes in a
+ * row above a list of bordered cards is a lot of edges for a small screen,
+ * and these are a summary of what is below rather than four more things to
+ * read.
+ */
+function Figure({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col justify-between rounded-2xl bg-ink/[0.06] px-2.5 py-2">
+      <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">{label}</span>
+      <span className="mt-0.5 truncate font-display text-[17px] leading-none font-extrabold tabular-nums">
+        {value}
+      </span>
     </div>
   );
 }

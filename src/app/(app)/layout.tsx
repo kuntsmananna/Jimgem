@@ -38,7 +38,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {/* The bottom bar and its More sheet, below the breakpoint only. */}
         <MobileNav name={session.name ?? ""} version={APP_VERSION_LABEL} />
         {/* The tail padding clears the bar, which is fixed over the page. */}
-        <main className="px-6 py-8 max-md:px-4 max-md:pb-28">{children}</main>
+        {/* Less air at the top on a phone: `py-8` is desktop spacing under a
+            header carrying six pills and a name, and below the breakpoint
+            that header is a thin strip with a wordmark on it. */}
+        <main className="px-6 py-8 max-md:px-4 max-md:pt-4 max-md:pb-28">{children}</main>
       </div>
       </VatViewProvider>
       </ProductionStagesProvider>

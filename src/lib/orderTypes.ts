@@ -978,3 +978,23 @@ export function formatOrderDate(isoDate: string): string {
   const parsed = parseIsoDate(isoDate);
   return parsed ? `${parsed.day}/${parsed.month}` : isoDate;
 }
+
+const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
+
+/**
+ * "Thu", for the day headings on the phone's order list.
+ *
+ * Which day of the week an order falls on is most of what a work queue is
+ * read for, and D/M alone does not say it.
+ *
+ * Unlike `formatOrderDate` this **does** depend on the stored year, which
+ * for a Sheet-imported order is the year it was imported rather than the
+ * year it happened (see sheetImport.ts). For this season's orders — every
+ * one anybody is working from — the year is right and so is the weekday;
+ * on an old imported order it can be wrong, which is the price of showing
+ * it at all. Empty rather than wrong-looking if the date cannot be read.
+ */
+export function orderWeekday(isoDate: string): string {
+  const parsed = new Date(isoDate);
+  return Number.isNaN(parsed.getTime()) ? "" : WEEKDAY.format(parsed);
+}

@@ -1,10 +1,10 @@
 "use client";
 
 import { Fragment } from "react";
-import { Info } from "lucide-react";
 import {
   formatOrderDate,
   orderUnits,
+  orderWeekday,
   PAYMENT_STATUS_LABEL,
   type Order,
   type PaymentStatus,
@@ -64,7 +64,11 @@ export function OrdersMobileList({
             and it is what turns a scroll into "what is on Thursday".
           */}
           {order.date !== orders[at - 1]?.date && (
-            <h2 className="mt-3 px-1 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase first:mt-0">
+            <h2 className="mt-3 flex items-baseline gap-1.5 px-1 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase first:mt-0">
+              {/* The weekday first, because "is that a Saturday" is most of
+                  what a queue of dates is read for. See `orderWeekday` for
+                  why an old imported order's could be wrong. */}
+              <span className="text-ink">{orderWeekday(order.date)}</span>
               {formatOrderDate(order.date)}
             </h2>
           )}
@@ -101,17 +105,22 @@ function OrderCard({
         stage?.countsAsIncome === false ? "is-offer" : ""
       }`}
     >
-      <div className="flex items-center gap-2">
-        <StageChip stageKey={order.productionStatus} />
-        {order.customerType && <EventTypeChip value={order.customerType} />}
-        <span className="flex-1" />
-        {/* A note is worth knowing exists; reading it is what opening is for. */}
-        {order.notes && <Info size={13} className="shrink-0 text-ink-soft" aria-label="Has a note" />}
+      {/*
+        The name leads and the chips sit at the end of its line, rather than
+        the chips having a row of their own above it: the customer is what
+        you are looking for down a list, and the stage is what qualifies it.
+        `items-start` so a name that wraps to two lines keeps the chips on
+        the first.
+      */}
+      <div className="flex items-start gap-2">
+        <p className="min-w-0 flex-1 truncate text-[17px] font-bold">{order.customer}</p>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <StageChip stageKey={order.productionStatus} />
+          {order.customerType && <EventTypeChip value={order.customerType} />}
+        </div>
       </div>
 
-      <p className="mt-2 truncate text-[15px] font-bold">{order.customer}</p>
-
-      <div className="mt-1.5 flex items-baseline gap-3 text-xs text-ink-soft">
+      <div className="mt-2 flex items-baseline gap-3 text-xs text-ink-soft">
         <span className="flex items-center gap-1">
           <UnitsIcon size={13} />
           {units.toLocaleString("en-US")}
