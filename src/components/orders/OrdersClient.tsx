@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, SlidersHorizontal, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   isBooked,
@@ -26,6 +26,9 @@ import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 import { SearchInput, matchesSearch } from "@/components/SearchInput";
+import { useIsMobile } from "@/components/useMediaQuery";
+import { OrdersMobileList } from "./OrdersMobileList";
+import { Sheet } from "@/components/Sheet";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ClientModal } from "@/components/clients/ClientModal";
 import { looksLikeSameClient } from "@/lib/clientName";
@@ -128,6 +131,8 @@ export function OrdersClient({
   );
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  /** The phone's Filters sheet — the three dropdowns have nowhere else to go. */
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // The Dashboard's Latest orders list links here with ?order=<key> to
   // open that order's pane directly. Read once on mount: arriving from
   // that link is a navigation, so the component mounts fresh.
@@ -200,6 +205,27 @@ export function OrdersClient({
   // list one window back, in whichever VAT convention the nav is set to.
   const { forOrder } = useVatView();
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  /*
+   * A phone gets a different tree, not a different stylesheet: the table
+   * is fifteen columns of `EditableCell` and hiding it in CSS would still
+   * build all of it. The desktop half also carries `max-md:hidden`, so
+   * during the frame before this hook has an answer the page shows
+   * nothing rather than a 1100px table.
+   */
+  const mobile = useIsMobile();
+
+  /*
+   * How many of the three filters are narrowing anything, for the badge on
+   * the phone's Filters button. Behind a sheet, a filter left on is a
+   * filter nobody can see — and the stage one *starts* on, holding every
+   * stage but Delivered, so "why is that order missing" would otherwise
+   * have no visible cause at all.
+   */
+  const narrowedCount =
+    (scope !== "all" ? 1 : 0) +
+    (paymentFilter.size > 0 ? 1 : 0) +
+    (stageFilter.size > 0 && stageFilter.size < stages.length ? 1 : 0);
+
   const stageIndex = stageMap(stages);
   const totals = totalOf(inScope, unitsPerPackage, stageIndex, forOrder);
   const previousTotals = totalOf(
@@ -424,7 +450,7 @@ export function OrdersClient({
         own contents, so the wider group won and nudged the middle across
         — a little, but visibly, and differently on the calendar.
       */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 max-md:hidden">
         {/* When and what, together on the left: which orders are in play
             at all, then which of those. The calendar has no time scope —
             it navigates itself — so its first slot says how the grid is
@@ -498,6 +524,107 @@ export function OrdersClient({
         </div>
       </div>
 
+      {/*
+        The phone's toolbar. Search stays on the surface — it is the widest
+        net on the page and the one control used constantly — and the three
+        dropdowns go behind Filters, which says how many are narrowing
+        anything so a forgotten filter cannot quietly hide an order. There
+        is no view switcher: the board and the calendar are not offered on
+        a phone, so the list is the page.
+      */}
+      <div className="flex items-center gap-2 md:hidden">
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search orders"
+          label="Search orders by customer, type, location or note"
+          className="min-w-0 flex-1"
+        />
+        <button
+          onClick={() => setFiltersOpen(true)}
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-semibold text-ink-soft"
+        >
+          <SlidersHorizontal size={14} />
+          Filters
+          {narrowedCount > 0 && (
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-cream">
+              {narrowedCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/*
+        What the list on screen adds up to.
+
+        One line rather than the desktop's four tiles: the rail is a column
+        of right-aligned figures meant to be compared down its length, which
+        is a shape a phone has no room for — but the numbers themselves
+        answer "is this a busy fortnight", and that question does not stop
+        being asked away from a desk.
+      */}
+      <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-1 text-[11px] font-semibold text-ink-soft md:hidden">
+        <span className="font-extrabold tracking-[0.1em] uppercase">{scopeLabel}</span>
+        <span className="text-ink">{totals.units.toLocaleString("en-US")} units</span>
+        <span className="text-ink">{totals.orders} orders</span>
+        <span className="text-ink">₪{totals.income.toLocaleString("en-US")}</span>
+      </p>
+
+      {filtersOpen && (
+        <Sheet title="Filters" onClose={() => setFiltersOpen(false)}>
+          {/*
+            The same three controls the desktop toolbar carries, stacked and
+            labelled. Their written names come back here: in the toolbar an
+            icon stands in for the word because the row is short of width,
+            and a sheet has nothing but width.
+          */}
+          <div className="flex flex-col gap-4 px-5 pb-6">
+            <FilterRow label="When">
+              <SelectDropdown
+                label="When"
+                icon={<CalendarRange size={13} />}
+                options={SCOPES}
+                value={scope}
+                onChange={setScope}
+                active={scope !== "all"}
+              />
+            </FilterRow>
+            <FilterRow label="Payment">
+              <FilterDropdown
+                label="Payment"
+                icon={<Wallet size={13} />}
+                options={paymentOptions}
+                selected={paymentFilter}
+                onChange={setPaymentFilter}
+              />
+            </FilterRow>
+            <FilterRow label="Status">
+              <FilterDropdown
+                label="Status"
+                icon={<ListChecks size={13} />}
+                options={stageOptions}
+                selected={stageFilter}
+                onChange={setStageFilter}
+              />
+            </FilterRow>
+          </div>
+        </Sheet>
+      )}
+
+      {/*
+        Add order, as the one thing you might arrive at this page wanting to
+        do. Above the bottom bar and clear of the home indicator, because
+        "take an order on the spot" is half the reason the phone layout
+        exists — in a toolbar it would be one more thing to find.
+      */}
+      <button
+        onClick={() => setAdding(true)}
+        aria-label="Add order"
+        className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+      >
+        <Plus size={22} />
+      </button>
+
     {/*
       The summary rides beside the table and the board, not the calendar,
       which navigates by its own month and would otherwise carry two
@@ -507,7 +634,30 @@ export function OrdersClient({
     <div className="flex items-start gap-3">
       <div className="flex min-w-0 flex-1 flex-col gap-5">
 
-        {view === "table" && (
+        {/*
+          Both halves take the same `inScope` array — the mobile list is a
+          renderer, not a second filtering path — and each is hidden at the
+          other's width as well as gated on the hook, so neither can flash
+          before hydration has an opinion.
+        */}
+        {view === "table" && mobile && (
+          <div className="md:hidden">
+            <OrdersMobileList
+              orders={inScope}
+              unitsPerPackage={unitsPerPackage}
+              onOpen={setOpenKey}
+              emptyNote={
+                needle && bySearch.length === 0
+                  ? `Nothing matches “${needle}”.`
+                  : filtered.length > 0
+                    ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
+                    : "No orders yet."
+              }
+            />
+          </div>
+        )}
+
+        {view === "table" && !mobile && (
           <OrdersTable
             orders={inScope}
             flavors={flavors}
@@ -563,8 +713,11 @@ export function OrdersClient({
            * Gone entirely on the calendar, which takes the whole page
            * for its grid. Nothing in the toolbar moves when it does,
            * because the toolbar is no longer inside this row.
+           *
+           * Desktop only — the phone gets the one-line strip above the
+           * list instead, since a column of figures needs a column.
            */
-          className="w-[140px] shrink-0"
+          className="w-[140px] shrink-0 max-md:hidden"
         >
           <OrdersSummary
             totals={totals}
@@ -659,5 +812,22 @@ function BatchSelect<T extends string>({
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * One filter in the phone's Filters sheet: the name, and the control.
+ *
+ * The written name is back because there is room for it. In the desktop
+ * toolbar each of these wears an icon instead — the value is what changes
+ * and what gets read, and "Payment:" cost more width than the value beside
+ * it — but that trade only makes sense in a row fighting for space.
+ */
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm font-semibold text-ink-soft">{label}</span>
+      {children}
+    </div>
   );
 }

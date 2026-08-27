@@ -12,10 +12,9 @@ import {
   Settings,
   TrendingUp,
   Users,
-  X,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
-import { useOverlayDismiss } from "@/components/useOverlayDismiss";
+import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
 
 /**
@@ -133,11 +132,9 @@ function BarItem({
 /**
  * Everything the bar does not carry.
  *
- * A sheet from the bottom edge rather than a centred dialog: it is opened
- * from a control on that edge and belongs to it. It reuses
- * `useOverlayDismiss` for the Escape key and the body scroll lock — the
- * lock matters here, because without it iOS scrolls the page behind an
- * open sheet and loses its place.
+ * Its own first row rather than the `Sheet`'s title, because who is signed
+ * in is the useful heading here — the sheet is reached from a button
+ * labelled More, which has already said what it is.
  */
 function MoreSheet({
   name,
@@ -150,29 +147,15 @@ function MoreSheet({
   path: string;
   onClose: () => void;
 }) {
-  useOverlayDismiss(onClose);
-
   return (
-    <div
-      className="motion-veil fixed inset-0 z-50 flex items-end bg-black/40 md:hidden"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="motion-rise w-full rounded-t-card border-t border-line bg-card pb-[env(safe-area-inset-bottom)]">
+    <Sheet onClose={onClose}>
+      <>
         <div className="flex items-center gap-3 px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-[11px] font-bold text-cream">
             {initials(name)}
           </span>
           <span className="flex-1 truncate text-sm font-semibold">{name}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft"
-          >
-            <X size={18} />
-          </button>
+          <SheetClose onClose={onClose} />
         </div>
 
         <div className="border-t border-line/60">
@@ -213,7 +196,7 @@ function MoreSheet({
             </button>
           </form>
         </div>
-      </div>
-    </div>
+      </>
+    </Sheet>
   );
 }

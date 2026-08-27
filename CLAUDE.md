@@ -127,6 +127,44 @@ components, never by editing or prefixing an existing desktop class. Where
 a phone needs a different *tree* rather than a different look, that is
 `useIsMobile()` — not a rewritten desktop component.
 
+**The Orders page on a phone is a list of cards**
+(`src/components/orders/OrdersMobileList.tsx`), one per order, under a
+heading per day. The table is fifteen columns and 1100px wide — three
+screens of sideways scrolling to read one row — so the card carries the
+stage, the event type, the customer, the units, the payment status and the
+total, and **everything else is behind a tap**: location, guests,
+waitressing, kosher, delivery, the deposit and the flavour split all live
+in the order. That is the "fold a column into `ContentHoverCard`" move the
+table's own notes name as the next step for a narrow screen, taken to its
+end.
+
+**No inline editing there.** Ten cells per row edit in place on the
+desktop, announced by a hover a phone cannot perform; rather than put a
+dozen 20px targets on a card, the whole card opens the order. One rule,
+nothing hidden — at the cost of a tap for a quick status change, which is
+the trade the owner chose.
+
+The mobile tree renders from the same `inScope` array the table takes, so
+it is a *renderer* and not a second filtering path. It is chosen with
+`useIsMobile()` rather than by hiding the table in CSS, because hiding it
+would still build seventy rows of `EditableCell` for a screen that will
+never show them; the desktop half also carries `max-md:hidden` so nothing
+flashes before hydration has an opinion. The board and the calendar are
+not offered on a phone at all, so the view switcher is desktop-only. The
+three filter dropdowns move into a **Filters sheet** carrying a count of
+how many are narrowing anything — behind a sheet, a filter left on is a
+filter nobody can see, and the stage one starts on. Add order becomes a
+floating button above the bar, because "take an order on the spot" is half
+the reason the phone layout exists. The 140px summary rail becomes one
+line of figures above the list.
+
+**`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
+shared by the nav's More and the Orders filters. `Modal` beside it is a
+centred dialog, which is right for a record you opened and wrong for a
+menu: those are reached from the bottom edge and belong there. Both share
+`useOverlayDismiss`, so Escape, the scroll lock and the nesting count
+behave identically.
+
 **Navigation on a phone is a bottom bar** (`src/components/MobileNav.tsx`,
 `md:hidden`), and the desktop header keeps only its wordmark below the
 breakpoint. Four targets: Orders, Expenses, Clients — the three the phone
