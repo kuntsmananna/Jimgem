@@ -2,6 +2,23 @@
 
 import { Search, X } from "lucide-react";
 import { TextInput } from "@/components/Field";
+import { HeaderSlot } from "@/components/HeaderSlot";
+
+/**
+ * Two sizes, one field. `sm` is the toolbar box every page has always
+ * carried; `md` is the phone header's, which is a taller target and set at
+ * 16px — under that, iOS Safari magnifies the page on focus and leaves it
+ * magnified, and `.input`'s own 16px rule loses to the `text-xs` utility
+ * here (components lose to utilities, whatever the order in the file).
+ *
+ * A `size` rather than a second component or a className the call site
+ * hand-tunes: that drift is what produced five copies of the segmented
+ * pill before `ChipSpread` and `Segmented` took a `size` of their own.
+ */
+const SIZES = {
+  sm: { field: "py-1.5 pr-7 pl-7.5 text-xs", icon: 13, left: "left-2.5", clear: "right-1.5", x: 12 },
+  md: { field: "py-2.5 pr-9 pl-9 text-base", icon: 15, left: "left-3", clear: "right-2.5", x: 15 },
+} as const;
 
 /**
  * The one search field, shared by Orders, Expenses and Clients.
@@ -20,6 +37,7 @@ export function SearchInput({
   onChange,
   placeholder,
   label,
+  size = "sm",
   className = "w-56",
 }: {
   value: string;
@@ -28,14 +46,17 @@ export function SearchInput({
   placeholder: string;
   /** The accessible name, when the placeholder is a list rather than a label. */
   label: string;
+  /** `md` for the phone header — a thumb's target, and 16px. See SIZES. */
+  size?: keyof typeof SIZES;
   className?: string;
 }) {
+  const scale = SIZES[size];
   return (
     <div className={`fields-lit relative flex items-center ${className}`}>
       <Search
-        size={13}
+        size={scale.icon}
         aria-hidden
-        className="pointer-events-none absolute left-2.5 text-current opacity-50"
+        className={`pointer-events-none absolute ${scale.left} text-current opacity-50`}
       />
       {/* `TextInput` rather than a bare `.input`, which is the rule the
           primitive exists for: it carries the placeholder that
@@ -51,7 +72,7 @@ export function SearchInput({
         // sits alone in a toolbar with nothing around it to say where it
         // starts. `border-ink/15` rather than `border-line` so it is also
         // visible on the Clients band, which is close to `line` in tone.
-        className="w-full border-ink/15 py-1.5 pr-7 pl-7.5 text-xs focus:border-accent"
+        className={`w-full border-ink/15 focus:border-accent ${scale.field}`}
         // Escape clears rather than closing anything: this sits inside
         // pages whose overlays also listen for it, and a search box that
         // swallowed the key would strand a half-typed query.
@@ -68,12 +89,53 @@ export function SearchInput({
           onClick={() => onChange("")}
           aria-label="Clear search"
           title="Clear search"
-          className="absolute right-1.5 rounded-full p-0.5 opacity-60 transition hover:opacity-100"
+          className={`absolute ${scale.clear} rounded-full p-0.5 opacity-60 transition hover:opacity-100`}
         >
-          <X size={12} />
+          <X size={scale.x} />
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * A page's search box, in both of the places it belongs.
+ *
+ * On a laptop it is where it has always been — in the page's own toolbar,
+ * beside the controls it narrows. On a phone it is in the header, right of
+ * the wordmark: the header is otherwise two thirds empty below the
+ * breakpoint, and a search box was costing the page a whole row above the
+ * list it searches. It is also `sticky` up there, so the field stays put
+ * as the list scrolls under it.
+ *
+ * Both are rendered and each is hidden at the other's width, rather than
+ * one moving on `useIsMobile`: the header copy is inside a `md:hidden`
+ * slot and this one carries `max-md:hidden`, so nothing depends on
+ * hydration having happened and neither can flash. They share the caller's
+ * state, so they are one field in every sense but the DOM.
+ */
+export function PageSearch({
+  value,
+  onChange,
+  placeholder,
+  label,
+  className = "w-56",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  label: string;
+  /** The toolbar copy's width. The header copy always fills its slot. */
+  className?: string;
+}) {
+  const props = { value, onChange, placeholder, label };
+  return (
+    <>
+      <SearchInput {...props} className={`${className} max-md:hidden`} />
+      <HeaderSlot>
+        <SearchInput {...props} size="md" className="w-full" />
+      </HeaderSlot>
+    </>
   );
 }
 

@@ -25,7 +25,7 @@ import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
-import { SearchInput, matchesSearch } from "@/components/SearchInput";
+import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { OrdersMobileList } from "./OrdersMobileList";
 import { Sheet } from "@/components/Sheet";
@@ -507,7 +507,10 @@ export function OrdersClient({
             narrows the board and the calendar too — and the left group
             is already three controls that each narrow the one before. */}
         <div className="flex min-w-0 items-center justify-end gap-3">
-          <SearchInput
+          {/* `PageSearch`, so the same field also appears in the phone
+              header — this toolbar is `max-md:hidden`, but a portal is not
+              inside what hides it. */}
+          <PageSearch
             value={query}
             onChange={setQuery}
             placeholder="Search orders"
@@ -525,64 +528,31 @@ export function OrdersClient({
       </div>
 
       {/*
-        The phone's toolbar. Search stays on the surface — it is the widest
-        net on the page and the one control used constantly — and the three
-        dropdowns go behind Filters, which says how many are narrowing
-        anything so a forgotten filter cannot quietly hide an order. There
-        is no view switcher: the board and the calendar are not offered on
-        a phone, so the list is the page.
-      */}
-      <div className="flex items-center gap-2 md:hidden">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Search orders"
-          label="Search orders by customer, type, location or note"
-          className="min-w-0 flex-1"
-        />
-        <button
-          onClick={() => setFiltersOpen(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-semibold text-ink-soft"
-        >
-          <SlidersHorizontal size={14} />
-          Filters
-          {narrowedCount > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-cream">
-              {narrowedCount}
-            </span>
-          )}
-        </button>
-      </div>
+        The phone's whole toolbar, and what the list on screen adds up to.
 
-      {/*
-        What the list on screen adds up to, across the width of it.
+        Which orders comes first — the time scope on the left, Filters on
+        the right — and the figures under it. Search is not here at all: it
+        is in the header beside the wordmark, where it is always on screen
+        and costs the page nothing. See `PageSearch`.
 
         The desktop rail is a column of right-aligned figures meant to be
         compared down its length, which a phone has no room for — but these
         are the numbers that answer "is this a busy fortnight", and that
         question does not stop being asked away from a desk. Tiles rather
-        than a line of small text, because at 11px they read as a caption on
-        the search bar rather than as the figures they are.
+        than one line of 11px text, which read as a caption rather than as
+        the figures it is.
 
-        The scope leads and is a control, not a label: it is the thing most
-        likely to be changed while looking at these numbers, and it was
-        otherwise buried in the Filters sheet with no sign that the list was
-        showing a window at all.
-      */}
-      {/*
         The scope is not a tile. It is a control and the three beside it are
         figures, and a fill around it said they were the same kind of thing
         while costing a whole row of height — which two-by-two tiles then
         cost again. It is a bare chip under its own heading, and the three
-        figures share one row beneath it.
-
-        Four across would not have worked: at 390px a quarter-width tile is
-        about 80px, which truncates a five-figure income to "₪18,…". Three
-        is ~120px, which fits one.
+        figures share one row beneath it. Four across would not have worked:
+        at 390px a quarter-width tile is about 80px, which truncates a
+        five-figure income to "₪18,…". Three is ~120px, which fits one.
       */}
       <div className="md:hidden">
         <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">When</span>
-        <div className="mt-1 flex">
+        <div className="mt-1 flex items-center justify-between gap-2">
           <SelectDropdown
             label="When"
             // The heading above says "When" already; the chip says only
@@ -593,6 +563,27 @@ export function OrdersClient({
             onChange={setScope}
             active={scope !== "all"}
           />
+          {/*
+            Filters sits at the other end of the scope's own row rather
+            than beside the search, which has gone up to the header. Both
+            controls answer "which orders", so they belong on one line —
+            and the alternative was a row of its own holding one button.
+
+            The count is what makes a sheet safe to put a filter behind: a
+            filter left on is otherwise invisible.
+          */}
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-semibold text-ink-soft"
+          >
+            <SlidersHorizontal size={14} />
+            Filters
+            {narrowedCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-cream">
+                {narrowedCount}
+              </span>
+            )}
+          </button>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Figure label="Units" value={totals.units.toLocaleString("en-US")} />

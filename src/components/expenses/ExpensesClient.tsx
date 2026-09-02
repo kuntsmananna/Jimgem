@@ -12,7 +12,7 @@ import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { EditableCell } from "@/components/orders/EditableCell";
 import { FilterDropdown } from "@/components/orders/Dropdown";
-import { SearchInput, matchesSearch } from "@/components/SearchInput";
+import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { saveError } from "@/components/saveError";
 import { ExpenseFormModal } from "./ExpenseFormModal";
@@ -256,7 +256,7 @@ export function ExpensesClient({
             <span className="text-[11px] font-semibold text-ink-soft">{vatLabel}</span>
           </div>
           <div className="flex items-center gap-2">
-            <SearchInput
+            <PageSearch
               value={query}
               onChange={setQuery}
               placeholder="Search expenses"

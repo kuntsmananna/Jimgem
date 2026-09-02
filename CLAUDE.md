@@ -155,7 +155,10 @@ three filter dropdowns move into a **Filters sheet** carrying a count of
 how many are narrowing anything — behind a sheet, a filter left on is a
 filter nobody can see, and the stage one starts on. Add order becomes a
 floating button above the bar, because "take an order on the spot" is half
-the reason the phone layout exists. The 140px summary rail becomes **three
+the reason the phone layout exists. **Search is not on the page at all** —
+it is up in the header (see `PageSearch`), which is what lets Filters share
+the scope's row: both answer "which orders", and the alternative was a row
+of its own holding one button. The 140px summary rail becomes **three
 tiles in a row** — units, orders, income — in a low-contrast fill: one line
 of 11px text read as a caption on the search bar rather than as the figures
 it is, while four tiles across a 390px screen truncate a five-figure income
@@ -1107,6 +1110,23 @@ compares identity, and a panel builds a fresh draft before every call.
   `fields-lit`: it is a control rather than a value on a sheet, and the
   app's default (a filled field drops to bare text) would leave a live
   query reading as a stray word in the toolbar.
+  **On a phone that box is in the header, not on the page** (`PageSearch`).
+  Below the breakpoint the header carries a wordmark and nothing else — the
+  pills, the VAT toggle, the version, the name and sign-out all went to the
+  bottom bar — so a sticky row sat two thirds empty while the page under it
+  spent a whole row on a search field. `HeaderSlot` is that space, offered
+  to whichever page has something for it: `Nav` renders the mount point,
+  `HeaderSlotProvider` in the app layout sits above both halves, and a page
+  portals into it. Being in the header, the field also stays put as the list
+  scrolls. `PageSearch` renders **both copies and hides each at the other's
+  width** — the slot is `md:hidden` and the toolbar copy is `max-md:hidden`
+  — rather than moving one on `useIsMobile`, which would paint the desktop
+  answer for a frame first. The header copy is `SearchInput`'s `size="md"`:
+  a 46px target instead of a 26px one, and set at **16px**, because
+  `.input`'s own 16px phone rule is in `@layer components` and loses to the
+  `text-xs` utility on the field — so without it iOS magnifies the page the
+  moment the box is tapped, which is the one thing the viewport work exists
+  to prevent.
 - **The Clients page is the list on the left, everything else in a column
   beside it.** The tiles and the two charts used to sit above the list,
   which started the page's actual subject halfway down a laptop screen and

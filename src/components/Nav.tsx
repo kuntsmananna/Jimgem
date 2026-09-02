@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { GemsLogo } from "@/components/GemsLogo";
+import { HeaderSlotTarget } from "@/components/HeaderSlot";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -64,6 +65,21 @@ export function Nav({ name, version }: { name: string; version: string }) {
           })}
         </nav>
       </div>
+
+      {/*
+        The rest of the row on a phone, given to the page.
+
+        Below the breakpoint everything on the right of this header moved to
+        the bottom bar, leaving a sticky strip that was two thirds empty
+        while the page under it spent a row of its own on a search box. A
+        page with something to search hands it up here instead — and gets a
+        search that stays put as the list scrolls, which the row never was.
+
+        `md:hidden` on the mount point rather than on what goes in it, so a
+        page portals into the slot without saying which width it is for.
+      */}
+      <HeaderSlotTarget className="ml-4 flex min-w-0 flex-1 items-center justify-end md:hidden" />
+
       <div className="flex items-center gap-3 max-md:hidden">
         <VatViewToggle />
         {/* On every page rather than just the Dashboard — it's how you tell

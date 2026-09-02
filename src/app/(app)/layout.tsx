@@ -4,6 +4,7 @@ import { getOrderTypes, getProductionStages } from "@/lib/settings";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { Nav } from "@/components/Nav";
 import { MobileNav } from "@/components/MobileNav";
+import { HeaderSlotProvider } from "@/components/HeaderSlot";
 import { OrderTypesProvider } from "@/components/OrderTypesContext";
 import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
 import { VatViewProvider } from "@/components/VatViewContext";
@@ -31,6 +32,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     <OrderTypesProvider types={orderTypes}>
       <ProductionStagesProvider stages={stages}>
       <VatViewProvider view={vatView}>
+      {/* The phone header's right-hand side, offered to whichever page has
+          something to put there — today, a search box. Above `Nav` and
+          `main` both, because one writes the slot and the other fills it. */}
+      <HeaderSlotProvider>
       <div className="min-h-screen">
         {/* Version lives in the nav so every page carries it, not just the
             Dashboard — it is how a deployed build is identified. */}
@@ -43,6 +48,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             that header is a thin strip with a wordmark on it. */}
         <main className="px-6 py-8 max-md:px-4 max-md:pt-4 max-md:pb-28">{children}</main>
       </div>
+      </HeaderSlotProvider>
       </VatViewProvider>
       </ProductionStagesProvider>
     </OrderTypesProvider>

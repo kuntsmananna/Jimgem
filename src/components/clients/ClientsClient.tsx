@@ -10,7 +10,7 @@ import { SERIES_COLORS } from "@/lib/chartPalette";
 import { LineChart } from "@/components/charts/LineChart";
 import { ClientModal } from "./ClientModal";
 import { PaneHeader } from "@/components/Pane";
-import { SearchInput, matchesSearch } from "@/components/SearchInput";
+import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useVatView } from "@/components/VatViewContext";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { count, currency } from "@/lib/money";
@@ -177,7 +177,7 @@ export function ClientsClient({
           }
           action={
             <div className="flex items-center gap-2">
-              <SearchInput
+              <PageSearch
                 value={query}
                 onChange={setQuery}
                 placeholder="Search clients"
