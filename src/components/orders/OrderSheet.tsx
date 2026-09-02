@@ -62,7 +62,10 @@ export function GroupLabel({
    */
   return (
     <span
-      className={`text-[10.5px] font-extrabold tracking-[0.14em] uppercase ${
+      /* 12px on a phone. 10.5px letterspaced caps is a caption at arm's
+         length on a laptop and unreadable held in one hand — and these
+         are the titles down the left of the Event tab. */
+      className={`text-[10.5px] font-extrabold tracking-[0.14em] uppercase max-md:text-xs ${
         icon ? "inline-flex items-center gap-1.5" : ""
       } ${rule ? "mt-1.5 mb-2.5 block border-b border-current/12 pb-2" : ""}`}
     >
@@ -81,7 +84,7 @@ export function GroupLabel({
  */
 export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] uppercase">
+    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] uppercase max-md:text-xs">
       {children}
     </span>
   );
@@ -108,7 +111,9 @@ export function SheetRow({
 }) {
   return (
     <div
-      className={`flex min-h-[34px] items-center justify-between gap-4 ${
+      /* 44px on a phone: the row holds a field or a toggle, and 34px is a
+         cursor's row. */
+      className={`flex min-h-[34px] items-center justify-between gap-4 max-md:min-h-11 max-md:gap-3 ${
         total ? "mt-1.5 border-t-[1.5px] border-current pt-2.5" : "py-1"
       }`}
     >
@@ -119,7 +124,10 @@ export function SheetRow({
           money rail, and a fixed `text-ink-soft` disappears on one of
           them. Inheriting and dimming works either way round.
         */
-        className={total ? "text-xs font-bold" : "text-[12.5px] opacity-70"}
+        /* 14px and less dimmed on a phone. At 12.5px and 70% these read as
+           annotations on the controls beside them rather than as the name
+           of what is being set. */
+        className={total ? "text-xs font-bold max-md:text-sm" : "text-[12.5px] opacity-70 max-md:text-sm max-md:opacity-80"}
       >
         {label}
       </span>
@@ -263,14 +271,14 @@ export function PricedAmount({
             type="button"
             onClick={onRelease}
             title={`Back to the standard rate (${money(rate)})`}
-            className="rounded-full p-0.5 opacity-60 transition hover:bg-current/10 hover:opacity-100"
+            className="rounded-full p-0.5 opacity-60 transition hover:bg-current/10 hover:opacity-100 max-md:p-1.5"
           >
             <RotateCcw size={12} />
           </button>
         ) : (
           <span
             title={`Calculated from the standard rate (${money(rate)})`}
-            className="text-[10px] font-bold tracking-wide opacity-50 uppercase"
+            className="text-[10px] font-bold tracking-wide opacity-50 uppercase max-md:text-[11px]"
           >
             auto
           </span>
@@ -328,7 +336,8 @@ export function MoneyInput({
       // Sized for the rail rather than for a full column: these sit in a
       // 20rem strip beside their labels, and the old 10.5rem box left the
       // label with nowhere to go.
-      className="w-28 text-right text-sm tabular-nums"
+      // Wider on a phone, where the text inside is 16px rather than 14.
+      className="w-28 text-right text-sm tabular-nums max-md:w-32"
     />
   );
 }
@@ -374,7 +383,7 @@ export function DiscountInput({
         aria-label="Discount"
         value={value === 0 ? "" : String(value)}
         onChange={(e) => onChange(Number(e.target.value) || 0, isPercent)}
-        className="w-16 text-right text-sm tabular-nums"
+        className="w-16 text-right text-sm tabular-nums max-md:w-20"
       />
     </span>
   );

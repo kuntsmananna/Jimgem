@@ -600,7 +600,12 @@ function LineCard({
    */
   if (preset) {
     return (
-      <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2">
+      /* `flex-wrap` below the breakpoint. Every child of this row is
+         `shrink-0` — a name pill, a stepper, the unit count, the note, two
+         buttons — which is 450px of content that cannot give, and in a
+         343px panel it simply ran off the right. Wrapping is the only
+         thing a row of unshrinkable parts can do. */
+      <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 max-md:flex-wrap max-md:gap-y-2">
         {/*
           The line's title, and drawn like one. It was an 11px lavender
           pill — shorter than the stepper beside it and in a colour that
@@ -613,9 +618,9 @@ function LineCard({
           preset row carries no `.hover-line`, so there is no black
           background for a black chip to disappear into.
         */}
-        <span className="keeps-color flex shrink-0 items-center gap-2 rounded-full bg-black py-1.5 pr-3.5 pl-2 text-[13px] font-bold text-cream">
+        <span className="keeps-color flex shrink-0 items-center gap-2 rounded-full bg-black py-1.5 pr-3.5 pl-2 text-[13px] font-bold text-cream max-md:min-w-0 max-md:text-sm">
           <PresetSwatch preset={preset} flavors={flavors} className="h-4 w-7" />
-          {preset.name}
+          <span className="truncate">{preset.name}</span>
         </span>
 
         <NumberStepper
@@ -627,7 +632,9 @@ function LineCard({
 
         <PackedUnits packed={packed} />
 
-        <span className="flex-1" />
+        {/* Hidden once the row wraps: a spacer there right-aligns whatever
+            follows it against the edge of a line it no longer shares. */}
+        <span className="flex-1 max-md:hidden" />
 
         {/* A preset's shares are floored into whole cubes, so a recipe
             that doesn't divide evenly leaves a cube or two spare. Said
@@ -639,7 +646,7 @@ function LineCard({
           type="button"
           onClick={() => onPatch({ presetId: null, folded: false })}
           title="Edit this package's own mix, leaving the preset behind"
-          className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-soft transition hover:border-ink hover:text-ink"
+          className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-soft transition hover:border-ink hover:text-ink max-md:px-3 max-md:py-2 max-md:text-xs"
         >
           Break apart
         </button>
@@ -648,7 +655,7 @@ function LineCard({
           onClick={onRemove}
           aria-label={`Remove ${preset.name}`}
           title="Remove this package"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white max-md:h-9 max-md:w-9"
         >
           <Trash2 size={13} />
         </button>
@@ -661,20 +668,23 @@ function LineCard({
       // A div, not a button: the row opens on click but carries a delete
       // control, and a button inside a button is invalid and swallows the
       // inner click in some browsers.
-      <div className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left">
+      <div className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left max-md:gap-2">
         <button
           type="button"
           onClick={onToggleFold}
           aria-label="Open this package"
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          /* Wraps on a phone for the reason the preset row above does:
+             the chip, the mix strip, the note and the count are all
+             `shrink-0` and together are wider than the panel. */
+          className="flex min-w-0 flex-1 items-center gap-3 text-left max-md:flex-wrap max-md:gap-y-1.5"
         >
           <ChevronRight size={14} className="shrink-0 text-ink-soft" />
-          <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink">
+          <span className="keeps-color flex shrink-0 items-center gap-1.5 rounded-full bg-tile-peach px-2.5 py-0.5 text-[11px] font-bold text-ink max-md:py-1 max-md:text-xs">
             {packageTypeIconElement(packageType?.unitsPerPackage ?? 0, 12)}
             {packageLineLabel(line, unitsPerPackage, packageType?.name ?? "?")}
           </span>
           <FoldedMix line={line} flavors={flavors} packed={packed} />
-          <span className="flex-1" />
+          <span className="flex-1 max-md:hidden" />
           {/* The warning survives folding. A package whose flavours don't
               add up is exactly the one you'd close and forget, and the
               summary row is where you'd look for it. */}
@@ -835,7 +845,7 @@ function LineCard({
           aria-label="Remove this package"
           title="Remove this package"
           onClick={onRemove}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white max-md:h-9 max-md:w-9"
         >
           <Trash2 size={14} />
         </button>
@@ -936,7 +946,7 @@ function LineNote({ remaining, packed }: { remaining: number; packed: number }) 
   const done = remaining === 0;
   return (
     <span
-      className={`keeps-color shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap tabular-nums ${
+      className={`keeps-color shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap tabular-nums max-md:py-1 max-md:text-xs ${
         done ? "bg-tile-sage text-ink" : "bg-amber-200 text-amber-900"
       }`}
     >
@@ -964,10 +974,10 @@ function PackedUnits({ packed }: { packed: number }) {
   return (
     <span className="flex shrink-0 items-center gap-1.5">
       <UnitsIcon size={14} className="text-ink-soft" />
-      <span className="font-display text-[15px] leading-none font-extrabold tabular-nums text-ink">
+      <span className="font-display text-[15px] leading-none font-extrabold tabular-nums text-ink max-md:text-base">
         {nf.format(packed)}
       </span>
-      <span className="text-[11px] text-ink-soft">units</span>
+      <span className="text-[11px] text-ink-soft max-md:text-xs">units</span>
     </span>
   );
 }
@@ -1001,7 +1011,7 @@ function FoldedMix({
           );
         })}
       </span>
-      <span className="min-w-0 truncate text-[11px] text-ink-soft">
+      <span className="min-w-0 truncate text-[11px] text-ink-soft max-md:text-xs">
         {line.flavors
           .map((entry) => {
             const name = flavors.find((f) => String(f.id) === entry.flavorId)?.name ?? "?";
@@ -1068,7 +1078,7 @@ export function FlavorRow({
           <span className="min-w-0 truncate text-xs font-semibold text-ink">{flavor.name}</span>
         </button>
 
-        <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-soft">
+        <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-soft max-md:w-11 max-md:text-xs">
           {active ? `${percent}%` : ""}
         </span>
 
@@ -1090,9 +1100,9 @@ export function FlavorRow({
              */
             onChange(mode === "percent" ? Math.floor((raw / 100) * packed) : raw);
           }}
-          className="w-14 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card"
+          className="w-14 rounded-lg border border-transparent bg-transparent px-2 py-0.5 text-right text-xs font-bold tabular-nums text-ink outline-none hover:border-line hover:bg-card focus:border-accent focus:bg-card max-md:w-16 max-md:py-1.5"
         />
-        <span className="w-5 shrink-0 text-[10px] text-ink-soft">{mode === "percent" ? "%" : "u"}</span>
+        <span className="w-5 shrink-0 text-[10px] text-ink-soft max-md:text-xs">{mode === "percent" ? "%" : "u"}</span>
       </div>
 
       {/*
@@ -1150,7 +1160,7 @@ export function NumberStepper({
         value={allowEmpty && value === null ? "" : current}
         placeholder={allowEmpty ? "—" : undefined}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || min))}
-        className={`${className} rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent`}
+        className={`${className} rounded-lg border border-line bg-cream px-2 py-1 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-accent max-md:py-1.5`}
       />
       <StepButton label={`One more ${label}`} onClick={() => onChange(current + 1)}>
         <Plus size={13} />
@@ -1176,7 +1186,9 @@ function StepButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-6 w-6 items-center justify-center rounded-full border border-line text-ink transition hover:bg-black hover:text-cream disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink"
+      // 24px is a cursor's target; 34px is a thumb's, and a stepper is
+      // pressed repeatedly rather than once.
+      className="flex h-6 w-6 items-center justify-center rounded-full border border-line text-ink transition hover:bg-black hover:text-cream disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink max-md:h-[34px] max-md:w-[34px]"
     >
       {children}
     </button>

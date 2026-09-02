@@ -129,20 +129,6 @@ body {
     @apply transition-colors;
     color: var(--field-tone);
     background-color: --alpha(var(--field-tone) / var(--field-fill));
-
-    /*
-     * 16px on a phone, whatever the desktop size says.
-     *
-     * iOS Safari magnifies the whole page when a field under 16px takes
-     * focus, and then leaves it magnified — every field in this app is
-     * 14px, so tapping any of them threw the layout sideways. The usual
-     * fix is `maximum-scale=1` in the viewport, which cures it by taking
-     * pinch-to-zoom away from everyone; growing the text two pixels on
-     * the one screen size that cares costs nothing instead.
-     */
-    @media (max-width: 767px) {
-      font-size: 1rem;
-    }
   }
 
   /*
@@ -316,6 +302,45 @@ body {
     @apply appearance-none bg-no-repeat pr-6;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23726a5e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-position: right 0.5rem center;
+  }
+}
+
+/*
+ * Every field is at least 16px on a phone, and big enough to hit.
+ *
+ * iOS Safari magnifies the whole page when a field under 16px takes
+ * focus, and leaves it magnified — so on a phone every tap into a field
+ * threw the layout sideways and left it there. The usual cure is
+ * `maximum-scale=1` in the viewport, which works by taking pinch-to-zoom
+ * away from everyone; sizing the fields costs nothing instead.
+ *
+ * **Outside every @layer, for the same reason the hover block below is.**
+ * This rule lived on `.input` inside `@layer components`, where every
+ * call site's `text-sm` or `text-xs` — utilities, a later layer — beat it,
+ * so it never once applied and every field still zoomed. Unlayered rules
+ * beat every layer regardless of specificity, which is the only way a
+ * floor like this can hold against per-field type sizes.
+ *
+ * By element rather than by `.input`, because two of the fields that zoom
+ * are raw inputs that never had the class: a package line's flavour box
+ * and `NumberStepper`'s. The types excluded have no text to magnify.
+ *
+ * `.keeps-size` is the opt-out, named for the `.keeps-color` idiom below.
+ * One user: the customer name, which is deliberately 28px and is the only
+ * field in the app this floor would shrink rather than grow.
+ */
+@media (max-width: 767px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], .keeps-size),
+  textarea:not(.keeps-size),
+  select {
+    font-size: 1rem;
+  }
+
+  /* And a box worth aiming at: `.input`'s own `px-2 py-1` is a 26px
+     target built for a cursor. This wins over a call site's padding on
+     purpose — one field height on a phone, however the desktop tunes it. */
+  .input {
+    padding: 0.5rem 0.625rem;
   }
 }
 

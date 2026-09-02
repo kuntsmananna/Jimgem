@@ -7,6 +7,7 @@ import {
 } from "@/lib/orderTypes";
 import { ExternalLink, MapPin } from "lucide-react";
 import { TextInput, TextArea } from "@/components/Field";
+import { useIsMobile } from "@/components/useMediaQuery";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { orderTypeIconElement } from "@/lib/icons";
@@ -41,6 +42,9 @@ export function OrderCustomerPanel({
 }) {
   const orderTypes = useOrderTypes();
   const stages = useStages();
+  // Only the notes field asks: on a laptop its height comes from `flex-1`
+  // against the money rail, and an inline height would fight that.
+  const mobile = useIsMobile();
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
 
   return (
@@ -122,7 +126,9 @@ export function OrderCustomerPanel({
             // Sized to the date plus its button and no further: at 9.5rem the
             // picker sat at the far right of a box the date only half filled,
             // reading as a control belonging to nothing in particular.
-            className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums"
+            // Wider on a phone: the same date is 16px there, and the box
+            // is sized to the date plus its picker button and no further.
+            className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums max-md:w-[10.5rem]"
           />
           <label className="relative flex min-w-0 flex-1 items-center">
             <MapPin
@@ -194,13 +200,20 @@ export function OrderCustomerPanel({
         {/* Keeps its box whether filled or not, unlike the single-line
             fields: an unbordered block of text has nothing to say where
             the writing area ends. Runs the height of the panel, which is
-            the height of the rail across from it. */}
+            the height of the rail across from it.
+
+            On a phone there is no second column, so `flex-1` resolves to
+            the textarea's own two-row height and a long note shows three
+            lines of itself. `autoGrow` follows the text instead, from a
+            floor of eight lines so an empty field still looks like
+            somewhere to write. */}
         <TextArea
+          autoGrow={mobile}
           value={draft.notes}
           onChange={(e) => set({ notes: e.target.value })}
           aria-label="Notes"
           placeholder="Anything worth remembering about this order"
-          className="w-full flex-1 border-line bg-cream/40 px-2.5 py-2 text-sm"
+          className="w-full flex-1 border-line bg-cream/40 px-2.5 py-2 text-sm max-md:min-h-32"
         />
       </section>
     </div>

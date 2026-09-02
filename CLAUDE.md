@@ -214,6 +214,26 @@ becomes `max-md:basis-full`, a line break in a wrapping row, so Cancel and
 Save get a row of their own at half the screen each. `ChipSpread` and
 `Segmented` grow to 38px there; a 24px pill is a cursor's target.
 
+**And the whole form is re-scaled below the breakpoint**, after a session
+on a real phone. `GroupLabel` and `FieldLabel` go to 12px, `SheetRow`'s
+label to 14px at 80% and its row to 44px — those two are shared by the
+three panels *and* the money rail, which is what makes one edit each fix
+the Event tab's left-hand titles and the money sheet's rows together. The
+package rows go up a step with them, and the trash, the stepper and the
+release arrow become 34-36px targets. The notes field carries `autoGrow`
+(`Field.tsx`): on a laptop its height comes from `flex-1` against the
+rail, but in a single column that resolves to a textarea's own two-row
+height, so a long note showed three lines of itself.
+
+**The Content tab's rows wrap on a phone.** The preset row and the folded
+row are flex rows in which *every* child is `shrink-0` — a name pill, a
+stepper, the unit count, the note, two buttons — about 450px of content
+that cannot give, which in a 343px panel simply ran off the right edge.
+`max-md:flex-wrap` is the only thing a row of unshrinkable parts can do,
+and each row's `flex-1` spacer is hidden there: once the row wraps, a
+spacer right-aligns whatever follows it against a line it no longer
+shares.
+
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar
 dropdown**. `Modal` beside it is a centred dialog, which is right for a
@@ -274,8 +294,19 @@ row clears both the bar and the home indicator.
 Groundwork that is already in (v0.43.0), all of it invisible on a laptop:
 - `src/app/layout.tsx` exports a `viewport`. `maximumScale` is deliberately
   **not** set: locking zoom is the usual cure for iOS magnifying a focused
-  field, and it works by taking pinch-to-zoom from everyone. `.input` grows
-  to 16px under 768px instead, which is the size Safari stops zooming at.
+  field, and it works by taking pinch-to-zoom from everyone. **Every field
+  is 16px under 768px instead**, which is the size Safari stops zooming at
+  — and that rule sits **outside every `@layer`**, beside the hover block,
+  for exactly the reason that block states. It first shipped on `.input`
+  inside `@layer components`, where every call site's `text-sm` beat it, so
+  it never once applied and every tap into a field still threw the layout
+  sideways and left it there. It matches **by element**, not by `.input`,
+  because two of the fields that zoom (a package line's flavour box and
+  `NumberStepper`'s) are raw inputs that never had the class. `.keeps-size`
+  is the opt-out, named for `.keeps-color` beside it, with one user: the
+  customer name, the only field deliberately above 16px and so the only one
+  a floor would shrink. The same block gives `.input` a 40px box, since
+  `px-2 py-1` is a target built for a cursor.
 - **`@media (hover: hover)` guards the hover block.** A touchscreen reports
   a hover on whatever was last tapped and keeps reporting it, so `.hover-line`
   left a row stuck black and `.editable-cell` left a cell stuck lit. The
@@ -1180,11 +1211,9 @@ compares identity, and a panel builds a fresh draft before every call.
   width** — the slot is `md:hidden` and the toolbar copy is `max-md:hidden`
   — rather than moving one on `useIsMobile`, which would paint the desktop
   answer for a frame first. The header copy is `SearchInput`'s `size="md"`:
-  a 46px target instead of a 26px one, and set at **16px**, because
-  `.input`'s own 16px phone rule is in `@layer components` and loses to the
-  `text-xs` utility on the field — so without it iOS magnifies the page the
-  moment the box is tapped, which is the one thing the viewport work exists
-  to prevent.
+  a 46px target instead of a 26px one. It also states 16px itself, which
+  was the local workaround for the layered-rule bug described above and is
+  now belt and braces.
 - **The Clients page is the list on the left, everything else in a column
   beside it.** The tiles and the two charts used to sit above the list,
   which started the page's actual subject halfway down a laptop screen and

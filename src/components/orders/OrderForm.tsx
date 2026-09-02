@@ -527,13 +527,13 @@ export function OrderForm({
         className="money-rail mt-3 flex shrink-0 items-center gap-3 rounded-2xl px-4 py-2.5 text-left md:hidden"
       >
         <span className="flex flex-col">
-          <span className="text-[10px] font-bold tracking-[0.1em] text-cream/55 uppercase">Total</span>
+          <span className="text-[11px] font-bold tracking-[0.1em] text-cream/55 uppercase">Total</span>
           <span className="font-display text-lg leading-tight font-extrabold tabular-nums text-cream">
             {money(orderTotal(priced))}
           </span>
         </span>
         <span className="flex flex-1 flex-col items-end">
-          <span className="text-[10px] font-bold tracking-[0.1em] text-cream/55 uppercase">
+          <span className="text-[11px] font-bold tracking-[0.1em] text-cream/55 uppercase">
             {orderBalance(priced) < 0 ? "Overpaid by" : "Balance due"}
           </span>
           <span className="font-display text-lg leading-tight font-extrabold tabular-nums text-cream">

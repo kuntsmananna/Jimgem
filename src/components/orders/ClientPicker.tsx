@@ -86,7 +86,10 @@ export function ClientPicker({
         onFocus={() => setOpen(true)}
         placeholder="Customer name"
         aria-label="Customer"
-        className="w-full rounded-xl px-2.5 py-1 font-display text-[28px] leading-tight font-extrabold tracking-tight placeholder:text-ink-soft/35"
+        // `keeps-size` opts out of the phone's 16px field floor (globals.css):
+        // this is the one field already well above it, and the floor would
+        // shrink the order's headline to the size of the boxes under it.
+        className="keeps-size w-full rounded-xl px-2.5 py-1 font-display text-[28px] leading-tight font-extrabold tracking-tight placeholder:text-ink-soft/35"
       />
 
       <div className="mt-1 flex min-h-[1.25rem] items-center gap-2 text-[11px]">
