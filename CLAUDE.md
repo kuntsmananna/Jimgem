@@ -155,13 +155,19 @@ three filter dropdowns move into a **Filters sheet** carrying a count of
 how many are narrowing anything — behind a sheet, a filter left on is a
 filter nobody can see, and the stage one starts on. Add order becomes a
 floating button above the bar, because "take an order on the spot" is half
-the reason the phone layout exists. The 140px summary rail becomes **four
-tiles, two by two**, in a low-contrast fill — one line of 11px text read
-as a caption on the search bar rather than as the figures it is, and four
-tiles across a 390px screen truncate a five-figure income. The **time
-scope is the first tile and is a control**: it is the thing most likely to
-be changed while reading those numbers, and behind the Filters sheet there
-was no sign the list was showing a window at all.
+the reason the phone layout exists. The 140px summary rail becomes **three
+tiles in a row** — units, orders, income — in a low-contrast fill: one line
+of 11px text read as a caption on the search bar rather than as the figures
+it is, while four tiles across a 390px screen truncate a five-figure income
+and two-by-two spent a second row of height on it. Above them the **time
+scope is a control, not a tile**: it is the thing most likely to be changed
+while reading those numbers, and behind the Filters sheet there was no sign
+the list was showing a window at all. It is a bare chip under a `WHEN`
+heading — a fill around it would have said it was the same kind of thing as
+the figures — and the heading is why `Dropdown` takes `showLabel`, since
+the pill's own "When:" prefix would then say it twice. That popover's rows
+are 44px below the breakpoint (`max-md:min-h-11`): the desktop's 26px row
+is a cursor's target, not a thumb's.
 
 **The day heading carries its weekday** (`orderWeekday` in
 `orderTypes.ts`) — "is that a Saturday" is most of what a queue of dates

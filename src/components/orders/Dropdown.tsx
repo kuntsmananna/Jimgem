@@ -22,6 +22,7 @@ export interface FilterOption<T extends string> {
 function Dropdown({
   label,
   icon,
+  showLabel = true,
   summary,
   active,
   children,
@@ -34,6 +35,13 @@ function Dropdown({
    * were showing.
    */
   icon?: ReactNode;
+  /**
+   * False where something above the pill already names it — the phone's
+   * summary strip heads the scope with "WHEN", and a chip reading
+   * "When: 14 days" under that heading says it twice. The word is still
+   * the button's title and accessible name either way.
+   */
+  showLabel?: boolean;
   /** What is currently chosen, shown beside the label. */
   summary: string;
   /** Filled when the control is narrowing something, plain when it isn't. */
@@ -51,19 +59,24 @@ function Dropdown({
         aria-expanded={open}
         title={label}
         aria-label={label}
-        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
+        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition max-md:px-3.5 max-md:py-2 max-md:text-sm ${
           active ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
         }`}
       >
-        <span className={active ? "text-cream/70" : ""} aria-hidden={!!icon}>
-          {icon ?? `${label}:`}
-        </span>
+        {(icon || showLabel) && (
+          <span className={active ? "text-cream/70" : ""} aria-hidden={!!icon}>
+            {icon ?? `${label}:`}
+          </span>
+        )}
         <span>{summary}</span>
         <ChevronDown size={13} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
 
       {open && (
-        <div className="motion-drop absolute top-full left-0 z-30 mt-1 min-w-52 rounded-2xl border border-line bg-card p-1.5 shadow-xl">
+        /* Wider below the breakpoint, because the rows inside it are sized
+           for a finger rather than a cursor and a 52-wide popover would
+           wrap their labels. */
+        <div className="motion-drop absolute top-full left-0 z-30 mt-1 min-w-52 rounded-2xl border border-line bg-card p-1.5 shadow-xl max-md:min-w-60">
           {children(() => setOpen(false))}
         </div>
       )}
@@ -81,6 +94,7 @@ function Dropdown({
 export function SelectDropdown<T extends string>({
   label,
   icon,
+  showLabel,
   options,
   value,
   onChange,
@@ -89,6 +103,8 @@ export function SelectDropdown<T extends string>({
   label: string;
   /** Drawn instead of the written label — see Dropdown. */
   icon?: ReactNode;
+  /** False where the pill sits under a heading that already names it. */
+  showLabel?: boolean;
   options: readonly { id: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
@@ -98,7 +114,7 @@ export function SelectDropdown<T extends string>({
   const summary = options.find((option) => option.id === value)?.label ?? "";
 
   return (
-    <Dropdown label={label} icon={icon} summary={summary} active={active}>
+    <Dropdown label={label} icon={icon} showLabel={showLabel} summary={summary} active={active}>
       {(close) => (
         <>
           {options.map((option) => (
@@ -109,7 +125,10 @@ export function SelectDropdown<T extends string>({
                 onChange(option.id);
                 close();
               }}
-              className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-xs font-semibold hover:bg-black/5 ${
+              /* A cursor hits a 26px row; a finger does not. Below the
+                 breakpoint every row here is a 44px target — the size the
+                 bottom bar's cells were built to. */
+              className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-xs font-semibold hover:bg-black/5 max-md:min-h-11 max-md:gap-2.5 max-md:px-3 max-md:text-sm ${
                 option.id === value ? "text-ink" : "text-ink-soft"
               }`}
             >
@@ -171,13 +190,13 @@ export function FilterDropdown<T extends string>({
           {options.map((option) => (
             <label
               key={option.value}
-              className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-xs hover:bg-black/5"
+              className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-xs hover:bg-black/5 max-md:min-h-11 max-md:gap-2.5 max-md:px-3 max-md:text-sm"
             >
               <input
                 type="checkbox"
                 checked={selected.has(option.value)}
                 onChange={() => toggle(option.value)}
-                className="accent-black"
+                className="accent-black max-md:h-4 max-md:w-4"
               />
               <span className="flex-1 font-semibold text-ink">{option.label}</span>
               <span className="text-ink-soft">{option.count}</span>
@@ -186,7 +205,7 @@ export function FilterDropdown<T extends string>({
           {active && (
             <button
               onClick={() => onChange(new Set())}
-              className="mt-1 w-full rounded-xl px-2 py-1.5 text-left text-xs font-semibold text-ink-soft hover:bg-black/5 hover:text-ink"
+              className="mt-1 w-full rounded-xl px-2 py-1.5 text-left text-xs font-semibold text-ink-soft hover:bg-black/5 hover:text-ink max-md:min-h-11 max-md:px-3 max-md:text-sm"
             >
               Clear
             </button>

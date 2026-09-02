@@ -570,27 +570,35 @@ export function OrdersClient({
         showing a window at all.
       */}
       {/*
-        Two by two, not four across: at 390px a quarter-width tile is about
-        80px, which truncates a five-figure income to "₪18,…" and wraps the
-        scope pill onto two lines. Half the width is enough for both, and a
-        second row costs less than a figure nobody can read.
+        The scope is not a tile. It is a control and the three beside it are
+        figures, and a fill around it said they were the same kind of thing
+        while costing a whole row of height — which two-by-two tiles then
+        cost again. It is a bare chip under its own heading, and the three
+        figures share one row beneath it.
+
+        Four across would not have worked: at 390px a quarter-width tile is
+        about 80px, which truncates a five-figure income to "₪18,…". Three
+        is ~120px, which fits one.
       */}
-      <div className="grid grid-cols-2 gap-2 md:hidden">
-        <div className="flex flex-col justify-between rounded-2xl bg-ink/[0.06] px-2.5 py-2">
-          <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">When</span>
-          <div className="-mx-1 mt-0.5">
-            <SelectDropdown
-              label="When"
-              options={SCOPES}
-              value={scope}
-              onChange={setScope}
-              active={scope !== "all"}
-            />
-          </div>
+      <div className="md:hidden">
+        <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">When</span>
+        <div className="mt-1 flex">
+          <SelectDropdown
+            label="When"
+            // The heading above says "When" already; the chip says only
+            // which window, which is the half that changes.
+            showLabel={false}
+            options={SCOPES}
+            value={scope}
+            onChange={setScope}
+            active={scope !== "all"}
+          />
         </div>
-        <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
-        <Figure label="Orders" value={String(totals.orders)} />
-        <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
+          <Figure label="Orders" value={String(totals.orders)} />
+          <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />
+        </div>
       </div>
 
       {filtersOpen && (
