@@ -2,6 +2,8 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { usePopoverDismiss } from "@/components/useOverlayDismiss";
+import { useIsMobile } from "@/components/useMediaQuery";
+import { Sheet } from "@/components/Sheet";
 import { ChevronDown } from "lucide-react";
 
 export interface FilterOption<T extends string> {
@@ -22,7 +24,6 @@ export interface FilterOption<T extends string> {
 function Dropdown({
   label,
   icon,
-  showLabel = true,
   summary,
   active,
   children,
@@ -36,21 +37,33 @@ function Dropdown({
    */
   icon?: ReactNode;
   /**
-   * False where something above the pill already names it — the phone's
-   * summary strip heads the scope with "WHEN", and a chip reading
-   * "When: 14 days" under that heading says it twice. The word is still
-   * the button's title and accessible name either way.
+   * What is currently chosen, shown beside the label. A node rather than a
+   * string so a summary can drop a word below the breakpoint — see
+   * `FilterDropdown`, where "3 selected" has to become "3" for three of
+   * these to share one phone-width row.
    */
-  showLabel?: boolean;
-  /** What is currently chosen, shown beside the label. */
-  summary: string;
+  summary: ReactNode;
   /** Filled when the control is narrowing something, plain when it isn't. */
   active: boolean;
   children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  usePopoverDismiss(open, containerRef, () => setOpen(false));
+  /*
+    On a phone the list is a sheet from the bottom edge, not a popover
+    under the chip — the app's standing answer for a menu (see `Sheet`),
+    and here also the only one that works: three of these sit in one row,
+    so the third's `absolute left-0` popover would open off the right of
+    the screen, and right-aligning it instead breaks the moment the row
+    wraps and that chip is on the left.
+
+    No hydration flash to manage: neither branch exists until `open`, and
+    nothing is open on the first paint.
+  */
+  const mobile = useIsMobile();
+  // Disarmed in sheet mode, or a tap *inside* the sheet — which portals to
+  // the body, outside this container — would read as an outside click.
+  usePopoverDismiss(open && !mobile, containerRef, () => setOpen(false));
 
   return (
     <div ref={containerRef} className="relative">
@@ -63,23 +76,25 @@ function Dropdown({
           active ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
         }`}
       >
-        {(icon || showLabel) && (
-          <span className={active ? "text-cream/70" : ""} aria-hidden={!!icon}>
-            {icon ?? `${label}:`}
-          </span>
-        )}
+        <span className={active ? "text-cream/70" : ""} aria-hidden={!!icon}>
+          {icon ?? `${label}:`}
+        </span>
         <span>{summary}</span>
         <ChevronDown size={13} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
 
-      {open && (
-        /* Wider below the breakpoint, because the rows inside it are sized
-           for a finger rather than a cursor and a 52-wide popover would
-           wrap their labels. */
-        <div className="motion-drop absolute top-full left-0 z-30 mt-1 min-w-52 rounded-2xl border border-line bg-card p-1.5 shadow-xl max-md:min-w-60">
-          {children(() => setOpen(false))}
-        </div>
-      )}
+      {open &&
+        (mobile ? (
+          // Titled with the written label, which is also what tells you
+          // which filter the chip's icon stood for.
+          <Sheet title={label} onClose={() => setOpen(false)}>
+            <div className="px-3 pb-6">{children(() => setOpen(false))}</div>
+          </Sheet>
+        ) : (
+          <div className="motion-drop absolute top-full left-0 z-30 mt-1 min-w-52 rounded-2xl border border-line bg-card p-1.5 shadow-xl">
+            {children(() => setOpen(false))}
+          </div>
+        ))}
     </div>
   );
 }
@@ -94,7 +109,6 @@ function Dropdown({
 export function SelectDropdown<T extends string>({
   label,
   icon,
-  showLabel,
   options,
   value,
   onChange,
@@ -103,8 +117,6 @@ export function SelectDropdown<T extends string>({
   label: string;
   /** Drawn instead of the written label — see Dropdown. */
   icon?: ReactNode;
-  /** False where the pill sits under a heading that already names it. */
-  showLabel?: boolean;
   options: readonly { id: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
@@ -114,7 +126,7 @@ export function SelectDropdown<T extends string>({
   const summary = options.find((option) => option.id === value)?.label ?? "";
 
   return (
-    <Dropdown label={label} icon={icon} showLabel={showLabel} summary={summary} active={active}>
+    <Dropdown label={label} icon={icon} summary={summary} active={active}>
       {(close) => (
         <>
           {options.map((option) => (
@@ -176,12 +188,23 @@ export function FilterDropdown<T extends string>({
   }
 
   const active = selected.size > 0;
+  /*
+    "3 selected" is 66px of a 358px phone row that has to hold three of
+    these, so below the breakpoint it is just "3" — the chip's icon has
+    already said which filter it is, and the desktop wording is untouched
+    because the word is hidden rather than rewritten.
+  */
   const summary =
-    selected.size === 0
-      ? "All"
-      : selected.size === 1
-        ? (options.find((o) => selected.has(o.value))?.label ?? "1 selected")
-        : `${selected.size} selected`;
+    selected.size === 0 ? (
+      "All"
+    ) : selected.size === 1 ? (
+      (options.find((o) => selected.has(o.value))?.label ?? "1 selected")
+    ) : (
+      <>
+        {selected.size}
+        <span className="max-md:hidden"> selected</span>
+      </>
+    );
 
   return (
     <Dropdown label={label} icon={icon} summary={summary} active={active}>

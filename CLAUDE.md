@@ -150,27 +150,30 @@ it is a *renderer* and not a second filtering path. It is chosen with
 would still build seventy rows of `EditableCell` for a screen that will
 never show them; the desktop half also carries `max-md:hidden` so nothing
 flashes before hydration has an opinion. The board and the calendar are
-not offered on a phone at all, so the view switcher is desktop-only. The
-three filter dropdowns move into a **Filters sheet** carrying a count of
-how many are narrowing anything — behind a sheet, a filter left on is a
-filter nobody can see, and the stage one starts on. Add order becomes a
-floating button above the bar, because "take an order on the spot" is half
-the reason the phone layout exists. **Search is not on the page at all** —
-it is up in the header (see `PageSearch`), which is what lets Filters share
-the scope's row: both answer "which orders", and the alternative was a row
-of its own holding one button. The 140px summary rail becomes **three
-tiles in a row** — units, orders, income — in a low-contrast fill: one line
-of 11px text read as a caption on the search bar rather than as the figures
-it is, while four tiles across a 390px screen truncate a five-figure income
-and two-by-two spent a second row of height on it. Above them the **time
-scope is a control, not a tile**: it is the thing most likely to be changed
-while reading those numbers, and behind the Filters sheet there was no sign
-the list was showing a window at all. It is a bare chip under a `WHEN`
-heading — a fill around it would have said it was the same kind of thing as
-the figures — and the heading is why `Dropdown` takes `showLabel`, since
-the pill's own "When:" prefix would then say it twice. That popover's rows
-are 44px below the breakpoint (`max-md:min-h-11`): the desktop's 26px row
-is a cursor's target, not a thumb's.
+not offered on a phone at all, so the view switcher is desktop-only. Add
+order becomes a floating button above the bar, because "take an order on
+the spot" is half the reason the phone layout exists. **Search is not on
+the page at all** — it is up in the header (see `PageSearch`).
+
+**The phone carries the desktop toolbar's left group, not a Filters
+button**: the same three dropdowns wearing the same three icons — when,
+payment, status — in one `flex-wrap` row above the figures. They spent a
+version behind a **Filters sheet** with a badge counting how many were
+narrowing anything, which is what a filter you cannot see needs; once the
+search moved to the header there was room to put them on the surface
+instead, and a control you can see needs no badge. Wrapping rather than
+three fixed columns because a payment summary is "All" on most days and
+"Deposit paid" on some: measured at 390px the three fit one row and at
+360px they wrap, which is the right failure. `FilterDropdown`'s
+"3 selected" is **"3" below the breakpoint** — the word is `max-md:hidden`
+rather than rewritten, so the desktop summary is untouched — and without
+that 66px the common case did not fit at all.
+
+The 140px summary rail becomes **three tiles in a row** — units, orders,
+income — in a low-contrast fill: one line of 11px text read as a caption
+rather than as the figures it is, while four tiles across a 390px screen
+truncate a five-figure income and two-by-two spent a second row of height
+on it.
 
 **The day heading carries its weekday** (`orderWeekday` in
 `orderTypes.ts`) — "is that a Saturday" is most of what a queue of dates
@@ -180,11 +183,23 @@ weekday is right for this season's orders and can be wrong on an old
 imported one, which is the price of showing it.
 
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
-shared by the nav's More and the Orders filters. `Modal` beside it is a
-centred dialog, which is right for a record you opened and wrong for a
-menu: those are reached from the bottom edge and belong there. Both share
-`useOverlayDismiss`, so Escape, the scroll lock and the nesting count
-behave identically.
+shared by the nav's More and, below the breakpoint, by **every toolbar
+dropdown**. `Modal` beside it is a centred dialog, which is right for a
+record you opened and wrong for a menu: those are reached from the bottom
+edge and belong there. Both share `useOverlayDismiss`, so Escape, the
+scroll lock and the nesting count behave identically.
+
+`Dropdown` picks between the two on `useIsMobile()`, and on a phone it is
+not a preference: three chips share one row, so the third's
+`absolute left-0` popover would open off the right of the screen, and
+right-aligning that one breaks the moment the row wraps and it is on the
+left. There is no hydration flash to manage because neither branch exists
+until the thing is open. Two details the branch depends on:
+`usePopoverDismiss` is passed `open && !mobile`, since the sheet portals to
+the body and a tap *inside* it would otherwise read as an outside click and
+close it instantly; and the option rows are 44px below the breakpoint
+(`max-md:min-h-11`), the desktop's 26px row being a cursor's target and not
+a thumb's.
 
 **Navigation on a phone is a bottom bar** (`src/components/MobileNav.tsx`,
 `md:hidden`), **drawn in black**, and the desktop header keeps only its
@@ -195,8 +210,13 @@ pill — the same "selected is the fill" rule the rest of the app follows,
 read the other way up — and unselected states its dimming as opacity so it
 follows the surface rather than naming a colour. The **More sheet wears
 the same black** (`Sheet`'s `tone="ink"`), because it is that bar opened
-up; the Orders filters sheet stays cream, being controls over the page's
-own content rather than part of the frame. `.on-ink` in `globals.css` is
+up; a dropdown's sheet stays cream, being controls over the page's own
+content rather than part of the frame. Its **labels are 12px, not the 10px
+they were** — at 10 the word read as a caption under the icon rather than
+as the name of the destination — and `leading-tight` is what buys that for
+nothing: 12px at 1.25 is the same 15px line box 10px occupied at the
+inherited leading, so the strip measures the same 66px before and after,
+which matters for the one piece of chrome that is always on screen. `.on-ink` in `globals.css` is
 what re-tones them, by flipping the `--segmented-*` pair exactly the way
 `.money-rail` does — so `VatViewToggle`, restated in `currentColor` and
 those two properties, sits on either surface without its call site saying

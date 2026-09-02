@@ -121,7 +121,16 @@ function BarItem({
       >
         <Icon size={18} />
       </span>
-      <span className={`text-[10px] font-semibold ${active ? "" : "opacity-55"}`}>{label}</span>
+      {/* 12px, not the 10px this was — at 10 the label read as a caption
+          under the icon rather than as the name of the destination, which
+          is the half of the cell actually being read.
+
+          `leading-tight` is what keeps the bar the same height: 12px at
+          1.25 is a 15px line box, exactly what 10px at the inherited
+          leading occupied, so the strip measures the same 66px before and
+          after. Without it the default 16px box makes the bar a pixel
+          taller, and this is the app's one piece of permanent chrome. */}
+      <span className={`text-xs leading-tight font-semibold ${active ? "" : "opacity-55"}`}>{label}</span>
     </>
   );
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, SlidersHorizontal, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   isBooked,
@@ -28,7 +28,6 @@ import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { OrdersMobileList } from "./OrdersMobileList";
-import { Sheet } from "@/components/Sheet";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ClientModal } from "@/components/clients/ClientModal";
 import { looksLikeSameClient } from "@/lib/clientName";
@@ -131,8 +130,6 @@ export function OrdersClient({
   );
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
-  /** The phone's Filters sheet — the three dropdowns have nowhere else to go. */
-  const [filtersOpen, setFiltersOpen] = useState(false);
   // The Dashboard's Latest orders list links here with ?order=<key> to
   // open that order's pane directly. Read once on mount: arriving from
   // that link is a navigation, so the component mounts fresh.
@@ -213,18 +210,6 @@ export function OrdersClient({
    * nothing rather than a 1100px table.
    */
   const mobile = useIsMobile();
-
-  /*
-   * How many of the three filters are narrowing anything, for the badge on
-   * the phone's Filters button. Behind a sheet, a filter left on is a
-   * filter nobody can see — and the stage one *starts* on, holding every
-   * stage but Delivered, so "why is that order missing" would otherwise
-   * have no visible cause at all.
-   */
-  const narrowedCount =
-    (scope !== "all" ? 1 : 0) +
-    (paymentFilter.size > 0 ? 1 : 0) +
-    (stageFilter.size > 0 && stageFilter.size < stages.length ? 1 : 0);
 
   const stageIndex = stageMap(stages);
   const totals = totalOf(inScope, unitsPerPackage, stageIndex, forOrder);
@@ -551,39 +536,42 @@ export function OrdersClient({
         five-figure income to "₪18,…". Three is ~120px, which fits one.
       */}
       <div className="md:hidden">
-        <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">When</span>
-        <div className="mt-1 flex items-center justify-between gap-2">
+        {/*
+          The desktop toolbar's left group, moved to the phone: the same
+          three dropdowns wearing the same three icons. They were behind a
+          Filters button while the row also had to hold a search box; the
+          search went up to the header in v0.46, and a filter on the
+          surface needs no badge to say it is narrowing something.
+
+          `flex-wrap` because a payment summary is "All" on most days and
+          "Deposit paid" on some, and a row that wraps beats one that
+          overflows. Each list opens as a sheet from the bottom edge — see
+          `Dropdown`, which is also why the third chip's list cannot fall
+          off the right of the screen.
+        */}
+        <div className="flex flex-wrap items-center gap-2">
           <SelectDropdown
             label="When"
-            // The heading above says "When" already; the chip says only
-            // which window, which is the half that changes.
-            showLabel={false}
+            icon={<CalendarRange size={13} />}
             options={SCOPES}
             value={scope}
             onChange={setScope}
             active={scope !== "all"}
           />
-          {/*
-            Filters sits at the other end of the scope's own row rather
-            than beside the search, which has gone up to the header. Both
-            controls answer "which orders", so they belong on one line —
-            and the alternative was a row of its own holding one button.
-
-            The count is what makes a sheet safe to put a filter behind: a
-            filter left on is otherwise invisible.
-          */}
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-semibold text-ink-soft"
-          >
-            <SlidersHorizontal size={14} />
-            Filters
-            {narrowedCount > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-cream">
-                {narrowedCount}
-              </span>
-            )}
-          </button>
+          <FilterDropdown
+            label="Payment"
+            icon={<Wallet size={13} />}
+            options={paymentOptions}
+            selected={paymentFilter}
+            onChange={setPaymentFilter}
+          />
+          <FilterDropdown
+            label="Status"
+            icon={<ListChecks size={13} />}
+            options={stageOptions}
+            selected={stageFilter}
+            onChange={setStageFilter}
+          />
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
@@ -591,47 +579,6 @@ export function OrdersClient({
           <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />
         </div>
       </div>
-
-      {filtersOpen && (
-        <Sheet title="Filters" onClose={() => setFiltersOpen(false)}>
-          {/*
-            The same three controls the desktop toolbar carries, stacked and
-            labelled. Their written names come back here: in the toolbar an
-            icon stands in for the word because the row is short of width,
-            and a sheet has nothing but width.
-          */}
-          <div className="flex flex-col gap-4 px-5 pb-6">
-            <FilterRow label="When">
-              <SelectDropdown
-                label="When"
-                icon={<CalendarRange size={13} />}
-                options={SCOPES}
-                value={scope}
-                onChange={setScope}
-                active={scope !== "all"}
-              />
-            </FilterRow>
-            <FilterRow label="Payment">
-              <FilterDropdown
-                label="Payment"
-                icon={<Wallet size={13} />}
-                options={paymentOptions}
-                selected={paymentFilter}
-                onChange={setPaymentFilter}
-              />
-            </FilterRow>
-            <FilterRow label="Status">
-              <FilterDropdown
-                label="Status"
-                icon={<ListChecks size={13} />}
-                options={stageOptions}
-                selected={stageFilter}
-                onChange={setStageFilter}
-              />
-            </FilterRow>
-          </div>
-        </Sheet>
-      )}
 
       {/*
         Add order, as the one thing you might arrive at this page wanting to
@@ -834,23 +781,6 @@ function BatchSelect<T extends string>({
         </option>
       ))}
     </select>
-  );
-}
-
-/**
- * One filter in the phone's Filters sheet: the name, and the control.
- *
- * The written name is back because there is room for it. In the desktop
- * toolbar each of these wears an icon instead — the value is what changes
- * and what gets read, and "Payment:" cost more width than the value beside
- * it — but that trade only makes sense in a row fighting for space.
- */
-function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-sm font-semibold text-ink-soft">{label}</span>
-      {children}
-    </div>
   );
 }
 
