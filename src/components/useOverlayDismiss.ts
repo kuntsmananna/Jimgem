@@ -32,11 +32,6 @@ export function useOverlayDismiss(onDismiss: () => void) {
   }, [onDismiss]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handler.current();
-    };
-    document.addEventListener("keydown", onKey);
-
     /*
      * `overflow: hidden` alone holds the page on a desktop and does
      * nothing on iOS Safari, where the page behind an overlay still
@@ -55,6 +50,21 @@ export function useOverlayDismiss(onDismiss: () => void) {
       document.body.style.insetInline = "0";
     }
     openCount += 1;
+
+    /*
+     * Escape closes the *innermost* overlay only. Overlays nest — the
+     * order form's money sheet opens inside its modal — and both listen
+     * on `document`, where neither `stopPropagation` nor listener order
+     * helps: the outer one registered first, so it would fire first and
+     * close the form out from under the sheet, unsaved-changes prompt and
+     * all. Comparing this overlay's depth against the live count is what
+     * decides, and it needs no coordination between them.
+     */
+    const depth = openCount;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && depth === openCount) handler.current();
+    };
+    document.addEventListener("keydown", onKey);
 
     return () => {
       document.removeEventListener("keydown", onKey);

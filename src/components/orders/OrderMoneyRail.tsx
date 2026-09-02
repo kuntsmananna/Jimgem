@@ -50,6 +50,7 @@ export function OrderMoneyRail({
   manual,
   onManualChange,
   onOpenContent,
+  showHeading = true,
 }: {
   draft: OrderInput;
   onChange: (draft: OrderInput) => void;
@@ -62,6 +63,12 @@ export function OrderMoneyRail({
   manual: ReadonlySet<AmountKey>;
   onManualChange: (manual: ReadonlySet<AmountKey>) => void;
   onOpenContent: () => void;
+  /**
+   * False inside the phone's money sheet, whose own title row already
+   * says "The order" — the caption above the pane and the sheet's
+   * heading are the same words in the same place.
+   */
+  showHeading?: boolean;
 }) {
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
 
@@ -103,7 +110,7 @@ export function OrderMoneyRail({
       {/* The heading sits on the cream above the pane rather than inside
           it: the pane's first line is the count, and a caption in
           negative over it spent the brightest thing on screen on a word. */}
-      <GroupLabel rule={false}>The order</GroupLabel>
+      {showHeading && <GroupLabel rule={false}>The order</GroupLabel>}
 
       {/*
         `overflow-hidden` clips the notch's cut-outs to the pane's own box.

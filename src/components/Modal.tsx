@@ -50,9 +50,33 @@ export function Modal({
   useOverlayDismiss(onClose);
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
 
+  /*
+    Below the breakpoint a wide dialog stops being a dialog and becomes
+    the screen. `wide` is the condition because it is already the mark of
+    a popup that needs most of a laptop: `min(80vw,1400px)` resolves to
+    312px on a 390px phone, so it "fits" while holding a form laid out at
+    1400. A narrow one is `max-w-lg` and is a card either way — the
+    expense form and the client card stay centred until their own stages
+    say otherwise.
+
+    Three strings because the change is structural rather than cosmetic:
+    the box becomes a flex column, the band is re-hung to the smaller
+    padding, and the children get the height to lay themselves out in.
+  */
+  const phoneBox = wide
+    ? "max-md:flex max-md:h-dvh max-md:max-h-none max-md:max-w-none max-md:flex-col max-md:overflow-hidden max-md:rounded-none max-md:border-0 max-md:p-4"
+    : "";
+  const phoneBand = wide
+    ? "max-md:-mx-4 max-md:-mt-4 max-md:mb-3 max-md:shrink-0 max-md:rounded-none max-md:px-4 max-md:py-3"
+    : "";
+  const phoneBody = wide ? "max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col" : "";
+
   return createPortal(
     <div
-      className="motion-veil fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      /* Full-bleed on a phone: the dialog *is* the screen there, so the
+         veil has nothing to show around it and its padding would only
+         make the form narrower. */
+      className="motion-veil fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 max-md:items-stretch max-md:p-0"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -67,7 +91,10 @@ export function Modal({
           to travel the whole desk to read one order. The cap is where the
           form stops having anything to do with more width.
         */
-        className={`motion-rise max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl`}
+        /* `dvh` in `phoneBox` rather than `vh`: iOS counts its toolbars in
+           one and not the other, and a `vh` dialog is one whose last row
+           sits under the address bar. */
+        className={`motion-rise max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl ${phoneBox}`}
       >
         {/*
           The title row wears the same lid every pane does — `BAND_CLASS`,
@@ -80,7 +107,11 @@ export function Modal({
           slot is centred on the dialog, not on the gap left over after a
           title of whatever length.
         */}
-        <div className={`${BAND_CLASS} flex items-center gap-4`}>
+        {/* `BAND_CLASS` pulls itself out by the 24px padding every other
+            host gives it; a full-screen dialog drops to 16px, so the band
+            is re-hung to match — left as it was it would bleed 8px past
+            each edge and put a horizontal scrollbar on the form. */}
+        <div className={`${BAND_CLASS} flex items-center gap-4 ${phoneBand}`}>
           <h2 className="flex flex-1 items-center gap-2 truncate font-display text-lg font-bold">
             {icon && <span className="shrink-0 opacity-70">{icon}</span>}
             <span className="truncate">{title}</span>
@@ -96,7 +127,9 @@ export function Modal({
             </button>
           </div>
         </div>
-        <div>
+        {/* The column the form lays itself out in on a phone; an
+            ordinary block on a laptop. */}
+        <div className={phoneBody}>
           <HeaderSlot.Provider value={slot}>{children}</HeaderSlot.Provider>
         </div>
       </div>

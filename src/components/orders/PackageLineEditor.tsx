@@ -843,7 +843,7 @@ function LineCard({
 
       {/* Flavours left, tray right — the numbers and the picture of the
           same thing, side by side. */}
-      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 max-md:grid-cols-1">
         <div className="flex flex-col">
           {/*
             Over the flavour list rather than up in the header, where it

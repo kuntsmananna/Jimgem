@@ -130,7 +130,9 @@ export function ChipSpread({
                 pill.
               */
               className={`keeps-color flex shrink-0 items-center gap-1.5 rounded-full border font-bold whitespace-nowrap transition ${
-                size === "md" ? "px-3 py-1 text-xs" : "px-2.5 py-1 text-[11px]"
+                size === "md"
+                  ? "px-3 py-1 text-xs max-md:px-3.5 max-md:py-2.5"
+                  : "px-2.5 py-1 text-[11px] max-md:px-3.5 max-md:py-2.5 max-md:text-xs"
               } ${
                 on
                   ? option.color

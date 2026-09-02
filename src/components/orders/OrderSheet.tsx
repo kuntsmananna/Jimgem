@@ -173,7 +173,9 @@ export function Segmented<T extends string | boolean>({
           aria-pressed={value === option.value}
           onClick={() => { if (value !== option.value) onChange(option.value); }}
           className={`flex items-center gap-1.5 rounded-full font-bold whitespace-nowrap transition ${
-            size === "md" ? "px-3.5 py-1 text-xs" : "px-2.5 py-0.5 text-[11px]"
+            size === "md"
+              ? "px-3.5 py-1 text-xs max-md:px-4 max-md:py-2"
+              : "px-2.5 py-0.5 text-[11px] max-md:px-3.5 max-md:py-2 max-md:text-xs"
           } ${
             value === option.value
               ? /*

@@ -182,12 +182,50 @@ year, which for a Sheet-imported order is the year it was *imported*: the
 weekday is right for this season's orders and can be wrong on an old
 imported one, which is the price of showing it.
 
+**The order form is the screen on a phone, not a dialog.** `Modal` takes
+its full-screen treatment from `wide` — already the mark of a popup that
+needs most of a laptop, and the one that cannot survive being a card:
+`min(80vw,1400px)` resolves to 312px at 390, so the order form "fits"
+while holding a layout built at 1400. A narrow `Modal` (the expense form,
+the client card) stays a centred card until its own stage says otherwise.
+Full-screen means `h-dvh` — `vh` on iOS counts toolbars the other one
+doesn't, and a `vh` dialog is one whose last row sits under the address
+bar — plus a flex column, so the band is fixed at the top, the panels
+scroll, and the money and the buttons are pinned to the bottom edge. The
+band is **re-hung** there (`max-md:-mx-4` against the dialog's `p-4`):
+`BAND_CLASS` pulls itself out by the 24px padding every other host gives
+it, and left alone it bled 8px past each edge of a screen-wide dialog and
+put a horizontal scrollbar on the form.
+
+**The money rail becomes a bar.** There is no second column at 390px, so
+the rail moves behind a black strip above the save row carrying the total
+and the balance, and a tap opens the rail itself — the whole component,
+amounts and discount and VAT and deposit — as a `Sheet`. The rail exists
+because a number you have to go and look at is a number nobody looks at,
+and folding it to the bottom of the scroll would have been exactly that.
+Both halves are `<OrderMoneyRail {...railProps} />` off one props object,
+each hidden at the other's width, so the nine props cannot drift; the
+sheet's copy passes `showHeading={false}`, its title row already being the
+words the rail's own caption would say. The **tabs come back inline**
+below the breakpoint (`useIsMobile()`), because a phone's title row is a
+title and a close button with no middle to lend — the fallback
+`useModalHeaderSlot` was written to have. And the save row's spacer
+becomes `max-md:basis-full`, a line break in a wrapping row, so Cancel and
+Save get a row of their own at half the screen each. `ChipSpread` and
+`Segmented` grow to 38px there; a 24px pill is a cursor's target.
+
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar
 dropdown**. `Modal` beside it is a centred dialog, which is right for a
 record you opened and wrong for a menu: those are reached from the bottom
 edge and belong there. Both share `useOverlayDismiss`, so Escape, the
-scroll lock and the nesting count behave identically.
+scroll lock and the nesting count behave identically — and **Escape closes
+the innermost overlay only**. That is a depth stamped from the same open
+count and compared against the live one, because both listen on
+`document`, where neither `stopPropagation` nor listener order helps: the
+outer overlay registered first, so it fires first, and one keystroke over
+the order form's money sheet would have closed the form underneath it,
+unsaved-changes prompt and all.
 
 `Dropdown` picks between the two on `useIsMobile()`, and on a phone it is
 not a preference: three chips share one row, so the third's

@@ -50,8 +50,11 @@ export function OrderCustomerPanel({
       order *is* reads straight down the wide side — name, when and where,
       then how it is classed — and the note about it sits alongside the
       whole of that.
+
+      One column on a phone: 1.45fr of a 358px screen is 200px, and the
+      note beside it would be a slot rather than a field.
     */
-    <div className="grid min-h-full grid-cols-[1.45fr_1fr] gap-x-8">
+    <div className="grid min-h-full grid-cols-[1.45fr_1fr] gap-x-8 max-md:grid-cols-1 max-md:gap-y-5">
       <section className="flex min-w-0 flex-col">
         {/*
           No heading over this. The dialog is already titled "Edit order"
