@@ -15,6 +15,25 @@ const bricolageGrotesque = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "Gems — Cocktail OS",
   description: "Internal dashboard for Gems Cocktail Bites",
+  /*
+   * iOS reads almost none of the web manifest, so the two things that
+   * make "Add to Home Screen" behave are stated here instead: its own
+   * icon, and `appleWebApp` — which emits `apple-mobile-web-app-capable`,
+   * the tag that decides whether the icon opens a full-screen app or just
+   * a Safari tab. The status bar is `default` rather than translucent
+   * because the app's own ground is cream and white text would vanish
+   * into it.
+   */
+  icons: { apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Gems", statusBarStyle: "default" },
+  /*
+   * `appleWebApp.capable` emits the *standard* `mobile-web-app-capable`
+   * (checked in the build output), which Safari has honoured only since
+   * iOS 15.4. The prefixed name is what every version before that reads,
+   * and there is no way to test an old iPhone from here — so both are
+   * stated rather than assuming which one the owner's phone wants.
+   */
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 /**

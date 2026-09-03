@@ -120,12 +120,17 @@ something here isn't obvious.
 
 ## Styling conventions
 
-**Desktop is the settled version; mobile is being added beside it.** The
-rule while that is underway: **a mobile change must be additive.** Nothing
-above 768px may change, so mobile is written as `max-md:` variants and new
-components, never by editing or prefixing an existing desktop class. Where
-a phone needs a different *tree* rather than a different look, that is
-`useIsMobile()` — not a rewritten desktop component.
+**Mobile is built, and it is additive by construction.** The desktop
+layout was settled first and a phone version written beside it; that work
+is finished (v0.54.0), and the rule it was built under is now the standing
+one: **nothing above 768px moves for a mobile change.** A phone difference
+is a `max-md:` variant or a new component, never an edited or prefixed
+desktop class. Where a phone needs a different *tree* rather than a
+different look — the three list pages each render cards instead of rows —
+that is `useIsMobile()`, and the desktop half carries `max-md:hidden` so
+nothing flashes before hydration has an opinion. The pages the phone is
+*for* are **Orders, Expenses and Clients**; Dashboard, Biz Plan and
+Settings are reachable on a phone and deliberately not redesigned for one.
 
 **The Orders page on a phone is a list of cards**
 (`src/components/orders/OrdersMobileList.tsx`), one per order, under a
@@ -376,6 +381,42 @@ Groundwork that is already in (v0.43.0), all of it invisible on a laptop:
   `useIsMobile`. `useSyncExternalStore` so the server's answer (`false`,
   i.e. desktop) is corrected on hydration in one pass rather than painting
   twice.
+
+**The app installs to a home screen.** `src/app/manifest.ts` is Next's
+typed manifest route, and its `start_url` is **`/orders`**, not `/`: the
+Dashboard is a laptop screen, and the phone exists for looking an order
+up, booking one on the spot and logging an expense. `display: "standalone"`,
+with both colours the cream token — stated again there because a manifest
+dresses an installed app while `viewport.themeColor` dresses a tab, and
+there is nowhere either could read the other. **No service worker**:
+offline was never in scope, and a stale cache in front of a database two
+people edit at once is how one of them gets shown yesterday's orders.
+
+**The four icons are rendered once and committed**
+(`scripts/make-icons.mjs`), drawing `public/gems-logo.svg` on cream in the
+headless Chromium already in this sandbox — the file carries its own
+`#29332f`, unlike `GemsLogo.tsx`, which states `currentColor`. The SVG is
+**inlined into the page**, not loaded as `<img src="file://…">`:
+`setContent` leaves the document on `about:blank`, which is not allowed to
+fetch a local subresource, and every icon came out as a broken-image
+glyph. `public/icons/` holds 192 and 512 `any` plus a 512 **maskable**,
+and `public/apple-touch-icon.png` is the 180. **The maskable one is drawn
+smaller** — 0.60 of the canvas against 0.76 for the plain ones — because
+Android crops it to whatever shape the launcher uses and only the inner
+80% *circle* is guaranteed: the mark is 759.83 × 548.81, so its diagonal
+is 1.233 times its width and it fits that circle only at 0.649. Checked
+against the rendered pixels rather than the arithmetic — the ink reaches
+radius 178 inside a safe radius of 205. **Every icon is fully opaque**,
+since iOS composites its own rounding and transparency there reads as a
+corner cut out of the mark.
+
+iOS ignores most of the manifest, so `layout.tsx` states the apple touch
+icon and `appleWebApp` itself — and **both capable tags**:
+`appleWebApp.capable` emits the standard, unprefixed
+`mobile-web-app-capable`, which Safari has honoured only since iOS 15.4,
+so `apple-mobile-web-app-capable` is stated beside it through
+`metadata.other`. Without one of the two, the home-screen icon opens a
+Safari tab rather than the app.
 
 ### Design tokens
 
