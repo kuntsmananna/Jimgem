@@ -14,6 +14,18 @@ export function currency(amount: number): string {
   return `₪${shekels.format(amount)}`;
 }
 
+/**
+ * The same, but keeping agorot where there are any — ₪12,344.67, and
+ * ₪12,344 when the number is round, so a column of whole shekels stays
+ * quiet. Expenses are entered from receipts and are the one place in the
+ * app where the fraction is real; everything else is priced in shekels.
+ */
+const exact = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+export function currencyExact(amount: number): string {
+  return `₪${exact.format(amount)}`;
+}
+
 /** The same formatter without the sign, for counts and units. */
 export function count(value: number): string {
   return shekels.format(value);

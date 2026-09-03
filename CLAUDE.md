@@ -255,6 +255,24 @@ own. It is the same move `.money-rail` already makes for tone, and it sits
 outside every layer because the label carries a `max-md:text-sm` utility
 that would otherwise win.
 
+**Expenses on a phone is the same page as Orders, in a different
+subject.** One column: the periods rail becomes a `SelectDropdown` chip,
+the category filter sits beside it, the period's total leads the list —
+the picker already names the period, so the figure is what the line is for
+— and Add expense is the FAB, because "standing in a shop with a receipt"
+is the other half of why the phone layout exists. The two flanks are **not
+rendered** rather than hidden (`!mobile &&`), which is both the only
+option for a grid template computed into an inline `style` and the right
+one for a `DonutChart` and a `LineChart` a phone will never show. Each
+expense is a card (`ExpensesMobileList`) with the business leading, its
+category chip beside it, and the date, description and amount on a second
+line; the staff and payment chips, the VAT mode and the delete are all
+inside the record. The delete is why `ExpenseFormModal` takes an
+`onDelete`, drawn `md:hidden` at the far left of the save row: the row's
+own trash is `reveals-on-hover`, and the card deliberately carries no
+20px destructive target. It closes the form before deleting, or the undo
+bar — portalled and fixed — comes up behind the dialog that raised it.
+
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar
 dropdown**. `Modal` beside it is a centred dialog, which is right for a

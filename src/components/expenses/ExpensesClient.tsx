@@ -7,11 +7,14 @@ import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/setting
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
-import { CalendarDays, ChevronsLeft, ChevronsRight, CreditCard, Maximize2, Plus, Trash2, UserRound } from "lucide-react";
+import { CalendarDays, ChevronsLeft, ChevronsRight, CreditCard, Maximize2, Plus, Tags, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
+import { currencyExact as currency } from "@/lib/money";
 import { EditableCell } from "@/components/orders/EditableCell";
-import { FilterDropdown } from "@/components/orders/Dropdown";
+import { FilterDropdown, SelectDropdown } from "@/components/orders/Dropdown";
+import { useIsMobile } from "@/components/useMediaQuery";
+import { ExpensesMobileList } from "./ExpensesMobileList";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { saveError } from "@/components/saveError";
@@ -26,9 +29,9 @@ import {
 /**
  * Amounts carry their agorot when they have any — ₪12,344.67 — and drop
  * the ".00" when they don't, so a column of round numbers stays quiet.
+ * In `lib/money` beside the app's other formatter, so the phone's card
+ * list writes an amount exactly as this page's rows do.
  */
-const money = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const currency = (n: number) => `₪${money.format(n)}`;
 
 export function ExpensesClient({
   periods,
@@ -206,6 +209,15 @@ export function ExpensesClient({
 
   const periodsFolded = collapsed.has("periods");
   const chartsFolded = collapsed.has("charts");
+  /*
+    On a phone this page is the list and nothing else. The two flanks are
+    not *rendered* rather than hidden in CSS — a `DonutChart`, a
+    `LineChart` and a list of periods built for a screen that will never
+    show them — which is the same call the Orders table's is, and the only
+    one available for the grid template, since that is computed at runtime
+    into an inline style CSS cannot reach.
+  */
+  const mobile = useIsMobile();
 
   return (
     // The breakdown pane gives up width to the list: a donut reads fine
@@ -214,13 +226,18 @@ export function ExpensesClient({
     // the template is computed rather than written as a class, because
     // Tailwind cannot generate one that changes at runtime.
     <div
-      className="grid gap-6"
-      style={{
-        gridTemplateColumns: `${periodsFolded ? RAIL_WIDTH : "200px"} 2.2fr ${chartsFolded ? RAIL_WIDTH : "0.85fr"}`,
-      }}
+      className="grid gap-6 max-md:block"
+      style={
+        mobile
+          ? undefined
+          : {
+              gridTemplateColumns: `${periodsFolded ? RAIL_WIDTH : "200px"} 2.2fr ${chartsFolded ? RAIL_WIDTH : "0.85fr"}`,
+            }
+      }
     >
       <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
-      {periodsFolded ? (
+      {!mobile &&
+        (periodsFolded ? (
         <PaneRail label={period?.label ?? "Periods"} side="left" onExpand={() => togglePane("periods")} />
       ) : (
         <section className="min-w-0 rounded-card border border-line bg-card p-4">
@@ -243,10 +260,51 @@ export function ExpensesClient({
             ))}
           </ul>
         </section>
-      )}
+        ))}
 
-      <section className="min-w-0 rounded-card border border-line bg-card p-6">
-        <div className="flex items-center justify-between gap-3">
+      {/* No card on a phone: the expense cards *are* the content, and a
+          card of cards is one border too many. */}
+      <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:border-0 max-md:bg-transparent max-md:p-0">
+        {/*
+          The phone's toolbar: which period, then which categories, as the
+          same two chips the Orders page puts on its surface — and the
+          period picker is where the folded-away rail went. Search is not
+          here at all; it is up in the header (see `PageSearch`).
+        */}
+        <div className="flex flex-wrap items-center gap-2 md:hidden">
+          <SelectDropdown
+            label="Period"
+            icon={<CalendarDays size={13} />}
+            options={periods.map((p) => ({ id: p.key, label: p.label }))}
+            value={selectedKey}
+            onChange={setSelectedKey}
+          />
+          <FilterDropdown
+            label="Category"
+            icon={<Tags size={13} />}
+            options={categories
+              .filter((category) => countByCategory.has(category.name))
+              .map((category) => ({
+                value: category.name,
+                label: category.name,
+                count: countByCategory.get(category.name) ?? 0,
+              }))}
+            selected={categoryFilter}
+            onChange={setCategoryFilter}
+          />
+        </div>
+
+        {/* What the period comes to, leading the list rather than sitting
+            beside a heading: the picker above already names the period, so
+            the figure is what the line is for. */}
+        <div className="mt-3 flex items-baseline gap-2 md:hidden">
+          <span className="font-display text-2xl leading-none font-extrabold text-ink tabular-nums">
+            {currency(total)}
+          </span>
+          <span className="text-xs font-semibold text-ink-soft">{vatLabel}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 max-md:hidden">
           <div className="flex items-baseline gap-2">
             <h2 className="font-display text-lg font-bold text-ink">{period?.label}</h2>
             {/* Which convention these figures are in, beside them rather
@@ -297,6 +355,17 @@ export function ExpensesClient({
               setAdding(false);
               setEditingKey(null);
             }}
+            onDelete={
+              editing
+                ? () => {
+                    // Close first: the undo bar is portalled and fixed, so
+                    // it would otherwise come up behind the dialog that
+                    // raised it.
+                    setEditingKey(null);
+                    deleteEntry(editing.key);
+                  }
+                : undefined
+            }
             onSaved={(date) => {
               setAdding(false);
               setEditingKey(null);
@@ -306,6 +375,22 @@ export function ExpensesClient({
           />
         )}
 
+        {mobile ? (
+          <div className="mt-3">
+            <ExpensesMobileList
+              entries={entries}
+              amountOf={forExpense}
+              onOpen={setEditingKey}
+              emptyNote={
+                needle
+                  ? `Nothing matches “${needle}” this period.`
+                  : categoryFilter.size > 0
+                    ? "Nothing in those categories this period."
+                    : "No expenses logged for this period yet."
+              }
+            />
+          </div>
+        ) : (
         <div className="mt-4 flex flex-col gap-1.5">
           {entries.map((entry) => (
             <ExpenseRow
@@ -330,11 +415,27 @@ export function ExpensesClient({
             </p>
           )}
         </div>
+        )}
+
+        {/*
+          Add expense, as the one thing you might arrive at this page
+          wanting to do — "standing in a shop with a receipt" is half the
+          reason the phone layout exists. Above the bottom bar and clear of
+          the home indicator, the same button the Orders page carries.
+        */}
+        <button
+          onClick={() => setAdding(true)}
+          aria-label="Add expense"
+          className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+        >
+          <Plus size={22} />
+        </button>
       </section>
 
-      {chartsFolded ? (
-        <PaneRail label="Charts" side="right" onExpand={() => togglePane("charts")} />
-      ) : (
+      {!mobile &&
+        (chartsFolded ? (
+          <PaneRail label="Charts" side="right" onExpand={() => togglePane("charts")} />
+        ) : (
         <div className="flex min-w-0 flex-col gap-6">
           <section className="min-w-0 rounded-card border border-line bg-card p-6">
             {/* The fold sits on the first card's heading because it is the
@@ -396,7 +497,7 @@ export function ExpensesClient({
             )}
           </section>
         </div>
-      )}
+        ))}
     </div>
   );
 }

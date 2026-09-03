@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Expense, ExpenseInput } from "@/lib/expenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
-import { Receipt } from "lucide-react";
+import { Receipt, Trash2 } from "lucide-react";
 import { LastEdited } from "@/components/LastEdited";
 import { UndoRedo } from "@/components/UndoRedo";
 import { saveError } from "@/components/saveError";
@@ -34,6 +34,7 @@ export function ExpenseFormModal({
   vatRate,
   onClose,
   onSaved,
+  onDelete,
 }: {
   /** Omit to add a new expense, pass one to edit it. */
   expense?: Expense;
@@ -45,6 +46,12 @@ export function ExpenseFormModal({
   onClose: () => void;
   /** Called with the expense's date on success, so the caller can jump to that period. */
   onSaved: (date: string) => void;
+  /**
+   * Delete this expense. Drawn below the breakpoint only: the desktop row
+   * carries a trash of its own, revealed on hover, and a phone has no
+   * hover and no room on the card for a 20px destructive target.
+   */
+  onDelete?: () => void;
 }) {
   const isEdit = !!expense;
   const form = useUndoable<ExpenseInput>(
@@ -205,6 +212,18 @@ export function ExpenseFormModal({
             say beside it, then Save last in the corner every popup uses.
             The spacer is unconditional because the caption is not. */}
         <div className="mt-2 flex items-center gap-2">
+          {/* First in the row and so as far from Save as it goes — where
+              the client card puts Archive, for the same reason. */}
+          {isEdit && onDelete && (
+            <button
+              onClick={onDelete}
+              title="Delete this expense"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink-soft md:hidden"
+            >
+              <Trash2 size={13} />
+              Delete
+            </button>
+          )}
           {isEdit && <LastEdited at={expense.updatedAt} by={expense.updatedBy} />}
           <UndoRedo form={form} />
           {failed && (
