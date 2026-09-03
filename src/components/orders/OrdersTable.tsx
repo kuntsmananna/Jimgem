@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   formatOrderDate,
   hasDelivery,
@@ -40,7 +41,7 @@ const INTERACTIVE = "button, input, select, textarea, a, label";
  * it** — a `<colgroup>` matches by position, so a column inserted here
  * without the matching `<td>` would silently re-width every cell after it.
  */
-const COLUMNS = [
+export const COLUMNS = [
   { id: "select", label: "" },
   { id: "status", label: "Status" },
   { id: "date", label: "Date" },
@@ -58,8 +59,6 @@ const COLUMNS = [
   { id: "payment", label: "Payment" },
 ] as const;
 
-const COLUMN_IDS = COLUMNS.map((column) => column.id);
-
 export function OrdersTable({
   orders,
   flavors,
@@ -73,6 +72,7 @@ export function OrdersTable({
   onOpen,
   onOpenClient,
   emptyNote,
+  hidden,
 }: {
   orders: Order[];
   flavors: Flavor[];
@@ -90,6 +90,8 @@ export function OrdersTable({
   onOpenClient: (clientId: number) => void;
   /** What to say when nothing is in view — names the active time scope. */
   emptyNote: string;
+  /** Columns the owner has switched off — see `ColumnsMenu`. */
+  hidden: ReadonlySet<string>;
 }) {
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
@@ -108,7 +110,20 @@ export function OrdersTable({
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
   // Desktop-only by construction: the phone renders `OrdersMobileList`
   // instead and this table is never on screen there.
-  const { widths, headRef, startResize, reset } = useColumnWidths(COLUMN_IDS);
+  /*
+    Everything downstream — the header, the `<colgroup>`, the body's cells
+    and the stored widths — works off the *visible* list, and a `<col>`
+    matches by position, so the three have to agree.
+  */
+  const visible = COLUMNS.filter((column) => !hidden.has(column.id));
+  const show = (id: string) => !hidden.has(id);
+  // Memoised because the hook holds it as a dependency of its own; a fresh
+  // array every render would re-parse the stored widths on each pass.
+  const visibleIds = useMemo(
+    () => COLUMNS.filter((column) => !hidden.has(column.id)).map((column) => column.id),
+    [hidden],
+  );
+  const { widths, headRef, startResize, reset } = useColumnWidths(visibleIds);
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {
     // Every order is a DB row since the import change, so a single-field
@@ -158,14 +173,14 @@ export function OrdersTable({
       <table className={`w-full min-w-[1100px] text-left text-sm ${widths ? "table-fixed" : ""}`}>
         {widths && (
           <colgroup>
-            {COLUMNS.map(({ id }) => (
+            {visible.map(({ id }) => (
               <col key={id} style={{ width: widths[id] }} />
             ))}
           </colgroup>
         )}
         <thead className="sticky top-0 z-10 bg-card">
           <tr ref={headRef} className="border-b border-line text-[11px] font-semibold text-ink-soft">
-            {COLUMNS.map(({ id, label }) => (
+            {visible.map(({ id, label }) => (
               <th key={id} className={`relative bg-card px-2 py-2 ${!widths && id === "select" ? "w-6" : ""}`}>
                 {id === "select" ? (
                   <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
@@ -221,196 +236,226 @@ export function OrdersTable({
                   isBooked(order, stageIndex) ? "" : "is-offer"
                 }`}
               >
-                <td className="px-2 py-2">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggleSelect(order.key)}
-                    aria-label={`Select ${order.customer || "order"}`}
-                    // Revealed on hover so the column reads as data, not
-                    // controls — but a ticked box always stays visible.
-                    className={isSelected ? "" : "reveals-on-hover invisible group-hover:visible"}
-                  />
-                </td>
+                {show("select") && (
+                  <td className="px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onToggleSelect(order.key)}
+                      aria-label={`Select ${order.customer || "order"}`}
+                      // Revealed on hover so the column reads as data, not
+                      // controls — but a ticked box always stays visible.
+                      className={isSelected ? "" : "reveals-on-hover invisible group-hover:visible"}
+                    />
+                  </td>
+                )}
                 {/* Status leads the row: it is what the table is scanned
                     by, and as the last column it sat past the fold on a
                     laptop. It is the one cell that is neither a pill nor
                     plain text — a squared chip in the stage's own colour,
                     so it reads as the row's state rather than as another
                     of its values. */}
-                <td className="px-2 py-2">
-                  <ProductionStatusSelect order={order} onChanged={onChanged} />
-                </td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  <EditableCell
-                    type="date"
-                    displayValue={formatOrderDate(order.date)}
-                    editValue={order.date}
-                    onSave={(raw) => saveField(order, { date: raw })}
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <div className="flex items-center gap-1.5">
-                    {/*
-                      The name is two things at once: the client it belongs
-                      to, and a value that gets corrected. Clicking it goes
-                      to the client — the more useful of the two, and the
-                      one there was no way to reach from here — so editing
-                      moves to a pencil that appears with the row's other
-                      hover controls.
-
-                      An order booked before the client list existed has no
-                      client to open, so it stays plain text and only the
-                      pencil applies.
-                    */}
+                {show("status") && (
+                  <td className="px-2 py-2">
+                    <ProductionStatusSelect order={order} onChanged={onChanged} />
+                  </td>
+                )}
+                {show("date") && (
+                  <td className="px-2 py-2 whitespace-nowrap">
                     <EditableCell
-                      displayValue={order.customer || "(no name)"}
-                      editValue={order.customer}
-                      onSave={(raw) => saveField(order, { customer: raw })}
-                      renderIdle={(startEditing) => (
-                        <span className="flex min-w-0 items-center gap-1">
-                          {order.clientId === null ? (
-                            <span className="truncate">{order.customer || "(no name)"}</span>
-                          ) : (
+                      type="date"
+                      displayValue={formatOrderDate(order.date)}
+                      editValue={order.date}
+                      onSave={(raw) => saveField(order, { date: raw })}
+                    />
+                  </td>
+                )}
+                {show("customer") && (
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-1.5">
+                      {/*
+                        The name is two things at once: the client it belongs
+                        to, and a value that gets corrected. Clicking it goes
+                        to the client — the more useful of the two, and the
+                        one there was no way to reach from here — so editing
+                        moves to a pencil that appears with the row's other
+                        hover controls.
+
+                        An order booked before the client list existed has no
+                        client to open, so it stays plain text and only the
+                        pencil applies.
+                      */}
+                      <EditableCell
+                        displayValue={order.customer || "(no name)"}
+                        editValue={order.customer}
+                        onSave={(raw) => saveField(order, { customer: raw })}
+                        renderIdle={(startEditing) => (
+                          <span className="flex min-w-0 items-center gap-1">
+                            {order.clientId === null ? (
+                              <span className="truncate">{order.customer || "(no name)"}</span>
+                            ) : (
+                              <button
+                                onClick={() => onOpenClient(order.clientId!)}
+                                title={`Open ${order.customer}'s client card`}
+                                className="truncate hover:underline"
+                              >
+                                {order.customer || "(no name)"}
+                              </button>
+                            )}
                             <button
-                              onClick={() => onOpenClient(order.clientId!)}
-                              title={`Open ${order.customer}'s client card`}
-                              className="truncate hover:underline"
+                              onClick={startEditing}
+                              title="Rename the customer on this order"
+                              aria-label="Edit the customer name"
+                              className="reveals-on-hover invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
                             >
-                              {order.customer || "(no name)"}
+                              <Pencil size={11} />
                             </button>
-                          )}
-                          <button
-                            onClick={startEditing}
-                            title="Rename the customer on this order"
-                            aria-label="Edit the customer name"
-                            className="reveals-on-hover invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
-                          >
-                            <Pencil size={11} />
-                          </button>
+                          </span>
+                        )}
+                      />
+                      {/*
+                        The note lives behind an icon rather than under the
+                        name. As a second line it set the row's height off the
+                        longest note in view — three lines for one order pushed
+                        every other row apart — and it is a detail you go
+                        looking for, not one you scan.
+
+                        Notes, not the Sheet's raw `details`: migration 004
+                        folded those together, so this is the same text the
+                        order form edits.
+                      */}
+                      {order.notes && <NoteHint note={order.notes} />}
+                      {order.needsReview && (
+                        <span
+                          title="Best-effort parsed from legacy notes — please review"
+                          className="keeps-color rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink"
+                        >
+                          review
                         </span>
                       )}
+                    </div>
+
+                  </td>
+                )}
+                {show("type") && (
+                  <td className="px-2 py-2">
+                    <EditableCell
+                      displayValue={
+                        order.customerType.trim() ? <EventTypeChip value={order.customerType} /> : "—"
+                      }
+                      editValue={order.customerType}
+                      // The owner's list from Settings, not free text: a typed
+                      // variant would render uncoloured and silently become a
+                      // type of its own.
+                      options={typeOptions}
+                      onSave={(raw) => saveField(order, { customerType: raw })}
                     />
-                    {/*
-                      The note lives behind an icon rather than under the
-                      name. As a second line it set the row's height off the
-                      longest note in view — three lines for one order pushed
-                      every other row apart — and it is a detail you go
-                      looking for, not one you scan.
-
-                      Notes, not the Sheet's raw `details`: migration 004
-                      folded those together, so this is the same text the
-                      order form edits.
-                    */}
-                    {order.notes && <NoteHint note={order.notes} />}
-                    {order.needsReview && (
-                      <span
-                        title="Best-effort parsed from legacy notes — please review"
-                        className="keeps-color rounded-full bg-tile-peach px-1.5 py-0.5 text-[10px] font-bold text-ink"
-                      >
-                        review
-                      </span>
-                    )}
-                  </div>
-
-                </td>
-                <td className="px-2 py-2">
-                  <EditableCell
-                    displayValue={
-                      order.customerType.trim() ? <EventTypeChip value={order.customerType} /> : "—"
-                    }
-                    editValue={order.customerType}
-                    // The owner's list from Settings, not free text: a typed
-                    // variant would render uncoloured and silently become a
-                    // type of its own.
-                    options={typeOptions}
-                    onSave={(raw) => saveField(order, { customerType: raw })}
-                  />
-                </td>
-                <td className="max-w-[130px] px-2 py-2">
-                  <EditableCell
-                    displayValue={order.location || "—"}
-                    editValue={order.location}
-                    onSave={(raw) => saveField(order, { location: raw })}
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <EditableCell
-                    type="number"
-                    displayValue={order.guests ?? "—"}
-                    editValue={order.guests?.toString() ?? ""}
-                    onSave={(raw) =>
-                      saveField(order, {
-                        guests: raw === "" ? null : Number(raw),
-                      })
-                    }
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  {/* The count is the scannable number; the packages and
-                      their flavours are a hover away. The dotted underline
-                      is what says so — a row of bare numerals gives no
-                      reason to point at one. */}
-                  <ContentHoverCard
-                    lines={order.packageLines}
-                    flavors={flavors}
-                    packageTypes={packageTypes}
-                    presets={presets}
-                    className="w-fit"
-                  >
-                    <UnitsCell units={orderUnits(order.packageLines, unitsPerPackage)} />
-                  </ContentHoverCard>
-                </td>
-                <td className="px-2 py-2">
-                  {/* Read-only here, unlike the counts either side of it:
-                      an order can carry several display types at once, and
-                      one number in a cell has nowhere to say which. The
-                      order popup is where the split is set. */}
-                  <DisplayCell displays={order.displays} />
-                </td>
-                <td className="px-2 py-2">
-                  <EditableCell
-                    type="number"
-                    displayValue={order.waitresses ?? "—"}
-                    editValue={order.waitresses?.toString() ?? ""}
-                    onSave={(raw) =>
-                      saveField(order, {
-                        waitresses: raw === "" ? null : Number(raw),
-                      })
-                    }
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <YesNoCell value={order.kosher} onSave={(kosher) => saveField(order, { kosher })} />
-                </td>
-                <td className="px-2 py-2">
-                  {/* Whether there is delivery, not what it costs — the
-                      price lives with the other extras on the order
-                      sheet's money side. */}
-                  <YesNoCell
-                    value={hasDelivery(order)}
-                    onSave={(on) => saveField(order, withDelivery(order, on))}
-                  />
-                </td>
-                <td className="px-2 py-2 font-semibold">
-                  <EditableCell
-                    type="number"
-                    displayValue={currency(order.totalAmount)}
-                    editValue={String(order.totalAmount)}
-                    onSave={(raw) => saveField(order, { totalAmount: Number(raw) || 0 })}
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <EditableCell
-                    type="number"
-                    displayValue={currency(order.deposit)}
-                    editValue={String(order.deposit)}
-                    onSave={(raw) => saveField(order, { deposit: Number(raw) || 0 })}
-                  />
-                </td>
-                <td className="px-2 py-2">
-                  <PaymentStatusSelect order={order} onChanged={onChanged} />
-                </td>
+                  </td>
+                )}
+                {show("location") && (
+                  <td className="max-w-[130px] px-2 py-2">
+                    <EditableCell
+                      displayValue={order.location || "—"}
+                      editValue={order.location}
+                      onSave={(raw) => saveField(order, { location: raw })}
+                    />
+                  </td>
+                )}
+                {show("guests") && (
+                  <td className="px-2 py-2">
+                    <EditableCell
+                      type="number"
+                      displayValue={order.guests ?? "—"}
+                      editValue={order.guests?.toString() ?? ""}
+                      onSave={(raw) =>
+                        saveField(order, {
+                          guests: raw === "" ? null : Number(raw),
+                        })
+                      }
+                    />
+                  </td>
+                )}
+                {show("units") && (
+                  <td className="px-2 py-2">
+                    {/* The count is the scannable number; the packages and
+                        their flavours are a hover away. The dotted underline
+                        is what says so — a row of bare numerals gives no
+                        reason to point at one. */}
+                    <ContentHoverCard
+                      lines={order.packageLines}
+                      flavors={flavors}
+                      packageTypes={packageTypes}
+                      presets={presets}
+                      className="w-fit"
+                    >
+                      <UnitsCell units={orderUnits(order.packageLines, unitsPerPackage)} />
+                    </ContentHoverCard>
+                  </td>
+                )}
+                {show("mirrors") && (
+                  <td className="px-2 py-2">
+                    {/* Read-only here, unlike the counts either side of it:
+                        an order can carry several display types at once, and
+                        one number in a cell has nowhere to say which. The
+                        order popup is where the split is set. */}
+                    <DisplayCell displays={order.displays} />
+                  </td>
+                )}
+                {show("waitress") && (
+                  <td className="px-2 py-2">
+                    <EditableCell
+                      type="number"
+                      displayValue={order.waitresses ?? "—"}
+                      editValue={order.waitresses?.toString() ?? ""}
+                      onSave={(raw) =>
+                        saveField(order, {
+                          waitresses: raw === "" ? null : Number(raw),
+                        })
+                      }
+                    />
+                  </td>
+                )}
+                {show("kosher") && (
+                  <td className="px-2 py-2">
+                    <YesNoCell value={order.kosher} onSave={(kosher) => saveField(order, { kosher })} />
+                  </td>
+                )}
+                {show("delivery") && (
+                  <td className="px-2 py-2">
+                    {/* Whether there is delivery, not what it costs — the
+                        price lives with the other extras on the order
+                        sheet's money side. */}
+                    <YesNoCell
+                      value={hasDelivery(order)}
+                      onSave={(on) => saveField(order, withDelivery(order, on))}
+                    />
+                  </td>
+                )}
+                {show("amount") && (
+                  <td className="px-2 py-2 font-semibold">
+                    <EditableCell
+                      type="number"
+                      displayValue={currency(order.totalAmount)}
+                      editValue={String(order.totalAmount)}
+                      onSave={(raw) => saveField(order, { totalAmount: Number(raw) || 0 })}
+                    />
+                  </td>
+                )}
+                {show("deposit") && (
+                  <td className="px-2 py-2">
+                    <EditableCell
+                      type="number"
+                      displayValue={currency(order.deposit)}
+                      editValue={String(order.deposit)}
+                      onSave={(raw) => saveField(order, { deposit: Number(raw) || 0 })}
+                    />
+                  </td>
+                )}
+                {show("payment") && (
+                  <td className="px-2 py-2">
+                    <PaymentStatusSelect order={order} onChanged={onChanged} />
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -419,7 +464,7 @@ export function OrdersTable({
               {/* Names the window rather than saying "no matches": the
                   default scope is the next fortnight, and a quiet season
                   otherwise reads as the page being broken. */}
-              <td colSpan={15} className="px-2 py-8 text-center text-sm text-ink-soft">
+              <td colSpan={visible.length} className="px-2 py-8 text-center text-sm text-ink-soft">
                 {emptyNote}
               </td>
             </tr>

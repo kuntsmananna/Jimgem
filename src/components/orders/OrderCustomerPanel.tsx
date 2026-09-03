@@ -117,7 +117,16 @@ export function OrderCustomerPanel({
           </a>
         )}
 
-        <div className="mt-2.5 flex items-center gap-2.5">
+        {/*
+          Two on a line on a laptop; on a phone the location takes a line
+          of its own. Measured at 390px: a date field at 16px wants 165 of
+          the 358 available — that is the browser's own intrinsic width for
+          the value plus its picker button, not padding that could be
+          trimmed — which leaves the location under half the screen for the
+          one field here anybody types a sentence into. `basis-full` on the
+          location is what breaks the line.
+        */}
+        <div className="mt-2.5 flex items-center gap-2.5 max-md:flex-wrap max-md:gap-y-2">
           <TextInput
             type="date"
             value={draft.date}
@@ -130,7 +139,7 @@ export function OrderCustomerPanel({
             // is sized to the date plus its picker button and no further.
             className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums max-md:w-[10.5rem]"
           />
-          <label className="relative flex min-w-0 flex-1 items-center">
+          <label className="relative flex min-w-0 flex-1 items-center max-md:basis-full">
             <MapPin
               size={14}
               aria-hidden

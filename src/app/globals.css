@@ -336,11 +336,19 @@ body {
     font-size: 1rem;
   }
 
-  /* And a box worth aiming at: `.input`'s own `px-2 py-1` is a 26px
-     target built for a cursor. This wins over a call site's padding on
-     purpose — one field height on a phone, however the desktop tunes it. */
+  /*
+   * And a box worth aiming at: `.input`'s own `px-2 py-1` is a 26px target
+   * built for a cursor.
+   *
+   * `min-height` rather than `padding`, which is what this said first and
+   * was wrong: being unlayered it beat every call site's padding, including
+   * the ones reserving room for an icon — the location field's `pl-8`
+   * became 10px and its placeholder started underneath the map pin, and
+   * the header search's magnifier had the same fault. A height floor
+   * leaves the horizontal padding to whoever asked for it.
+   */
   .input {
-    padding: 0.5rem 0.625rem;
+    min-height: 2.5rem;
   }
 }
 

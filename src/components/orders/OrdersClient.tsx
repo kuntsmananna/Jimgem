@@ -20,7 +20,9 @@ import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } fro
 import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
-import { OrdersTable } from "./OrdersTable";
+import { COLUMNS, OrdersTable } from "./OrdersTable";
+import { ColumnsMenu } from "./ColumnsMenu";
+import { useHiddenColumns } from "./useColumnWidths";
 import { OrdersKanban } from "./OrdersKanban";
 import { OrdersCalendar, type CalendarMode } from "./OrdersCalendar";
 import { OrderFormModal } from "./OrderFormModal";
@@ -145,6 +147,19 @@ export function OrdersClient({
    * search and its scroll position, is a poor trade for one lookup.
    */
   const [openClientId, setOpenClientId] = useState<number | null>(null);
+  /*
+    Which of the table's columns are on screen. Held here rather than in
+    `OrdersTable` because the control that changes them lives in this
+    toolbar — the table is inside a scrolling card with a sticky header and
+    has nowhere to put a button that isn't sitting over a column.
+
+    The select column is not offered: it is the selection control rather
+    than data, and keeping it always on means the table can never render
+    with nothing in it at all.
+  */
+  const hideable = useMemo(() => COLUMNS.filter((column) => column.id !== "select"), []);
+  const hideableIds = useMemo(() => hideable.map((column) => column.id), [hideable]);
+  const { hidden, toggle: toggleColumn, showAll: showAllColumns } = useHiddenColumns(hideableIds);
   const undoToast = useUndoToast();
   const [batchNote, setBatchNote] = useState<string | null>(null);
 
@@ -492,6 +507,16 @@ export function OrdersClient({
             narrows the board and the calendar too — and the left group
             is already three controls that each narrow the one before. */}
         <div className="flex min-w-0 items-center justify-end gap-3">
+          {/* Only on the table: the board and the calendar have no columns,
+              so the control would be a button that does nothing. */}
+          {view === "table" && (
+            <ColumnsMenu
+              columns={hideable}
+              hidden={hidden}
+              onToggle={toggleColumn}
+              onShowAll={showAllColumns}
+            />
+          )}
           {/* `PageSearch`, so the same field also appears in the phone
               header — this toolbar is `max-md:hidden`, but a portal is not
               inside what hides it. */}
@@ -639,6 +664,7 @@ export function OrdersClient({
             onChanged={refresh}
             onOpen={setOpenKey}
             onOpenClient={setOpenClientId}
+            hidden={hidden}
             emptyNote={
               // A search that finds nothing is its own answer: pointing
               // at the time scope would send you widening a window that

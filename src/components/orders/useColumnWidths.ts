@@ -2,63 +2,92 @@
 
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-/** Per-viewer, per-browser: a column width is a preference, not data. */
-const STORAGE_KEY = "jimgem:orders-columns";
-
 /** Narrower than this and a column is a sliver with nothing readable in it. */
 const MIN_WIDTH = 44;
 
 /*
- * `localStorage` as an external store, so the stored widths can be read
- * with `useSyncExternalStore` — the same reason `useMediaQuery` uses it.
- * The server has no storage and answers `null`, the client corrects on
+ * `localStorage` as an external store, so what is stored can be read with
+ * `useSyncExternalStore` — the same reason `useMediaQuery` uses it. The
+ * server has no storage and answers `null`, the client corrects on
  * hydration in one pass, and an effect writing state (which would paint
  * the default table and then snap) is never in the picture.
  *
- * `getSnapshot` returns the raw string rather than a parsed object: React
- * compares snapshots by identity, and a fresh object every call would
- * re-render forever.
+ * `read` returns the raw string rather than a parsed value: React compares
+ * snapshots by identity, and a fresh object every call would re-render
+ * forever.
+ *
+ * A factory because the table keeps two of these — its widths and which
+ * columns are hidden — and the plumbing is the part that would have been
+ * copied.
  */
-let listeners: (() => void)[] = [];
+function persisted(key: string) {
+  let listeners: (() => void)[] = [];
 
-function subscribe(onChange: () => void) {
-  listeners.push(onChange);
-  return () => {
-    listeners = listeners.filter((listener) => listener !== onChange);
+  return {
+    subscribe(onChange: () => void) {
+      listeners.push(onChange);
+      return () => {
+        listeners = listeners.filter((listener) => listener !== onChange);
+      };
+    },
+    read(): string | null {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        // A private window or blocked site data: nothing stored, which is
+        // a valid state — the table obeys for this session and forgets.
+        return null;
+      }
+    },
+    write(value: string | null) {
+      try {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      } catch {
+        // Nothing to remember; the live value still applies.
+      }
+      for (const listener of [...listeners]) listener();
+    },
   };
 }
 
-function read(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch {
-    // A private window or blocked site data: no stored widths, which is a
-    // valid state — the table resizes for this session and forgets.
-    return null;
-  }
-}
-
-function write(value: string | null) {
-  try {
-    if (value === null) localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, value);
-  } catch {
-    // Nothing to remember; the live widths still apply.
-  }
-  for (const listener of [...listeners]) listener();
-}
+/** Per-viewer, per-browser: both of these are preferences, not data. */
+const widthStore = persisted("jimgem:orders-columns");
+const hiddenStore = persisted("jimgem:orders-hidden-columns");
 
 /**
- * Only a complete set counts. A stored map missing a column — because one
- * was added since — would put `undefined` into a `<col>` and let the
- * browser resize that one alone against fourteen pinned neighbours.
+ * Hand the table back to the browser's automatic layout, from anywhere.
+ *
+ * Exported so the columns menu can offer it without the widths themselves
+ * being lifted out of `OrdersTable` and drilled back down: the store
+ * notifies its subscribers, and the table re-renders from that.
+ */
+export function resetColumnWidths() {
+  widthStore.write(null);
+}
+
+/** What a column with no stored width of its own is given. */
+const DEFAULT_WIDTH = 100;
+
+/**
+ * The stored widths, with anything missing filled in.
+ *
+ * A column can legitimately have no stored width: it was hidden when the
+ * table was last sized, or it was added to the code since. Left
+ * `undefined` in a `<col>` under `table-fixed` it would take whatever
+ * space is left over — which is nothing at all once the other fourteen
+ * add up to more than the table — so it gets a plain default instead and
+ * can be dragged from there. Nothing stored at all still means the
+ * automatic layout, which is what `null` says.
  */
 function parse(raw: string | null, ids: readonly string[]): Record<string, number> | null {
   if (!raw) return null;
   try {
     const stored = JSON.parse(raw) as Record<string, unknown>;
-    if (!ids.every((id) => typeof stored[id] === "number")) return null;
-    return Object.fromEntries(ids.map((id) => [id, stored[id] as number]));
+    if (!ids.some((id) => typeof stored[id] === "number")) return null;
+    return Object.fromEntries(
+      ids.map((id) => [id, typeof stored[id] === "number" ? (stored[id] as number) : DEFAULT_WIDTH]),
+    );
   } catch {
     return null;
   }
@@ -80,7 +109,7 @@ function parse(raw: string | null, ids: readonly string[]): Record<string, numbe
  * column width.
  */
 export function useColumnWidths(ids: readonly string[]) {
-  const raw = useSyncExternalStore(subscribe, read, () => null);
+  const raw = useSyncExternalStore(widthStore.subscribe, widthStore.read, () => null);
   const stored = useMemo(() => parse(raw, ids), [raw, ids]);
   /**
    * The live value while a handle is being pulled. Held here rather than
@@ -123,7 +152,21 @@ export function useColumnWidths(ids: readonly string[]) {
         window.removeEventListener("pointerup", onUp);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
-        write(JSON.stringify(latest));
+        /*
+          Merged into whatever is stored rather than replacing it: the
+          table only ever sizes the columns it is *showing*, and a straight
+          replace would drop the widths of any that are hidden — so showing
+          one again would leave `parse` unable to answer for it and drop
+          the whole table back to the automatic layout.
+        */
+        const stored = (() => {
+          try {
+            return JSON.parse(widthStore.read() ?? "{}") as Record<string, number>;
+          } catch {
+            return {};
+          }
+        })();
+        widthStore.write(JSON.stringify({ ...stored, ...latest }));
         setDragging(null);
       };
 
@@ -149,8 +192,46 @@ export function useColumnWidths(ids: readonly string[]) {
    */
   const reset = useCallback(() => {
     setDragging(null);
-    write(null);
+    resetColumnWidths();
   }, []);
 
   return { widths, headRef, startResize, reset };
+}
+
+/**
+ * Which columns the table is not showing.
+ *
+ * Everything is visible by default, so nothing changes for anyone who
+ * never opens the menu — the same rule the widths follow. The stored list
+ * is sanitised against the ids it is asked about, so a column dropped from
+ * the table later cannot linger in storage and quietly hide a new one that
+ * happens to reuse its name.
+ */
+export function useHiddenColumns(ids: readonly string[]) {
+  const raw = useSyncExternalStore(hiddenStore.subscribe, hiddenStore.read, () => null);
+
+  const hidden = useMemo(() => {
+    if (!raw) return new Set<string>();
+    try {
+      const stored = JSON.parse(raw) as unknown;
+      if (!Array.isArray(stored)) return new Set<string>();
+      return new Set(ids.filter((id) => stored.includes(id)));
+    } catch {
+      return new Set<string>();
+    }
+  }, [raw, ids]);
+
+  const toggle = useCallback(
+    (id: string) => {
+      const next = new Set(hidden);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      hiddenStore.write(JSON.stringify([...next]));
+    },
+    [hidden],
+  );
+
+  const showAll = useCallback(() => hiddenStore.write(null), []);
+
+  return { hidden, toggle, showAll };
 }

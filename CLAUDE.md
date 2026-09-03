@@ -326,8 +326,12 @@ Groundwork that is already in (v0.43.0), all of it invisible on a laptop:
   `NumberStepper`'s) are raw inputs that never had the class. `.keeps-size`
   is the opt-out, named for `.keeps-color` beside it, with one user: the
   customer name, the only field deliberately above 16px and so the only one
-  a floor would shrink. The same block gives `.input` a 40px box, since
-  `px-2 py-1` is a target built for a cursor.
+  a floor would shrink. The same block gives `.input` a 40px box — as a
+  **`min-height`**, not padding, which is what it said first and was
+  wrong: being unlayered it overrode every call site's padding, including
+  the fields reserving room for an icon, so the location field's
+  placeholder started underneath its map pin and the header search's
+  underneath the magnifier.
 - **`@media (hover: hover)` guards the hover block.** A touchscreen reports
   a hover on whatever was last tapped and keeps reporting it, so `.hover-line`
   left a row stuck black and `.editable-cell` left a cell stuck lit. The
@@ -1602,6 +1606,23 @@ under every short one; multi-column packs by height instead, and the tab
 ends up as tall as its tallest pane. Each card needs `break-inside-avoid`
 or a list splits across two columns mid-row.
 
+**Which columns are on screen is the owner's** (`ColumnsMenu`), from an
+icon at the right of the toolbar, on the table view only — the board and
+the calendar have no columns. Everything is shown by default, so nothing
+changes for anyone who never opens it. `COLUMNS` is exported from
+`OrdersTable` and is the menu's source, so the list is stated once; the
+**select column is not offered**, being the selection control rather than
+data, which also means the table can never render with nothing in it. The
+state lives in `OrdersClient` because the control does — the table is
+inside a scrolling card with a sticky header and has nowhere to put a
+button that isn't sitting over a column. Hiding one filters the header,
+the `<colgroup>` **and** each row's cell, which is why every `<td>` is
+wrapped in `show("id")`: `visibility: collapse` on a `<col>` would have
+avoided fifteen edits and is not reliably supported. The menu also
+carries **Reset column widths**, reaching them through the module-level
+store rather than having the widths lifted out of the table and drilled
+back down.
+
 **The table's columns are draggable** (`useColumnWidths.ts`), and
 **nothing changes until the first drag**: the browser's automatic layout
 is what fits fifteen columns onto a laptop, so imposing `table-fixed`
@@ -1624,8 +1645,12 @@ first paint right, and nothing on the server has any use for a column
 width. It is read through `useSyncExternalStore` for the reason
 `useMediaQuery` is — the server answers null, the client corrects in the
 same pass, and an effect writing state would paint the default table and
-then snap. A stored map missing any column is ignored whole, or one added
-later would be the single unpinned column among fourteen fixed ones.
+then snap. A column with no stored width — hidden when the table was
+last sized, or added to the code since — is given a plain default rather
+than left `undefined`, which under `table-fixed` hands it whatever space
+is left over, and that is nothing once the others already add up. Widths
+are **merged** into the store rather than replacing it, since the table
+only ever sizes the columns it is showing.
 
 **The table fits a laptop without a horizontal scrollbar from ~1310px
 up**, where it used to need ~1600. Nothing was dropped to get there — the
