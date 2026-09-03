@@ -1602,6 +1602,31 @@ under every short one; multi-column packs by height instead, and the tab
 ends up as tall as its tallest pane. Each card needs `break-inside-avoid`
 or a list splits across two columns mid-row.
 
+**The table's columns are draggable** (`useColumnWidths.ts`), and
+**nothing changes until the first drag**: the browser's automatic layout
+is what fits fifteen columns onto a laptop, so imposing `table-fixed`
+up front would re-size the table for everyone who never touches a handle.
+On the first pointer-down every column is frozen at the width it is
+already showing — measured off the header row, verified to reproduce the
+automatic layout to the pixel — and a `<colgroup>` takes over from there,
+which is why `COLUMNS` exists and why **the body's cells have to stay in
+its order**: a `<col>` matches by position, so a column added to the list
+without its `<td>` would silently re-width every cell after it. The
+handles are 8px strips straddling each right edge, invisible until
+hovered — fifteen permanent hairlines would draw the ledger this layout
+exists not to be. Double-click hands the whole table back to the
+automatic layout, which is the only reset that means anything once a
+column is pinned; `preventDefault()` on the pointer-down does *not* stop
+that (checked in a browser — it suppresses the compatibility mouse events
+but not `dblclick`). Widths live in **`localStorage`**, not a cookie like
+`vatView` and the Expenses panes: those are read on the server to get the
+first paint right, and nothing on the server has any use for a column
+width. It is read through `useSyncExternalStore` for the reason
+`useMediaQuery` is — the server answers null, the client corrects in the
+same pass, and an effect writing state would paint the default table and
+then snap. A stored map missing any column is ignored whole, or one added
+later would be the single unpinned column among fourteen fixed ones.
+
 **The table fits a laptop without a horizontal scrollbar from ~1310px
 up**, where it used to need ~1600. Nothing was dropped to get there — the
 width came from `min-w-[1400px]` (a floor set well above what fifteen

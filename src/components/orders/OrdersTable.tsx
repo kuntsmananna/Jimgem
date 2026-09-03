@@ -24,12 +24,41 @@ import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
 import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
+import { useColumnWidths } from "./useColumnWidths";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
 
 /** Anything the row click must not hijack, because it does its own job. */
 const INTERACTIVE = "button, input, select, textarea, a, label";
+
+/**
+ * The columns, in order, so each one has a name a stored width can be
+ * keyed by (see `useColumnWidths`).
+ *
+ * **The body's cells are written out in this order and have to stay in
+ * it** — a `<colgroup>` matches by position, so a column inserted here
+ * without the matching `<td>` would silently re-width every cell after it.
+ */
+const COLUMNS = [
+  { id: "select", label: "" },
+  { id: "status", label: "Status" },
+  { id: "date", label: "Date" },
+  { id: "customer", label: "Customer" },
+  { id: "type", label: "Type" },
+  { id: "location", label: "Location" },
+  { id: "guests", label: "Guests" },
+  { id: "units", label: "Units" },
+  { id: "mirrors", label: "Mirrors" },
+  { id: "waitress", label: "Waitress" },
+  { id: "kosher", label: "Kosher" },
+  { id: "delivery", label: "Delivery" },
+  { id: "amount", label: "Amount" },
+  { id: "deposit", label: "Deposit" },
+  { id: "payment", label: "Payment" },
+] as const;
+
+const COLUMN_IDS = COLUMNS.map((column) => column.id);
 
 export function OrdersTable({
   orders,
@@ -77,6 +106,9 @@ export function OrdersTable({
     .filter((type) => !type.archivedAt)
     .map((type) => ({ value: type.name, label: type.name }));
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
+  // Desktop-only by construction: the phone renders `OrdersMobileList`
+  // instead and this table is never on screen there.
+  const { widths, headRef, startResize, reset } = useColumnWidths(COLUMN_IDS);
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {
     // Every order is a DB row since the import change, so a single-field
@@ -117,26 +149,54 @@ export function OrdersTable({
         horizontal scrollbar on any laptop under ~1600px wide even though
         the columns fit in far less.
       */}
-      <table className="w-full min-w-[1100px] text-left text-sm">
+      {/*
+        `table-fixed` only once the columns have been sized. Until then the
+        browser's automatic layout is what fits fifteen columns into a
+        laptop, and imposing a fixed one before anybody has asked would
+        change the table for everyone who never touches a handle.
+      */}
+      <table className={`w-full min-w-[1100px] text-left text-sm ${widths ? "table-fixed" : ""}`}>
+        {widths && (
+          <colgroup>
+            {COLUMNS.map(({ id }) => (
+              <col key={id} style={{ width: widths[id] }} />
+            ))}
+          </colgroup>
+        )}
         <thead className="sticky top-0 z-10 bg-card">
-          <tr className="border-b border-line text-[11px] font-semibold text-ink-soft">
-            <th className="w-6 bg-card px-2 py-2">
-              <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
-            </th>
-            <th className="bg-card px-2 py-2">Status</th>
-            <th className="bg-card px-2 py-2">Date</th>
-            <th className="bg-card px-2 py-2">Customer</th>
-            <th className="bg-card px-2 py-2">Type</th>
-            <th className="bg-card px-2 py-2">Location</th>
-            <th className="bg-card px-2 py-2">Guests</th>
-            <th className="bg-card px-2 py-2">Units</th>
-            <th className="bg-card px-2 py-2">Mirrors</th>
-            <th className="bg-card px-2 py-2">Waitress</th>
-            <th className="bg-card px-2 py-2">Kosher</th>
-            <th className="bg-card px-2 py-2">Delivery</th>
-            <th className="bg-card px-2 py-2">Amount</th>
-            <th className="bg-card px-2 py-2">Deposit</th>
-            <th className="bg-card px-2 py-2">Payment</th>
+          <tr ref={headRef} className="border-b border-line text-[11px] font-semibold text-ink-soft">
+            {COLUMNS.map(({ id, label }) => (
+              <th key={id} className={`relative bg-card px-2 py-2 ${!widths && id === "select" ? "w-6" : ""}`}>
+                {id === "select" ? (
+                  <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
+                ) : (
+                  label
+                )}
+                {/*
+                  The grab strip, straddling the column's right edge. It is
+                  invisible until the pointer is on it: fifteen permanent
+                  hairlines would draw the ledger this table's own notes
+                  say it is trying not to be, and the border under the
+                  header row already says where the columns are.
+
+                  Double-click hands the whole table back to the automatic
+                  layout, which is the only "reset" that means anything —
+                  once a column is pinned there is no natural width left
+                  for it to return to on its own.
+                */}
+                <span
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={`Resize the ${label || "select"} column`}
+                  onPointerDown={(event) => startResize(id, event)}
+                  onDoubleClick={reset}
+                  title="Drag to resize · double-click to reset"
+                  className="absolute top-0 right-0 z-10 flex h-full w-2 translate-x-1/2 cursor-col-resize justify-center opacity-0 transition hover:opacity-100"
+                >
+                  <span aria-hidden className="pointer-events-none h-full w-px bg-ink/30" />
+                </span>
+              </th>
+            ))}
           </tr>
         </thead>
         {/*
