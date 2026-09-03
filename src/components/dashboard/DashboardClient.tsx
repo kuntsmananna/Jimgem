@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Banknote, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { Banknote, CalendarRange, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
@@ -10,6 +10,8 @@ import { useVatView } from "@/components/VatViewContext";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
+import { SelectDropdown } from "@/components/orders/Dropdown";
+import { useIsMobile } from "@/components/useMediaQuery";
 
 export interface FlavorLine {
   month: number;
@@ -79,6 +81,22 @@ export function DashboardClient({
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | "all">("all");
   const { label: vatLabel } = useVatView();
+  /*
+   * The orders pane is not built on a phone at all — the owner's call, and
+   * the right one: it is a ~620px fixed row template inside an absolutely
+   * positioned scroller, and the orders it lists have a tab of their own.
+   */
+  const mobile = useIsMobile();
+
+  /** The phone's period chip. `SelectDropdown` is keyed by string, so the
+   *  month number round-trips through one. */
+  const monthOptions = useMemo(
+    () => [
+      { id: "all", label: "All time" },
+      ...financials.map((m) => ({ id: String(m.month), label: m.monthLabel })),
+    ],
+    [financials],
+  );
 
   const scoped = useMemo(() => {
     if (selectedMonth === "all") {
@@ -156,33 +174,58 @@ export function DashboardClient({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setSelectedMonth("all")}
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            selectedMonth === "all" ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
-          }`}
-        >
-          All
-        </button>
-        {financials.map((m) => (
+      <div className="flex items-center gap-2 max-md:flex-wrap">
+        {/* A row of pills is the right control for a period on a laptop and
+            the wrong one on a phone: `financials` carries a month per month
+            with activity, so this is up to twelve of them plus All, in a row
+            that cannot wrap. Both copies are rendered and each hidden at the
+            other's width — the `PageSearch` pattern — rather than branching
+            on `useIsMobile`, which would paint the pills for a frame first. */}
+        <div className="flex items-center gap-2 max-md:hidden">
           <button
-            key={m.month}
-            onClick={() => setSelectedMonth(m.month)}
+            onClick={() => setSelectedMonth("all")}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-              selectedMonth === m.month ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
+              selectedMonth === "all" ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
             }`}
           >
-            {m.monthLabel}
+            All
           </button>
-        ))}
+          {financials.map((m) => (
+            <button
+              key={m.month}
+              onClick={() => setSelectedMonth(m.month)}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                selectedMonth === m.month ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
+              }`}
+            >
+              {m.monthLabel}
+            </button>
+          ))}
+        </div>
+        {/* The same chip the Expenses page wears on a phone, down to the
+            icon: below the breakpoint a `Dropdown` opens as a bottom sheet
+            with 44px rows, so one tab over is not a second set of rules. */}
+        <div className="md:hidden">
+          <SelectDropdown
+            label="When"
+            icon={<CalendarRange size={14} />}
+            options={monthOptions}
+            value={selectedMonth === "all" ? "all" : String(selectedMonth)}
+            onChange={(id) => setSelectedMonth(id === "all" ? "all" : Number(id))}
+            active={selectedMonth !== "all"}
+          />
+        </div>
         {/* Which convention the money is in, at the top right of the page
             rather than on a line of its own above the tiles: it qualifies
             every figure below it, and a full-width row spent on six words
             pushed the tiles down for nothing. */}
         <p className="ml-auto shrink-0 text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      {/* Two across on a phone, not the three-in-a-row the Orders summary
+          uses: there the tiles are a rail beside the list and the list is
+          the subject, while here the figures *are* the page — which is what
+          the owner asked for — so they get the second row of height. */}
+      <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2">
         {KPI_TILES.map(({ metric, label, tile, Icon, format }) => (
           <KpiTile
             key={metric}
@@ -196,7 +239,11 @@ export function DashboardClient({
         ))}
       </div>
 
-      <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6">
+      {/* One column on a phone. Both halves of this are needed together:
+          with the orders pane gone but the template intact, the charts
+          would sit in the 65fr slot with a third of the page empty. */}
+      <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6 max-md:grid-cols-1">
+        {!mobile && (
         <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-ink">
@@ -257,9 +304,10 @@ export function DashboardClient({
           </ul>
           </div>
         </section>
+        )}
 
         <div className="flex min-w-0 flex-col gap-6">
-          <section className="min-w-0 rounded-card border border-line bg-card p-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Revenue &amp; profit trend</h2>
             <div className="mt-4">
               <LineChart
@@ -273,14 +321,14 @@ export function DashboardClient({
             </div>
           </section>
 
-          <section className="min-w-0 rounded-card border border-line bg-card p-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Expense category split</h2>
             <div className="mt-4">
               <DonutChart slices={expenseSlices} />
             </div>
           </section>
 
-          <section className="min-w-0 rounded-card border border-line bg-card p-6">
+          <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Flavor split</h2>
             <div className="mt-4">
               <DonutChart slices={flavorSlices} valueFormat={(v) => `${nf.format(v)} units`} />
@@ -314,7 +362,7 @@ function KpiTile({
   const deltaText = delta === null ? "—" : `${delta > 0 ? "+" : ""}${Math.round(delta)}%`;
 
   return (
-    <div className="rounded-card p-5" style={{ background: `var(--color-tile-${tile})` }}>
+    <div className="rounded-card p-5 max-md:p-4" style={{ background: `var(--color-tile-${tile})` }}>
       <div className="flex items-start justify-between">
         <p className="text-xs font-semibold text-ink/70">{label}</p>
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-cream">

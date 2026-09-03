@@ -129,8 +129,10 @@ desktop class. Where a phone needs a different *tree* rather than a
 different look — the three list pages each render cards instead of rows —
 that is `useIsMobile()`, and the desktop half carries `max-md:hidden` so
 nothing flashes before hydration has an opinion. The pages the phone is
-*for* are **Orders, Expenses and Clients**; Dashboard, Biz Plan and
-Settings are reachable on a phone and deliberately not redesigned for one.
+*for* are **Orders, Expenses and Clients**; **Dashboard and Settings were
+laid out for one afterwards** (v0.55.0, v0.56.0) and are read rather than
+worked there. **Biz Plan is the one page still desktop-only** — reachable
+on a phone, deliberately not redesigned for it.
 
 **The Orders page on a phone is a list of cards**
 (`src/components/orders/OrdersMobileList.tsx`), one per order, under a
@@ -277,6 +279,51 @@ inside the record. The delete is why `ExpenseFormModal` takes an
 own trash is `reveals-on-hover`, and the card deliberately carries no
 20px destructive target. It closes the form before deleting, or the undo
 bar — portalled and fixed — comes up behind the dialog that raised it.
+
+**The Dashboard on a phone is the figures and the charts, and no order
+list.** The pane that lists the period's orders is not *rendered* below the
+breakpoint (`{!mobile && …}`): it is a ~620px fixed row template inside an
+absolutely positioned scroller, and the orders it lists have a whole tab of
+their own — the owner's call, and the one that takes the page's hardest
+piece out of the problem entirely. Dropping it also drops its "View all →",
+which is right: the bottom bar's first target is Orders. The `65fr/35fr`
+split becomes `max-md:grid-cols-1`, and **both halves of that are needed
+together** — with the pane gone but the template intact, the charts would
+sit in the 65fr slot with a third of the page empty.
+
+**The month pills become the same period chip Expenses wears.**
+`financials` carries a month per month with activity, so the row is up to
+twelve pills plus All and cannot wrap; below the breakpoint it is a
+`SelectDropdown`, which already opens as a bottom sheet with 44px rows. Both
+copies are rendered and each hidden at the other's width — the `PageSearch`
+pattern — rather than branching on `useIsMobile()`, which would paint the
+pills for a frame first.
+
+**The KPI tiles go two across, not three in a row**, which is deliberately
+the opposite of the Orders summary: there the tiles are a rail beside the
+list and the list is the subject, while here the figures *are* the page.
+They get the second row of height and keep their 24px value. Measured at
+360px, "₪512,340" is 108px in a 117px content box — it fits with 9px of
+slack, and one more digit would not; the tile's padding is `max-md:p-4` to
+buy that much. The value carries no `truncate` on purpose, because silently
+cutting a digit off money is worse than spilling.
+
+**Both charts stop being pictures on a phone**, and neither fix touches a
+laptop. `DonutChart` stacks (`max-md:flex-col`) so its legend gets the
+card's full width instead of ~166px beside a 140px ring — stacking rather
+than shrinking the ring is also what avoids threading a `size` prop through
+both call sites, that box being an inline `style` no class can reach — and
+**the absolute value joins the legend row** as an always-rendered
+`md:hidden` span. It used to live only in the ring's centre readout, which
+is drawn only while a slice is hovered, so the one figure the chart exists
+to give was unreachable. Rendered rather than tapped for: there is room on
+a stacked legend, and a tap state would be a second way to read the same
+number. `LineChart`'s per-month hit rects gain an `onClick` beside their
+`onMouseEnter`, so a tap reads a month; it changes nothing on a mouse,
+where hovering has already set the same index by the time a click lands,
+and the rects hit-test on touch because they are filled `transparent`
+rather than `none`. Twelve x-labels measure 16px each with a 7px gap at
+360px, so they were left alone.
 
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar

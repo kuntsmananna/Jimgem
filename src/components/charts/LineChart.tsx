@@ -253,7 +253,19 @@ export function LineChart({
             />
           )}
 
-          {/* Invisible hit targets — one per x-index, spanning the full chart height, for hover tooltips on every datapoint. */}
+          {/*
+            Invisible hit targets — one per x-index, spanning the full chart
+            height, for hover tooltips on every datapoint.
+
+            `onClick` beside the hover, so a phone can read a month too:
+            without it every value this chart carries is unreachable on
+            touch, and the line is a picture. It changes nothing on a mouse,
+            where hovering has already set the same index by the time a
+            click lands, and the rects hit-test on touch because they are
+            filled `transparent` rather than `none`. A tapped month then
+            keeps its tooltip until another is tapped, which is what you
+            want without a pointer to move away.
+          */}
           {xLabels.map((label, i) => (
             <rect
               key={label + i}
@@ -263,6 +275,7 @@ export function LineChart({
               height={height}
               fill="transparent"
               onMouseEnter={() => setHoverIndex(i)}
+              onClick={() => setHoverIndex(i)}
             />
           ))}
         </svg>

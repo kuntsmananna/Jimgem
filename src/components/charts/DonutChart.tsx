@@ -76,8 +76,15 @@ export function DonutChart({
   const active = hovered !== null ? arcs[hovered] : null;
 
   return (
-    <div className="flex min-w-0 items-center gap-5">
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
+    /*
+     * Side by side on a laptop; stacked on a phone, where the ring beside a
+     * legend leaves the legend about 166px and every category truncates.
+     * Stacking rather than shrinking the ring is also what avoids threading
+     * a `size` prop down from both call sites — the box below is an inline
+     * `style`, which no class can reach.
+     */
+    <div className="flex min-w-0 items-center gap-5 max-md:flex-col max-md:items-stretch max-md:gap-3">
+      <div className="relative shrink-0 max-md:self-center" style={{ width: size, height: size }}>
         <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} onMouseLeave={() => setHovered(null)}>
           {arcs.map((arc, i) => (
             <path
@@ -120,6 +127,18 @@ export function DonutChart({
             />
             <span className="min-w-0 flex-1 truncate font-medium text-ink" title={slice.label}>
               {slice.label}
+            </span>
+            {/*
+              The value, on a phone only. The centre readout above carries it
+              on a laptop, but that is drawn only while a slice is hovered,
+              and a phone cannot hover — so the one figure the chart exists
+              to give would have been unreachable. Rendered rather than
+              tapped for it: there is room on a stacked legend, and a tap
+              state would be a second way to read the same number. Hidden
+              above the breakpoint, so the desktop legend is untouched.
+            */}
+            <span className="shrink-0 font-semibold text-ink-soft tabular-nums md:hidden">
+              {valueFormat(slice.value)}
             </span>
             <span className="shrink-0 font-semibold text-ink-soft tabular-nums">
               {Math.round((slice.value / total) * 100)}%
