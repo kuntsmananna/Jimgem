@@ -1274,7 +1274,13 @@ compares identity, and a panel builds a fresh draft before every call.
   phone, order count, last order and total follow on a quieter second line,
   and the email, the SUMIT link, their orders and Archive stay inside
   `ClientModal` — whose Name/Phone/Email row stacks there, three fields in
-  a `max-w-lg` dialog being about 95px each at 390px.
+  a `max-w-lg` dialog being about 95px each at 390px. **The card is two
+  targets**: the face opens the client, and a call button takes a 56px
+  column on the right edge behind a hairline — which is why the face is
+  the `<button>` rather than the whole card, an `<a href="tel:">` inside a
+  button being invalid markup. The number is still *edited* by opening the
+  client; `dialable` strips everything but the digits and a leading `+` so
+  a number written the way a person writes it still dials.
 - **The Clients page is the list on the left, everything else in a column
   beside it.** The tiles and the two charts used to sit above the list,
   which started the page's actual subject halfway down a laptop screen and
