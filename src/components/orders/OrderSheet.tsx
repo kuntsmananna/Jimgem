@@ -113,7 +113,11 @@ export function SheetRow({
     <div
       /* 44px on a phone: the row holds a field or a toggle, and 34px is a
          cursor's row. */
-      className={`flex min-h-[34px] items-center justify-between gap-4 max-md:min-h-11 max-md:gap-3 ${
+      /* `sheet-row` carries no styling of its own: it is the hook the
+         money rail's own rule reaches for, so that pane can run a step
+         larger on a phone without every panel row growing with it. See
+         `.money-rail` in globals.css. */
+      className={`sheet-row flex min-h-[34px] items-center justify-between gap-4 max-md:min-h-11 max-md:gap-3 ${
         total ? "mt-1.5 border-t-[1.5px] border-current pt-2.5" : "py-1"
       }`}
     >
@@ -127,7 +131,7 @@ export function SheetRow({
         /* 14px and less dimmed on a phone. At 12.5px and 70% these read as
            annotations on the controls beside them rather than as the name
            of what is being set. */
-        className={total ? "text-xs font-bold max-md:text-sm" : "text-[12.5px] opacity-70 max-md:text-sm max-md:opacity-80"}
+        className={`sheet-row-label ${total ? "text-xs font-bold max-md:text-sm" : "text-[12.5px] opacity-70 max-md:text-sm max-md:opacity-80"}`}
       >
         {label}
       </span>

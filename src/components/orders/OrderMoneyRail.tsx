@@ -137,13 +137,13 @@ export function OrderMoneyRail({
           className="flex items-center gap-2 rounded-t-2xl px-4 py-3.5 text-left transition hover:bg-cream/10"
         >
           <UnitsIcon size={20} className="shrink-0 text-cream/60" />
-          <span className="font-display text-[26px] leading-none font-extrabold tabular-nums text-cream">
+          <span className="font-display text-[26px] leading-none font-extrabold tabular-nums text-cream max-md:text-[30px]">
             {nf.format(totalUnits)}
           </span>
           {/* As big as the number and no heavier: the count is the figure,
               but "units" at 11px beside a 26px number read as a footnote
               on it rather than as part of the same phrase. */}
-          <span className="text-[26px] leading-none font-normal text-cream/55">units</span>
+          <span className="text-[26px] leading-none font-normal text-cream/55 max-md:text-[30px]">units</span>
           <span className="flex-1" />
           <Coverage
             totalUnits={totalUnits}
@@ -218,7 +218,7 @@ export function OrderMoneyRail({
                   type="button"
                   title={mode.hint}
                   onClick={() => set({ vatMode: mode.id })}
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold transition max-md:px-3 max-md:py-1.5 max-md:text-xs ${
                     draft.vatMode === mode.id
                       ? "border-cream bg-cream text-ink"
                       : "border-cream/25 text-cream/60 hover:border-cream/50"
@@ -231,7 +231,7 @@ export function OrderMoneyRail({
           </SheetRow>
 
           <SheetRow label="Total">
-            <span className="pr-2 text-sm font-bold tabular-nums text-cream">{money(total)}</span>
+            <span className="pr-2 text-sm font-bold tabular-nums text-cream max-md:text-base">{money(total)}</span>
           </SheetRow>
           {/* Only when there is VAT to state. On an exempt order the row
               would be a zero nobody needs, and this rail is short on room. */}
@@ -239,7 +239,7 @@ export function OrderMoneyRail({
             <SheetRow
               label={draft.vatMode === "added" ? `incl. VAT ${draft.vatRate}%` : `of which VAT ${draft.vatRate}%`}
             >
-              <span className="pr-2 text-xs font-semibold tabular-nums text-cream/60">{money(vat)}</span>
+              <span className="pr-2 text-xs font-semibold tabular-nums text-cream/60 max-md:text-sm">{money(vat)}</span>
             </SheetRow>
           )}
 
@@ -256,7 +256,7 @@ export function OrderMoneyRail({
               <button
                 type="button"
                 onClick={() => setDepositOpen(true)}
-                className="rounded-md text-[12.5px] underline decoration-cream/30 underline-offset-4 opacity-70 transition hover:opacity-100"
+                className="rounded-md text-[12.5px] underline decoration-cream/30 underline-offset-4 opacity-70 transition hover:opacity-100 max-md:text-sm"
               >
                 Add deposit
               </button>
@@ -264,7 +264,7 @@ export function OrderMoneyRail({
           )}
 
           <SheetRow label={balance < 0 ? "Overpaid by" : "Balance due"} total>
-            <span className="font-display text-[21px] leading-none font-extrabold tabular-nums text-cream">
+            <span className="font-display text-[21px] leading-none font-extrabold tabular-nums text-cream max-md:text-2xl">
               {money(Math.abs(balance))}
             </span>
           </SheetRow>
@@ -320,7 +320,9 @@ function Coverage({
   overAssignedUnits: number;
 }) {
   if (totalUnits === 0) {
-    return <span className="keeps-color text-[11px] font-semibold text-cream/50">nothing packed</span>;
+    return (
+      <span className="keeps-color text-[11px] font-semibold text-cream/50 max-md:text-xs">nothing packed</span>
+    );
   }
   // Both say "and you can still save" rather than reading as a blocker:
   // orders are routinely booked before anyone has decided the mix, and
@@ -330,7 +332,7 @@ function Coverage({
     return (
       <span
         title={`${nf.format(overAssignedUnits)} more units are assigned to flavours than the packaging holds. You can still save and come back to it.`}
-        className="keeps-color text-[11px] font-bold text-amber-300"
+        className="keeps-color text-[11px] font-bold text-amber-300 max-md:text-xs"
       >
         {nf.format(overAssignedUnits)} over
       </span>
@@ -340,11 +342,11 @@ function Coverage({
     return (
       <span
         title={`${nf.format(unassignedUnits)} units still need a flavour. You can still save and come back to it.`}
-        className="keeps-color text-[11px] font-bold text-amber-300"
+        className="keeps-color text-[11px] font-bold text-amber-300 max-md:text-xs"
       >
         {nf.format(unassignedUnits)} unflavoured
       </span>
     );
   }
-  return <span className="keeps-color text-[11px] font-bold text-lime-300">balanced</span>;
+  return <span className="keeps-color text-[11px] font-bold text-lime-300 max-md:text-xs">balanced</span>;
 }

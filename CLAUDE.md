@@ -232,7 +232,28 @@ that cannot give, which in a 343px panel simply ran off the right edge.
 `max-md:flex-wrap` is the only thing a row of unshrinkable parts can do,
 and each row's `flex-1` spacer is hidden there: once the row wraps, a
 spacer right-aligns whatever follows it against a line it no longer
-shares.
+shares. **The trash then leaves the flow entirely** (`CORNER`): a wrapping
+row cannot hold one child on the first line, so a delete control landed on
+whichever line it fell on, which for a destructive button is how a
+mis-press happens. All three rows pin it to their top-right corner and
+reserve the space with `pr`.
+
+**Event mode's total wears a box on a phone.** `.input` drops a filled
+field to bare text — right on a laptop, where a sheet of values reads as
+prose — but beside Package mode's boxed count that number read as a label
+rather than as something to type in. It takes `NumberStepper`'s own
+treatment below the breakpoint, including the accent focus border, since a
+utility border beats `.input:focus`'s.
+
+**The money rail runs a step larger there than the panels** — 15px labels
+in 48px rows. On a laptop it is a column beside them and shares their
+scale; on a phone it is a sheet of its own, opened deliberately and read
+at a glance. `SheetRow` is shared with the three panels and cannot say
+that itself, so the surface says it: `.money-rail .sheet-row-label` in
+`globals.css`, reaching two class hooks that carry no styling of their
+own. It is the same move `.money-rail` already makes for tone, and it sits
+outside every layer because the label carries a `max-md:text-sm` utility
+that would otherwise win.
 
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar

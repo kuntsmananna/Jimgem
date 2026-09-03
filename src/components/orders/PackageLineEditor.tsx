@@ -23,6 +23,19 @@ import { Segmented } from "./OrderSheet";
 import { usePopoverDismiss } from "@/components/useOverlayDismiss";
 import { TrayPreview } from "./TrayPreview";
 
+/**
+ * Where a package row's trash sits on a phone: the card's top-right
+ * corner, level with the row's first control.
+ *
+ * Absolute rather than reordered, because these rows wrap below the
+ * breakpoint (see the flex-wrap notes on each) and a wrapping row has no
+ * way to hold one child on the first line — so the delete control landed
+ * on whichever line it fell on, which for a destructive button is how a
+ * mis-press happens. Each row reserves the space with `pr`, so nothing
+ * slides underneath it.
+ */
+const CORNER = "max-md:absolute max-md:top-1.5 max-md:right-1.5 max-md:h-9 max-md:w-9";
+
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 /**
@@ -605,7 +618,7 @@ function LineCard({
          buttons — which is 450px of content that cannot give, and in a
          343px panel it simply ran off the right. Wrapping is the only
          thing a row of unshrinkable parts can do. */
-      <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 max-md:flex-wrap max-md:gap-y-2">
+      <div className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 max-md:relative max-md:flex-wrap max-md:gap-y-2 max-md:pr-11">
         {/*
           The line's title, and drawn like one. It was an 11px lavender
           pill — shorter than the stepper beside it and in a colour that
@@ -655,7 +668,8 @@ function LineCard({
           onClick={onRemove}
           aria-label={`Remove ${preset.name}`}
           title="Remove this package"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white max-md:h-9 max-md:w-9"
+          /* Pinned to the row's top-right corner on a phone — see CORNER. */
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white ${CORNER}`}
         >
           <Trash2 size={13} />
         </button>
@@ -668,7 +682,7 @@ function LineCard({
       // A div, not a button: the row opens on click but carries a delete
       // control, and a button inside a button is invalid and swallows the
       // inner click in some browsers.
-      <div className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left max-md:gap-2">
+      <div className="hover-line flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2 text-left max-md:relative max-md:gap-2 max-md:pr-11">
         <button
           type="button"
           onClick={onToggleFold}
@@ -698,7 +712,7 @@ function LineCard({
           onClick={onRemove}
           aria-label={`Remove ${packageLineLabel(line, unitsPerPackage, packageType?.name ?? "package")}`}
           title="Remove this package"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white"
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white ${CORNER}`}
         >
           <Trash2 size={13} />
         </button>
@@ -707,8 +721,8 @@ function LineCard({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-card px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="rounded-2xl border border-line bg-card px-3 py-2.5 max-md:relative">
+      <div className="flex flex-wrap items-center gap-2 max-md:pr-10">
         <button
           type="button"
           onClick={onToggleFold}
@@ -781,7 +795,15 @@ function LineCard({
                 const units = Math.max(1, Number(e.target.value) || 1);
                 resize({ quantity: units }, units);
               }}
-              className="w-28 text-center font-semibold tabular-nums"
+              /*
+                A box below the breakpoint. `.input` drops a filled field
+                to bare text, which on a laptop is the point — a sheet of
+                values reads as prose — but on a phone this number sat
+                beside Package mode's boxed count looking like a label
+                rather than something to type in. The treatment is
+                `NumberStepper`'s own, so the two modes match.
+              */
+              className="w-28 text-center font-semibold tabular-nums max-md:rounded-lg max-md:border-line max-md:bg-cream max-md:focus:border-accent"
             />
             <span className="text-xs text-ink-soft">units in total</span>
           </label>
@@ -845,7 +867,7 @@ function LineCard({
           aria-label="Remove this package"
           title="Remove this package"
           onClick={onRemove}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white max-md:h-9 max-md:w-9"
+          className={`flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-600 hover:text-white ${CORNER}`}
         >
           <Trash2 size={14} />
         </button>

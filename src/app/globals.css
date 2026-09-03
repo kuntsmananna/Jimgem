@@ -345,6 +345,29 @@ body {
 }
 
 /*
+ * The money rail runs a step larger than the panels on a phone.
+ *
+ * On a laptop it is a 20rem column beside them and shares their scale. On
+ * a phone it is a sheet of its own, opened deliberately from the money
+ * bar and read at a glance — the one pane with the whole width to itself
+ * — so its rows carry the size that buys. `SheetRow` is shared with the
+ * three panels and cannot say this itself; the surface says it instead,
+ * which is the same thing `.money-rail` already does for tone.
+ *
+ * Unlayered, like everything else in this region: the label carries a
+ * `max-md:text-sm` utility that would otherwise win.
+ */
+@media (max-width: 767px) {
+  .money-rail .sheet-row-label {
+    font-size: 0.9375rem;
+  }
+
+  .money-rail .sheet-row {
+    min-height: 3rem;
+  }
+}
+
+/*
  * Prominent line hover, shared by every list of lines in the app: the
  * hovered one goes solid black with light text, so it separates from its
  * neighbours instead of being a slightly different shade of them.
