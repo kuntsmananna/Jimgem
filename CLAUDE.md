@@ -1257,6 +1257,24 @@ compares identity, and a panel builds a fresh draft before every call.
   a 46px target instead of a 26px one. It also states 16px itself, which
   was the local workaround for the layered-rule bug described above and is
   now belt and braces.
+- **Clients on a phone is the list and nothing else.** The tiles and both
+  charts are not *rendered* below the breakpoint, not hidden: unlike the
+  Orders summary, which describes the filtered list and moves as you narrow
+  it, those four figures describe the whole client base and do not change
+  with the search or the sort — static numbers above a list you came to
+  search are the very problem the column layout was introduced to fix.
+  `PaneHeader` is desktop-only there too: its band pulls itself out by the
+  24px of padding the section no longer has, so it would bleed off both
+  edges. In its place a plain row carries the count and the sort track,
+  **without its icons** — they cost 57px of a 328px row, which is the
+  difference between fitting on one line at 360px and not, and a segmented
+  pill says "pick one" on its own. Each client is a card
+  (`ClientsMobileList`) with the name leading and **what they owe as the
+  only figure on that line**, since it is the one thing that acts; the
+  phone, order count, last order and total follow on a quieter second line,
+  and the email, the SUMIT link, their orders and Archive stay inside
+  `ClientModal` — whose Name/Phone/Email row stacks there, three fields in
+  a `max-w-lg` dialog being about 95px each at 390px.
 - **The Clients page is the list on the left, everything else in a column
   beside it.** The tiles and the two charts used to sit above the list,
   which started the page's actual subject halfway down a laptop screen and

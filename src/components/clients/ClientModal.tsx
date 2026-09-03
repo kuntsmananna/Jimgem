@@ -101,7 +101,10 @@ export function ClientModal({
     // on top of an order form, and both are a band with a name on it.
     <Modal title={client.name} icon={<UserRound size={17} />} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-3 gap-3">
+        {/* Stacked on a phone: three of these inside a `max-w-lg` dialog
+            is about 95px each at 390, which will not hold a phone number
+            at the 16px every field is there. */}
+        <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
           <Field label="Name">
             <TextInput value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>

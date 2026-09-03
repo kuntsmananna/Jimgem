@@ -14,6 +14,8 @@ import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useVatView } from "@/components/VatViewContext";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { count, currency } from "@/lib/money";
+import { useIsMobile } from "@/components/useMediaQuery";
+import { ClientsMobileList } from "./ClientsMobileList";
 
 /** A SUMIT document, flattened for this page. */
 export interface ClientDocumentLine {
@@ -166,9 +168,58 @@ export function ClientsClient({
 
   const open = openId === null ? null : (clients.find((client) => client.id === openId) ?? null);
 
+  /*
+    On a phone the page is the list and nothing else. The tiles and the two
+    charts are not *rendered* rather than hidden: unlike the Orders
+    summary, which describes the filtered list and moves as you narrow it,
+    these four describe the whole client base and do not change with the
+    search or the sort — static figures above a list you came to search are
+    the "the page's subject starts halfway down" problem this column layout
+    was introduced to fix.
+  */
+  const mobile = useIsMobile();
+
+  /** What a client still owes across their booked orders. */
+  const balanceOf = (client: ClientWithStats) =>
+    (ordersByClient.get(client.id) ?? []).reduce((sum, line) => sum + Math.max(0, line.balance), 0);
+
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)] gap-6">
-      <section className="min-w-0 rounded-card border border-line bg-card p-6">
+    <div className="grid min-w-0 grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)] gap-6 max-md:grid-cols-1">
+      {/* No card on a phone: the client cards are the content, and a card
+          of cards is one border too many — the same call Expenses makes. */}
+      <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:border-0 max-md:bg-transparent max-md:p-0">
+        {/*
+          The phone's toolbar. `PaneHeader` is desktop-only here: its band
+          pulls itself out by the 24px of padding this section no longer
+          has below the breakpoint, so it would bleed off both edges. The
+          count and the sort track are what it was carrying that a phone
+          still needs — search is up in the header (see `PageSearch`).
+        */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 md:hidden">
+          {/* The count alone: the bottom bar already says which page this
+              is, so repeating "Clients" spends width on a word that is on
+              screen twice. */}
+          <span className="font-display text-base font-bold text-ink">
+            {count(shown.length)} <span className="font-normal opacity-60">clients</span>
+          </span>
+          {/*
+            Without the icons here. They earn their place on a laptop,
+            where the track sits inside a band among other controls and
+            three bare words say what they sort by but not *that* they
+            sort — but they cost 57px of a 328px row, which is the
+            difference between this fitting on one line at 360px and not.
+            The pill shape says "pick one" on its own.
+          */}
+          <Segmented
+            label="Sort clients"
+            value={sort}
+            options={SORTS.map((option) => ({ value: option.value, text: option.text }))}
+            onChange={setSort}
+            size="md"
+          />
+        </div>
+
+        <div className="max-md:hidden">
         <PaneHeader
           title={
             <>
@@ -188,7 +239,20 @@ export function ClientsClient({
             </div>
           }
         />
+        </div>
 
+        {mobile ? (
+          <div className="mt-3">
+            <ClientsMobileList
+              clients={shown}
+              balanceOf={balanceOf}
+              onOpen={setOpenId}
+              emptyNote={
+                query ? "Nobody matches that." : "No clients yet — they appear as orders are booked."
+              }
+            />
+          </div>
+        ) : (
         <div className="flex flex-col">
           {/* Titles, at the quietest weight the app has: they name the
               columns without competing with the rows they head. */}
@@ -203,8 +267,7 @@ export function ClientsClient({
             <span title={COLUMN_HELP.due}>Due</span>
           </div>
           {shown.map((client) => {
-            const theirs = ordersByClient.get(client.id) ?? [];
-            const balance = theirs.reduce((sum, line) => sum + Math.max(0, line.balance), 0);
+            const balance = balanceOf(client);
             return (
               <button
                 key={client.id}
@@ -241,11 +304,13 @@ export function ClientsClient({
             </p>
           )}
         </div>
+        )}
       </section>
 
       {/* Everything that describes the list rather than being it. The
           convention the money is in leads, because every figure under it
           depends on which one is set. */}
+      {!mobile && (
       <div className="flex min-w-0 flex-col gap-4">
         <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
 
@@ -321,6 +386,7 @@ export function ClientsClient({
           </ul>
         </section>
       </div>
+      )}
 
       {open && (
         <ClientModal
