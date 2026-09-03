@@ -167,9 +167,15 @@ export function PresetsPanel({
 
       {/* Four across, not three: a card is only as wide as its name, its
           package chip and a tray preview capped at MAX_CUBE per column, so
-          a third of the page left most of each one empty. */}
+          a third of the page left most of each one empty.
+
+          Two across on a phone. At four a card is ~72px holding all three,
+          which draws the tray's cubes about four pixels each — a smudge
+          rather than the recipe the card exists to show. The open editor's
+          `col-span-2` then spans the full width, which is what it wants
+          there anyway. */}
       {presets.length > 0 && (
-        <div className="mt-4 grid grid-cols-4 gap-3">
+        <div className="mt-4 grid grid-cols-4 gap-3 max-md:grid-cols-2">
           {presets.map((preset) =>
             editing === preset.id && draft ? (
               <div key={preset.id} className="col-span-2">
@@ -243,7 +249,7 @@ const PresetCard = memo(function PresetCard({
         <button
           onClick={onEdit}
           aria-label={`Edit ${preset.name}`}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink-soft transition hover:bg-black hover:text-cream"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink-soft transition hover:bg-black hover:text-cream max-md:h-9 max-md:w-9"
         >
           <Pencil size={13} />
         </button>
@@ -312,7 +318,7 @@ function PresetEditor({
           placeholder="Preset name"
           value={draft.name}
           onChange={(e) => onChange({ ...draft, name: e.target.value })}
-          className="w-44 rounded-lg border border-line bg-card px-2 py-1 text-sm font-semibold text-ink outline-none focus:border-accent"
+          className="w-44 rounded-lg border border-line bg-card px-2 py-1 text-sm max-md:py-2 font-semibold text-ink outline-none focus:border-accent"
         />
         <select
           aria-label="Package type"
@@ -359,7 +365,11 @@ function PresetEditor({
 
       {/* Flavours left, tray right — the same split as the order form's
           Content tab, so the two read as one editor in two places. */}
-      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+      {/* The flavour list above its preview on a phone, not beside it:
+              `FlavorRow`'s own `max-md:` variants make its trailing fixed
+              columns ~112px, so in a half-width column the flavour's name
+              gets nothing. */}
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 max-md:grid-cols-1">
         <div className="flex flex-col">
           {flavors
             .filter((f) => !f.archivedAt || draft.flavors.some((e) => e.flavorId === String(f.id)))

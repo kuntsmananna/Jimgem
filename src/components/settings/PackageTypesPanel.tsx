@@ -57,13 +57,13 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
               <>
                 <input
                   autoFocus
-                  className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+                  className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
                   value={editDraft.name}
                   onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
                 />
                 <input
                   type="number"
-                  className="w-20 rounded-lg border border-line px-2 py-1 text-sm"
+                  className="w-20 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
                   value={editDraft.unitsPerPackage}
                   onChange={(e) => setEditDraft({ ...editDraft, unitsPerPackage: e.target.value })}
                 />
@@ -77,7 +77,7 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
               </>
             ) : (
               <button
-                className="hover-line flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
+                className="hover-line taps-to-edit flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
                 onClick={() => {
                   setEditing(item.id);
                   setEditDraft({ name: item.name, unitsPerPackage: String(item.unitsPerPackage) });
@@ -98,18 +98,22 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
       </ul>
 
       {adding && (
+        /* `min-w-0` on the name field is not a phone fix: a `flex-1` input
+           without it takes its intrinsic width as a floor and pushes the row
+           wider than its container. True on a laptop too — the other panels'
+           name fields already carry it, and these two were the outliers. */
         <div className="mt-3 flex gap-2">
           <input
             autoFocus
             placeholder="Name"
-            className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
           <input
             type="number"
             placeholder="Units"
-            className="w-20 rounded-lg border border-line px-2 py-1 text-sm"
+            className="w-20 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
             value={draft.unitsPerPackage}
             onChange={(e) => setDraft({ ...draft, unitsPerPackage: e.target.value })}
           />

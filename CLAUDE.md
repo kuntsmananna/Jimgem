@@ -325,6 +325,76 @@ and the rects hit-test on touch because they are filled `transparent`
 rather than `none`. Twelve x-labels measure 16px each with a 7px gap at
 360px, so they were left alone.
 
+**Settings on a phone is the two tabs the owner actually reaches for** —
+Lists, and Flavors with its presets. Team and Data are not phone work and
+are deliberately not redesigned; they get the one structural class that
+keeps them from being broken, and a free share of the touch pass below.
+
+**The panes stay at `p-6` below the breakpoint, which is the decision the
+rest of the tab rests on.** `BAND_CLASS` pulls itself out by exactly that
+padding (`-mx-6 -mt-6 … px-6`), so dropping to `p-4` would bleed every
+band 8px past both edges — the bug Stage 3 hit on `Modal`, which needed a
+whole `phoneBand` string to undo — and it would buy 16px. It is not worth
+it, because **these panes were already designed at phone width**:
+`columns-3` gives a Lists pane ~357px of content on a 1310px laptop, and
+at `p-6` a phone pane measures 308px at 390 and 278 at 360. `RateList`'s
+own comment ties its amount column to "a column that is a third of the
+tab" — the same order of width. So the band is not touched at all, and
+`max-md:columns-1` on the Lists and Data containers is most of the work.
+
+**The tab strip drops its icons, not its labels.** Four tabs of icon plus
+label are ~360px in a strip that can neither wrap nor scroll; the labels
+alone are 280px, which holds down to 320. The same trade the Clients sort
+track made — a segmented pill track says "pick one" without them. A
+`display: none` child is not a flex item, so the gap closes with it.
+
+**The touch pass is spent through the two shared strings first.**
+`PANE_ACTION_CLASS` and `ArchiveButton` are worn by every pane, so one
+`max-md:` edit apiece takes the header action from 24px to 36 and the
+archive from 21 to 33 across Flavors, Lists, Team and Data together. Only
+then the pieces the two tabs depend on: `RateList`'s amount, the flavour
+card's Edit and Archive — bare text with no box at all, and the only way
+to reach either — the preset card's edit button and the 28px icon-picker
+cells. `ArchiveButton`'s *visibility* on touch was already handled by
+`.reveals-on-hover`; only its size was wrong.
+
+**Settings' fields are bare `<input>`s, not `.input`, and that asymmetry
+is a trap.** The unlayered phone rules in `globals.css` size every
+`input`/`textarea`/`select` to 16px but give the 40px height floor to the
+`.input` *class* — which Settings never uses — so its fields get the font
+bump and no target, and each states its own `max-md:py-2`. Worse:
+`RateList` shows an amount as a **`<button>`** and edits it as an
+**`<input>`**, both in a fixed `w-16`. The rule matches one and not the
+other, so the number grew from 14px to 16px the moment it was tapped,
+inside a box that could not hold it. `max-md:text-base` on the button is
+what makes the two modes agree; both also go to `w-20` for the wider
+glyphs. Measured: 16px and 80px on both sides, 14px and 64px on a laptop.
+
+**A row that edits when tapped says so through `.taps-to-edit`**, a named
+opt-in in the idiom of `.keeps-color` and `.keeps-size`, with one
+unlayered `@media (hover: none)` rule behind it. Those four rows carry
+`.hover-line` and nothing else, and that block is inside
+`@media (hover: hover)`, so on a phone there was no signal at all that a
+stage or a payment method could be renamed. The tempting fix —
+`button.hover-line, a.hover-line`, keying on the element being
+interactive — looks like precisely the right distinction and is wrong:
+checked against all twenty call sites, it would also catch the package
+line rows, the client picker's suggestions and the money rail's deposit
+button, every one of them on screen inside the order form on a phone.
+
+`PresetsPanel` goes two cards across (`max-md:grid-cols-2`) — at four a
+card is ~72px and `TrayPreview`'s cubes come out about four pixels, a
+smudge rather than the recipe the card exists to show — and its editor's
+list-beside-preview split stacks, since `FlavorRow`'s own `max-md:`
+variants make its trailing fixed columns ~112px and leave a half-width
+column nothing for the flavour name. The flavour cards themselves needed
+nothing: `ScrollStrip` already swipes.
+
+One fix here is not a phone fix at all. `PackageTypesPanel`'s name fields
+were `flex-1` with **no `min-w-0`**, so they took their intrinsic width as
+a floor and could push the row wider than its container — true on a
+laptop too, and the other panels' name fields already carried it.
+
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar
 dropdown**. `Modal` beside it is a centred dialog, which is right for a

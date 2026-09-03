@@ -57,7 +57,14 @@ export function PaneHeader({
  * re-lighting the band re-lights its button with it.
  */
 export const PANE_ACTION_CLASS =
-  "rounded-full bg-band-ink px-3 py-1 text-xs font-semibold text-band transition hover:bg-band-ink/85";
+  /*
+   * `px-3 py-1` on 12px text is a 24px pill — a cursor's target. Every
+   * pane's one action wears this string, so the phone's size is stated
+   * here once and Flavors, Lists, Team and Data all get it together;
+   * that leverage is why this is the first thing the mobile pass touched.
+   */
+  "rounded-full bg-band-ink px-3 py-1 text-xs font-semibold text-band transition hover:bg-band-ink/85 " +
+  "max-md:min-h-9 max-md:px-4 max-md:text-sm";
 
 /**
  * "This pane's table isn't there yet — run that migration."
@@ -71,7 +78,7 @@ export const PANE_ACTION_CLASS =
 export function MigrationNeeded({ script }: { script: string }) {
   return (
     <p className="mt-3 rounded-lg bg-tile-peach px-3 py-2 text-xs font-semibold text-ink" role="status">
-      Not recording yet — run <code className="font-mono">{script}</code> against the database.
+      Not recording yet — run <code className="font-mono break-all">{script}</code> against the database.
     </p>
   );
 }

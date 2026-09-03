@@ -82,7 +82,7 @@ export function BackupPanel({ snapshots, available }: Snapshots) {
           </p>
           <ul className="divide-y divide-line/60">
             {snapshots.map((snapshot) => (
-              <li key={snapshot.id} className="hover-line flex items-center gap-3 rounded-lg px-2 py-1.5 text-xs">
+              <li key={snapshot.id} className="hover-line flex items-center gap-3 rounded-lg px-2 py-1.5 text-xs max-md:flex-wrap max-md:gap-x-2">
                 <CalendarClock size={13} className="shrink-0 text-ink-soft" />
                 <span className="font-semibold">{whenText(snapshot.takenAt)}</span>
                 {snapshot.kind === "manual" && (

@@ -81,7 +81,7 @@ export function PricedOptionsPanel({
           <input
             autoFocus
             placeholder="Name"
-            className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />

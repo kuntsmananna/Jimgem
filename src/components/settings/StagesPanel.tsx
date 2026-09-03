@@ -83,7 +83,7 @@ export function StagesPanel({ items }: { items: ProductionStage[] }) {
             ) : (
               <>
                 <button
-                  className="hover-line flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
+                  className="hover-line taps-to-edit flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
                   onClick={() => {
                     setEditing(item.id);
                     setDraft({
@@ -143,7 +143,7 @@ function StageEditor({
         <input
           autoFocus
           placeholder="Status name"
-          className="min-w-0 flex-1 rounded-lg border border-line bg-card px-2 py-1 text-sm outline-none focus:border-accent"
+          className="min-w-0 flex-1 rounded-lg border border-line bg-card px-2 py-1 text-sm max-md:py-2 outline-none focus:border-accent"
           value={draft.label}
           onChange={(e) => onChange({ ...draft, label: e.target.value })}
         />

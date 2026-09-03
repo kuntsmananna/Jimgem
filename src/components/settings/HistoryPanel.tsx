@@ -46,7 +46,7 @@ export function HistoryPanel({ history }: { history: History }) {
       {history.changes.length > 0 && (
         <ul className="mt-3 divide-y divide-line/60">
           {history.changes.map((change) => (
-            <li key={change.id} className="hover-line flex items-baseline gap-2 rounded-lg px-2 py-1.5 text-xs">
+            <li key={change.id} className="hover-line flex items-baseline gap-2 rounded-lg px-2 py-1.5 text-xs max-md:flex-wrap">
               <span className="shrink-0 self-center text-ink-soft">{ACTION_ICON[change.action]}</span>
               <span className="font-semibold whitespace-nowrap">{change.subject}</span>
               <span className="min-w-0 flex-1 truncate text-ink-soft">{summarise(change)}</span>

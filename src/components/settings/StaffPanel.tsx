@@ -51,7 +51,7 @@ export function StaffPanel({ items }: { items: StaffAccount[] }) {
                 <div className="flex flex-1 items-center gap-2">
                   <input
                     autoFocus
-                    className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+                    className="flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
                     value={nameDraft}
                     onChange={(e) => setNameDraft(e.target.value)}
                   />
@@ -78,12 +78,12 @@ export function StaffPanel({ items }: { items: StaffAccount[] }) {
             </div>
 
             {resetting === staff.id ? (
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2 max-md:flex-wrap">
                 <input
                   type="text"
                   placeholder="New password (8+ chars)"
                   autoFocus
-                  className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+                  className="flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />

@@ -41,7 +41,16 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
               id === active.id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
             }`}
           >
-            {icon}
+            {/*
+              The icon goes below the breakpoint. Four tabs of icon + label
+              are ~410px and this strip can neither wrap nor scroll, so at
+              360 it simply overflowed; the labels alone are ~286px and hold
+              down to 320. The same trade the Clients sort track made — a
+              segmented pill track says "pick one" without them. A
+              `display: none` child is not a flex item, so the `gap-1.5`
+              closes up with it.
+            */}
+            <span className="max-md:hidden">{icon}</span>
             {label}
           </button>
         ))}

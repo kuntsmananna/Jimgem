@@ -58,7 +58,8 @@ export function RateList({ rows }: { rows: Rate[] }) {
               type="number"
               min={0}
               aria-label={`${row.label} price`}
-              className="w-16 shrink-0 rounded-lg border border-line px-1.5 py-0.5 text-right text-sm tabular-nums"
+              /* See the button below: these two have to agree on a phone. */
+              className="w-16 shrink-0 rounded-lg border border-line px-1.5 py-0.5 text-right text-sm tabular-nums max-md:w-20 max-md:py-2"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={() => commit(row)}
@@ -73,7 +74,16 @@ export function RateList({ rows }: { rows: Rate[] }) {
             <button
               disabled={busy}
               aria-label={`Edit ${row.label} price`}
-              className="w-16 shrink-0 rounded-lg px-1.5 py-0.5 text-right font-semibold tabular-nums text-ink hover:bg-black/[0.05] disabled:opacity-50"
+              /*
+               * `max-md:text-base` is not decoration. An amount is shown by
+               * this button and edited by the input above, and the unlayered
+               * phone rule in globals.css sizes every `input` to 16px while
+               * leaving a `button` at the inherited 14px — so without this
+               * the number visibly grew the moment it was tapped, inside a
+               * fixed-width box. The two widths and paddings match for the
+               * same reason.
+               */
+              className="w-16 shrink-0 rounded-lg px-1.5 py-0.5 text-right font-semibold tabular-nums text-ink hover:bg-black/[0.05] disabled:opacity-50 max-md:w-20 max-md:py-2 max-md:text-base"
               onClick={() => {
                 setEditing(row.id);
                 setDraft(String(row.amount ?? 0));

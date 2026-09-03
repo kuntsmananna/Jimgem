@@ -109,7 +109,7 @@ export function SumitSyncPanel({
           </p>
         ) : (
         <>
-        <div className="flex items-baseline justify-between text-xs">
+        <div className="flex items-baseline justify-between text-xs max-md:flex-wrap max-md:gap-x-2">
           <span className="font-semibold text-ink">
             {usage.used} of {usage.budget} calls this month
           </span>

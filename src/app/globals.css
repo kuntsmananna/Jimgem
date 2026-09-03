@@ -414,6 +414,31 @@ body {
   }
 }
 
+/*
+ * A Settings list row that edits when you tap it says so where there is no
+ * hover. Those rows carry `.hover-line` and nothing else, and that whole
+ * block sits inside `@media (hover: hover)` — so on a phone the only signal
+ * that a stage, an order type, a package type or a payment method can be
+ * renamed was absent entirely.
+ *
+ * A named opt-in, in the idiom of `.keeps-color` and `.keeps-size` above,
+ * rather than the tempting `button.hover-line, a.hover-line` — keying on
+ * the element being interactive looks like exactly the right distinction
+ * (it correctly skips the read-only `<li>`s in the backups and change
+ * panes) and is wrong: it would also catch the package-line rows, the
+ * client picker's suggestions and the money rail's deposit button, all of
+ * which are on screen inside the order form on a phone. Two over-broad
+ * unlayered rules have already shipped bugs here; this one is opted into
+ * by the four rows that want it.
+ *
+ * Unlayered for the reason the block below states.
+ */
+@media (hover: none) {
+  .taps-to-edit {
+    background-color: rgba(0, 0, 0, 0.035);
+  }
+}
+
 /* The cell's own shape, which does not depend on having a mouse. */
 .editable-cell {
   border-radius: 0.5rem;

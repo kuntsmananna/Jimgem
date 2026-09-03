@@ -88,7 +88,7 @@ export function NameListPanel({
               <>
                 <input
                   autoFocus
-                  className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+                  className="flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
                   value={editDraft}
                   onChange={(e) => setEditDraft(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && submitEdit(item.id)}
@@ -103,7 +103,7 @@ export function NameListPanel({
               </>
             ) : (
               <button
-                className="hover-line flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
+                className="hover-line taps-to-edit flex flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-ink"
                 onClick={() => {
                   setEditing(item.id);
                   setEditDraft(item.name);
@@ -124,7 +124,7 @@ export function NameListPanel({
         <div className="mt-3 flex gap-2">
           <input
             autoFocus
-            className="flex-1 rounded-lg border border-line px-2 py-1 text-sm"
+            className="flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submitNew()}

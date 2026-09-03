@@ -59,9 +59,16 @@ export function ArchiveButton({
       disabled={busy}
       title={`Archive ${name}`}
       aria-label={`Archive ${name}`}
-      className="reveals-on-hover shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50"
+      /*
+       * `reveals-on-hover` already shows this wherever there is no hover
+       * (globals.css, keyed on the pointer). What it could not fix is the
+       * size: `p-1` around a 13px icon is a 21px target. The phone's
+       * padding is stated here, so every list that offers archiving gets
+       * it at once.
+       */
+      className="reveals-on-hover shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50 max-md:p-2.5"
     >
-      <Archive size={13} />
+      <Archive size={13} className="max-md:size-4" />
     </button>
   );
 }

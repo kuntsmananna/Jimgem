@@ -80,7 +80,7 @@ export function OrderTypesPanel({ items }: { items: OrderType[] }) {
               />
             ) : (
               <button
-                className="hover-line flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left"
+                className="hover-line taps-to-edit flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left"
                 onClick={() => {
                   setEditing(item.id);
                   setDraft({ name: item.name, color: item.color, icon: item.icon });
@@ -132,7 +132,7 @@ function TypeEditor({
         <input
           autoFocus
           placeholder="Type name"
-          className="flex-1 rounded-lg border border-line bg-card px-2 py-1 text-sm outline-none focus:border-accent"
+          className="flex-1 rounded-lg border border-line bg-card px-2 py-1 text-sm max-md:py-2 outline-none focus:border-accent"
           value={draft.name}
           onChange={(e) => onChange({ ...draft, name: e.target.value })}
         />
@@ -156,7 +156,7 @@ function TypeEditor({
             aria-label={key}
             aria-pressed={draft.icon === key}
             onClick={() => onChange({ ...draft, icon: key })}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${
+            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition max-md:h-10 max-md:w-10 ${
               draft.icon === key
                 ? "border-ink bg-black text-cream"
                 : "border-line bg-card text-ink-soft hover:border-ink hover:text-ink"

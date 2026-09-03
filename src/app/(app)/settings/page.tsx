@@ -92,7 +92,7 @@ export default async function SettingsPage() {
           // taller. `break-inside-avoid` is what keeps a card whole —
           // without it a list splits across two columns mid-row.
           content: (
-            <div className="columns-3 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
+            <div className="columns-3 gap-6 max-md:columns-1 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <StagesPanel items={stages} />
               <OrderTypesPanel items={orderTypes} />
               <JellyPricesPanel prices={prices} presets={presets} />
@@ -140,7 +140,7 @@ export default async function SettingsPage() {
           // wildly different lengths — a sync button against the archive —
           // and stacked they left a screen of cream beside them.
           content: (
-            <div className="columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
+            <div className="columns-2 gap-6 max-md:columns-1 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <ImportPanel />
               <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} usage={sumitUsage} />
               <SumitProbePanel usage={sumitUsage} />

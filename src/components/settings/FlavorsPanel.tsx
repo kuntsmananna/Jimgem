@@ -137,7 +137,7 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
         <h2 className="font-display text-lg font-bold text-ink">Flavors</h2>
         <button
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
+          className="flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream max-md:min-h-9 max-md:px-4 max-md:text-sm"
         >
           <Plus size={13} />
           Add flavor
@@ -176,14 +176,20 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
             </button>
             <p className="mt-2 text-sm font-semibold text-ink">{f.name}</p>
             <p className="text-xs text-ink-soft">{f.isAlcoholic ? "Alcoholic" : "Non-alcoholic"}</p>
-            <div className="mt-2 flex gap-3 text-xs font-semibold">
-              <button onClick={() => setEditing(f)} className="text-ink-soft hover:text-ink">
+            {/* Bare text with no box at all: fine for a cursor, and the
+                smallest targets in Settings for a thumb — and the only way
+                to reach either. On a phone they take a pill's padding. */}
+            <div className="mt-2 flex gap-3 text-xs font-semibold max-md:mt-3 max-md:gap-2">
+              <button
+                onClick={() => setEditing(f)}
+                className="text-ink-soft hover:text-ink max-md:min-h-9 max-md:rounded-full max-md:bg-black/[0.06] max-md:px-3 max-md:text-sm"
+              >
                 Edit
               </button>
               <button
                 onClick={() => archive(f.id)}
                 disabled={busyId === f.id}
-                className="text-ink-soft underline decoration-dotted hover:text-ink disabled:opacity-50"
+                className="text-ink-soft underline decoration-dotted hover:text-ink disabled:opacity-50 max-md:min-h-9 max-md:rounded-full max-md:bg-black/[0.06] max-md:px-3 max-md:text-sm max-md:no-underline"
               >
                 Archive
               </button>
