@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns3, Copy, LayoutGrid, ListChecks, Plus, Rows3, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   isBooked,
@@ -29,6 +29,7 @@ import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useIsMobile } from "@/components/useMediaQuery";
+import { persisted, usePersistedChoice } from "./useColumnWidths";
 import { OrdersMobileList } from "./OrdersMobileList";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ClientModal } from "@/components/clients/ClientModal";
@@ -41,6 +42,20 @@ const VIEWS: { id: View; label: string; Icon: LucideIcon }[] = [
   { id: "kanban", label: "Kanban", Icon: Columns3 },
   { id: "calendar", label: "Calendar", Icon: CalendarDays },
 ];
+
+/**
+ * The phone's two card shapes. Not a fourth `View`: the board and the
+ * calendar are not offered below the breakpoint at all, so this is a
+ * choice *within* the list rather than a peer of them, and folding it into
+ * `View` would have put two dead options on the desktop switcher.
+ */
+type MobileView = "list" | "cards";
+const MOBILE_VIEWS: { id: MobileView; label: string; Icon: LucideIcon }[] = [
+  { id: "list", label: "List", Icon: Rows3 },
+  { id: "cards", label: "Cards", Icon: LayoutGrid },
+];
+const MOBILE_VIEW_IDS = MOBILE_VIEWS.map((v) => v.id);
+const mobileViewStore = persisted("jimgem:orders-mobile-view");
 
 const CALENDAR_MODES: { id: CalendarMode; label: string }[] = [
   { id: "month", label: "Monthly" },
@@ -112,6 +127,13 @@ export function OrdersClient({
   const searchParams = useSearchParams();
   const stages = useStages();
   const [view, setView] = useState<View>("table");
+  /*
+   * Remembered, unlike `view`: a phone is picked up for a few seconds at a
+   * time, and a card shape that reset on every visit would have to be
+   * chosen again every time. `localStorage` for the reason the column
+   * widths use it — nothing on the server has any use for it.
+   */
+  const [mobileView, setMobileView] = usePersistedChoice(mobileViewStore, MOBILE_VIEW_IDS, "list");
   const [paymentFilter, setPaymentFilter] = useState<Set<PaymentStatus>>(new Set());
   // The next fortnight by default: the page is a work queue first and an
   // archive second, and 74 orders spanning a year buries the ones due.
@@ -494,6 +516,13 @@ export function OrdersClient({
             selected={stageFilter}
             onChange={setStageFilter}
           />
+          {/*
+            Which card shape, at the end of the same wrapping row. It is a
+            view control rather than a filter, so it sits after the three
+            that narrow the list — and it wears the same pill track the
+            desktop view switcher does, being the same kind of choice.
+          */}
+          <PillGroup items={MOBILE_VIEWS} value={mobileView} onChange={setMobileView} />
         </div>
 
         {/* The middle column, and so the centre of the page: the view
@@ -640,6 +669,7 @@ export function OrdersClient({
               orders={inScope}
               unitsPerPackage={unitsPerPackage}
               onOpen={setOpenKey}
+              variant={mobileView}
               emptyNote={
                 needle && bySearch.length === 0
                   ? `Nothing matches “${needle}”.`

@@ -150,6 +150,27 @@ dozen 20px targets on a card, the whole card opens the order. One rule,
 nothing hidden — at the cost of a tap for a quick status change, which is
 the trade the owner chose.
 
+**And a second card shape beside it, chosen from the toolbar** — `List` as
+above, or `Cards`, which carries **every column the desktop table has** in
+a labelled grid: location, guests, units, display, waitress, kosher,
+delivery, deposit, and the amount with its payment status under a rule.
+The fold is right for working a queue and wrong for the times you are
+actually reading orders and do not want to open eleven of them one at a
+time, so both are offered rather than one replacing the other. Only the
+fields an order *has* are drawn — a card of thirteen rows, nine of them
+"—", is worse than the table it replaced, because the table's dashes sit
+in columns you read past while on a card each costs a line. `hasDelivery`
+and `displayCount` are the table's own predicates, so the two cannot
+disagree about what "no delivery" means. **Location takes the full row**:
+measured at 360px a half-width cell left it 7px after its label, which
+truncates a venue to one character. The choice is a `MobileView`, not a
+fourth `View` — the board and the calendar are not offered on a phone, so
+this is a choice *within* the list rather than a peer of them — and it is
+**remembered in `localStorage`**, because a phone is picked up for a few
+seconds at a time and a shape that reset every visit would be re-chosen
+every visit. It wraps to its own line under the three filter chips, which
+is what a 173px track does beside 221px of chips.
+
 The mobile tree renders from the same `inScope` array the table takes, so
 it is a *renderer* and not a second filtering path. It is chosen with
 `useIsMobile()` rather than by hiding the table in CSS, because hiding it
