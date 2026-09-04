@@ -16,11 +16,11 @@ const MIN_WIDTH = 44;
  * snapshots by identity, and a fresh object every call would re-render
  * forever.
  *
- * A factory because several things keep one of these — the table's widths,
- * which columns are hidden, the phone's chosen card shape — and the
- * plumbing is the part that would otherwise have been copied.
+ * A factory because the table keeps two of these — its widths and which
+ * columns are hidden — and the plumbing is the part that would have been
+ * copied.
  */
-export function persisted(key: string) {
+function persisted(key: string) {
   let listeners: (() => void)[] = [];
 
   return {
@@ -49,23 +49,6 @@ export function persisted(key: string) {
       for (const listener of [...listeners]) listener();
     },
   };
-}
-
-/**
- * One remembered string, read the way the widths are — through
- * `useSyncExternalStore`, so the server's `null` is corrected on hydration
- * in a single pass instead of painting a default and then snapping.
- */
-export function usePersistedChoice<T extends string>(
-  store: ReturnType<typeof persisted>,
-  /** The offered options, first one being the default. Taking the default
-   *  from the list rather than as a second argument makes "a fallback that
-   *  is not one of the options" unrepresentable. */
-  options: readonly { id: T }[],
-): [T, (value: T) => void] {
-  const raw = useSyncExternalStore(store.subscribe, store.read, () => null);
-  const known = options.some((option) => option.id === raw);
-  return [known ? (raw as T) : options[0].id, (next: T) => store.write(next)];
 }
 
 /** Per-viewer, per-browser: both of these are preferences, not data. */
