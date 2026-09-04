@@ -365,6 +365,22 @@ body {
  * Unlayered, like everything else in this region: the label carries a
  * `max-md:text-sm` utility that would otherwise win.
  */
+/*
+ * A tighter corner on a phone. `rounded-card` compiles to
+ * `border-radius: var(--radius-card)`, so re-declaring the token below the
+ * breakpoint reshapes all ~48 cards, panes, tiles and popups at once —
+ * the same "set the property, let the surface follow" move `.money-rail`
+ * makes for tone. A 20px radius was drawn for a 400px pane; on a 328px
+ * card it eats most of the top row.
+ *
+ * Unlayered, so it beats the `@theme` block's own `:root` declaration.
+ */
+@media (max-width: 767px) {
+  :root {
+    --radius-card: 1rem;
+  }
+}
+
 @media (max-width: 767px) {
   .money-rail .sheet-row-label {
     font-size: 0.9375rem;

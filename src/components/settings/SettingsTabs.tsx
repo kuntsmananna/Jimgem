@@ -13,6 +13,14 @@ export interface SettingsTab {
    */
   icon: ReactNode;
   content: ReactNode;
+  /**
+   * Not offered on a phone. A CSS `max-md:hidden` on the button rather
+   * than filtering the array: only the active tab is mounted, and the
+   * default active tab is the first, so a hidden button is simply
+   * unreachable below the breakpoint — with no second render of the strip
+   * to flash a tab that then vanishes.
+   */
+  desktopOnly?: boolean;
 }
 
 /**
@@ -32,14 +40,14 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <div className="flex w-fit items-center gap-1 rounded-full bg-card p-1">
-        {tabs.map(({ id, label, icon }) => (
+        {tabs.map(({ id, label, icon, desktopOnly }) => (
           <button
             key={id}
             onClick={() => setActiveId(id)}
             aria-current={id === active.id ? "page" : undefined}
             className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-              id === active.id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
-            }`}
+              desktopOnly ? "max-md:hidden" : ""
+            } ${id === active.id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"}`}
           >
             {/*
               The icon goes below the breakpoint. Four tabs of icon + label

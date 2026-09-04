@@ -325,9 +325,13 @@ rather than `none`. Twelve x-labels measure 16px each with a 7px gap at
 360px, so they were left alone.
 
 **Settings on a phone is the two tabs the owner actually reaches for** —
-Lists, and Flavors with its presets. Team and Data are not phone work and
-are deliberately not redesigned; they get the one structural class that
-keeps them from being broken, and a free share of the touch pass below.
+Lists, and Flavors with its presets. **Data is not offered there at all**
+(`SettingsTab.desktopOnly`): Sheet imports, SUMIT syncs, backups and the
+change log are desk work. That is a `max-md:hidden` on the tab's *button*
+rather than a filtered array — only the active tab is mounted and the
+default is the first, so a hidden button is simply unreachable, with no
+second render of the strip to flash a tab that then vanishes. Team stays,
+undesigned for a phone but not broken there.
 
 **The panes stay at `p-6` below the breakpoint, which is the decision the
 rest of the tab rests on.** `BAND_CLASS` pulls itself out by exactly that
@@ -397,16 +401,35 @@ laptop too, and the other panels' name fields already carried it.
 **Biz Plan on a phone is the same report, restacked.** It is the smallest
 of the pages — one client component, entirely derived figures, and the only
 control on it a "Hide months with no data" checkbox — so nothing here is
-folded away: the five YTD tiles go two across (the fifth keeps its half,
-which reads as a grid rather than as a tile given special treatment), the
-two chart panes stack, and **the year's table becomes a card per month**
+folded away, but two things change shape.
+
+**The five YTD tiles become one swipeable row of squares.** Two across
+spent two rows of height before the charts and still left the fifth tile on
+a row of its own; a carousel spends one row, and a square reads as a figure
+on a card rather than as a wide banner. The strip bleeds into the page
+gutter (`-mx-4` against `main`'s `px-4`, padding put back inside) so a tile
+scrolls off the screen edge rather than stopping short of it — which is
+what says there is more to swipe to — and `snap-x snap-mandatory` makes it
+land on one. Tiles are 160px: measured, that leaves 128px of content
+against a widest realistic value of 108px, where 144px left four pixels and
+one more digit would have spilled.
+
+**The year's table becomes a card per month that opens**
 (`bizplan/MonthsMobileList.tsx`). Seven columns at `min-w-[720px]` is twice
-a phone's width of sideways drag to read one month, and unlike the Orders
-card nothing goes behind a tap — this is a report, so a hidden figure would
-be unreachable rather than one press away. The month leads, **profit sits
-on its line** as the thing the page is read for, with the margin as a chip
-beside it, and revenue, expenses, orders and units follow in a labelled
-grid. **A negative profit is drawn red**, which the desktop table does not
+a phone's width of sideways drag to read one month. Collapsed, a card
+carries the month and its profit — the two things a year is scanned for —
+and folds revenue, expenses, margin, orders and units behind a tap, since
+those are what you go looking for once a month has caught your eye rather
+than what you read twelve rows of. **The chevron is what says so**: a card
+that happens to open is otherwise indistinguishable from one that does
+nothing, the same gap `.taps-to-edit` closes in Settings. **The current
+month is open on arrival**, falling back to the most recent one when this
+month has no row yet — `getYearlyFinancials` only returns months with
+activity, so early in a month there may be none, and every card shut reads
+as a broken page. Reading the clock there is safe because the component
+only ever mounts on the client; the server renders the table.
+
+**A negative profit is drawn red**, which the desktop table does not
 do and does not need to: in a column of right-aligned currency a minus sign
 is unmissable, and on a card it is one character in a line of prose. Both
 charts needed nothing — `LineChart`'s tap-to-read already arrived with the
@@ -553,6 +576,13 @@ icon and `appleWebApp` itself — and **both capable tags**:
 so `apple-mobile-web-app-capable` is stated beside it through
 `metadata.other`. Without one of the two, the home-screen icon opens a
 Safari tab rather than the app.
+
+**Corners are tighter on a phone.** `rounded-card` compiles to
+`border-radius: var(--radius-card)`, so one unlayered re-declaration of
+that token below the breakpoint (1.25rem → 1rem) reshapes all ~48 cards,
+panes, tiles and popups at once — the same "set the property and let the
+surface follow" move `.money-rail` makes for tone. A 20px radius was drawn
+for a 400px pane; on a 328px card it eats most of the top row.
 
 ### Design tokens
 

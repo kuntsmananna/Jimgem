@@ -45,10 +45,18 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
           switch, and a report that doesn't say so invites the two readings
           to be compared with each other. */}
       <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
-      {/* Two across on a phone. Five tiles come out 2 / 2 / 1, and the
-          last one keeps its half — the owner's call, and it reads as a
-          grid rather than as a tile that got special treatment. */}
-      <div className="grid grid-cols-5 gap-4 max-md:grid-cols-2">
+      {/*
+        Five across on a laptop; on a phone one swipeable row of squares.
+        Two across cost two rows of height before the charts and still put
+        the fifth tile on a row of its own — a carousel spends one row, and
+        a square reads as a figure on a card rather than as a wide banner.
+
+        The strip bleeds into the page gutter (`-mx-4` against `main`'s
+        `px-4`, with the padding put back inside) so a tile scrolls off the
+        screen edge instead of stopping short of it, which is what says
+        there is more to swipe to. Scroll snapping makes it land on a tile.
+      */}
+      <div className="grid grid-cols-5 gap-4 max-md:-mx-4 max-md:flex max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto max-md:px-4">
         <KpiTile label="YTD Revenue" value={currency(ytd.revenue)} tile="peach" />
         <KpiTile label="YTD Profit" value={currency(ytd.profit)} tile="mint" />
         <KpiTile label="YTD Orders" value={nf.format(ytd.orders)} tile="lavender" />
@@ -151,7 +159,19 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
 
 function KpiTile({ label, value, tile }: { label: string; value: string; tile: "peach" | "mint" | "lavender" | "sage" }) {
   return (
-    <div className="rounded-card p-5 max-md:p-4" style={{ background: `var(--color-tile-${tile})` }}>
+    /*
+     * A square on a phone, sized so the next tile is part-visible at 390px
+     * and the row reads as scrollable without an arrow to say so. 160px
+     * leaves 128px of content against a widest realistic value of 108px
+     * ("₪512,340" at 24px) — measured, because at 144px the slack was 4px
+     * and one more digit would have spilled.
+     * `justify-end` puts the figure on the tile's floor, which is what
+     * keeps five tiles of different label lengths reading as one row.
+     */
+    <div
+      className="rounded-card p-5 max-md:flex max-md:aspect-square max-md:w-40 max-md:shrink-0 max-md:snap-start max-md:flex-col max-md:justify-end max-md:p-4"
+      style={{ background: `var(--color-tile-${tile})` }}
+    >
       <p className="text-xs font-semibold text-ink/70">{label}</p>
       <p className="mt-1 font-display text-2xl font-extrabold text-ink">{value}</p>
     </div>

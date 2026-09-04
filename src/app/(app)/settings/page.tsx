@@ -134,6 +134,10 @@ export default async function SettingsPage() {
         },
         {
           id: "data",
+          // Sheet imports, SUMIT syncs, backups and the change log are
+          // desk work, and the owner does not reach for any of them on a
+          // phone. Not offered there at all.
+          desktopOnly: true,
           label: "Data",
           icon: <Cloud size={14} />,
           // Two columns, packed by height like Lists: these panes are

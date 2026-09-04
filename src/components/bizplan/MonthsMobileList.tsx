@@ -1,29 +1,53 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { MonthlyFinancials } from "@/lib/financials";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
 
 /**
- * The year on a phone: one card per month.
+ * Which month opens on arrival.
  *
- * The desktop table is seven columns at `min-w-[720px]` inside an
- * `overflow-x-auto`, so on a 390px screen reading one month means dragging
- * the page twice its own width sideways. A card carries the same seven
- * figures with nothing hidden behind a tap — this page is a report, so
- * folding a column into a record the way the Orders card does would leave
- * the figure unreachable rather than one press away.
+ * The current one, because that is the month being worked and the figure
+ * anyone opening this page on a phone came for. When it carries no
+ * activity yet — `getYearlyFinancials` only returns months with revenue or
+ * expenses, so early in a month there may be no row at all — the most
+ * recent month opens instead, which beats arriving at a page where every
+ * card is shut.
  *
- * **Profit leads on the month's own line**, because it is what the page is
- * read for, with the margin beside it as a chip; revenue, expenses, orders
- * and units follow in a quieter labelled grid.
+ * Safe to read the clock here: this component is only ever mounted on the
+ * client (the server renders the desktop table), so there is no render to
+ * disagree with.
+ */
+function defaultOpenMonth(months: MonthlyFinancials[]): number | null {
+  if (months.length === 0) return null;
+  const now = new Date().getMonth() + 1;
+  return months.some((m) => m.month === now) ? now : months[months.length - 1].month;
+}
+
+/**
+ * The year on a phone: one card per month, opening to its detail.
+ *
+ * The desktop table is seven columns at `min-w-[720px]`, so on a 390px
+ * screen reading one month means dragging the page twice its own width
+ * sideways. A card carries the month and its profit — the two things the
+ * year is scanned for — and **folds the rest behind a tap**: revenue,
+ * expenses, margin, orders and units are what you go looking for once a
+ * month has caught your eye, not what you scan twelve rows of.
+ *
+ * The chevron is what says so. Without it a card that happens to open is
+ * indistinguishable from one that does nothing, which is the same reason
+ * the Settings rows gained `.taps-to-edit`.
  *
  * Rendered from the same `tableRows` array the table takes, so this is a
  * *renderer* and not a second filtering path — "Hide months with no data"
  * keeps working without knowing this exists.
  */
 export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
+  const [openMonth, setOpenMonth] = useState<number | null>(() => defaultOpenMonth(months));
+
   if (months.length === 0) {
     return <p className="px-1 py-6 text-sm text-ink-soft">No data yet.</p>;
   }
@@ -31,24 +55,26 @@ export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
   return (
     <div className="flex flex-col gap-2">
       {months.map((m) => {
+        const open = openMonth === m.month;
         const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
         return (
-          <div key={m.month} className="rounded-card border border-line bg-cream/40 px-4 py-3">
-            <div className="flex items-baseline gap-2">
-              <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">{m.monthLabel}</p>
-              {/* The margin as a chip rather than a fifth labelled cell: it
-                  qualifies the profit beside it rather than standing as a
-                  figure of its own. */}
-              <span className="keeps-color shrink-0 rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-bold text-ink-soft tabular-nums">
-                {margin.toFixed(0)}%
+          <div key={m.month} className="rounded-card border border-line bg-cream/40">
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpenMonth(open ? null : m.month)}
+              className="flex w-full items-center gap-2 px-4 py-3 text-left"
+            >
+              <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">
+                {m.monthLabel}
               </span>
               {/*
-                Red when negative. The desktop table colours nothing and does
-                not need to — in a column of right-aligned currency a minus
-                sign is unmissable — but on a card it is one character in a
-                line of prose, and a loss is the single thing on this page
-                nobody should scroll past. The colour is the one the
-                Dashboard's KPI delta already uses for the same meaning.
+                Red when negative. The desktop table colours nothing and
+                does not need to — in a column of right-aligned currency a
+                minus sign is unmissable — but on a card it is one
+                character in a line of prose, and a loss is the one thing
+                on this page nobody should scroll past. The colour is the
+                one the Dashboard's KPI delta already uses for it.
               */}
               <span
                 className={`shrink-0 text-[15px] font-bold tabular-nums ${
@@ -57,14 +83,22 @@ export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
               >
                 {currency(m.profit)}
               </span>
-            </div>
+              <ChevronDown
+                size={16}
+                aria-hidden
+                className={`shrink-0 text-ink-soft transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            </button>
 
-            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <Figure label="Revenue" value={currency(m.revenue)} />
-              <Figure label="Expenses" value={currency(m.expenses)} />
-              <Figure label="Orders" value={nf.format(m.orderCount)} />
-              <Figure label="Units sold" value={nf.format(m.unitsSold)} />
-            </dl>
+            {open && (
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-line/60 px-4 py-3 text-xs">
+                <Figure label="Revenue" value={currency(m.revenue)} />
+                <Figure label="Expenses" value={currency(m.expenses)} />
+                <Figure label="Margin" value={`${margin.toFixed(0)}%`} />
+                <Figure label="Orders" value={nf.format(m.orderCount)} />
+                <Figure label="Units sold" value={nf.format(m.unitsSold)} />
+              </dl>
+            )}
           </div>
         );
       })}
