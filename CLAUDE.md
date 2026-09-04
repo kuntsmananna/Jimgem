@@ -129,10 +129,9 @@ desktop class. Where a phone needs a different *tree* rather than a
 different look — the three list pages each render cards instead of rows —
 that is `useIsMobile()`, and the desktop half carries `max-md:hidden` so
 nothing flashes before hydration has an opinion. The pages the phone is
-*for* are **Orders, Expenses and Clients**; **Dashboard and Settings were
-laid out for one afterwards** (v0.55.0, v0.56.0) and are read rather than
-worked there. **Biz Plan is the one page still desktop-only** — reachable
-on a phone, deliberately not redesigned for it.
+*for* are **Orders, Expenses and Clients**; **Dashboard, Settings and Biz
+Plan were laid out for one afterwards** (v0.55.0–v0.57.0) and are read
+rather than worked there. Every page now has a phone layout.
 
 **The Orders page on a phone is a list of cards**
 (`src/components/orders/OrdersMobileList.tsx`), one per order, under a
@@ -394,6 +393,26 @@ One fix here is not a phone fix at all. `PackageTypesPanel`'s name fields
 were `flex-1` with **no `min-w-0`**, so they took their intrinsic width as
 a floor and could push the row wider than its container — true on a
 laptop too, and the other panels' name fields already carried it.
+
+**Biz Plan on a phone is the same report, restacked.** It is the smallest
+of the pages — one client component, entirely derived figures, and the only
+control on it a "Hide months with no data" checkbox — so nothing here is
+folded away: the five YTD tiles go two across (the fifth keeps its half,
+which reads as a grid rather than as a tile given special treatment), the
+two chart panes stack, and **the year's table becomes a card per month**
+(`bizplan/MonthsMobileList.tsx`). Seven columns at `min-w-[720px]` is twice
+a phone's width of sideways drag to read one month, and unlike the Orders
+card nothing goes behind a tap — this is a report, so a hidden figure would
+be unreachable rather than one press away. The month leads, **profit sits
+on its line** as the thing the page is read for, with the margin as a chip
+beside it, and revenue, expenses, orders and units follow in a labelled
+grid. **A negative profit is drawn red**, which the desktop table does not
+do and does not need to: in a column of right-aligned currency a minus sign
+is unmissable, and on a card it is one character in a line of prose. Both
+charts needed nothing — `LineChart`'s tap-to-read already arrived with the
+Dashboard. The `p-6` → `max-md:p-4` drop is safe here for the reason it is
+not in Settings: these panes head themselves with a plain `<h2>`, not a
+band that pulls itself out by exactly the host's padding.
 
 **`Sheet` is the one bottom-sheet mechanism** (`src/components/Sheet.tsx`),
 shared by the nav's More and, below the breakpoint, by **every toolbar
