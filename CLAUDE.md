@@ -1583,7 +1583,16 @@ compares identity, and a panel builds a fresh draft before every call.
   **Add-on prices**. A fixed set, because each key is wired to a specific
   field on the order. Delivery and Display are not in it: each prices
   itself from its own list (see `ORDER_EXTRAS`).
-- **Every extra prices itself.** `ORDER_EXTRAS` gives each one a
+- **A negative amount reads `-₪6,300`, not `₪-6,300`.** `Intl` puts the
+minus in front of the digits, so concatenating the symbol ahead of its
+output strands the sign between the two — which is how every loss in the
+app read until a Biz Plan month was actually looked at. `withSign` in
+`money.ts` moves it, and drops it entirely from a value that rounds to
+`-0`, which is a loss that isn't there. Six components carried their own
+`` `₪${nf.format(n)}` `` and so their own copy of the bug; they now import
+`currency` and `count` like everything else.
+
+**Every extra prices itself.** `ORDER_EXTRAS` gives each one a
   `standard(order, rates)` rather than a single rate key to multiply,
   which is what lets Display compute from its own list while the other
   three read a flat rate. `Rates` bundles `prices` + `displayOptions` so
@@ -1750,9 +1759,14 @@ stage's own colour — deliberately not a pill, so it reads as the row's
 state rather than as another of its values, and not the same shape as the
 payment badge or the event-type chip. It was the last column, where it sat
 past the fold on a laptop. A stage whose `counts_as_income` is false gets a
-dashed outline, and its row gets `.is-offer` (dashed left edge plus a faint
-fill, both in `globals.css` outside every layer so the edge survives the
-row turning black on hover).
+dashed outline, and the order itself gets `.is-offer` — a dashed left edge,
+in `globals.css` outside every layer so it survives the row turning black
+on hover. **The edge belongs to the class, the fill to the table**: all
+three rules were once scoped `.orders-rows > tr`, so the phone card set
+`is-offer` and got nothing back, and a quote was pixel-identical to a
+booked order on the page where that difference matters most. The faint fill
+stays row-only, because a `<tr>` has no surface of its own while a card
+does and tinting it only muddies the white.
 
 **The order's note is behind an (i) icon**, not a line under the customer
 name. As a second line it set the row's height off the longest note in

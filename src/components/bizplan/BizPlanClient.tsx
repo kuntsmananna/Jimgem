@@ -7,9 +7,8 @@ import { useVatView } from "@/components/VatViewContext";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { MonthsMobileList } from "@/components/bizplan/MonthsMobileList";
+import { count, currency } from "@/lib/money";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
 
 export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] }) {
   const [hideEmpty, setHideEmpty] = useState(true);
@@ -59,8 +58,8 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
       <div className="grid grid-cols-5 gap-4 max-md:-mx-4 max-md:flex max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto max-md:px-4">
         <KpiTile label="YTD Revenue" value={currency(ytd.revenue)} tile="peach" />
         <KpiTile label="YTD Profit" value={currency(ytd.profit)} tile="mint" />
-        <KpiTile label="YTD Orders" value={nf.format(ytd.orders)} tile="lavender" />
-        <KpiTile label="YTD Units sold" value={nf.format(ytd.units)} tile="sage" />
+        <KpiTile label="YTD Orders" value={count(ytd.orders)} tile="lavender" />
+        <KpiTile label="YTD Units sold" value={count(ytd.units)} tile="sage" />
         <KpiTile label="Avg order value" value={currency(avgOrderValue)} tile="peach" />
       </div>
 
@@ -84,7 +83,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
           <div className="mt-4">
             <LineChart
               normalizePerSeries
-              valueFormat={(v) => nf.format(v)}
+              valueFormat={(v) => count(v)}
               xLabels={financials.map((m) => m.monthLabel)}
               series={[
                 { label: "Units sold", color: SERIES_COLORS.royale, values: financials.map((m) => m.unitsSold) },
@@ -107,7 +106,10 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-soft max-md:min-h-9">
             <input
               type="checkbox"
-              className="max-md:h-4 max-md:w-4"
+              /* `accent-black` like the Settings switches: without it this
+                 renders in the browser's own blue, which is the only
+                 colour in the app that is not the app's. */
+              className="accent-black max-md:h-4 max-md:w-4"
               checked={hideEmpty}
               onChange={(e) => setHideEmpty(e.target.checked)}
             />

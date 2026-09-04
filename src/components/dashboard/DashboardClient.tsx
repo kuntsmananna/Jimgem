@@ -12,6 +12,7 @@ import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { SelectDropdown } from "@/components/orders/Dropdown";
 import { useIsMobile } from "@/components/useMediaQuery";
+import { count, currency } from "@/lib/money";
 
 export interface FlavorLine {
   month: number;
@@ -38,9 +39,6 @@ interface FlavorMeta {
   colorBase: string;
 }
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
-const count = (n: number) => nf.format(n);
 
 /** The KPI metrics, named so a tile's value and its percentage can't be mismatched. */
 type Metric = "revenue" | "profit" | "orderCount" | "unitsSold";
@@ -252,7 +250,7 @@ export function DashboardClient({
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-ink">
               Orders{" "}
-              <span className="font-normal text-ink-soft">({nf.format(previewOrders.length)})</span>
+              <span className="font-normal text-ink-soft">({count(previewOrders.length)})</span>
             </h2>
             <Link href="/orders" className="text-sm font-semibold text-accent hover:underline">
               View all →
@@ -296,7 +294,7 @@ export function DashboardClient({
                   </span>
                   <span className="flex w-16 shrink-0 items-center justify-end gap-1 text-xs text-ink-soft">
                     <UnitsIcon size={12} className="shrink-0" />
-                    {order.units > 0 ? nf.format(order.units) : "—"}
+                    {order.units > 0 ? count(order.units) : "—"}
                   </span>
                   <span className="w-20 shrink-0 text-right font-semibold text-ink">
                     {currency(order.totalAmount)}
@@ -335,7 +333,7 @@ export function DashboardClient({
           <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Flavor split</h2>
             <div className="mt-4">
-              <DonutChart slices={flavorSlices} valueFormat={(v) => `${nf.format(v)} units`} />
+              <DonutChart slices={flavorSlices} valueFormat={(v) => `${count(v)} units`} />
             </div>
           </section>
         </div>

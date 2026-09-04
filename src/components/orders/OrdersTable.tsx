@@ -26,9 +26,8 @@ import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
 import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
 import { useColumnWidths } from "./useColumnWidths";
+import { count, currency } from "@/lib/money";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
 
 /** Anything the row click must not hijack, because it does its own job. */
 const INTERACTIVE = "button, input, select, textarea, a, label";
@@ -553,7 +552,7 @@ function UnitsCell({ units }: { units: number }) {
       className="flex w-fit cursor-help items-center gap-1.5 border-b border-dotted border-ink-soft/60 pb-px font-semibold tabular-nums"
     >
       <UnitsIcon size={12} className="shrink-0 text-ink-soft" />
-      {nf.format(units)}
+      {count(units)}
     </span>
   );
 }

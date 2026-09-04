@@ -17,9 +17,8 @@ import { useVatView } from "@/components/VatViewContext";
 import { StageChip } from "./StageChip";
 import { EventTypeChip } from "./EventTypeChip";
 import { ContentChips } from "./ContentChips";
+import { count, currency } from "@/lib/money";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
 
 const CARD_WIDTH = 300;
 /** Enough for the tallest card (content chips wrap), used to keep it on screen. */
@@ -86,17 +85,17 @@ export function OrderHoverCard({
                 {order.guests !== null && (
                   <span className="flex items-center gap-1">
                     <Users size={12} />
-                    {nf.format(order.guests)} guests
+                    {count(order.guests)} guests
                   </span>
                 )}
                 {units > 0 && (
                   <span className="flex items-center gap-1">
                     <UnitsIcon size={12} />
-                    {nf.format(units)} units
+                    {count(units)} units
                   </span>
                 )}
                 {displayCount(order.displays) > 0 && (
-                  <span>{nf.format(displayCount(order.displays))} display</span>
+                  <span>{count(displayCount(order.displays))} display</span>
                 )}
               </div>
               {order.notes && (

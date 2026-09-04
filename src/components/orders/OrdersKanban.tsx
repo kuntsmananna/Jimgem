@@ -12,9 +12,8 @@ import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
 import { OrderHoverCard } from "./OrderHoverCard";
 import { ProductionStatusSelect } from "./StatusSelects";
+import { count, currency } from "@/lib/money";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
 
 export function OrdersKanban({
   orders,
@@ -87,7 +86,7 @@ export function OrdersKanban({
                       hover card this sits inside carries the breakdown. */}
                   <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
                     <UnitsIcon size={12} />
-                    {units > 0 ? `${nf.format(units)} units` : "No packages yet"}
+                    {units > 0 ? `${count(units)} units` : "No packages yet"}
                   </p>
                   <div className="mt-2 flex items-center justify-between">
                     {/* What the order is worth, extras included — the same

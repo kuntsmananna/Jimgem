@@ -4,9 +4,8 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { Figure } from "@/components/Figure";
+import { count, currency } from "@/lib/money";
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const currency = (n: number) => `₪${nf.format(n)}`;
 
 /**
  * Which month opens on arrival.
@@ -95,8 +94,8 @@ export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
                 <Figure label="Revenue" value={currency(m.revenue)} />
                 <Figure label="Expenses" value={currency(m.expenses)} />
                 <Figure label="Margin" value={`${margin.toFixed(0)}%`} />
-                <Figure label="Orders" value={nf.format(m.orderCount)} />
-                <Figure label="Units sold" value={nf.format(m.unitsSold)} />
+                <Figure label="Orders" value={count(m.orderCount)} />
+                <Figure label="Units sold" value={count(m.unitsSold)} />
               </dl>
             )}
           </div>

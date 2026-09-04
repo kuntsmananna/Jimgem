@@ -10,8 +10,25 @@
  */
 const shekels = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
+/**
+ * `-₪6,300`, not `₪-6,300`.
+ *
+ * `Intl` puts the minus in front of the digits, so concatenating the symbol
+ * ahead of its output strands the sign between the two — which is how every
+ * loss in the app read until someone looked at a Biz Plan month. The symbol
+ * belongs to the number, and the sign belongs to the whole thing.
+ *
+ * A value a few agorot below zero rounds to `-0`, which reads as a loss
+ * that is not there; that one keeps the sign off.
+ */
+function withSign(formatted: string): string {
+  if (!formatted.startsWith("-")) return `₪${formatted}`;
+  const body = formatted.slice(1);
+  return /[1-9]/.test(body) ? `-₪${body}` : `₪${body}`;
+}
+
 export function currency(amount: number): string {
-  return `₪${shekels.format(amount)}`;
+  return withSign(shekels.format(amount));
 }
 
 /**
@@ -23,7 +40,7 @@ export function currency(amount: number): string {
 const exact = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 export function currencyExact(amount: number): string {
-  return `₪${exact.format(amount)}`;
+  return withSign(exact.format(amount));
 }
 
 /** The same formatter without the sign, for counts and units. */

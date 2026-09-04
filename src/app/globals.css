@@ -565,12 +565,26 @@ body {
  * instead of dropped, because that is exactly when the fill is gone and
  * the dash is all that is left to say the row is an offer.
  */
-.orders-rows > tr.is-offer:not(:hover) {
-  background-color: --alpha(var(--color-ink) / 3.5%);
+/*
+ * A quote, wherever an order is drawn — a `<tr>` on a laptop, a card on a
+ * phone. All three of these rules used to be scoped `.orders-rows > tr`,
+ * so the phone card set `is-offer` and got nothing back: an offer was
+ * pixel-identical to a booked order, on the page where the difference
+ * between the two matters most. The dashed edge is the mark and belongs
+ * to the class, not to the table.
+ */
+.is-offer {
+  border-left: 2px dashed --alpha(var(--color-ink) / 40%);
 }
 
-.orders-rows > tr.is-offer {
-  border-left: 2px dashed --alpha(var(--color-ink) / 40%);
+/*
+ * The faint fill stays a row device. A table row has no surface of its
+ * own, so the tint is what separates a quote from the rows around it; a
+ * card already has one, and tinting that only muddies the white. It lifts
+ * on hover because the row is about to go solid black.
+ */
+.orders-rows > tr.is-offer:not(:hover) {
+  background-color: --alpha(var(--color-ink) / 3.5%);
 }
 
 .orders-rows > tr.is-offer:hover {
