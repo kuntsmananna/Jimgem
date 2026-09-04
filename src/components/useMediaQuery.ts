@@ -48,11 +48,28 @@ export function useCoarsePointer(): boolean {
 /**
  * True below the layout breakpoint — the phone layouts.
  *
- * 768px, matching Tailwind's `md`, so a `max-md:` class and this hook
- * always agree about which side of the line the page is on. Where a
- * difference can be expressed in CSS it should be, and this reserved for
- * the places that need a different tree rather than a different look.
+ * **This is the string Tailwind itself emits for `max-md:`** (read out of
+ * the built CSS), and it is copied rather than re-expressed on purpose.
+ * `max-width: 767px` reads like the same thing and is not — the unit is
+ * the difference, and it is not a rounding-error difference.
+ *
+ * A media query's `rem` resolves against the *browser's default font size*,
+ * not against `:root`'s (setting `html { font-size: 32px }` changes
+ * nothing — verified). Someone who raises that default to 32px for
+ * readability therefore moves Tailwind's breakpoint to 1536px, and at an
+ * 800px window every `max-md:` rule fires while `(max-width: 767px)` stays
+ * false: the CSS lays the page out as a phone while this hook still says
+ * desktop, so the mobile tree is never built and its section comes out
+ * empty. Measured, not reasoned about.
+ *
+ * (The 1px band between 767 and 768 that this was also meant to close does
+ * not appear to be reachable in Chromium, where the media-query viewport
+ * rounds to an integer. Copying Tailwind's own string covers it anyway,
+ * across engines that may not round alike.)
+ *
+ * Where a difference can be expressed in CSS it should be; this is reserved
+ * for the places that need a different tree rather than a different look.
  */
 export function useIsMobile(): boolean {
-  return useMediaQuery("(max-width: 767px)");
+  return useMediaQuery("not all and (min-width: 48rem)");
 }
