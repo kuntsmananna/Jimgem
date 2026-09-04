@@ -7,7 +7,7 @@
  * Chromium the project already has rather than adding `sharp`, whose
  * native binary is a dependency this app would carry for one file.
  */
-import { chromium } from '/home/user/Jimgem/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 import { mkdirSync, readFileSync } from 'node:fs';
 
 const CREAM = '#F4EBE7';
@@ -34,7 +34,15 @@ const ICONS = [
   { file: `${OUT}/apple-touch-icon.png`, size: 180, scale: 0.72 },
 ];
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+/*
+ * `executablePath` only when something names one: PLAYWRIGHT_BROWSERS_PATH
+ * is set in the dev sandbox and Playwright finds its own browser from it,
+ * while a hardcoded path made this the one file in the repo that could not
+ * run on anyone else's checkout.
+ */
+const b = await chromium.launch(
+  process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
+);
 for (const { file, size, scale } of ICONS) {
   const p = await b.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>

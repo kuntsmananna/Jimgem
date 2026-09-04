@@ -244,7 +244,11 @@ export function DashboardClient({
           would sit in the 65fr slot with a third of the page empty. */}
       <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6 max-md:grid-cols-1">
         {!mobile && (
-        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6">
+        /* `max-md:hidden` as well as the branch: the server renders the
+           desktop tree, so without it a phone paints the whole pane from
+           the SSR HTML and hydration then yanks it, jumping the charts up
+           the page. Every other mobile swap in the app pairs the two. */
+        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6 max-md:hidden">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-ink">
               Orders{" "}

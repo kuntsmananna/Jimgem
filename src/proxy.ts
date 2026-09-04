@@ -30,7 +30,13 @@ export const config = {
      *   instead — the route refuses to run without it.
      * - Next.js internals (_next/static, _next/image)
      * - favicon.ico and other static files
+     * - the web manifest and the home-screen icons. A `<link rel="manifest">`
+     *   is fetched with credentials *omitted* unless it says otherwise, so
+     *   gating it redirected even a signed-in owner's browser to /login and
+     *   left it parsing an HTML page as the manifest: no `standalone`, no
+     *   `/orders` start_url, no icon. Nothing in any of them is private —
+     *   an app name, two colours and a mark.
      */
-    "/((?!login|api/backup/cron|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|api/backup/cron|_next/static|_next/image|favicon.ico|manifest.webmanifest|apple-touch-icon.png|icons/).*)",
   ],
 };

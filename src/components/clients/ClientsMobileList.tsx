@@ -6,10 +6,19 @@ import { formatOrderDate } from "@/lib/orderTypes";
 import { currency } from "@/lib/money";
 
 /**
- * Everything but digits and a leading `+`, so a number stored the way a
- * person writes it — "054-123-4567" — still dials.
+ * Everything but the digits, keeping a leading `+` so a number stored the
+ * way a person writes it — "054-123-4567", "+972 54-123-4567" — still
+ * dials.
+ *
+ * The `+` is looked for *before the first digit* rather than at index 0,
+ * because "(+972) 54-…" is written often enough to matter and an anchored
+ * test dropped the country code off exactly those, dialling them as
+ * domestic numbers.
  */
-const dialable = (phone: string) => phone.replace(/(?!^\+)[^\d]/g, "");
+const dialable = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  return /^\D*\+/.test(phone) ? `+${digits}` : digits;
+};
 
 /**
  * The Clients list on a phone: one card per client.
