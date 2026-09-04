@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import {
   displayCount,
   formatOrderDate,
@@ -12,11 +12,13 @@ import {
   type PaymentStatus,
 } from "@/lib/orderTypes";
 import { UnitsIcon } from "@/lib/icons";
-import { currency } from "@/lib/money";
+import { count, currency } from "@/lib/money";
 import { useVatView } from "@/components/VatViewContext";
 import { useStage } from "@/components/ProductionStagesContext";
 import { EventTypeChip } from "./EventTypeChip";
 import { StageChip } from "./StageChip";
+import type { MobileView } from "./OrdersClient";
+import { Figure } from "@/components/Figure";
 
 /**
  * The Orders page on a phone: one card per order, under a heading per day.
@@ -50,15 +52,17 @@ export function OrdersMobileList({
   unitsPerPackage,
   onOpen,
   emptyNote,
-  variant = "list",
+  variant,
 }: {
   /** Already searched, filtered and scoped — the same array the table takes. */
   orders: Order[];
   unitsPerPackage: Map<number, number>;
   onOpen: (key: string) => void;
   emptyNote: string;
-  /** `list` folds everything but the glance; `cards` carries every column. */
-  variant?: "list" | "cards";
+  /** `list` folds everything but the glance; `cards` carries every column.
+   *  The type comes from the switcher's own option list, so the pills, the
+   *  remembered value and this prop cannot disagree. */
+  variant: MobileView;
 }) {
   if (orders.length === 0) {
     return (
@@ -97,18 +101,25 @@ export function OrdersMobileList({
   );
 }
 
-function OrderCard({
+/**
+ * The card both shapes are built on: the target, the offer treatment and
+ * the face.
+ *
+ * The face has to be identical in both views — switching between them must
+ * not move the thing you are looking for — and `is-offer` is the one piece
+ * of a row's styling that carries meaning rather than emphasis. Neither is
+ * left to a copy that could drift.
+ */
+function OrderCardShell({
   order,
-  unitsPerPackage,
   onOpen,
+  children,
 }: {
   order: Order;
-  unitsPerPackage: Map<number, number>;
   onOpen: (key: string) => void;
+  children: ReactNode;
 }) {
-  const { forOrder } = useVatView();
   const stage = useStage(order.productionStatus);
-  const units = orderUnits(order.packageLines, unitsPerPackage);
 
   return (
     <button
@@ -116,8 +127,7 @@ function OrderCard({
       /*
         The whole card is the target. `text-left` because it is a button
         wrapping a record rather than a label, and `is-offer` so a quote
-        keeps the dashed edge it wears in the table — the one piece of the
-        row's styling that carries meaning rather than emphasis.
+        keeps the dashed edge it wears in the table.
       */
       className={`w-full rounded-card border border-line bg-card px-4 py-3 text-left ${
         stage?.countsAsIncome === false ? "is-offer" : ""
@@ -137,13 +147,36 @@ function OrderCard({
           {order.customerType && <EventTypeChip value={order.customerType} />}
         </div>
       </div>
+      {children}
+    </button>
+  );
+}
 
+/** The stored status, or the raw value when it names no known one. */
+const paymentLabel = (order: Order) =>
+  PAYMENT_STATUS_LABEL[order.paymentStatus as PaymentStatus] ?? order.paymentStatus;
+
+/** The glance: units, payment status and the total. */
+function OrderCard({
+  order,
+  unitsPerPackage,
+  onOpen,
+}: {
+  order: Order;
+  unitsPerPackage: Map<number, number>;
+  onOpen: (key: string) => void;
+}) {
+  const { forOrder } = useVatView();
+  const units = orderUnits(order.packageLines, unitsPerPackage);
+
+  return (
+    <OrderCardShell order={order} onOpen={onOpen}>
       <div className="mt-2 flex items-baseline gap-3 text-xs text-ink-soft">
         <span className="flex items-center gap-1">
           <UnitsIcon size={13} />
-          {units.toLocaleString("en-US")}
+          {count(units)}
         </span>
-        <span className="truncate">{PAYMENT_STATUS_LABEL[order.paymentStatus as PaymentStatus] ?? order.paymentStatus}</span>
+        <span className="truncate">{paymentLabel(order)}</span>
         <span className="flex-1" />
         {/* `tabular-nums` and no more: `font-mono` is the version string's
             treatment, and nothing else in the app spends it on money. */}
@@ -153,7 +186,7 @@ function OrderCard({
           {currency(forOrder(order))}
         </span>
       </div>
-    </button>
+    </OrderCardShell>
   );
 }
 
@@ -186,63 +219,39 @@ function OrderDetailCard({
   onOpen: (key: string) => void;
 }) {
   const { forOrder } = useVatView();
-  const stage = useStage(order.productionStatus);
   const units = orderUnits(order.packageLines, unitsPerPackage);
   const displays = displayCount(order.displays);
 
   return (
-    <button
-      onClick={() => onOpen(order.key)}
-      className={`w-full rounded-card border border-line bg-card px-4 py-3 text-left ${
-        stage?.countsAsIncome === false ? "is-offer" : ""
-      }`}
-    >
-      <div className="flex items-start gap-2">
-        <p className="min-w-0 flex-1 truncate text-[17px] font-bold">{order.customer}</p>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <StageChip stageKey={order.productionStatus} />
-          {order.customerType && <EventTypeChip value={order.customerType} />}
-        </div>
-      </div>
-
+    <OrderCardShell order={order} onOpen={onOpen}>
       <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
         {/* The full row: measured at 360px a half-width cell leaves a
             location 7px after its label, which truncates a venue name to a
             single character — a card that shows less than the table it
             replaced. Across both columns it gets ~270px. */}
-        {order.location && <Field label="Location" value={order.location} wide />}
-        {order.guests !== null && <Field label="Guests" value={String(order.guests)} />}
-        <Field label="Units" value={units.toLocaleString("en-US")} />
-        {displays > 0 && <Field label="Display" value={String(displays)} />}
+        {order.location && <Figure label="Location" value={order.location} wide />}
+        {order.guests !== null && <Figure label="Guests" value={String(order.guests)} />}
+        <Figure label="Units" value={count(units)} />
+        {displays > 0 && <Figure label="Display" value={String(displays)} />}
         {order.waitresses !== null && order.waitresses > 0 && (
-          <Field label="Waitress" value={String(order.waitresses)} />
+          <Figure label="Waitress" value={String(order.waitresses)} />
         )}
-        {order.kosher && <Field label="Kosher" value="Yes" />}
-        {hasDelivery(order) && <Field label="Delivery" value="Yes" />}
-        {order.deposit > 0 && <Field label="Deposit" value={currency(order.deposit)} />}
+        {order.kosher && <Figure label="Kosher" value="Yes" />}
+        {hasDelivery(order) && <Figure label="Delivery" value="Yes" />}
+        {order.deposit > 0 && <Figure label="Deposit" value={currency(order.deposit)} />}
       </dl>
 
       {/* The money on its own line under a rule, the way the order sheet
           separates arithmetic from the fields above it. */}
       <div className="mt-2.5 flex items-baseline gap-2 border-t border-line/60 pt-2 text-xs text-ink-soft">
         <span className="min-w-0 truncate">
-          {PAYMENT_STATUS_LABEL[order.paymentStatus as PaymentStatus] ?? order.paymentStatus}
+          {paymentLabel(order)}
         </span>
         <span className="flex-1" />
         <span className="shrink-0 text-sm font-semibold text-ink tabular-nums">
           {currency(forOrder(order))}
         </span>
       </div>
-    </button>
-  );
-}
-
-/** A labelled figure, the label quiet and the value in the card's own ink. */
-function Field({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
-  return (
-    <div className={`flex items-baseline justify-between gap-2 ${wide ? "col-span-2" : ""}`}>
-      <dt className="shrink-0 text-ink-soft">{label}</dt>
-      <dd className="min-w-0 truncate font-semibold text-ink">{value}</dd>
-    </div>
+    </OrderCardShell>
   );
 }

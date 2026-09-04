@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { MonthlyFinancials } from "@/lib/financials";
+import { Figure } from "@/components/Figure";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const currency = (n: number) => `₪${nf.format(n)}`;
@@ -22,9 +23,8 @@ const currency = (n: number) => `₪${nf.format(n)}`;
  * disagree with.
  */
 function defaultOpenMonth(months: MonthlyFinancials[]): number | null {
-  if (months.length === 0) return null;
   const now = new Date().getMonth() + 1;
-  return months.some((m) => m.month === now) ? now : months[months.length - 1].month;
+  return months.find((m) => m.month === now)?.month ?? months.at(-1)?.month ?? null;
 }
 
 /**
@@ -102,16 +102,6 @@ export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/** A labelled figure: the label quiet, the number in the row's own ink. */
-function Figure({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <dt className="shrink-0 text-ink-soft">{label}</dt>
-      <dd className="min-w-0 truncate font-semibold text-ink tabular-nums">{value}</dd>
     </div>
   );
 }

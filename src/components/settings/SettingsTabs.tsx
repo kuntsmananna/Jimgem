@@ -46,8 +46,8 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
             onClick={() => setActiveId(id)}
             aria-current={id === active.id ? "page" : undefined}
             className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-              desktopOnly ? "max-md:hidden" : ""
-            } ${id === active.id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"}`}
+              id === active.id ? "bg-black text-cream" : "text-ink-soft hover:text-ink"
+            }${desktopOnly ? " max-md:hidden" : ""}`}
           >
             {/*
               The icon goes below the breakpoint. Four tabs of icon + label

@@ -49,12 +49,13 @@ const VIEWS: { id: View; label: string; Icon: LucideIcon }[] = [
  * choice *within* the list rather than a peer of them, and folding it into
  * `View` would have put two dead options on the desktop switcher.
  */
-type MobileView = "list" | "cards";
-const MOBILE_VIEWS: { id: MobileView; label: string; Icon: LucideIcon }[] = [
+export const MOBILE_VIEWS = [
   { id: "list", label: "List", Icon: Rows3 },
   { id: "cards", label: "Cards", Icon: LayoutGrid },
-];
-const MOBILE_VIEW_IDS = MOBILE_VIEWS.map((v) => v.id);
+] as const satisfies readonly { id: string; label: string; Icon: LucideIcon }[];
+/** Derived from the list, so the pills, the stored value and the card
+ *  component cannot drift apart. */
+export type MobileView = (typeof MOBILE_VIEWS)[number]["id"];
 const mobileViewStore = persisted("jimgem:orders-mobile-view");
 
 const CALENDAR_MODES: { id: CalendarMode; label: string }[] = [
@@ -133,7 +134,7 @@ export function OrdersClient({
    * chosen again every time. `localStorage` for the reason the column
    * widths use it — nothing on the server has any use for it.
    */
-  const [mobileView, setMobileView] = usePersistedChoice(mobileViewStore, MOBILE_VIEW_IDS, "list");
+  const [mobileView, setMobileView] = usePersistedChoice<MobileView>(mobileViewStore, MOBILE_VIEWS);
   const [paymentFilter, setPaymentFilter] = useState<Set<PaymentStatus>>(new Set());
   // The next fortnight by default: the page is a work queue first and an
   // archive second, and 74 orders spanning a year buries the ones due.
@@ -516,13 +517,6 @@ export function OrdersClient({
             selected={stageFilter}
             onChange={setStageFilter}
           />
-          {/*
-            Which card shape, at the end of the same wrapping row. It is a
-            view control rather than a filter, so it sits after the three
-            that narrow the list — and it wears the same pill track the
-            desktop view switcher does, being the same kind of choice.
-          */}
-          <PillGroup items={MOBILE_VIEWS} value={mobileView} onChange={setMobileView} />
         </div>
 
         {/* The middle column, and so the centre of the page: the view
@@ -626,6 +620,13 @@ export function OrdersClient({
             selected={stageFilter}
             onChange={setStageFilter}
           />
+          {/*
+            Which card shape, at the end of the same wrapping row. It is a
+            view control rather than a filter, so it sits after the three
+            that narrow the list — and it wears the same pill track the
+            desktop view switcher does, being the same kind of choice.
+          */}
+          <PillGroup items={MOBILE_VIEWS} value={mobileView} onChange={setMobileView} />
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Figure label="Units" value={totals.units.toLocaleString("en-US")} />

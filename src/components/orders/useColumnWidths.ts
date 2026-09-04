@@ -58,12 +58,14 @@ export function persisted(key: string) {
  */
 export function usePersistedChoice<T extends string>(
   store: ReturnType<typeof persisted>,
-  allowed: readonly T[],
-  fallback: T,
+  /** The offered options, first one being the default. Taking the default
+   *  from the list rather than as a second argument makes "a fallback that
+   *  is not one of the options" unrepresentable. */
+  options: readonly { id: T }[],
 ): [T, (value: T) => void] {
   const raw = useSyncExternalStore(store.subscribe, store.read, () => null);
-  const value = allowed.includes(raw as T) ? (raw as T) : fallback;
-  return [value, (next: T) => store.write(next)];
+  const known = options.some((option) => option.id === raw);
+  return [known ? (raw as T) : options[0].id, (next: T) => store.write(next)];
 }
 
 /** Per-viewer, per-browser: both of these are preferences, not data. */

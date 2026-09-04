@@ -329,14 +329,17 @@ body {
  * One user: the customer name, which is deliberately 28px and is the only
  * field in the app this floor would shrink rather than grow.
  *
- * `not all and (min-width: 48rem)`, here and in the two blocks below, is
- * **the exact query Tailwind emits for `max-md:`** — read out of the built
- * CSS, not assumed. `max-width: 767px` is what this said first and is not
- * the same thing: a media query's `rem` follows the *browser's* default
- * font size, so a reader who sets that to 32px moves every `max-md:` class
- * to a 1536px breakpoint while a pixel rule stays at 767 — and these
- * unlayered blocks are precisely the ones that have to agree with those
- * classes. `useIsMobile()` states the same string for the same reason.
+ * `not all and (min-width: 48rem)`, here and in the block below, is **the
+ * exact query Tailwind emits for `max-md:`** — read out of the built CSS,
+ * not assumed. `max-width: 767px` is what this said first and is not the
+ * same thing: a media query's `rem` follows the *browser's* default font
+ * size, so a reader who sets that to 32px moves every `max-md:` class to a
+ * 1536px breakpoint while a pixel rule stays at 767 — and these unlayered
+ * blocks are precisely the ones that have to agree with those classes.
+ * `useIsMobile()` in `components/useMediaQuery.ts` is the third and last
+ * copy; a query string in JS cannot be derived from Tailwind's CSS without
+ * a build step. If `--breakpoint-md` is ever set in the `@theme` block
+ * above, all three have to move with it.
  */
 @media not all and (min-width: 48rem) {
   input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], .keeps-size),
@@ -362,35 +365,35 @@ body {
 }
 
 /*
- * The money rail runs a step larger than the panels on a phone.
- *
- * On a laptop it is a 20rem column beside them and shares their scale. On
- * a phone it is a sheet of its own, opened deliberately from the money
- * bar and read at a glance — the one pane with the whole width to itself
- * — so its rows carry the size that buys. `SheetRow` is shared with the
- * three panels and cannot say this itself; the surface says it instead,
- * which is the same thing `.money-rail` already does for tone.
- *
- * Unlayered, like everything else in this region: the label carries a
- * `max-md:text-sm` utility that would otherwise win.
- */
-/*
- * A tighter corner on a phone. `rounded-card` compiles to
- * `border-radius: var(--radius-card)`, so re-declaring the token below the
- * breakpoint reshapes all ~48 cards, panes, tiles and popups at once —
- * the same "set the property, let the surface follow" move `.money-rail`
- * makes for tone. A 20px radius was drawn for a 400px pane; on a 328px
- * card it eats most of the top row.
- *
- * Unlayered, so it beats the `@theme` block's own `:root` declaration.
+ * What the phone re-sizes, in one block — the query is stated once here
+ * and once more above, and the string is the one `useIsMobile()` mirrors.
+ * Unlayered, like everything else in this region: these override
+ * `max-md:` utilities and the `@theme` block's own `:root`, both of which
+ * would otherwise win.
  */
 @media not all and (min-width: 48rem) {
+  /*
+   * A tighter corner. `rounded-card` compiles to
+   * `border-radius: var(--radius-card)`, so re-declaring the token here
+   * reshapes all ~48 cards, panes, tiles and popups at once — the same
+   * "set the property, let the surface follow" move `.money-rail` makes
+   * for tone. A 20px radius was drawn for a 400px pane; on a 328px card
+   * it eats most of the top row.
+   */
   :root {
     --radius-card: 1rem;
   }
-}
 
-@media not all and (min-width: 48rem) {
+  /*
+   * The money rail runs a step larger than the panels.
+   *
+   * On a laptop it is a 20rem column beside them and shares their scale.
+   * On a phone it is a sheet of its own, opened deliberately from the
+   * money bar and read at a glance — the one pane with the whole width to
+   * itself — so its rows carry the size that buys. `SheetRow` is shared
+   * with the three panels and cannot say this itself; the surface says it
+   * instead, which is what `.money-rail` already does for tone.
+   */
   .money-rail .sheet-row-label {
     font-size: 0.9375rem;
   }
