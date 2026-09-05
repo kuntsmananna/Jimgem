@@ -154,6 +154,19 @@ counted, and one shape beats a control that has to be set before the page
 says anything. The `persisted`/`usePersistedChoice` machinery that
 remembered the choice went with it.
 
+**A finished order sinks into the page.** Work still to do sits on white;
+an order whose stage `isFinal` takes the cream the page is already made
+of, so a mixed list separates at a glance into what is left and what is
+done. It is the fill rather than a fade because the obvious alternative
+costs contrast: at `opacity-70` the card's labels measure 2.97 against a
+4.5 floor, so the cheapest-looking answer is the one that fails a reader
+in sunlight. Changing no text colour leaves every ratio as it was — the
+recessed card measures 4.54 on its labels and 14.29 on its values. It
+only shows once the Status filter is widened, since that defaults to the
+non-final stages, which is exactly when the distinction is worth drawing.
+The desktop table does not do this and does not need to: a `<tr>` has no
+surface of its own, the same reason the offer fill stays row-only.
+
 **The payment status wears the table's badge**, not the plain grey text
 the card had first: measured on a phone it came out 12px at the same
 weight and colour as the word "Location" next to it — the most actionable

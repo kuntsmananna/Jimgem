@@ -122,10 +122,24 @@ function OrderCard({
         wrapping a record rather than a label, and `is-offer` so a quote
         keeps the dashed edge it wears in the table — the one piece of the
         row's styling that carries meaning rather than emphasis.
+
+        **A finished order sinks into the page.** Work still to do sits on
+        white; a delivered one takes the cream the page is already made of,
+        so a mixed list separates at a glance into what is left and what is
+        done. That is the app's "selected is the fill" rule read the other
+        way up, and it is the fill precisely because the alternative —
+        fading the whole card — costs contrast: at 70% opacity the labels
+        measure 2.97 against a 4.5 floor, so the cheapest-looking answer is
+        the one that fails a reader in sunlight. Nothing here changes a
+        text colour, so every ratio on the card is what it was.
+
+        Only visible when the Status filter is widened, since it defaults
+        to the non-final stages — which is exactly the moment the
+        distinction is worth drawing.
       */
-      className={`w-full rounded-card border border-line bg-card px-4 py-3 text-left ${
-        stage?.countsAsIncome === false ? "is-offer" : ""
-      }`}
+      className={`w-full rounded-card border border-line px-4 py-3 text-left ${
+        stage?.isFinal ? "bg-cream" : "bg-card"
+      } ${stage?.countsAsIncome === false ? "is-offer" : ""}`}
     >
       {/*
         The name leads and the chips sit at the end of its line, rather than
