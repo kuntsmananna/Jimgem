@@ -8,6 +8,7 @@ import {
   orderUnits,
   orderWeekday,
   PAYMENT_STATUS_LABEL,
+  paymentBadgeClass,
   type Order,
   type PaymentStatus,
 } from "@/lib/orderTypes";
@@ -158,8 +159,22 @@ function OrderCard({
         {order.deposit > 0 && <Figure label="Deposit" value={currency(order.deposit)} />}
       </dl>
 
-      <div className="mt-2.5 flex items-baseline gap-2 border-t border-line/60 pt-2 text-xs text-ink-soft">
-        <span className="min-w-0 truncate">{paymentLabel(order)}</span>
+      <div className="mt-2.5 flex items-center gap-2 border-t border-line/60 pt-2 text-xs">
+        {/*
+          The badge the table wears, not the plain grey text this had.
+          Measured on a phone, "Deposit paid" was 12px at the same weight
+          and colour as the word "Location" beside it — the most actionable
+          field on the card styled exactly like a field label. The colour
+          is the status, so it comes from `paymentBadgeClass` rather than
+          being decided here.
+        */}
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentBadgeClass(
+            order.paymentStatus,
+          )}`}
+        >
+          {paymentLabel(order)}
+        </span>
         <span className="flex-1" />
         {/* `tabular-nums` and no more: `font-mono` is the version string's
             treatment, and nothing else in the app spends it on money.

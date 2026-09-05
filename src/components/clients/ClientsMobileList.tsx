@@ -71,8 +71,15 @@ export function ClientsMobileList({
             <button onClick={() => onOpen(client.id)} className="min-w-0 flex-1 px-4 py-3 text-left">
             <div className="flex items-start gap-2">
               <p className="min-w-0 flex-1 truncate text-[15px] font-bold">{client.name}</p>
+              {/*
+                What they owe is the one thing on this card that asks you
+                to do something, so it is the card's loudest figure. It
+                used to be 11px in a chip beside a 14px bold lifetime
+                total — the figure that acts, set smaller than the one
+                that does not.
+              */}
               {balance > 0 && (
-                <span className="keeps-color shrink-0 rounded-full bg-tile-peach px-2 py-0.5 text-[11px] font-bold text-ink tabular-nums">
+                <span className="keeps-color shrink-0 rounded-full bg-tile-peach px-2.5 py-1 text-[13px] font-bold text-ink tabular-nums">
                   {currency(balance)} due
                 </span>
               )}
@@ -93,7 +100,11 @@ export function ClientsMobileList({
                 <span className="shrink-0 truncate">· {formatOrderDate(client.lastOrderDate)}</span>
               )}
               <span className="flex-1" />
-              <span className="shrink-0 text-sm font-bold text-ink tabular-nums">
+              {/* Lifetime spend belongs on the quiet line with the rest of
+                  the history — darker than its neighbours so the Spend sort
+                  still has something to read down, but no longer shouting
+                  over the balance above it. */}
+              <span className="shrink-0 text-xs font-semibold text-ink tabular-nums">
                 {client.orderCount ? currency(client.totalSpent) : "—"}
               </span>
             </div>

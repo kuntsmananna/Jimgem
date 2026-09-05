@@ -154,6 +154,15 @@ counted, and one shape beats a control that has to be set before the page
 says anything. The `persisted`/`usePersistedChoice` machinery that
 remembered the choice went with it.
 
+**The payment status wears the table's badge**, not the plain grey text
+the card had first: measured on a phone it came out 12px at the same
+weight and colour as the word "Location" next to it — the most actionable
+field on the card styled exactly like a field label. `PAYMENT_BADGE_CLASS`
+and `paymentBadgeClass` moved from `StatusSelects.tsx` into
+`orderTypes.ts` beside `PAYMENT_STATUS_LABEL`, so the colour lives with
+the label it colours and the table and the card cannot drift. A column of
+those badges down the list is also the fastest thing on the page to scan.
+
 **No inline editing there.** Ten cells per row edit in place on the
 desktop, announced by a hover a phone cannot perform; rather than put a
 dozen 20px targets on a card, the whole card opens the order. One rule,
@@ -1487,8 +1496,12 @@ compares identity, and a panel builds a fresh draft before every call.
   difference between fitting on one line at 360px and not, and a segmented
   pill says "pick one" on its own. Each client is a card
   (`ClientsMobileList`) with the name leading and **what they owe as the
-  only figure on that line**, since it is the one thing that acts; the
-  phone, order count, last order and total follow on a quieter second line,
+  only figure on that line**, since it is the one thing that acts — and
+  **it is the card's loudest figure**, which it was not at first: the
+  balance sat at 11px in a chip beside a 14px bold lifetime total, the
+  figure that acts set smaller than the one that doesn't. Lifetime spend
+  now sits at the metadata line's own size, dark enough for the Spend sort
+  to read down. The phone, order count and last order share that line,
   and the email, the SUMIT link, their orders and Archive stay inside
   `ClientModal` — whose Name/Phone/Email row stacks there, three fields in
   a `max-w-lg` dialog being about 95px each at 390px. **The card is two

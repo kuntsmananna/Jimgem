@@ -948,6 +948,32 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   net40: "Net+40 days",
 };
 
+/**
+ * What a payment status is worn as — beside the label it colours, rather
+ * than in whichever component happened to draw the first badge. The table
+ * and the phone card both read it, so the two cannot disagree about what
+ * "Deposit paid" looks like.
+ *
+ * Class strings in `lib` are the same call `icons.ts` makes: this is data
+ * about a closed enum, not styling a component chose.
+ */
+export const PAYMENT_BADGE_CLASS: Record<PaymentStatus, string> = {
+  unpaid: "chip-neutral bg-black/5 text-ink-soft",
+  deposit: "keeps-color bg-tile-peach text-ink",
+  paid: "keeps-color bg-tile-sage text-ink",
+  comp: "keeps-color bg-tile-lavender text-ink",
+  net40: "keeps-color bg-tile-mint text-ink",
+};
+
+/**
+ * The badge for a stored status, falling back for one that names no known
+ * status — the same rule `PAYMENT_STATUS_LABEL`'s callers follow, since
+ * the column is database text and not really a union.
+ */
+export function paymentBadgeClass(status: string): string {
+  return PAYMENT_BADGE_CLASS[status as PaymentStatus] ?? PAYMENT_BADGE_CLASS.unpaid;
+}
+
 
 /**
  * Every order date is "YYYY-MM-DD" (see db.ts's DATE type parser
