@@ -137,15 +137,23 @@ rather than worked there. Every page now has a phone layout.
 (`src/components/orders/OrdersMobileList.tsx`), one per order, under a
 heading per day. The table is fifteen columns and 1100px wide — three
 screens of sideways scrolling to read one row — so the card carries
-**every column the table has** in a labelled grid: location, guests, units,
-display, waitress, kosher, delivery, deposit, and the amount with its
-payment status under a rule. Only the fields an order *has* are drawn — a
-card of thirteen rows, nine of them "—", is worse than the table it
-replaced, because the table's dashes sit in columns you read past while on
-a card each costs a line. `hasDelivery` and `displayCount` are the table's
-own predicates, so the two cannot disagree about what "no delivery" means,
-and **Location takes the full row**: measured at 360px a half-width cell
-left it 7px after its label, which truncates a venue to one character.
+**every column the table has**: location, guests, units and deposit in a
+labelled grid, then the amount with its payment status under a rule. Only
+the fields an order *has* are drawn — a card of thirteen rows, nine of them
+"—", is worse than the table it replaced, because the table's dashes sit in
+columns you read past while on a card each costs a line. `hasDelivery` and
+`displayCount` are the table's own predicates, so the two cannot disagree
+about what "no delivery" means, and **Location takes the full row**:
+measured at 360px a half-width cell left it 7px after its label, which
+truncates a venue to one character.
+
+**Display, waitressing, kosher and delivery are a row of chips**, not four
+more labelled rows. They are flags — a yes or a small number — and a whole
+line apiece put four of them across two grid rows, which on a busy order
+was most of the card's height for the least of its meaning. Worded rather
+than iconised: `Sparkles` and `Truck` have marks elsewhere in the app but
+kosher and waitressing do not, and inventing two marks is worse than
+reading four short words.
 
 It briefly offered a second, folded card shape with a switcher between them
 (v0.59.0). The owner kept only the full one: the fold was the better answer
@@ -305,7 +313,13 @@ one for a `DonutChart` and a `LineChart` a phone will never show. Each
 expense is a card (`ExpensesMobileList`) with the business leading, its
 category chip beside it, and the date, description and amount on a second
 line; the staff and payment chips, the VAT mode and the delete are all
-inside the record. The delete is why `ExpenseFormModal` takes an
+inside the record. **A row with no business is led by its description
+instead** — `expenses.business` was added late and back-fills nothing, so
+half the imported catalogue has none, and a literal reading put "No
+business yet" in bold at the top of card after card: an absence announced
+in the one position the card has for a subject, while the line saying what
+was actually bought sat quiet underneath it. The note is only repeated on
+the second line where the business is what led. The delete is why `ExpenseFormModal` takes an
 `onDelete`, drawn `md:hidden` at the far left of the save row: the row's
 own trash is `reveals-on-hover`, and the card deliberately carries no
 20px destructive target. It closes the form before deleting, or the undo
@@ -1523,7 +1537,16 @@ compares identity, and a panel builds a fresh draft before every call.
   the `<button>` rather than the whole card, an `<a href="tel:">` inside a
   button being invalid markup. The number is still *edited* by opening the
   client; `dialable` strips everything but the digits and a leading `+` so
-  a number written the way a person writes it still dials.
+  a number written the way a person writes it still dials. **That column is
+  always there**, holding a faded mark for a client with no number: drawn
+  only where there was one to dial, the cards came out two different widths
+  and the list's right edge zigzagged down the page — and an empty slot is
+  also true, since "no number" is worth seeing while scanning. The number
+  itself is **the one thing on the metadata line allowed to shrink**;
+  everything there was `shrink-0`, so a long one beside "12 orders" and a
+  date pushed the lifetime spend off the card's right edge, and a figure
+  clipped mid-digit is worse than a number cut short next to a button that
+  dials it anyway.
 - **The Clients page is the list on the left, everything else in a column
   beside it.** The tiles and the two charts used to sit above the list,
   which started the page's actual subject halfway down a laptop screen and

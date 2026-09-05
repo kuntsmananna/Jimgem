@@ -113,6 +113,13 @@ function OrderCard({
   const stage = useStage(order.productionStatus);
   const units = orderUnits(order.packageLines, unitsPerPackage);
   const displays = displayCount(order.displays);
+  /* What the order *has*, in the order the event sheet asks for it. */
+  const flags = [
+    displays > 0 && `${displays} display`,
+    order.waitresses ? `${order.waitresses} waitress` : null,
+    order.kosher && "Kosher",
+    hasDelivery(order) && "Delivery",
+  ].filter((flag): flag is string => typeof flag === "string");
 
   return (
     <button
@@ -164,14 +171,31 @@ function OrderCard({
         {order.location && <Figure label="Location" value={order.location} wide />}
         {order.guests !== null && <Figure label="Guests" value={String(order.guests)} />}
         <Figure label="Units" value={count(units)} />
-        {displays > 0 && <Figure label="Display" value={String(displays)} />}
-        {order.waitresses !== null && order.waitresses > 0 && (
-          <Figure label="Waitress" value={String(order.waitresses)} />
-        )}
-        {order.kosher && <Figure label="Kosher" value="Yes" />}
-        {hasDelivery(order) && <Figure label="Delivery" value="Yes" />}
         {order.deposit > 0 && <Figure label="Deposit" value={currency(order.deposit)} />}
       </dl>
+
+      {/*
+        Display, waitressing, kosher and delivery as one wrapping row of
+        chips rather than a labelled row each. They are flags — a yes or a
+        small number — and a whole line apiece put four of them across two
+        grid rows, which on a busy order was most of the card's height for
+        the least of its meaning. Worded rather than iconised: `Sparkles`
+        and `Truck` have marks elsewhere in the app but kosher and
+        waitressing do not, and inventing two is worse than reading four
+        short words.
+      */}
+      {flags.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {flags.map((flag) => (
+            <span
+              key={flag}
+              className="chip-neutral rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] font-semibold text-ink-soft"
+            >
+              {flag}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="mt-2.5 flex items-center gap-2 border-t border-line/60 pt-2 text-xs">
         {/*

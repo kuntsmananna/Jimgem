@@ -88,8 +88,15 @@ export function ClientsMobileList({
             <div className="mt-2 flex items-baseline gap-2 text-xs text-ink-soft">
               {/* The number is why you opened this page while out. Plain
                   text rather than a `tel:` link: the card is a button, and
-                  an anchor inside one is invalid markup. */}
-              <span className="shrink-0 tabular-nums">{client.phone || "no phone"}</span>
+                  an anchor inside one is invalid markup.
+
+                  It is **the one thing on this line allowed to shrink**.
+                  Everything here was `shrink-0`, so a long number beside
+                  "12 orders" and a date pushed the lifetime spend off the
+                  card's right edge — a figure clipped mid-digit, which is
+                  worse than a number cut short next to a button that
+                  dials it anyway. */}
+              <span className="min-w-0 truncate tabular-nums">{client.phone || "no phone"}</span>
               {client.orderCount > 0 && (
                 <span className="shrink-0">
                   · {client.orderCount}
@@ -113,7 +120,14 @@ export function ClientsMobileList({
             {/* A column of its own rather than a chip beside the number:
                 it is the one place on this page where a mis-tap costs a
                 phone call, so it wants the width and the hairline. */}
-            {client.phone && (
+            {/*
+              The column is always here, even with no number in it. Drawn
+              only for clients who have a phone, the cards came out two
+              different widths and the list's right edge zigzagged down the
+              page — and an empty slot is also true: it says this client has
+              no number, which is worth seeing while scanning.
+            */}
+            {client.phone ? (
               <a
                 href={`tel:${dialable(client.phone)}`}
                 aria-label={`Call ${client.name}`}
@@ -122,6 +136,13 @@ export function ClientsMobileList({
               >
                 <Phone size={18} />
               </a>
+            ) : (
+              <span
+                aria-hidden
+                className="flex w-14 shrink-0 items-center justify-center border-l border-line text-ink-soft/25"
+              >
+                <Phone size={18} />
+              </span>
             )}
           </div>
         );
