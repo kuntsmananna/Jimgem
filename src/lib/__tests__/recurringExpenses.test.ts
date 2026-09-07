@@ -18,14 +18,18 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
  */
 const rows: Record<string, unknown>[] = [];
 const inserts: { date: string; from: number }[] = [];
+/** Set to make the stub answer the way a pre-migration database does. */
+let selectThrows: Error | null = null;
 
-vi.mock("@/lib/db", () => ({
+vi.mock("@/lib/db", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/db")>("@/lib/db")),
   getDb: () => ({
     query: async (sql: string, params: unknown[] = []) => {
       if (sql.includes("INSERT INTO expenses")) {
         inserts.push({ date: params[0] as string, from: params[1] as number });
         return { rows: [{ id: 900 + inserts.length }] };
       }
+      if (selectThrows) throw selectThrows;
       return { rows };
     },
   }),
@@ -63,7 +67,15 @@ const at = (iso: string) => new Date(`${iso}T12:00:00Z`);
 
 beforeEach(() => {
   inserts.length = 0;
+  selectThrows = null;
 });
+
+/** Postgres' own answer when migration 028 has not been run yet. */
+function missingColumn(): Error {
+  const error = new Error('column "recurring_series" does not exist');
+  (error as Error & { code: string }).code = "42703";
+  return error;
+}
 
 describe("rollForwardRecurring", () => {
   it("books the months between the newest row and today", async () => {
@@ -211,5 +223,25 @@ describe("getRecurringSummary", () => {
   it("is zero when nothing repeats", async () => {
     given();
     expect(await getRecurringSummary()).toEqual({ series: 0, total: 0, netTotal: 0 });
+  });
+});
+
+describe("a database that has not had migration 028 run", () => {
+  it("reports nothing repeating rather than taking the page down", async () => {
+    // The state between a deploy and the migration being pasted in. The
+    // Expenses page and Settings both read this on render, so throwing
+    // here would be two blank screens over a column that is minutes away.
+    selectThrows = missingColumn();
+    expect(await getRecurringSummary()).toEqual({ series: 0, total: 0, netTotal: 0 });
+    const result = await rollForwardRecurring(at("2026-10-10"));
+    expect(result).toEqual({ created: 0, months: [], series: 0, tooFarBack: [] });
+  });
+
+  it("still throws anything that is not that", async () => {
+    // The failure this must not swallow: reporting a dead connection as
+    // "run the migration" sends someone to re-run what they already ran
+    // while the real fault goes unmentioned.
+    selectThrows = new Error("connection terminated unexpectedly");
+    await expect(getRecurringSummary()).rejects.toThrow("connection terminated");
   });
 });

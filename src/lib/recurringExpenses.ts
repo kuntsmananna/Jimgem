@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { getDb, isMissingColumn } from "./db";
 import { vatOn, type VatMode } from "./orderTypes";
 
 /**
@@ -57,6 +57,16 @@ interface SeriesRow {
   recurring: boolean | null;
 }
 
+/** Said once a process, and it names the migration that fixes it. */
+let migrationReported = false;
+async function reportMissingColumn() {
+  if (migrationReported) return;
+  migrationReported = true;
+  console.error(
+    "expenses.recurring is missing — run scripts/migrate-028-recurring-expenses.sql against this database.",
+  );
+}
+
 /** "YYYY-MM" — the grain a series is counted in. */
 const monthKey = (date: string) => date.slice(0, 7);
 
@@ -89,12 +99,26 @@ async function getSeriesHeads(): Promise<SeriesHead[]> {
   // Deleting October's rent leaves October empty and still writes
   // November, because the head falls back to September rather than the
   // series being read as ended.
-  const { rows } = await db.query<SeriesRow & { deleted_at: string | null }>(
-    `SELECT id, recurring_series, date, category_id, amount, vat_mode, vat_rate, recurring, deleted_at
-       FROM expenses
-      WHERE recurring_series IS NOT NULL
-      ORDER BY recurring_series, date DESC, id DESC`,
-  );
+  // A database that has not had migration 028 pasted into it yet has no
+  // such columns, which is the ordinary state for the few minutes between
+  // a deploy and that paste. "Nothing repeats" is the truthful answer
+  // there, and it keeps the Expenses page and Settings on their feet —
+  // the same degrading the SUMIT meter and the backups pane do for a
+  // missing table. Saving still fails loudly, which is right: a write
+  // that cannot record the flag must not pretend it did.
+  let rows: (SeriesRow & { deleted_at: string | null })[];
+  try {
+    ({ rows } = await db.query<SeriesRow & { deleted_at: string | null }>(
+      `SELECT id, recurring_series, date, category_id, amount, vat_mode, vat_rate, recurring, deleted_at
+         FROM expenses
+        WHERE recurring_series IS NOT NULL
+        ORDER BY recurring_series, date DESC, id DESC`,
+    ));
+  } catch (error) {
+    if (!isMissingColumn(error, "recurring")) throw error;
+    await reportMissingColumn();
+    return [];
+  }
 
   const bySeries = new Map<number, SeriesHead>();
   for (const row of rows) {

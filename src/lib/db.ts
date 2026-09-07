@@ -67,6 +67,25 @@ export function isMissingTable(error: unknown, table: string): boolean {
   );
 }
 
+/**
+ * The same question for a column, which is what a migration that adds one
+ * to an existing table leaves behind between the deploy and the paste into
+ * the database console.
+ *
+ * Narrow on purpose, like `isMissingTable`: it matches Postgres' own
+ * undefined-column code *and* the column's name, so a connection failure
+ * or a typo elsewhere in the query is not read as "run the migration" and
+ * sent to somebody who has already run it.
+ */
+export function isMissingColumn(error: unknown, column: string): boolean {
+  const code = (error as { code?: string })?.code;
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    (code === "42703" && message.includes(column)) ||
+    new RegExp(`column .*${column}.* does not exist`, "i").test(message)
+  );
+}
+
 /** Tables already reported, so the diagnostic is written once a process. */
 const reported = new Set<string>();
 

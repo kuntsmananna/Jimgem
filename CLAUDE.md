@@ -1615,6 +1615,16 @@ compares identity, and a panel builds a fresh draft before every call.
   rents into twelve months that already have their own — every figure still
   adding up, against a ledger that is quietly false. A month missing a cost
   reads as light and gets fixed; a month with it twice reads as correct.
+- **The read path survives its own migration not having been run yet.**
+  `getSeriesHeads` catches `isMissingColumn(error, "recurring")` and
+  answers "nothing repeats", so the Expenses page and Settings stay up in
+  the minutes between a deploy and the paste into the database console —
+  the same degrading the SUMIT meter and the backups pane do for a missing
+  table, and `isMissingColumn` in `db.ts` is the column-shaped twin of
+  `isMissingTable` beside it. It **rethrows anything else**, for the reason
+  stated there: a connection failure reported as "run the migration" sends
+  someone to re-run what they already ran. Saving still fails loudly, which
+  is right — a write that cannot record the flag must not pretend it did.
 - **`recurring` is in `ExpensesClient`'s inline `patch` payload for exactly
   the reason it is not editable there**: that route takes a *whole*
   `ExpenseInput`, so a field left out of the rebuilt row is a field
