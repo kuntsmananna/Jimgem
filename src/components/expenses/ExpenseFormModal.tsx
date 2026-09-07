@@ -24,7 +24,32 @@ const emptyDraft = (vatRate: number): ExpenseInput => ({
   // the price. The ones that don't are why this is a field.
   vatMode: "included",
   vatRate,
+  // A one-off unless it says otherwise: almost every expense is.
+  recurring: false,
 });
+
+/**
+ * The two answers to "does this come back", in the order they are true:
+ * almost every expense is a one-off.
+ */
+const RECURRENCE = [
+  { recurring: false, label: "One-off" },
+  { recurring: true, label: "Monthly" },
+] as const;
+
+/**
+ * "1st", "2nd", "23rd" — the day of the month this expense falls on, so
+ * the form says what ticking Monthly actually books rather than leaving it
+ * to be discovered next month. A day past the 28th is clamped by
+ * `sameDayIn` in recurringExpenses.ts where the month is shorter.
+ */
+function ordinal(date: string): string {
+  const day = Number(date.slice(8, 10));
+  if (!day) return "same day";
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  const suffix = teen ? "th" : ["th", "st", "nd", "rd"][day % 10] ?? "th";
+  return `${day}${suffix}`;
+}
 
 export function ExpenseFormModal({
   expense,
@@ -68,6 +93,7 @@ export function ExpenseFormModal({
           // The rate it was recorded at, not today's — the same
           // copy-not-link rule the order form follows.
           vatRate: expense.vatRate,
+          recurring: expense.recurring,
         }
       : emptyDraft(vatRate),
   );
@@ -194,6 +220,43 @@ export function ExpenseFormModal({
               </option>
             ))}
           </SelectInput>
+        </Field>
+        {/*
+          Whether this cost comes back every month.
+
+          Two chips rather than a checkbox, and worded as what the expense
+          *is* rather than as a setting being switched on: "One-off" is the
+          answer for almost every row, and a lone unticked box reads as
+          something left undone. It wears the VAT row's treatment because
+          it is the same kind of statement — a fact about the expense that
+          the amount cannot tell you.
+
+          Changing it is safe in both directions: ticking it starts the
+          series from this row, and unticking the newest row of a series
+          ends it without touching the months already booked.
+        */}
+        <Field label="Repeats">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {RECURRENCE.map((option) => (
+              <button
+                key={String(option.recurring)}
+                type="button"
+                onClick={() => setDraft({ ...draft, recurring: option.recurring })}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                  draft.recurring === option.recurring
+                    ? "border-black bg-black text-cream"
+                    : "border-line text-ink-soft hover:border-ink"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+            {draft.recurring && (
+              <span className="text-[11px] text-ink-soft">
+                Booked again on the {ordinal(draft.date)} of every month
+              </span>
+            )}
+          </div>
         </Field>
         {/* Who took the money, and what it bought — two questions, so two
             fields. The description used to answer both, which left the

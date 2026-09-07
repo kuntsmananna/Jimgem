@@ -25,6 +25,8 @@ import { PricedOptionsPanel } from "@/components/settings/PricedOptionsPanel";
 import { StagesPanel } from "@/components/settings/StagesPanel";
 import { StaffPanel } from "@/components/settings/StaffPanel";
 import { ImportPanel } from "@/components/settings/ImportPanel";
+import { RecurringPanel } from "@/components/settings/RecurringPanel";
+import { getRecurringSummary } from "@/lib/recurringExpenses";
 import { getLastSumitSync, getSumitDocuments } from "@/lib/sumitSync";
 import { getSumitUsage } from "@/lib/sumitBudget";
 import { SumitProbePanel } from "@/components/settings/SumitProbePanel";
@@ -39,7 +41,7 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -58,6 +60,7 @@ export default async function SettingsPage() {
       getSumitUsage(),
       listSnapshots(),
       getHistory(),
+      getRecurringSummary(),
     ]);
   const sumitDocumentCount = sumitDocuments.length;
 
@@ -146,6 +149,7 @@ export default async function SettingsPage() {
           content: (
             <div className="columns-2 gap-6 max-md:columns-1 [&>*]:mb-6 [&>*]:break-inside-avoid">
               <ImportPanel />
+              <RecurringPanel summary={recurring} />
               <SumitSyncPanel lastSync={lastSumitSync} documentCount={sumitDocumentCount} usage={sumitUsage} />
               <SumitProbePanel usage={sumitUsage} />
               <BackupPanel {...snapshots} />

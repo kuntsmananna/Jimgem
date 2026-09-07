@@ -46,6 +46,25 @@ export interface Expense {
   /** True when `note` is a best-effort, unverified match from a Sheet comment — see financials.ts's SheetExpenseItem. */
   noteUnverified: boolean;
   /**
+   * This cost repeats every month — rent, insurance, the accountant.
+   *
+   * A flag on an ordinary expense rather than a template beside the
+   * ledger: a recurring cost *is* an expense in each month it lands in,
+   * and a second place for the amount to live is a second place for it to
+   * be wrong. `rollForwardRecurring` in recurringExpenses.ts is what turns
+   * the flag into next month's row.
+   */
+  recurring: boolean;
+  /**
+   * Which series this row belongs to — the id of the expense that started
+   * it, which for a hand-marked one is its own. Null for a one-off.
+   *
+   * Not editable and not shown: it exists so the roll-forward can ask
+   * "does this series already have a row in November", which the unique
+   * index in migration 028 then enforces.
+   */
+  recurringSeries: number | null;
+  /**
    * When the row last changed. Sent back with a save so the UPDATE can
    * match on it and refuse to write over someone else's edit — see
    * `StaleWriteError` in orders.ts.
@@ -65,6 +84,8 @@ export interface ExpenseInput {
   note: string;
   vatMode: VatMode;
   vatRate: number;
+  /** See Expense.recurring. A new expense is a one-off unless it says otherwise. */
+  recurring: boolean;
 }
 
 interface DbExpenseRow {
@@ -79,6 +100,8 @@ interface DbExpenseRow {
   sheet_key: string | null;
   vat_mode: VatMode | null;
   vat_rate: string | null;
+  recurring: boolean | null;
+  recurring_series: number | null;
   /** A Date from the driver — see isoStamp in stamp.ts. */
   updated_at: string | Date;
   updated_by: string | null;
@@ -109,6 +132,8 @@ function mapExpense(
     // to take VAT back out rather than how to add it on.
     netAmount: vatOn(Number(row.amount), row.vat_mode ?? "included", Number(row.vat_rate ?? 0)).net,
     noteUnverified: false,
+    recurring: row.recurring ?? false,
+    recurringSeries: row.recurring_series ?? null,
     updatedAt: isoStamp(row.updated_at),
     updatedBy: row.updated_by ?? "",
   };
@@ -152,6 +177,8 @@ interface RawDbExpenseRow {
   staff_id: number | null;
   business: string | null;
   note: string | null;
+  recurring: boolean | null;
+  recurring_series: number | null;
   updated_at: string | Date;
   updated_by: string | null;
 }
@@ -165,12 +192,36 @@ async function mapSingleExpense(row: RawDbExpenseRow): Promise<Expense> {
 export async function createExpense(input: ExpenseInput, editor?: string): Promise<Expense> {
   const db = getDb();
   const { rows } = await db.query<RawDbExpenseRow>(
-    `INSERT INTO expenses (date, category_id, amount, payment_method_id, staff_id, business, note, vat_mode, vat_rate, updated_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO expenses (date, category_id, amount, payment_method_id, staff_id, business, note, vat_mode, vat_rate, recurring, updated_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
-    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.business, input.note, input.vatMode, input.vatRate, editor ?? null],
+    [input.date, input.categoryId, input.amount, input.paymentMethodId, input.staffId, input.business, input.note, input.vatMode, input.vatRate, input.recurring, editor ?? null],
   );
-  return mapSingleExpense(rows[0]);
+  return mapSingleExpense(await startSeries(rows[0]));
+}
+
+/**
+ * A row marked "repeats monthly" and belonging to no series yet starts
+ * one, pointing at itself.
+ *
+ * A second statement rather than a CTE beside the INSERT, and that is
+ * forced rather than chosen: data-modifying CTEs all run against the same
+ * snapshot, so an UPDATE sitting next to an INSERT cannot see the row that
+ * INSERT just wrote. Checked before writing it this way.
+ *
+ * The failure mode if the second statement never runs is benign — a
+ * recurring row with no series simply does not repeat, and saving it again
+ * links it — which is why this does not need the transaction it cannot
+ * have (see db.ts: the driver is stateless per HTTP request).
+ */
+async function startSeries(row: RawDbExpenseRow): Promise<RawDbExpenseRow> {
+  if (!row.recurring || row.recurring_series !== null) return row;
+  const db = getDb();
+  const { rows } = await db.query<RawDbExpenseRow>(
+    "UPDATE expenses SET recurring_series = id WHERE id = $1 AND recurring_series IS NULL RETURNING *",
+    [row.id],
+  );
+  return rows[0] ?? row;
 }
 
 /**
@@ -196,20 +247,26 @@ export async function updateExpense(
     input.note,
     input.vatMode,
     input.vatRate,
+    input.recurring,
     id,
   ];
   const editorAt = bind(values, editor ?? null);
   const fresh = expectedUpdatedAt ? ` AND updated_at = ${bind(values, expectedUpdatedAt)}` : "";
   const { rows } = await db.query<RawDbExpenseRow>(
     `UPDATE expenses SET date = $1, category_id = $2, amount = $3, payment_method_id = $4, staff_id = $5,
-            business = $6, note = $7, vat_mode = $8, vat_rate = $9, updated_at = now(),
+            business = $6, note = $7, vat_mode = $8, vat_rate = $9, recurring = $10, updated_at = now(),
             updated_by = ${editorAt}
-     WHERE id = $10${fresh}
+     WHERE id = $11${fresh}
      RETURNING *`,
     values,
   );
   if (rows.length === 0) throw new StaleWriteError("expense");
-  return mapSingleExpense(rows[0]);
+  // Ticking "repeats monthly" on an expense that was a one-off starts its
+  // series here. Unticking deliberately leaves the series alone: the
+  // roll-forward reads the *newest* row of a series, so a series whose
+  // latest row is no longer recurring has ended, and the rows behind it
+  // keep saying what they were.
+  return mapSingleExpense(await startSeries(rows[0]));
 }
 
 /**

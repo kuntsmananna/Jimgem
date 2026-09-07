@@ -1,5 +1,6 @@
 "use client";
 
+import { Repeat } from "lucide-react";
 import type { Expense } from "@/lib/expenses";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
@@ -62,6 +63,19 @@ export function ExpensesMobileList({
                 <span className="font-semibold text-ink-soft/60">Untitled expense</span>
               )}
             </p>
+            {/* That it comes back every month, as a mark rather than the
+                word the desktop row can afford: on a card this sits in a
+                row already holding a category name, and "Monthly" spelled
+                out pushed a two-word category onto a second line. The
+                title is what says it in full. */}
+            {entry.recurring && (
+              <span
+                title="Repeats every month"
+                className="chip-neutral flex shrink-0 items-center rounded-full bg-black/5 p-1 text-ink-soft"
+              >
+                <Repeat size={11} />
+              </span>
+            )}
             {/* The category as a chip, because it is a class the expense
                 belongs to rather than a value it holds — the same
                 reasoning the desktop row and the Orders type chip

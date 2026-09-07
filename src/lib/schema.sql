@@ -553,3 +553,17 @@ CREATE TABLE IF NOT EXISTS db_snapshots (
   data JSONB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS db_snapshots_taken_idx ON db_snapshots (taken_at DESC);
+
+-- An expense that repeats every month: the flag, and which series a row
+-- belongs to (scripts/migrate-028-recurring-expenses.sql). The unique
+-- index is what keeps a series to one row per month, and it covers
+-- deleted rows on purpose -- deleting a generated row has to mean "not
+-- this month", not "make it again tonight"
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring_series INTEGER REFERENCES expenses(id);
+CREATE UNIQUE INDEX IF NOT EXISTS expenses_recurring_month_idx
+  ON expenses (recurring_series, (date_trunc('month', date::timestamp)))
+  WHERE recurring_series IS NOT NULL;
+CREATE INDEX IF NOT EXISTS expenses_recurring_series_idx
+  ON expenses (recurring_series, date DESC, id DESC)
+  WHERE recurring_series IS NOT NULL;

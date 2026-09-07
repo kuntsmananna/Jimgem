@@ -3,11 +3,12 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Expense, ExpensePeriod } from "@/lib/expenses";
+import type { RecurringSummary } from "@/lib/recurringExpenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
-import { CalendarDays, ChevronsLeft, ChevronsRight, CreditCard, Maximize2, Plus, Tags, Trash2, UserRound } from "lucide-react";
+import { CalendarDays, ChevronsLeft, ChevronsRight, CreditCard, Maximize2, Plus, Repeat, Tags, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { currencyExact as currency } from "@/lib/money";
@@ -39,6 +40,7 @@ export function ExpensesClient({
   paymentMethods,
   staff,
   vatRate,
+  recurring,
   collapsedPanes,
 }: {
   periods: ExpensePeriod[];
@@ -47,6 +49,8 @@ export function ExpensesClient({
   staff: StaffAccount[];
   /** Today's VAT rate, stamped onto a new expense. */
   vatRate: number;
+  /** What the costs marked "repeats monthly" come to — see recurringExpenses.ts. */
+  recurring: RecurringSummary;
   /** Folded when the page loaded, read from the cookie — see expensePanes.ts. */
   collapsedPanes: ExpensePane[];
 }) {
@@ -199,6 +203,11 @@ export function ExpensesClient({
         note: entry.note,
         vatMode: entry.vatMode,
         vatRate: entry.vatRate,
+        // Not editable from the row, and listed here for exactly that
+        // reason: this sends a *whole* row, so a field left out of it is a
+        // field silently cleared. Correcting an amount would otherwise
+        // cancel the repeat.
+        recurring: entry.recurring,
         ...change,
       }),
     });
@@ -303,6 +312,9 @@ export function ExpensesClient({
           </span>
           <span className="text-xs font-semibold text-ink-soft">{vatLabel}</span>
         </div>
+        <div className="md:hidden">
+          <RecurringNote recurring={recurring} />
+        </div>
 
         <div className="flex items-center justify-between gap-3 max-md:hidden">
           <div className="flex items-baseline gap-2">
@@ -312,6 +324,7 @@ export function ExpensesClient({
                 effect is here. */}
             <span className="text-sm font-semibold text-ink tabular-nums">{currency(total)}</span>
             <span className="text-[11px] font-semibold text-ink-soft">{vatLabel}</span>
+            <RecurringNote recurring={recurring} />
           </div>
           <div className="flex items-center gap-2">
             <PageSearch
@@ -674,6 +687,13 @@ function ExpenseRow({
           expense rather than identify it. Both stay on one line — "+ who"
           broke over two in a narrow column and read as two controls. */}
       <span className="flex shrink-0 items-center justify-end gap-1.5">
+        {/* That this cost comes back is the same kind of fact as who paid
+            it and how — something true *about* the expense rather than
+            part of what it is — so it wears the same chip and sits with
+            them. Not an `EditableCell`: it is changed by opening the
+            expense, because ticking it starts a series that writes rows,
+            which is more than a cell should do on a stray click. */}
+        {entry.recurring && <AttributeChip icon={<Repeat size={11} />} label="Monthly" />}
         <EditableCell
           chip
           displayValue={
@@ -792,6 +812,34 @@ function CategoryChip({ name }: { name: string }) {
     <span className="chip-neutral inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-black/5 px-2 py-0.5 text-xs font-medium text-ink-soft">
       <span className="shrink-0">{expenseCategoryIconElement(name)}</span>
       <span className="truncate">{name}</span>
+    </span>
+  );
+}
+
+/**
+ * What repeats every month, beside the period's own total.
+ *
+ * The figure this feature was asked for: "a sense of the predictable
+ * expense for next month". It is deliberately *not* part of the total — a
+ * period's total is what that period cost, and folding a forecast into it
+ * would make a figure that reconciles against nothing.
+ *
+ * Summed per series from its newest row, so a rent rise counts once and at
+ * the new number. Drawn only where something actually repeats: a "₪0
+ * repeats monthly" on a ledger with no recurring costs is a line that
+ * teaches nobody anything.
+ */
+function RecurringNote({ recurring }: { recurring: RecurringSummary }) {
+  const { view } = useVatView();
+  if (recurring.series === 0) return null;
+  const amount = view === "net" ? recurring.netTotal : recurring.total;
+  return (
+    <span
+      title={`${recurring.series} ${recurring.series === 1 ? "cost repeats" : "costs repeat"} every month`}
+      className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-ink-soft"
+    >
+      <Repeat size={11} />
+      <span className="tabular-nums">{currency(amount)}</span> a month repeats
     </span>
   );
 }

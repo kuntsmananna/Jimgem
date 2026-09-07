@@ -1583,6 +1583,48 @@ compares identity, and a panel builds a fresh draft before every call.
   the date and the category it spent a column and a gutter — most of the
   gap between them — on a hover-only affordance. It stays on that side and
   nowhere near the trash, which is why it was there to begin with.
+- **An expense can repeat every month**, and the ledger writes the next
+  one itself (`recurring`, `recurring_series`,
+  `scripts/migrate-028-recurring-expenses.sql`). Rent, insurance, the
+  accountant: the same cost on the same day, typed in again every month
+  until now. A **flag on an ordinary expense** rather than a template
+  beside the ledger — a recurring cost *is* an expense in each month it
+  lands in, and a second place for the amount to live is a second place for
+  it to be wrong. A generated row is editable, deletable and counted like
+  any other, the same rule an imported order follows; correcting October's
+  rent corrects October, and November is copied from whatever the series
+  says last, so a rise is entered once.
+  `rollForwardRecurring` in `src/lib/recurringExpenses.ts` is the job, run
+  by the nightly cron and by **Book this month** in Settings → Data. Three
+  rules hold it up, and the database enforces the first two rather than the
+  code remembering to:
+  - **One row per series per month** — a unique index on
+    `(recurring_series, date_trunc('month', date))`, which is also what
+    makes the job idempotent from two places at once.
+  - **A deleted row keeps its month.** That index covers deleted rows too,
+    so deleting a generated October rent means "not this month", not "make
+    it again tonight" — while the *head* of a series is its newest **live**
+    row, so deleting October still books November.
+  - **The newest row decides whether the series continues.** Untick Monthly
+    on it and the series ends; the rows behind it keep saying what they
+    were, because they are history.
+- **A series more than `MAX_CATCH_UP` months behind is refused, not filled
+  in**, and the pane says so. Gap-filling exists for a cron that missed a
+  night; the *other* way a gap appears is ticking Monthly on last year's
+  rent while tidying old rows, and filling that one would write twelve
+  rents into twelve months that already have their own — every figure still
+  adding up, against a ledger that is quietly false. A month missing a cost
+  reads as light and gets fixed; a month with it twice reads as correct.
+- **`recurring` is in `ExpensesClient`'s inline `patch` payload for exactly
+  the reason it is not editable there**: that route takes a *whole*
+  `ExpenseInput`, so a field left out of the rebuilt row is a field
+  silently cleared — correcting an amount from the table would otherwise
+  cancel the repeat.
+- **The "repeats monthly" figure is beside the period total, never inside
+  it.** A period's total is what that period cost; folding a forecast into
+  it makes a number that reconciles against nothing. It is summed per
+  series from the newest row — the same "summed per row, never divided out
+  of a total" rule `financials.ts` follows, and for the same VAT reason.
 - **`expenses.business` is free text, like `orders.customer`.** A supplier
   is named on a receipt rather than chosen from the owner's lists, and a
   one-off shop must never be the reason a row cannot be saved.
