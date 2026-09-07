@@ -9,8 +9,8 @@ Jimgem ("gems cocktail os") — a dashboard for Gems Cocktail Bites
 (alcoholic jelly-shot cocktails, gem-bites.com), backed by the owner's
 existing Google Sheet plus a Postgres DB for everything the sheet can't
 hold (new orders/expenses entered via the dashboard, owner-editable
-value lists, staff logins). Five pages: Dashboard, Orders, Expenses,
-Biz Plan, Settings, plus `/login`. Full context and every design
+value lists, staff logins). Six pages: Dashboard, Orders, Expenses,
+Clients, Biz Plan, Settings, plus `/tasks` and `/login`. Full context and every design
 decision's reasoning lives in the implementation plan this was built
 from — check git history / prior planning docs if the "why" behind
 something here isn't obvious.
@@ -27,8 +27,9 @@ something here isn't obvious.
 
 ## File layout
 
-- `src/app/(app)/**` — the 5 authenticated pages (Dashboard, Orders,
-  Expenses, Biz Plan, Settings), sharing `(app)/layout.tsx` (top nav).
+- `src/app/(app)/**` — the authenticated pages (Dashboard, Orders,
+  Expenses, Clients, Tasks, Biz Plan, Settings), sharing
+  `(app)/layout.tsx` (top nav).
   `src/app/login/**` sits outside the group (no nav, no auth required).
 - `src/app/api/**` — route handlers for client-triggered interactivity
   (not for initial page data — see below)
@@ -324,6 +325,47 @@ the second line where the business is what led. The delete is why `ExpenseFormMo
 own trash is `reveals-on-hover`, and the card deliberately carries no
 20px destructive target. It closes the form before deleting, or the undo
 bar — portalled and fixed — comes up behind the dialog that raised it.
+
+**The Dashboard's pane is the shared to-do list** (`TaskList`), where the
+period's orders used to be — the owner's call. The orders had a whole tab
+of their own while the things the two of them owe each other had nowhere
+at all, and lived in WhatsApp where they scroll away. **The pane it
+replaced is parked whole in `dashboard/DashboardOrdersPane.tsx`**, not
+deleted: the component, its `OrderPreview` shape and the
+`buildOrderPreviews` that fills it, in one file nothing imports, because
+the owner said they might want it back. That file is deliberately **not**
+`"use client"` and must not become one — the builder reaches `@/lib/orders`
+and would pull `@neondatabase/serverless` and `googleapis` into the browser
+— so reviving it means rendering it from the server page and handing the
+element to `DashboardClient`, which its header spells out.
+
+A done task **sinks to the bottom, struck through, on the cream the page
+is already made of** — the same "a finished row sinks into the page" move
+the phone's Orders list makes, and for the same reason: it costs no
+contrast, because no text colour changes. It stays rather than
+disappearing, so a mis-tap is untickable without going to look for it.
+Ticking marks the row *where it is* and lets the server's order move it on
+the next refresh: the order is stated once, in `getTasks`'s SQL, and a row
+that jumped the instant it was tapped would pull the next one under a
+finger already on its way to it.
+
+**On a phone the row wraps and the task takes the first line whole.**
+Measured at 360px the row has 296px of content and the assignee `<select>`
+alone took ~200 of it — the unlayered phone rules size every select to
+16px so iOS cannot zoom, and a select is as wide as its longest option —
+which left the task itself four characters wide. So the assignee and the
+trash drop to a line of their own, and the title *wraps* there instead of
+truncating: a task you cannot finish reading is not a task. Nothing moves
+on a laptop, where every child fits and a wrapping row that never wraps is
+the row it was.
+
+**Tasks took Clients' slot in the bottom bar** — Orders, Expenses, Tasks,
+More — and Clients moved into More. Ticking something off is a standing-up
+job in a way that looking a client up is not, and a client is most often
+reached *from* an order anyway: the Orders table's customer name opens
+their card. `/tasks` exists for that bar; the desktop nav gets **no
+seventh pill**, because the Dashboard pane is the same list and that row
+is already six pills plus four other things in ~1000px that cannot wrap.
 
 **The Dashboard on a phone is the figures and the charts, and no order
 list.** The pane that lists the period's orders is not *rendered* below the
@@ -1615,6 +1657,16 @@ compares identity, and a panel builds a fresh draft before every call.
   rents into twelve months that already have their own — every figure still
   adding up, against a ledger that is quietly false. A month missing a cost
   reads as light and gets fixed; a month with it twice reads as correct.
+- **The shared to-do list is a table of its own** (`tasks`,
+  `scripts/migrate-029-tasks.sql`): a line of free text, a `staff_id` or
+  nobody, and a `done_at`. Deliberately nothing else — a task list grows
+  fields until nobody fills them in, and the surest way to stop this one
+  being used is to ask four questions before it will take a sentence.
+  `done_at` is a stamp rather than a flag because it is what sorts the
+  finished ones, and `updateTask` only writes it when the tick actually
+  moves, so editing a title cannot reshuffle the done half of the list.
+  Watched by `row_revisions` like every other table holding real data, and
+  soft-deleted like an order or an expense so the Undo bar is a real offer.
 - **The read path survives its own migration not having been run yet.**
   `getSeriesHeads` catches `isMissingColumn(error, "recurring")` and
   answers "nothing repeats", so the Expenses page and Settings stay up in

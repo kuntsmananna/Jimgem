@@ -9,6 +9,14 @@ import { logout } from "@/app/login/actions";
 import { useVatView } from "@/components/VatViewContext";
 import { VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
 
+/*
+ * The desktop row. `/tasks` is deliberately **not** here: the same list is
+ * a pane on the Dashboard, which is where a laptop reads it, and this row
+ * is already six pills plus a VAT toggle, a version, a name and a sign-out
+ * in about 1000px that cannot wrap. The page exists for the phone's bottom
+ * bar, and a seventh pill would buy a second way to reach something this
+ * screen already shows.
+ */
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/orders", label: "Orders" },

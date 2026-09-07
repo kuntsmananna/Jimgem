@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Ellipsis,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Receipt,
   Settings,
@@ -22,18 +23,25 @@ import { initials, VatViewToggle } from "@/components/Nav";
  *
  * The owner's answer to what a phone is actually used for — looking an
  * order up, booking one on the spot, logging an expense in a shop, and
- * marking something delivered — names these three and nothing else. The
- * other three destinations are still reachable, one tap further away,
- * which is the right distance for screens nobody opens away from a desk.
+ * marking something delivered — named Orders, Expenses and Clients. Tasks
+ * took the third slot from Clients (v0.64.0), on the owner's instruction:
+ * ticking something off is a standing-up job in a way that looking a
+ * client up is not, and a client is most often reached *from* an order
+ * anyway — the Orders table's customer name opens their card without
+ * coming here at all.
+ *
+ * The rest are still reachable, one tap further away, which is the right
+ * distance for screens nobody opens away from a desk.
  */
 const BAR = [
   { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/expenses", label: "Expenses", icon: Receipt },
-  { href: "/clients", label: "Clients", icon: Users },
+  { href: "/tasks", label: "Tasks", icon: ListChecks },
 ];
 
 const MORE = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/clients", label: "Clients", icon: Users },
   { href: "/biz-plan", label: "Biz Plan", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -75,8 +83,8 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
         <BarItem
           label="More"
           icon={Ellipsis}
-          // Not a link: the other three destinations live behind it, and
-          // so do the controls that belong to no page at all.
+          // Not a link: the four remaining destinations live behind it,
+          // and so do the controls that belong to no page at all.
           active={moreOpen || MORE.some((item) => isActive(item.href, path))}
           onClick={() => setMoreOpen(true)}
         />

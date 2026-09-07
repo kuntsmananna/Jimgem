@@ -1,35 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Banknote, CalendarRange, MapPin, Receipt, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { Banknote, CalendarRange, Receipt, TrendingUp, type LucideIcon } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import type { MonthlyFinancials } from "@/lib/financials";
+import type { Task } from "@/lib/tasks";
+import type { StaffAccount } from "@/lib/settings";
 import { LineChart } from "@/components/charts/LineChart";
 import { useVatView } from "@/components/VatViewContext";
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
-import { EventTypeChip } from "@/components/orders/EventTypeChip";
+import { TaskList } from "@/components/tasks/TaskList";
 import { SelectDropdown } from "@/components/orders/Dropdown";
-import { useIsMobile } from "@/components/useMediaQuery";
 import { count, currency } from "@/lib/money";
 
 export interface FlavorLine {
   month: number;
   flavorId: string;
-  units: number;
-}
-
-export interface OrderPreview {
-  key: string;
-  month: number;
-  day: number | null;
-  dateLabel: string;
-  customer: string;
-  customerType: string;
-  location: string;
-  guests: number | null;
-  totalAmount: number;
   units: number;
 }
 
@@ -70,21 +57,30 @@ export function DashboardClient({
   financials,
   flavors,
   flavorLines,
-  orders,
+  tasks,
+  staff,
 }: {
   financials: MonthlyFinancials[];
   flavors: FlavorMeta[];
   flavorLines: FlavorLine[];
-  orders: OrderPreview[];
+  /** The shared to-do list, in the slot the period's orders used to fill. */
+  tasks: Task[];
+  /** Who a task can be given to — see `TaskList`. */
+  staff: StaffAccount[];
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | "all">("all");
   const { label: vatLabel } = useVatView();
   /*
-   * The orders pane is not built on a phone at all — the owner's call, and
-   * the right one: it is a ~620px fixed row template inside an absolutely
-   * positioned scroller, and the orders it lists have a tab of their own.
+   * The phone gets this pane now, where it did not get the one before it.
+   * That pane was a ~620px fixed row template inside an absolutely
+   * positioned scroller, listing orders that have a whole tab of their
+   * own; a list of one-line tasks is the opposite on both counts, and is
+   * exactly the sort of thing worth having in a pocket.
+   *
+   * Nothing on this page branches on the viewport any more — the period
+   * picker renders both its shapes and hides each at the other's width,
+   * which is the `PageSearch` pattern and paints neither of them twice.
    */
-  const mobile = useIsMobile();
 
   /** The phone's period chip. `SelectDropdown` is keyed by string, so the
    *  month number round-trips through one. */
@@ -162,11 +158,6 @@ export function DashboardClient({
     });
   }, [flavorLines, flavors, selectedMonth]);
 
-  // Every order in the scope, not a top few: this list answers "what was
-  // in this period", which the period selector above already picked.
-  const previewOrders =
-    selectedMonth === "all" ? orders : orders.filter((o) => o.month === selectedMonth);
-
   const highlightIndex = selectedMonth === "all" ? null : financials.findIndex((m) => m.month === selectedMonth);
   const comparedTo = comparison ? `vs ${comparison.previous.monthLabel}` : null;
 
@@ -241,72 +232,24 @@ export function DashboardClient({
           with the orders pane gone but the template intact, the charts
           would sit in the 65fr slot with a third of the page empty. */}
       <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6 max-md:grid-cols-1">
-        {!mobile && (
-        /* `max-md:hidden` as well as the branch: the server renders the
-           desktop tree, so without it a phone paints the whole pane from
-           the SSR HTML and hydration then yanks it, jumping the charts up
-           the page. Every other mobile swap in the app pairs the two. */
-        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6 max-md:hidden">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-ink">
-              Orders{" "}
-              <span className="font-normal text-ink-soft">({count(previewOrders.length)})</span>
-            </h2>
-            <Link href="/orders" className="text-sm font-semibold text-accent hover:underline">
-              View all →
-            </Link>
-          </div>
-          {/*
-            The list fills the pane and scrolls inside it, rather than
-            being a fixed 32rem with cream below: the pane is as tall as
-            the charts beside it, and a list that stopped short left a
-            third of it empty.
+        {/*
+          The task list, where the period's orders used to be.
 
-            The scroller is absolutely positioned inside a box that only
-            claims a minimum height, which is what stops it working the
-            other way round — 79 rows would otherwise make this column
-            drive the row's height and strand the charts at the top of a
-            very long page. So the charts set the height and the list
-            takes it.
-          */}
-          <div className="relative mt-4 min-h-[22rem] flex-1">
-          <ul className="absolute inset-0 flex flex-col gap-2 overflow-y-auto pr-1">
-            {previewOrders.map((order) => (
-              <li key={order.key}>
-                <Link
-                  href={`/orders?order=${encodeURIComponent(order.key)}`}
-                  className="hover-line flex items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
-                >
-                  <span className="w-14 shrink-0 text-xs text-ink-soft">{order.dateLabel}</span>
-                  <span className="w-40 shrink-0 truncate font-medium text-ink" title={order.customer}>
-                    {order.customer}
-                  </span>
-                  <EventTypeChip value={order.customerType} className="w-28 shrink-0" />
-                  <span className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-soft">
-                    <MapPin size={12} className="shrink-0" />
-                    <span className="truncate" title={order.location}>
-                      {order.location || "—"}
-                    </span>
-                  </span>
-                  <span className="flex w-14 shrink-0 items-center gap-1 text-xs text-ink-soft">
-                    <Users size={12} className="shrink-0" />
-                    {order.guests ?? "—"}
-                  </span>
-                  <span className="flex w-16 shrink-0 items-center justify-end gap-1 text-xs text-ink-soft">
-                    <UnitsIcon size={12} className="shrink-0" />
-                    {order.units > 0 ? count(order.units) : "—"}
-                  </span>
-                  <span className="w-20 shrink-0 text-right font-semibold text-ink">
-                    {currency(order.totalAmount)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-            {previewOrders.length === 0 && <p className="text-sm text-ink-soft">No orders in this period.</p>}
-          </ul>
-          </div>
+          The owner's call, and the reasoning is that the orders had a
+          whole tab of their own while the things the two of them owe each
+          other had nowhere at all — they lived in WhatsApp, where they
+          scroll away. The pane it replaced is parked whole in
+          `DashboardOrdersPane.tsx` rather than deleted, because they said
+          they might want it back.
+
+          Rendered on a phone as well as a laptop, unlike the pane before
+          it: this one is worth working from a phone, and it is short. The
+          bottom bar carries `/tasks` for exactly that.
+        */}
+        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6 max-md:p-4">
+          <TaskList tasks={tasks} staff={staff} />
         </section>
-        )}
+
 
         <div className="flex min-w-0 flex-col gap-6">
           <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
