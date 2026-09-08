@@ -349,6 +349,33 @@ the next refresh: the order is stated once, in `getTasks`'s SQL, and a row
 that jumped the instant it was tapped would pull the next one under a
 finger already on its way to it.
 
+**Each person's name wears a colour** (`ASSIGNEE_TINTS`), keyed by the
+staff row's **id** rather than its position, so adding a third person
+cannot re-colour the other two and a name is the same colour in the
+Dashboard pane and on `/tasks` without either being told which. Assigned
+wears the fill and unassigned does not — the app's "selected is the fill"
+rule again, and it makes the useful distinction the cheapest to see: a
+glance down the list separates the tasks that have an owner from the ones
+still waiting for one, before any name is read.
+
+**Adding on a phone is a button in the heading row and a popup**, not the
+three-part composer the laptop has: that composer costs two lines above a
+list which is read far more often than it is added to, and the heading row
+was sitting there with an empty right half. The popup is a narrow `Modal`
+— a record you opened — rather than a `Sheet`, which is the shape a menu
+takes when it is reached from the bottom edge. Both halves are rendered
+and each hidden at the other's width (`md:hidden` against
+`max-md:hidden`), the `PageSearch` pattern, so neither paints for a frame
+before hydration has an opinion. The popup closes on save while the inline
+composer keeps its focus and its assignee: adding several at once is a desk
+job, and on a phone a task is typed as it is remembered.
+
+**The composer leads with who it is for**, left of the box — it reads as a
+sentence that way, and it puts the one control that persists between adds
+at the start of the row. Below the breakpoint the box takes `order-first`
+with its `basis-full`, or a full-width field after the picker would strand
+the Add button on a third line.
+
 **On a phone the row wraps and the task takes the first line whole.**
 Measured at 360px the row has 296px of content and the assignee `<select>`
 alone took ~200 of it — the unlayered phone rules size every select to

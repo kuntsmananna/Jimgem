@@ -2,10 +2,12 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Check, ListChecks, Plus, Trash2 } from "lucide-react";
 import type { Task } from "@/lib/tasks";
 import type { StaffAccount } from "@/lib/settings";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
+import { Modal } from "@/components/Modal";
+import { Field, TextInput } from "@/components/Field";
 
 /**
  * The shared to-do list — the Dashboard's pane and the whole of `/tasks`.
@@ -19,21 +21,17 @@ import { UndoToast, useUndoToast } from "@/components/UndoToast";
  * one: what was finished is half of what a list is read for, and a mis-tap
  * has to be untickable without going to look for the row.
  *
- * Everything here is one tap: the box ticks it, the text edits in place,
- * the chip reassigns it. There is no popup, because a task is one sentence
- * and a dialog to change a sentence is a dialog nobody opens.
+ * Editing is one tap throughout: the box ticks it, the text edits in
+ * place, the chip reassigns it. No popup for any of that — a task is one
+ * sentence, and a dialog to change a sentence is a dialog nobody opens.
+ * *Adding* on a phone is the exception, and a popup there buys back the
+ * two lines a three-part composer costs above a list that is read far more
+ * often than it is added to.
  */
-export function TaskList({
-  tasks,
-  staff,
-  /** The pane on the Dashboard keeps its own heading, so it turns this off. */
-  heading = true,
-}: {
-  tasks: Task[];
-  staff: StaffAccount[];
-  heading?: boolean;
-}) {
+export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[] }) {
   const router = useRouter();
+  /** The phone's composer, which is a popup rather than a row of fields. */
+  const [adding, setAdding] = useState(false);
   const undo = useUndoToast();
   /*
     The server's list, held locally so a tick shows immediately.
@@ -105,13 +103,44 @@ export function TaskList({
 
   return (
     <>
-      {heading && (
-        <h2 className="mb-3 font-display text-lg font-bold text-ink">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-bold text-ink">
           Tasks <span className="font-normal text-ink-soft">({openCount} open)</span>
         </h2>
-      )}
+        {/*
+          On a phone the composer is this button and a popup, not a row of
+          fields: the owner's call. A three-part composer costs two lines
+          above a list that is read far more often than it is added to,
+          and the heading row was sitting there with nothing in its right
+          half.
 
-      <Composer staff={staff} onAdded={() => router.refresh()} />
+          `md:hidden` against the composer's `max-md:hidden` rather than a
+          `useIsMobile` branch — both halves are cheap, and CSS cannot
+          paint the wrong one for a frame before hydration has an opinion.
+        */}
+        <button
+          onClick={() => setAdding(true)}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-xs font-semibold text-cream md:hidden"
+        >
+          <Plus size={14} />
+          Add
+        </button>
+      </div>
+
+      <div className="max-md:hidden">
+        <Composer staff={staff} onAdded={() => router.refresh()} />
+      </div>
+
+      {adding && (
+        <AddTaskModal
+          staff={staff}
+          onClose={() => setAdding(false)}
+          onAdded={() => {
+            setAdding(false);
+            router.refresh();
+          }}
+        />
+      )}
 
       <ul className="mt-2 flex flex-col gap-1.5">
         {rows.map((task) => (
@@ -172,6 +201,12 @@ function Composer({ staff, onAdded }: { staff: StaffAccount[]; onAdded: () => vo
 
   return (
     <div className="flex items-center gap-2 max-md:flex-wrap">
+      {/* Who it is for comes first, left of the box — the owner's call,
+          and it reads as a sentence that way: *Aviv* — call the
+          accountant. It also puts the one control that persists between
+          adds at the start of the row, where it is seen before typing
+          rather than after. */}
+      <AssigneeSelect staff={staff} value={staffId} onChange={setStaffId} />
       <input
         ref={input}
         value={title}
@@ -184,10 +219,14 @@ function Composer({ staff, onAdded }: { staff: StaffAccount[]; onAdded: () => vo
         /* `basis-full` below the breakpoint, so the box is the whole first
            line and the picker and the button share the second. Left to
            `flex-1` it shrank instead of wrapping, and at 360px "Add a
-           task" was cut to "Add a tas" in the field it names. */
-        className="input min-w-0 flex-1 rounded-xl border border-line bg-cream/60 px-3 py-2 text-sm max-md:basis-full"
+           task" was cut to "Add a tas" in the field it names.
+
+           `order-first` with it: the picker leads on a laptop, but a
+           full-width box after it would leave the Add button stranded on a
+           third line of its own. Ordering rather than a second markup
+           branch, so there is one composer. */
+        className="input min-w-0 flex-1 rounded-xl border border-line bg-cream/60 px-3 py-2 text-sm max-md:order-first max-md:basis-full"
       />
-      <AssigneeSelect staff={staff} value={staffId} onChange={setStaffId} />
       <button
         onClick={() => void add()}
         disabled={!title.trim() || busy}
@@ -197,6 +236,84 @@ function Composer({ staff, onAdded }: { staff: StaffAccount[]; onAdded: () => vo
         Add
       </button>
     </div>
+  );
+}
+
+/**
+ * Adding a task on a phone.
+ *
+ * The same two fields the composer has, in the app's narrow `Modal` — a
+ * centred card, which is what a `Modal` is for: a record you opened. A
+ * `Sheet` would have been the wrong mechanism here, being the shape a
+ * *menu* takes when it is reached from the bottom edge.
+ *
+ * It closes on save rather than staying open for the next one, unlike the
+ * inline composer, which keeps its focus and its assignee. Adding several
+ * at once is a desk job; on a phone a task is typed as it is remembered.
+ */
+function AddTaskModal({
+  staff,
+  onClose,
+  onAdded,
+}: {
+  staff: StaffAccount[];
+  onClose: () => void;
+  onAdded: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [staffId, setStaffId] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function add() {
+    const text = title.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: text, staffId, done: false }),
+    });
+    setBusy(false);
+    onAdded();
+  }
+
+  return (
+    <Modal title="Add a task" icon={<ListChecks size={17} />} onClose={onClose}>
+      <div className="fields-lit flex flex-col gap-3">
+        <Field label="Task">
+          <TextInput
+            autoFocus
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={(event) => {
+              // Enter saves, the same as in the composer this replaces.
+              if (event.key === "Enter") void add();
+            }}
+          />
+        </Field>
+        <Field label="Who it is for">
+          <AssigneeSelect staff={staff} value={staffId} onChange={setStaffId} />
+        </Field>
+
+        {/* Save last in the corner, like every other popup in the app. */}
+        <div className="mt-2 flex items-center gap-2">
+          <span className="flex-1" />
+          <button
+            onClick={onClose}
+            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => void add()}
+            disabled={!title.trim() || busy}
+            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
+          >
+            Add task
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -290,7 +407,12 @@ function TaskRow({
               setEditing(false);
             }
           }}
-          className="input min-w-0 flex-1 rounded-lg border border-line bg-card px-2 py-1 text-sm"
+          /* The same size as the button it replaces. The phone rules give
+             every `input` 16px so iOS cannot zoom, so the *button* states
+             16px there too — the trap `RateList` fell into, where a number
+             grew the moment it was tapped, inside a box that could not
+             hold it. */
+          className="input min-w-0 flex-1 rounded-lg border border-line bg-card px-2 py-1 text-[15px] max-md:text-base"
         />
       ) : (
         /* `taps-to-edit` is the named opt-in that gives a row which edits
@@ -305,7 +427,7 @@ function TaskRow({
             so it wraps instead: a task you cannot finish reading is not a
             task, and there is nothing beside it to keep in step with.
           */
-          className={`taps-to-edit min-w-0 flex-1 truncate rounded-lg px-1 py-1 text-left text-sm max-md:overflow-visible max-md:text-clip max-md:whitespace-normal ${
+          className={`taps-to-edit min-w-0 flex-1 truncate rounded-lg px-1 py-1 text-left text-[15px] max-md:overflow-visible max-md:text-base max-md:text-clip max-md:whitespace-normal ${
             done ? "text-ink-soft line-through" : "text-ink"
           }`}
           title={task.title}
@@ -338,12 +460,33 @@ function TaskRow({
 }
 
 /**
+ * A colour per person, so a column of these is read by its tint rather
+ * than by reading two similar four-letter names down the list.
+ *
+ * The app's own tile colours, in an order that keeps the first two — the
+ * two accounts that exist — furthest apart, and keeps both clear of the
+ * accent green the tick box wears. Keyed by the staff row's **id** rather
+ * than its position, so adding a third person cannot re-colour the other
+ * two, and a name is the same colour on the Dashboard pane and on
+ * `/tasks` without either being told which.
+ */
+const ASSIGNEE_TINTS = ["bg-tile-lavender", "bg-tile-peach", "bg-tile-mint", "bg-tile-sage"];
+
+const assigneeTint = (staffId: number) => ASSIGNEE_TINTS[staffId % ASSIGNEE_TINTS.length];
+
+/**
  * Who a task is for, as a chip that is also the control.
  *
  * A native `<select>` rather than the `EditableCell` the tables use: that
  * one announces itself by hover, which is exactly the affordance a phone
  * does not have, and this list is meant to be worked from one. A select is
  * a control in both places and needs no second state to reach.
+ *
+ * **Assigned wears a fill, unassigned does not.** That is the app's
+ * "selected is the fill" rule again, and it makes the useful distinction
+ * the cheapest one to see: a glance down the list separates the tasks that
+ * have an owner from the ones still waiting for one, before anybody reads
+ * a name. `keeps-color` because the fill *is* the information.
  */
 function AssigneeSelect({
   staff,
@@ -361,8 +504,12 @@ function AssigneeSelect({
       value={value ?? ""}
       onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
       aria-label="Who it is for"
-      className={`shrink-0 cursor-pointer rounded-full border border-line bg-transparent px-2 py-1 text-[11px] font-semibold transition hover:border-ink max-md:px-2.5 max-md:py-1.5 ${
-        value ? "text-ink" : "text-ink-soft"
+      className={`shrink-0 cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-bold transition max-md:px-3 max-md:py-1.5 ${
+        value
+          ? `keeps-color border-transparent text-ink ${assigneeTint(value)}`
+          : // Nobody in particular reads as an absence: no fill, and the
+            // quiet outline every unfilled control in this app wears.
+            "border-line bg-transparent font-semibold text-ink-soft hover:border-ink"
       } ${subdued ? "opacity-60" : ""}`}
     >
       <option value="">Anyone</option>
