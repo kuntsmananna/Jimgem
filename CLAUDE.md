@@ -1750,6 +1750,29 @@ compares identity, and a panel builds a fresh draft before every call.
   app's default that a filled field drops to bare text. In a popup that is
   only fields there is nothing to read around them, and boxes appearing
   only where nothing has been typed look half-broken.
+- **A save that is refused says which field, and why.** `ExpenseFormModal`
+  requires a category and an amount — an expense with no category cannot be
+  reported on at all, and one with no amount is not an expense; everything
+  else on that form is optional by design, which is why `business` is free
+  text. Those two used to be an inline condition in `submit` that silently
+  `return`ed, so pressing Save on a half-filled form did nothing and said
+  nothing. Now the press sets `attempted`, and `Field`'s optional `error`
+  turns the label red and prints a line under the box, with a summary
+  beside the button. Marked **only after a save has been tried** — a form
+  that reddens a field before anyone has touched it is telling someone off
+  for not having finished typing. And Save is **never disabled** for a
+  missing field: a greyed-out button blocks the very press that would have
+  explained itself, which is the failure this replaced.
+- **`LastEdited` holds itself to one line** (`shrink-0 whitespace-nowrap`).
+  Every save row it sits in is a flex row, and a text node's automatic
+  minimum width is its longest *word*, so in a crowded row it compressed to
+  about 30px and stacked eight lines high — which is what the expense form
+  did on a phone once it grew a Delete button. Held to one line it moves to
+  a line of its own instead, and all three save rows (order, expense,
+  client) wrap below the breakpoint so there is a line for it to move to.
+  The fix is in the caption rather than at each call site, because it is a
+  property of the caption and the next form to gain a button would hit it
+  again.
 - **An expense edits two ways.** Clicking the row opens it in the same
   modal that adds one (`ExpenseFormModal` takes an optional `expense`);
   category, description, staff, method and amount also edit in place

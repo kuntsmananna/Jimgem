@@ -64,11 +64,37 @@ export function TextArea({
   );
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  /**
+   * What is wrong with this field, said next to the field itself.
+   *
+   * Shown only once a save has actually been attempted — see the expense
+   * form. A form that marks a field red before anybody has tried to submit
+   * it is telling someone off for not having finished typing yet.
+   *
+   * The label turns with it rather than only a message appearing below:
+   * the label is what is being scanned when you go back to look for what
+   * is missing, and one red word is faster to find than one red sentence.
+   */
+  error?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="text-xs font-semibold text-ink-soft">{label}</span>
+      <span className={`text-xs font-semibold ${error ? "text-red-700" : "text-ink-soft"}`}>
+        {label}
+      </span>
       {children}
+      {error && (
+        <span className="text-[11px] font-semibold text-red-700" role="alert">
+          {error}
+        </span>
+      )}
     </label>
   );
 }

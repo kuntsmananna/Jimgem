@@ -102,9 +102,38 @@ export function ExpenseFormModal({
   useUndoShortcuts(form.undo, form.redo);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  /*
+    Whether Save has been pressed yet.
+
+    The two required fields are marked only after it has. Before that
+    nothing is wrong — the form has just been opened, and a category
+    outlined in red before anybody has touched it is the form telling
+    someone off for not having finished typing.
+  */
+  const [attempted, setAttempted] = useState(false);
+
+  /*
+    What the row cannot be saved without.
+
+    Both are genuine: an expense with no category cannot be reported on at
+    all, and one with no amount is not an expense. Everything else on this
+    form is optional by design — a receipt from a shop with no name still
+    has to be enterable, which is why `business` is free text and why the
+    list stopped requiring it.
+
+    This used to be the same condition, written inline in `submit`, that
+    silently `return`ed — so pressing Save on a half-filled form did
+    nothing at all and said nothing about why.
+  */
+  const missingCategory = !draft.categoryId;
+  const missingAmount = !(draft.amount > 0);
 
   async function submit() {
-    if (!draft.categoryId || draft.amount <= 0) return;
+    if (missingCategory || missingAmount) {
+      setAttempted(true);
+      setFailed(null);
+      return;
+    }
     setBusy(true);
     setFailed(null);
     // Editing sends the version this form was opened on, so a save built
@@ -137,9 +166,12 @@ export function ExpenseFormModal({
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
           />
         </Field>
-        <Field label="Category">
+        <Field label="Category" error={attempted && missingCategory ? "Pick a category" : undefined}>
           <SelectInput
             value={draft.categoryId}
+            // A red edge on the box as well as the label: the label says
+            // which field, the box says where to tap.
+            className={attempted && missingCategory ? "border-red-600" : ""}
             onChange={(e) => setDraft({ ...draft, categoryId: Number(e.target.value) })}
           >
             <option value={0}>Select…</option>
@@ -150,10 +182,11 @@ export function ExpenseFormModal({
             ))}
           </SelectInput>
         </Field>
-        <Field label="Amount ₪">
+        <Field label="Amount ₪" error={attempted && missingAmount ? "Enter what it cost" : undefined}>
           <TextInput
             type="number"
             value={draft.amount}
+            className={attempted && missingAmount ? "border-red-600" : ""}
             onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
           />
         </Field>
@@ -274,7 +307,14 @@ export function ExpenseFormModal({
             it costs no height, the undo pair and anything the form has to
             say beside it, then Save last in the corner every popup uses.
             The spacer is unconditional because the caption is not. */}
-        <div className="mt-2 flex items-center gap-2">
+        {/*
+          Wrapping below the breakpoint, like the order form's own save
+          row. Left unwrapped, this row holds a delete button, the "last
+          edited" caption, the undo pair and two buttons in about 310px,
+          and the caption — a `<p>`, so it shrinks to its longest word —
+          was squeezed into five lines.
+        */}
+        <div className="mt-2 flex items-center gap-2 max-md:flex-wrap max-md:gap-y-2">
           {/* First in the row and so as far from Save as it goes — where
               the client card puts Archive, for the same reason. */}
           {isEdit && onDelete && (
@@ -294,17 +334,36 @@ export function ExpenseFormModal({
               {failed}
             </span>
           )}
-          <span className="flex-1" />
+          {/* The same sentence the order form uses for its one required
+              field, so a blocked save says why in the place the eye is
+              already going — beside the button that did not work. */}
+          {attempted && (missingCategory || missingAmount) && !failed && (
+            <span className="text-xs font-semibold text-red-700" role="alert">
+              {missingCategory && missingAmount
+                ? "Add a category and an amount to save"
+                : missingCategory
+                  ? "Pick a category to save"
+                  : "Add an amount to save"}
+            </span>
+          )}
+          <span className="flex-1 max-md:basis-full" />
           <button
             onClick={onClose}
-            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
+            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink max-md:flex-1 max-md:py-2.5 max-md:text-sm"
           >
             Cancel
           </button>
+          {/*
+            Never disabled for a missing field. A greyed-out Save is the
+            other way to block a form, and it is the worse one: it stops
+            the press that would have explained itself, so the answer to
+            "why can't I save" is that nothing happens at all — which is
+            exactly what this form did before.
+          */}
           <button
             onClick={submit}
             disabled={busy}
-            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
+            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50 max-md:flex-1 max-md:py-2.5 max-md:text-sm"
           >
             {isEdit ? "Save" : "Save expense"}
           </button>

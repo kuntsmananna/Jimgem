@@ -259,7 +259,12 @@ export function ClientModal({
           as the row allows: it is the one button here that changes what the
           page shows rather than what the client says.
         */}
-        <div className="flex items-center gap-2">
+        {/* Wrapping below the breakpoint, like the other two save rows:
+            this one carries a caption, Archive and two buttons in about
+            310px, and the caption now holds itself to one line rather than
+            compressing — so without somewhere to wrap to, it would push
+            the buttons off the edge instead. */}
+        <div className="flex items-center gap-2 max-md:flex-wrap max-md:gap-y-2">
           <LastEdited at={client.updatedAt} by={client.updatedBy} />
           <button
             onClick={archive}
@@ -269,17 +274,17 @@ export function ClientModal({
             <Archive size={13} />
             Archive
           </button>
-          <span className="flex-1" />
+          <span className="flex-1 max-md:basis-full" />
           <button
             onClick={onClose}
-            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink"
+            className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink max-md:flex-1 max-md:py-2.5 max-md:text-sm"
           >
             Cancel
           </button>
           <button
             onClick={save}
             disabled={busy || !draft.name.trim()}
-            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-60"
+            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-60 max-md:flex-1 max-md:py-2.5 max-md:text-sm"
           >
             {busy ? "Saving…" : "Save"}
           </button>

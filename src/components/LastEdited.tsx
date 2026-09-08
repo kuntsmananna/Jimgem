@@ -20,7 +20,21 @@ export function LastEdited({ at, by }: { at: string; by: string }) {
     // reserves the height. Where it sits in the row is the row's business,
     // so no margin of its own: it renders nothing for an unstamped row,
     // and a spacer that disappeared with it would move the buttons.
-    <p className="text-[11px] text-ink-soft/60">
+    /*
+      `shrink-0 whitespace-nowrap` is what keeps this one line.
+
+      Every save row it sits in is a flex row, and a text node's automatic
+      minimum width is its longest *word* — so in a crowded row this
+      compressed to about 30px and stacked eight lines high, which is what
+      the expense form did on a phone once it gained a Delete button. Held
+      to one line it moves to a line of its own instead, in the rows that
+      wrap; all three of them do below the breakpoint.
+
+      Here rather than at each call site, because it is a property of this
+      caption rather than of any one row, and the next form to grow a
+      button would otherwise hit it again.
+    */
+    <p className="shrink-0 text-[11px] whitespace-nowrap text-ink-soft/60">
       Last edited {when}
       {by ? ` by ${by}` : ""}
     </p>
