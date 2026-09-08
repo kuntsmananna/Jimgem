@@ -18,6 +18,7 @@ export function OrderFormModal({
   rates,
   onSaved,
   onClose,
+  onDelete,
 }: {
   /** Omit to create a new order, pass one to edit it. */
   order?: Order;
@@ -28,6 +29,12 @@ export function OrderFormModal({
   rates: Rates;
   onSaved: () => void;
   onClose: () => void;
+  /**
+   * Delete this order, offered on a phone only — see `OrderForm`. The
+   * caller closes the popup before deleting, or the undo bar comes up
+   * behind the dialog that raised it.
+   */
+  onDelete?: () => void;
 }) {
   const [dirty, setDirty] = useState(false);
 
@@ -53,6 +60,7 @@ export function OrderFormModal({
         rates={rates}
         onSaved={onSaved}
         onCancel={requestClose}
+        onDelete={onDelete}
         onDirtyChange={setDirty}
       />
     </Modal>

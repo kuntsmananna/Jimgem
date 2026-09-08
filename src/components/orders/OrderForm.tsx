@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, Trash2 } from "lucide-react";
 import {
   type Order,
   type OrderInput,
@@ -165,6 +165,7 @@ export function OrderForm({
   rates,
   onSaved,
   onCancel,
+  onDelete,
   onDirtyChange,
   cancelLabel = "Cancel",
 }: {
@@ -179,6 +180,13 @@ export function OrderForm({
   rates: Rates;
   onSaved: () => void;
   onCancel: () => void;
+  /**
+   * Delete this order. Drawn below the breakpoint only, like the expense
+   * form's: on a laptop an order is deleted from the table's bulk bar,
+   * which is reached through a hover-revealed checkbox — an affordance a
+   * phone does not have and a card deliberately does not carry.
+   */
+  onDelete?: () => void;
   /**
    * Fires when the form gains or loses unsaved edits, so the overlay
    * hosting it can warn before discarding them. Nothing in this form
@@ -556,6 +564,20 @@ export function OrderForm({
           after reading the form, and every popup in the app puts them
           there. Save is last, nearest the corner. */}
       <div className="mt-6 flex items-center gap-2 max-md:mt-3 max-md:shrink-0 max-md:flex-wrap max-md:gap-y-2">
+        {/* First in the row and so as far from Save as it goes — where the
+            client card puts Archive and the expense form its own delete,
+            for the same reason. Phone only: the desktop deletes from the
+            table's bulk bar. */}
+        {isEdit && onDelete && (
+          <button
+            onClick={onDelete}
+            title="Delete this order"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink-soft md:hidden"
+          >
+            <Trash2 size={13} />
+            Delete
+          </button>
+        )}
         {/* The caption leads the row, at its left end, where it costs no
             height: it should not make an already tall popup taller. */}
         {isEdit && <LastEdited at={order!.updatedAt} by={order!.updatedBy} />}

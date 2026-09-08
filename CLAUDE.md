@@ -191,6 +191,20 @@ dozen 20px targets on a card, the whole card opens the order. One rule,
 nothing hidden — at the cost of a tap for a quick status change, which is
 the trade the owner chose.
 
+**Deleting is in the order form, phone only** (`OrderForm`'s optional
+`onDelete`, drawn `md:hidden` at the far left of the save row). On a
+laptop an order is deleted from the table's bulk bar, which is reached
+through a checkbox revealed on hover — an affordance a phone cannot
+perform, and the card deliberately carries no controls of its own, so
+until this there was no way to delete an order from a phone at all. It is
+the same shape `ExpenseFormModal` already had, down to the position: as
+far from Save as the row allows, where the client card puts Archive.
+`deleteOne` goes through **the batch route with one id** rather than
+growing a second delete path, and closes the popup *before* the row goes —
+the undo bar is portalled and fixed, so it would otherwise come up behind
+the dialog that raised it, on a form now sitting on an order that no
+longer exists.
+
 The mobile tree renders from the same `inScope` array the table takes, so
 it is a *renderer* and not a second filtering path. It is chosen with
 `useIsMobile()` rather than by hiding the table in CSS, because hiding it

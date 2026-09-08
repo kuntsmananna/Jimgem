@@ -369,6 +369,39 @@ export function OrdersClient({
     });
   }
 
+  /**
+   * Deletes the one order a popup has open, for the phone.
+   *
+   * On a laptop an order is deleted from the table's bulk bar, which is
+   * reached through a checkbox revealed on hover — an affordance a phone
+   * cannot perform, and the card deliberately carries no controls of its
+   * own. So the delete lives in the form, exactly as it does for an
+   * expense, and goes through the same batch route with one id rather
+   * than growing a second delete path.
+   *
+   * The popup is closed **before** the row goes, or the undo bar — which
+   * is portalled and fixed — would come up behind the dialog that raised
+   * it, and the form would be sitting on an order that no longer exists.
+   */
+  async function deleteOne(order: Order) {
+    const id = Number(order.key);
+    closePane();
+    await fetch("/api/orders/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", ids: [id] }),
+    });
+    refresh();
+    undoToast.show("Order deleted", async () => {
+      await fetch("/api/orders/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", ids: [id] }),
+      });
+      refresh();
+    });
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
@@ -433,6 +466,7 @@ export function OrdersClient({
             closePane();
             refresh();
           }}
+          onDelete={() => deleteOne(openOrder)}
         />
       )}
 
