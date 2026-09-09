@@ -1985,6 +1985,35 @@ booked order on the page where that difference matters most. The faint fill
 stays row-only, because a `<tr>` has no surface of its own while a card
 does and tinting it only muddies the white.
 
+**The desktop table is divided by day too** (v0.67.0), the same heading
+the phone's cards have carried since v0.44.0 — weekday, date, and how many
+orders that day holds, which is the one thing the phone's version does not
+say and there is room for here. Brought over because people liked reading
+the list that way and asked for it; the two are now the same list in two
+shapes rather than two ways of reading one page.
+
+It is a **run boundary, not a grouping pass**: `getOrders` returns
+`ORDER BY date DESC, id DESC`, so a day's orders already arrive together
+and `byDay` only has to notice where one stops. Sorting there would be a
+second opinion about the list's order, and a heading could then disagree
+with the rows beneath it.
+
+**Each day is its own `<tbody>`, and each heading gets one of its own.**
+That is what the element means — a row group — and it is also what keeps
+the heading away from `.orders-rows > tr`, whose five rules turn a row
+black on hover and recolour every descendant, which is exactly what a
+heading must not do. Scoping those past it would have meant five `:not()`s
+and one of them eventually missed; a heading that is not a child of
+`.orders-rows` cannot be reached by any of them. The heading's `colSpan`
+is `visible.length`, so it follows the Columns menu like the empty-state
+row does.
+
+The Date column then repeats what the heading above it says. It is left in
+rather than dropped on the grouping's behalf: the Columns menu already
+turns it off in one click, and quietly removing a column because another
+change made it redundant is a decision belonging to whoever reads the
+table.
+
 **The order's note is behind an (i) icon**, not a line under the customer
 name. As a second line it set the row's height off the longest note in
 view — three lines for one order pushed every other row apart — and it is

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import {
   formatOrderDate,
+  orderWeekday,
   hasDelivery,
   displayCount,
   isBooked,
@@ -31,6 +32,27 @@ import { count, currency } from "@/lib/money";
 
 /** Anything the row click must not hijack, because it does its own job. */
 const INTERACTIVE = "button, input, select, textarea, a, label";
+
+/**
+ * The list cut into days — the same division the phone's cards have had
+ * since v0.44.0, brought back here because people liked reading it that
+ * way and asked for it on the laptop too.
+ *
+ * A **run boundary, not a grouping pass**: `getOrders` returns
+ * `ORDER BY date DESC, id DESC`, so orders of one day already arrive
+ * together and this only has to notice where one day stops. Sorting here
+ * would be a second opinion about the list's order, and the day a heading
+ * announced could then disagree with the rows under it.
+ */
+function byDay(orders: Order[]): { date: string; orders: Order[] }[] {
+  const days: { date: string; orders: Order[] }[] = [];
+  for (const order of orders) {
+    const last = days[days.length - 1];
+    if (last && last.date === order.date) last.orders.push(order);
+    else days.push({ date: order.date, orders: [order] });
+  }
+  return days;
+}
 
 /**
  * The columns, in order, so each one has a name a stored width can be
@@ -116,6 +138,7 @@ export function OrdersTable({
   */
   const visible = COLUMNS.filter((column) => !hidden.has(column.id));
   const show = (id: string) => !hidden.has(id);
+  const days = useMemo(() => byDay(orders), [orders]);
   // Memoised because the hook holds it as a dependency of its own; a fresh
   // array every render would re-parse the stored widths on each pass.
   const visibleIds = useMemo(
@@ -219,8 +242,45 @@ export function OrdersTable({
           React state instead re-rendered all ~80 rows on every row-to-row
           mouse move.
         */}
+        {/*
+          **A `<tbody>` per day, and the heading gets one of its own.**
+
+          That is what the element is for — a row group — and it is also
+          what keeps the heading out of the way of `.orders-rows > tr`,
+          whose five rules turn a row black on hover, recolour every
+          descendant, and are exactly what a heading must not do. Scoping
+          them past it would have meant five `:not()`s and one of them
+          eventually missed; a heading that is not a child of
+          `.orders-rows` cannot be reached by any of them.
+        */}
+        {days.map((day, dayAt) => (
+        <Fragment key={day.date}>
+        <tbody>
+          <tr>
+            <td
+              colSpan={visible.length}
+              /* Air above each day but the first, which sits directly
+                 under the sticky header and needs none. */
+              className={`px-3 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase ${
+                dayAt === 0 ? "pt-2" : "pt-5"
+              }`}
+            >
+              {/* The weekday first, then the date — "is that a Saturday"
+                  is most of what a queue of dates is read for. See
+                  `orderWeekday` for why an old imported order's can be
+                  wrong. The count is the one thing the phone's heading
+                  does not carry: there is room for it here, and "four
+                  orders on Thursday" is a day's shape at a glance. */}
+              <span className="text-ink">{orderWeekday(day.date)}</span>{" "}
+              {formatOrderDate(day.date)}
+              <span className="ml-2 font-semibold tracking-normal normal-case opacity-60">
+                {day.orders.length} {day.orders.length === 1 ? "order" : "orders"}
+              </span>
+            </td>
+          </tr>
+        </tbody>
         <tbody className="orders-rows">
-          {orders.map((order) => {
+          {day.orders.map((order) => {
             const isSelected = selectedKeys.has(order.key);
             const isOpen = openKey === order.key;
 
@@ -458,7 +518,11 @@ export function OrdersTable({
               </tr>
             );
           })}
-          {orders.length === 0 && (
+        </tbody>
+        </Fragment>
+        ))}
+        {orders.length === 0 && (
+          <tbody>
             <tr>
               {/* Names the window rather than saying "no matches": the
                   default scope is the next fortnight, and a quiet season
@@ -467,8 +531,8 @@ export function OrdersTable({
                 {emptyNote}
               </td>
             </tr>
-          )}
-        </tbody>
+          </tbody>
+        )}
       </table>
     </div>
   );
