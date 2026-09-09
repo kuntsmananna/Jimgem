@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   formatOrderDate,
   orderWeekday,
@@ -29,6 +29,27 @@ import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
 import { useColumnWidths } from "./useColumnWidths";
 import { count, currency } from "@/lib/money";
 
+
+/**
+ * The header row's height, watched.
+ *
+ * The day headings stick directly under it, and the header is not a fixed
+ * height: it is one line of 11px text until a column is dragged narrow
+ * enough to wrap its label, and then it is two. A number written into the
+ * CSS would be right until the first drag; a `ResizeObserver` is right
+ * always, and costs one observer for the whole table.
+ */
+function useHeadHeight(ref: React.RefObject<HTMLTableRowElement | null>) {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const row = ref.current;
+    if (!row) return;
+    const watch = new ResizeObserver(() => setHeight(row.getBoundingClientRect().height));
+    watch.observe(row);
+    return () => watch.disconnect();
+  }, [ref]);
+  return height;
+}
 
 /** Anything the row click must not hijack, because it does its own job. */
 const INTERACTIVE = "button, input, select, textarea, a, label";
@@ -146,6 +167,7 @@ export function OrdersTable({
     [hidden],
   );
   const { widths, headRef, startResize, reset } = useColumnWidths(visibleIds);
+  const headHeight = useHeadHeight(headRef);
 
   async function saveField(order: Order, patch: Partial<OrderInput>) {
     // Every order is a DB row since the import change, so a single-field
@@ -178,13 +200,25 @@ export function OrdersTable({
   }
 
   return (
-    <div className="max-h-[70vh] overflow-auto rounded-card border border-line bg-card">
+    /*
+      No card around the list any more. Each order is its own box now
+      (see `.orders-rows > tr > td` in globals.css), so a frame around the
+      column of them is one edge too many — and the day headings are
+      meant to sit *outside* the boxes, on the page's own cream, which
+      they cannot do inside a white card.
+    */
+    <div className="max-h-[70vh] overflow-auto">
       {/*
-        1100px is just under what these fifteen columns actually need, so
-        the floor only catches the empty-state row rather than quietly
-        setting the table's width. It used to be 1400, which forced a
-        horizontal scrollbar on any laptop under ~1600px wide even though
-        the columns fit in far less.
+        **No `min-width` floor.** There was a 1100px one, set when all
+        fifteen columns showed, and it is what put a horizontal scrollbar
+        under the table permanently: the content column is ~1130px on a
+        1310px laptop, and the vertical scrollbar's own width took it under
+        1100. With Date hidden by default the columns need far less than
+        that, so the floor was reserving width nothing was using and
+        charging a scrollbar for it. Auto layout already refuses to squeeze
+        columns past their content — it scrolls when it genuinely has to,
+        which is the behaviour the floor was approximating.
+
       */}
       {/*
         `table-fixed` only once the columns have been sized. Until then the
@@ -192,7 +226,16 @@ export function OrdersTable({
         laptop, and imposing a fixed one before anybody has asked would
         change the table for everyone who never touches a handle.
       */}
-      <table className={`w-full min-w-[1100px] text-left text-sm ${widths ? "table-fixed" : ""}`}>
+      {/*
+        `border-separate` with a vertical gap is what makes each row a box
+        rather than a band in a ledger — see the block in globals.css. The
+        gap is vertical only, so nothing about the column widths changes.
+      */}
+      <table
+        className={`w-full border-separate border-spacing-x-0 border-spacing-y-1.5 text-left text-sm ${
+          widths ? "table-fixed" : ""
+        }`}
+      >
         {widths && (
           <colgroup>
             {visible.map(({ id }) => (
@@ -200,10 +243,15 @@ export function OrdersTable({
             ))}
           </colgroup>
         )}
-        <thead className="sticky top-0 z-10 bg-card">
-          <tr ref={headRef} className="border-b border-line text-[11px] font-semibold text-ink-soft">
-            {visible.map(({ id, label }) => (
-              <th key={id} className={`relative bg-card px-2 py-2 ${!widths && id === "select" ? "w-6" : ""}`}>
+        {/*
+          Cream rather than the card white it was: with the frame gone the
+          header sits on the page, and it has to be opaque or the boxes
+          scroll through it.
+        */}
+        <thead className="sticky top-0 z-20 bg-cream">
+          <tr ref={headRef} className="text-[11px] font-semibold text-ink-soft">
+            {visible.map(({ id, label }, at) => (
+              <th key={id} className={`relative bg-cream px-2 py-2 ${!widths && id === "select" ? "w-6" : ""}`}>
                 {id === "select" ? (
                   <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
                 ) : (
@@ -228,7 +276,19 @@ export function OrdersTable({
                   onPointerDown={(event) => startResize(id, event)}
                   onDoubleClick={reset}
                   title="Drag to resize · double-click to reset"
-                  className="absolute top-0 right-0 z-10 flex h-full w-2 translate-x-1/2 cursor-col-resize justify-center opacity-0 transition hover:opacity-100"
+                  /*
+                    Straddling each boundary — except the last, where there
+                    is no boundary to straddle and half of an 8px strip
+                    hung 4px past the table's right edge. That was **the
+                    permanent horizontal scrollbar**: not a column too wide
+                    for the page, but an invisible handle overflowing the
+                    scroller by 4px at every width, so the bar was there
+                    even with the table sitting in a 1400px column with
+                    room to spare. Measured before and after.
+                  */
+                  className={`absolute top-0 right-0 z-10 flex h-full w-2 cursor-col-resize justify-center opacity-0 transition hover:opacity-100 ${
+                    at === visible.length - 1 ? "" : "translate-x-1/2"
+                  }`}
                 >
                   <span aria-hidden className="pointer-events-none h-full w-px bg-ink/30" />
                 </span>
@@ -243,25 +303,46 @@ export function OrdersTable({
           mouse move.
         */}
         {/*
-          **A `<tbody>` per day, and the heading gets one of its own.**
+          **A `<tbody>` per day, heading and orders together.**
 
-          That is what the element is for — a row group — and it is also
-          what keeps the heading out of the way of `.orders-rows > tr`,
-          whose five rules turn a row black on hover, recolour every
-          descendant, and are exactly what a heading must not do. Scoping
-          them past it would have meant five `:not()`s and one of them
-          eventually missed; a heading that is not a child of
-          `.orders-rows` cannot be reached by any of them.
+          That is what the element is for — a row group — and the heading
+          has to be *inside* its day's group rather than in one of its own:
+          a sticky cell can only stay put while its own section is on
+          screen, so a heading alone in a section un-sticks the instant its
+          single row scrolls, which is to say never sticks at all.
+
+          Sharing the section means sharing `.orders-rows`, whose rules
+          draw the box and turn it black on hover — everything a heading
+          must not do. The heading is a **`<th>`** for exactly that reason:
+          every one of those rules is written `> td`, so none of them can
+          reach it, and the one that matches descendants instead carries
+          the single `:not(.day-row)` this needs.
         */}
         {days.map((day, dayAt) => (
-        <Fragment key={day.date}>
-        <tbody>
-          <tr>
-            <td
+        <tbody className="orders-rows" key={day.date}>
+          <tr className="day-row">
+            <th
+              scope="colgroup"
               colSpan={visible.length}
-              /* Air above each day but the first, which sits directly
-                 under the sticky header and needs none. */
-              className={`px-3 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase ${
+              /*
+                **Sticky under the header**, so the day you are reading is
+                always named — a long month otherwise scrolls its heading
+                away and leaves a column of orders with no day on it.
+
+                `top` is the header's *measured* height rather than a
+                number written here: the header row is one line of 11px
+                text today, and a column dragged narrow enough to wrap its
+                label makes it two. A guessed offset would leave a gap or
+                hide the heading behind the header the moment that
+                happened.
+
+                Cream and opaque for the same reason the header is: the
+                boxes have to pass behind it, not through it. `z-10`
+                against the header's `z-20`, so a heading on its way out
+                goes under the header rather than over it.
+              */
+              style={{ top: headHeight }}
+              className={`sticky z-10 bg-cream px-3 pb-1.5 text-left text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase ${
                 dayAt === 0 ? "pt-2" : "pt-5"
               }`}
             >
@@ -276,10 +357,8 @@ export function OrdersTable({
               <span className="ml-2 font-semibold tracking-normal normal-case opacity-60">
                 {day.orders.length} {day.orders.length === 1 ? "order" : "orders"}
               </span>
-            </td>
+            </th>
           </tr>
-        </tbody>
-        <tbody className="orders-rows">
           {day.orders.map((order) => {
             const isSelected = selectedKeys.has(order.key);
             const isOpen = openKey === order.key;
@@ -291,7 +370,9 @@ export function OrdersTable({
                 // `is-offer` marks a quote rather than a booking — see
                 // globals.css for the dashed edge that says so, which has
                 // to survive the row turning black on hover.
-                className={`group cursor-pointer border-b border-line/60 align-top ${isOpen ? "is-open" : ""} ${
+                /* No border here: a row in a `border-separate` table cannot
+                   paint one, and the box's edges are the cells'. */
+                className={`group cursor-pointer align-top ${isOpen ? "is-open" : ""} ${
                   isBooked(order, stageIndex) ? "" : "is-offer"
                 }`}
               >
@@ -519,7 +600,6 @@ export function OrdersTable({
             );
           })}
         </tbody>
-        </Fragment>
         ))}
         {orders.length === 0 && (
           <tbody>

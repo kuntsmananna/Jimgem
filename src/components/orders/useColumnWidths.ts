@@ -199,25 +199,42 @@ export function useColumnWidths(ids: readonly string[]) {
 }
 
 /**
+ * Hidden until somebody says otherwise.
+ *
+ * **Date**, since v0.68.0: the list is divided by day and every heading
+ * already names the date of every row beneath it, so the column repeated
+ * it once per order. It is still in the menu and one click brings it
+ * back — the grouping made it redundant, which is a reason to stop
+ * *drawing* it by default and not a reason to take it away.
+ */
+const HIDDEN_BY_DEFAULT = ["date"];
+
+/**
  * Which columns the table is not showing.
  *
- * Everything is visible by default, so nothing changes for anyone who
- * never opens the menu — the same rule the widths follow. The stored list
- * is sanitised against the ids it is asked about, so a column dropped from
- * the table later cannot linger in storage and quietly hide a new one that
- * happens to reuse its name.
+ * Only `HIDDEN_BY_DEFAULT` is hidden for anyone who has never opened the
+ * menu; the moment they do, their own list is what counts — including an
+ * empty one, which is why "Show all columns" writes `[]` rather than
+ * clearing the key. Clearing it would mean "no opinion", and the default
+ * would put Date straight back on a table somebody had just asked to show
+ * everything.
+ *
+ * The stored list is sanitised against the ids it is asked about, so a
+ * column dropped from the table later cannot linger in storage and quietly
+ * hide a new one that happens to reuse its name.
  */
 export function useHiddenColumns(ids: readonly string[]) {
   const raw = useSyncExternalStore(hiddenStore.subscribe, hiddenStore.read, () => null);
 
   const hidden = useMemo(() => {
-    if (!raw) return new Set<string>();
+    const fallback = () => new Set(ids.filter((id) => HIDDEN_BY_DEFAULT.includes(id)));
+    if (!raw) return fallback();
     try {
       const stored = JSON.parse(raw) as unknown;
-      if (!Array.isArray(stored)) return new Set<string>();
+      if (!Array.isArray(stored)) return fallback();
       return new Set(ids.filter((id) => stored.includes(id)));
     } catch {
-      return new Set<string>();
+      return fallback();
     }
   }, [raw, ids]);
 
@@ -231,7 +248,8 @@ export function useHiddenColumns(ids: readonly string[]) {
     [hidden],
   );
 
-  const showAll = useCallback(() => hiddenStore.write(null), []);
+  // An explicit empty list, not a cleared key — see the note above.
+  const showAll = useCallback(() => hiddenStore.write(JSON.stringify([])), []);
 
   return { hidden, toggle, showAll };
 }

@@ -1998,21 +1998,70 @@ and `byDay` only has to notice where one stops. Sorting there would be a
 second opinion about the list's order, and a heading could then disagree
 with the rows beneath it.
 
-**Each day is its own `<tbody>`, and each heading gets one of its own.**
-That is what the element means — a row group — and it is also what keeps
-the heading away from `.orders-rows > tr`, whose five rules turn a row
-black on hover and recolour every descendant, which is exactly what a
-heading must not do. Scoping those past it would have meant five `:not()`s
-and one of them eventually missed; a heading that is not a child of
-`.orders-rows` cannot be reached by any of them. The heading's `colSpan`
-is `visible.length`, so it follows the Columns menu like the empty-state
-row does.
+**Each day is one `<tbody>`, heading and orders together**, and the
+heading **sticks under the table header** as you scroll. Those two facts
+are the same fact: a sticky cell only stays put while its own section is
+on screen, so a heading alone in a section un-sticks the instant its
+single row scrolls — which is to say never sticks at all. It was written
+that way first (v0.67.0) and did not work.
 
-The Date column then repeats what the heading above it says. It is left in
-rather than dropped on the grouping's behalf: the Columns menu already
-turns it off in one click, and quietly removing a column because another
-change made it redundant is a decision belonging to whoever reads the
-table.
+Sharing a section means sharing `.orders-rows`, whose rules draw the box
+and turn it black on hover — everything a heading must not do. **The
+heading is a `<th>` for exactly that reason**: every one of those rules is
+written `> td`, so a `<th>` is out of reach of all of them by
+construction, and the single rule that matches *descendants* instead
+carries the one `:not(.day-row)` this needs. Its `colSpan` is
+`visible.length`, so it follows the Columns menu like the empty-state row.
+
+**Its `top` is the header's measured height**, watched with a
+`ResizeObserver` (`useHeadHeight`) rather than written as a number: the
+header is one line of 11px text until a column is dragged narrow enough to
+wrap its label, and then it is two — a guessed offset would leave a gap or
+hide the heading behind the header the moment that happened. Chrome pins
+sticky table cells against the *table* rather than their section, so the
+headings do not push one another out; they stack, exactly overlapping, and
+the last one to arrive is both the one painted on top and the day you are
+actually in. They are opaque cream, and every heading but the first is the
+same height, so nothing shows around the edges of the one on top.
+
+**The Date column is hidden by default** (`HIDDEN_BY_DEFAULT` in
+`useColumnWidths.ts`), since every heading already names the date of every
+row beneath it. Still in the menu, one click away: the grouping made the
+column redundant, which is a reason to stop *drawing* it and not a reason
+to take it away. The default applies only to somebody who has never opened
+the menu — from then on their own list counts, including an empty one,
+which is why **Show all columns writes `[]` rather than clearing the key**.
+Clearing it would mean "no opinion", and the default would put Date
+straight back on a table somebody had just asked to show everything.
+
+**An order is a box**, and the boxes sit on the page's own cream with the
+headings between them — the phone's cards, brought to the laptop with the
+grouping. A `<table>` can only do that through `border-separate`: a row
+carries neither background nor border in that mode, so **the cells are the
+box**. Every `<td>` paints the surface and the top and bottom edge, and
+`:first-child`/`:last-child` close the ends and round them — by position
+rather than a class per cell, so the ends follow the Columns menu on their
+own. The hover fill, the open tint and the offer's fill and dashed edge all
+moved from the `<tr>` to `> td` with it; the row's `:hover` is still what
+selects them, so one pointer still lights one order.
+
+The scrolling card around the table went with the change: a frame around a
+column of boxes is one edge too many, and the headings are meant to sit
+*outside* the boxes, which they cannot do inside a white card. The sticky
+header takes `bg-cream` for the same reason — it has to be opaque, and it
+is on the page now rather than on a card.
+
+**The permanent horizontal scrollbar was a resize handle, not a column.**
+Each handle is an 8px strip `translate-x-1/2` across its column's right
+edge; on the *last* column there is no boundary to straddle, so half of it
+hung 4px past the table and the scroller carried a bar for it at every
+width — including a 1400px column with room to spare. The last column's
+handle no longer translates. The `min-w-[1100px]` floor went at the same
+time: set when all fifteen columns showed, it was reserving width the
+default set does not use and made narrow windows scroll for nothing. Auto
+layout already refuses to squeeze columns past their content. Measured
+after: no horizontal scrollbar at 1000, 1080, 1130 or 1400px of container,
+and one at 940px, where the columns genuinely do not fit.
 
 **The order's note is behind an (i) icon**, not a line under the customer
 name. As a second line it set the row's height off the longest note in
