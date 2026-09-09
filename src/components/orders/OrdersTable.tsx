@@ -230,9 +230,19 @@ export function OrdersTable({
         `border-separate` with a vertical gap is what makes each row a box
         rather than a band in a ledger — see the block in globals.css. The
         gap is vertical only, so nothing about the column widths changes.
+
+        **`w-auto`, not `w-full`**: the boxes end where their content does.
+        Stretched to the page, the spare width was shared out among the
+        columns and the last one ended wider than anything in it — the box
+        running past its own content at the right end, the same complaint
+        the tick-box gutter answered at the left. `auto` is not "as wide as
+        possible" here: CSS resolves an auto table to its max-content width
+        *capped at the space available*, so a busy list still fills the
+        column and wraps exactly as it did, and only a list with room to
+        spare stops short.
       */}
       <table
-        className={`w-full border-separate border-spacing-x-0 border-spacing-y-1.5 text-left text-sm ${
+        className={`w-auto border-separate border-spacing-x-0 border-spacing-y-1.5 text-left text-sm ${
           widths ? "table-fixed" : ""
         }`}
       >

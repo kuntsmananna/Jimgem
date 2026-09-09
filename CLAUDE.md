@@ -2052,6 +2052,18 @@ column of boxes is one edge too many, and the headings are meant to sit
 header takes `bg-cream` for the same reason — it has to be opaque, and it
 is on the page now rather than on a card.
 
+**The table is `w-auto`, so the boxes end where their content does.**
+Stretched to the page with `w-full`, the spare width was shared out among
+the columns and the last one came out wider than anything in it — the box
+running past its own content at the right end, the same complaint the
+gutter below answers at the left. `auto` is not "as wide as possible"
+here: CSS resolves an auto table to its max-content width *capped at the
+space available*, so a busy list still fills the column and wraps exactly
+as it did, and only a list with room to spare stops short. Checked against
+`w-full` at 1400/1130/1000/900/800 with both short and long values: the
+horizontal scrollbar appears at exactly the same widths under both, so
+nothing gained a scrollbar by stopping short.
+
 **The tick box sits in a gutter beside the box, not inside it.** That
 column holds a control which is invisible until the row is hovered and has
 no data of its own, so within the surface it was ~30px of nothing before
