@@ -215,7 +215,7 @@ body {
    * list you are scanning rather than reading.
    */
   /* On the cells, like the hover fill above and for the same reason. */
-  .orders-rows > tr.is-open > td {
+  .orders-rows > tr.is-open > td:not(:first-child) {
     background-color: --alpha(var(--color-accent) / 7%);
   }
 
@@ -508,7 +508,7 @@ body {
  * pointer still lights one order; only the element wearing the fill has
  * changed.
  */
-.orders-rows > tr:hover > td {
+.orders-rows > tr:hover > td:not(:first-child) {
   background-color: var(--color-ink);
   border-color: var(--color-ink);
   color: var(--color-cream);
@@ -604,7 +604,7 @@ body {
  * card already has one, and tinting that only muddies the white. It lifts
  * on hover because the row is about to go solid black.
  */
-.orders-rows > tr.is-offer:not(:hover) > td {
+.orders-rows > tr.is-offer:not(:hover) > td:not(:first-child) {
   background-color: --alpha(var(--color-ink) / 3.5%);
 }
 
@@ -614,11 +614,11 @@ body {
  * `border-separate` table — CSS paints no border on a `<tr>` there — so
  * the table hangs it on the box's first cell instead.
  */
-.orders-rows > tr.is-offer > td:first-child {
+.orders-rows > tr.is-offer > td:nth-child(2) {
   border-left: 2px dashed --alpha(var(--color-ink) / 40%);
 }
 
-.orders-rows > tr.is-offer:hover > td:first-child {
+.orders-rows > tr.is-offer:hover > td:nth-child(2) {
   border-left-color: --alpha(var(--color-cream) / 60%);
 }
 
@@ -784,7 +784,19 @@ body {
   border-block: 1px solid var(--color-line);
 }
 
+/*
+ * The first cell is the tick box's gutter, and it is **not part of the
+ * box**: it holds a control that is invisible until hovered and has no
+ * data of its own, so inside the surface it was 30px of nothing before
+ * every order's first value. The box starts at the second cell, which
+ * closes and rounds the left end in its place.
+ */
 .orders-rows > tr > td:first-child {
+  background-color: transparent;
+  border: 0;
+}
+
+.orders-rows > tr > td:nth-child(2) {
   border-left: 1px solid var(--color-line);
   border-start-start-radius: 0.75rem;
   border-end-start-radius: 0.75rem;

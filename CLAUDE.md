@@ -1986,11 +1986,12 @@ stays row-only, because a `<tr>` has no surface of its own while a card
 does and tinting it only muddies the white.
 
 **The desktop table is divided by day too** (v0.67.0), the same heading
-the phone's cards have carried since v0.44.0 — weekday, date, and how many
-orders that day holds, which is the one thing the phone's version does not
-say and there is room for here. Brought over because people liked reading
-the list that way and asked for it; the two are now the same list in two
-shapes rather than two ways of reading one page.
+the phone's cards have carried since v0.44.0: the weekday and the date,
+and nothing else. It carried the day's order count for a version and the
+owner had it out again — the rows are right there to be counted, and a
+heading is a label. Brought over because people liked reading the list
+that way and asked for it; the two are now the same list in two shapes
+rather than two ways of reading one page.
 
 It is a **run boundary, not a grouping pass**: `getOrders` returns
 `ORDER BY date DESC, id DESC`, so a day's orders already arrive together
@@ -2050,6 +2051,20 @@ column of boxes is one edge too many, and the headings are meant to sit
 *outside* the boxes, which they cannot do inside a white card. The sticky
 header takes `bg-cream` for the same reason — it has to be opaque, and it
 is on the page now rather than on a card.
+
+**The tick box sits in a gutter beside the box, not inside it.** That
+column holds a control which is invisible until the row is hovered and has
+no data of its own, so within the surface it was ~30px of nothing before
+every order's first value — the box extending past its own content, which
+is what the owner saw. It is still a real cell in the real column, so
+selection, the select-all above it and the stored widths are untouched; it
+simply opts out of the box. `> td:first-child` paints no surface and no
+edge, `> td:nth-child(2)` closes and rounds the left end in its place, and
+every fill (hover, open, offer) is `:not(:first-child)` so none of them
+tint the gutter. **The day heading skips that column too** — the day row
+is two `<th>`s, an empty gutter and the heading over the box — and takes
+the cells' own `px-2`, so its first letter and the first value beneath it
+share a left edge to the pixel. Measured: both at 61px.
 
 **The permanent horizontal scrollbar was a resize handle, not a column.**
 Each handle is an 8px strip `translate-x-1/2` across its column's right

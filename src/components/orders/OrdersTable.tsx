@@ -321,9 +321,17 @@ export function OrdersTable({
         {days.map((day, dayAt) => (
         <tbody className="orders-rows" key={day.date}>
           <tr className="day-row">
+            {/*
+              The gutter column, empty. It is what the checkbox hangs in
+              (see the row below), and the heading skips it so its first
+              letter lands exactly over the box's first value rather than
+              out in the margin. A `<th>` like the heading beside it, and
+              for the same reason: the box rules are all written `> td`.
+            */}
+            <th className="sticky z-10 bg-cream" style={{ top: headHeight }} />
             <th
               scope="colgroup"
-              colSpan={visible.length}
+              colSpan={visible.length - 1}
               /*
                 **Sticky under the header**, so the day you are reading is
                 always named — a long month otherwise scrolls its heading
@@ -342,21 +350,20 @@ export function OrdersTable({
                 goes under the header rather than over it.
               */
               style={{ top: headHeight }}
-              className={`sticky z-10 bg-cream px-3 pb-1.5 text-left text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase ${
+              /* `px-2`, the cells' own padding, so the heading and the
+                 first value under it share a left edge. */
+              className={`sticky z-10 bg-cream px-2 pb-1.5 text-left text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase ${
                 dayAt === 0 ? "pt-2" : "pt-5"
               }`}
             >
               {/* The weekday first, then the date — "is that a Saturday"
                   is most of what a queue of dates is read for. See
                   `orderWeekday` for why an old imported order's can be
-                  wrong. The count is the one thing the phone's heading
-                  does not carry: there is room for it here, and "four
-                  orders on Thursday" is a day's shape at a glance. */}
+                  wrong. Nothing else: it carried the day's order count for
+                  a version and the owner had it out again — the rows are
+                  right there to be counted, and a heading is a label. */}
               <span className="text-ink">{orderWeekday(day.date)}</span>{" "}
               {formatOrderDate(day.date)}
-              <span className="ml-2 font-semibold tracking-normal normal-case opacity-60">
-                {day.orders.length} {day.orders.length === 1 ? "order" : "orders"}
-              </span>
             </th>
           </tr>
           {day.orders.map((order) => {
@@ -376,6 +383,21 @@ export function OrdersTable({
                   isBooked(order, stageIndex) ? "" : "is-offer"
                 }`}
               >
+                {/*
+                  The tick box, in a gutter *beside* the box rather than
+                  inside it — the owner's call, and it is what the box was
+                  extending past its own content to hold. It is empty
+                  almost always (it appears on hover, and this column has
+                  no data of its own), so inside the box it was 30px of
+                  nothing before every order's first value.
+
+                  Still a real cell in the real column, so selection, the
+                  select-all above it and the stored widths all work
+                  exactly as they did; it simply opts out of the box —
+                  `> td:first-child` in globals.css paints no surface and
+                  no edge, and the *second* cell rounds and closes the
+                  left end instead.
+                */}
                 {show("select") && (
                   <td className="px-2 py-2">
                     <input
