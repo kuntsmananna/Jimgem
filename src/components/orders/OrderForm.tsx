@@ -30,6 +30,7 @@ import { OrderCustomerPanel } from "./OrderCustomerPanel";
 import { OrderEventPanel } from "./OrderEventPanel";
 import { OrderMoneyRail } from "./OrderMoneyRail";
 import { money } from "./OrderSheet";
+import { useCanSeeMoney } from "@/components/RoleContext";
 import {
   PackageLineEditor,
   toDraftLines,
@@ -282,6 +283,15 @@ export function OrderForm({
    */
   const [moneyOpen, setMoneyOpen] = useState(false);
   /*
+   * Whether this form has a money side at all.
+   *
+   * `showMoney` rather than `money` because that name is already the
+   * shekel formatter imported from `OrderSheet` — and a flag shadowing a
+   * formatter is the kind of collision that compiles and then prints
+   * "true" where an amount should be.
+   */
+  const showMoney = useCanSeeMoney();
+  /*
    * Whether the tabs go in the dialog's title row or inline above the
    * panels. A phone's title row is a title and a close button with no
    * middle to lend, so below the breakpoint the form uses the inline
@@ -510,8 +520,12 @@ export function OrderForm({
 
         {/* The rail is a column beside the panels on a laptop. On a phone
             there is no room for a second column, so it moves behind the
-            money bar below — same component, same props. */}
-        <div className="w-[20rem] shrink-0 overflow-y-auto max-md:hidden">{rail}</div>
+            money bar below — same component, same props.
+
+            Not rendered at all on a staff account: the rail *is* the
+            money, every row of it, so there is nothing to strip out of it
+            and the panels take the width back. */}
+        {showMoney && <div className="w-[20rem] shrink-0 overflow-y-auto max-md:hidden">{rail}</div>}
       </div>
 
       {/*
@@ -529,6 +543,7 @@ export function OrderForm({
         Drawn in the rail's own black, so what opens is visibly the thing
         the strip is the front of.
       */}
+      {showMoney && (
       <button
         type="button"
         onClick={() => setMoneyOpen(true)}
@@ -550,8 +565,9 @@ export function OrderForm({
         </span>
         <ChevronUp size={18} className="shrink-0 text-cream/55" />
       </button>
+      )}
 
-      {moneyOpen && (
+      {showMoney && moneyOpen && (
         <Sheet title="The order" onClose={() => setMoneyOpen(false)}>
           {/* The sheet's title row is the rail's heading here, so the
               rail drops its own — the same words twice, one above the

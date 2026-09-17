@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { StaleWriteError, updateOrder, updateOrderFields, type OrderInput, type EditableField } from "@/lib/orders";
+import { StaleWriteError, updateOrder, updateOrderFields, getOrderMoney, type OrderInput, type EditableField } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
+import { callerIsAdmin } from "@/lib/guard";
+import { MONEY_FIELDS, withStoredMoney } from "@/lib/redact";
 
 export const runtime = "nodejs";
 
@@ -27,15 +29,39 @@ type UpdateBody = { expectedUpdatedAt?: string } & (
   | ({ mode: "patch" } & Partial<Record<EditableField, string | number | boolean | null>>)
 );
 
+/**
+ * A staff account may save an order — that is how an order gets marked
+ * delivered from the kitchen, which is half of why the phone layout
+ * exists — but it may not touch the money on one.
+ *
+ * Both modes are handled, and differently, because they fail differently.
+ * A "replace" carries the *whole* order, so a save from a tree that was
+ * never shown the amounts would write the redaction's zeros over the real
+ * figures: every money column is therefore taken from the stored row
+ * instead of from the body, and nothing the caller sends in them is read
+ * at all. A "patch" names its fields, so it is simply refused if it names
+ * a money one — there is no correct merge for "set the deposit", only a
+ * request that should not have been made.
+ */
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const { id } = await ctx.params;
   const body = (await request.json()) as UpdateBody;
   const editor = await currentEditor();
+  const admin = await callerIsAdmin();
   try {
     if (body.mode === "replace") {
-      return NextResponse.json(await updateOrder(Number(id), body, body.expectedUpdatedAt, editor));
+      let input: OrderInput = body;
+      if (!admin) {
+        const stored = await getOrderMoney(Number(id));
+        if (!stored) return NextResponse.json({ error: "No such order." }, { status: 404 });
+        input = withStoredMoney(body, stored);
+      }
+      return NextResponse.json(await updateOrder(Number(id), input, body.expectedUpdatedAt, editor));
     }
     if (body.mode === "patch") {
+      if (!admin && MONEY_FIELDS.some((field) => field in body)) {
+        return NextResponse.json({ error: "Only an admin can change that." }, { status: 403 });
+      }
       await updateOrderFields(Number(id), body, body.expectedUpdatedAt, editor);
       return NextResponse.json({ ok: true });
     }

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
-import { getDb } from "./db";
+import { getDb, isMissingColumn } from "./db";
+import type { Role } from "./roles";
 import {
   ZERO_PRICES,
   type PricedOption,
@@ -41,6 +42,12 @@ export interface StaffAccount {
   id: number;
   name: string;
   username: string;
+  /**
+   * What this login may see — see `src/lib/roles.ts`. Never the password
+   * hash: nothing that leaves the database carries one, which is the same
+   * rule the snapshots and the change log follow.
+   */
+  role: Role;
 }
 
 interface FlavorRow {
@@ -104,6 +111,8 @@ interface StaffRow {
   id: number;
   name: string;
   username: string;
+  /** Absent on a database still waiting for migration 030 — see getStaff. */
+  role?: string | null;
 }
 
 function mapFlavor(row: FlavorRow): Flavor {
@@ -451,21 +460,111 @@ export async function updateExpenseCategory(id: number, name: string): Promise<E
   return mapNamed(rows[0]);
 }
 
+/**
+ * Every account.
+ *
+ * A database that has not had migration 030 pasted into it yet has no
+ * `role` column, which is the ordinary state for the few minutes between
+ * a deploy and that paste. Everyone reads as an admin there — which is
+ * what they were a moment earlier, so the app carries on exactly as it
+ * did rather than locking the two founders out of their own dashboard
+ * over a column that is on its way. It **rethrows anything else**, for the
+ * reason `isMissingColumn` states: a connection failure reported as "run
+ * the migration" sends somebody to re-run what they already ran.
+ *
+ * Creating an account still fails loudly in that window, which is right:
+ * a write that cannot record a role must not pretend it did.
+ */
 export async function getStaff(): Promise<StaffAccount[]> {
   const db = getDb();
-  const { rows } = await db.query<StaffRow>("SELECT id, name, username FROM staff ORDER BY id");
-  return rows.map((r) => ({ id: r.id, name: r.name, username: r.username }));
+  try {
+    const { rows } = await db.query<StaffRow>("SELECT id, name, username, role FROM staff ORDER BY id");
+    return rows.map((r) => ({ id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role) }));
+  } catch (error) {
+    if (!isMissingColumn(error, "role")) throw error;
+    await reportMissingColumn();
+    const { rows } = await db.query<StaffRow>("SELECT id, name, username FROM staff ORDER BY id");
+    return rows.map((r) => ({ id: r.id, name: r.name, username: r.username, role: "admin" as Role }));
+  }
 }
 
-/** No self-service signup — exactly 2 founder accounts, created/edited by hand via Settings. No delete. */
-export async function createStaff(input: { name: string; username: string; password: string }): Promise<StaffAccount> {
+/** Said once a process, and it names the migration that fixes it. */
+let roleColumnReported = false;
+async function reportMissingColumn() {
+  if (roleColumnReported) return;
+  roleColumnReported = true;
+  console.error(
+    "staff.role is missing - run scripts/migrate-030-staff-roles.sql against this database.",
+  );
+}
+
+/** Anything the database says that is not a role we know is the least of them. */
+function normalizeRole(value: string | null | undefined): Role {
+  return value === "admin" ? "admin" : "staff";
+}
+
+/**
+ * Add an account.
+ *
+ * There is still no self-service signup — this is reachable only from
+ * Settings, which only an admin can open, and the route checks the
+ * caller's role again on the server. What changed is that there are now
+ * more than two people: a staff account is the kitchen and the floor, and
+ * making one should not mean a hand-written INSERT.
+ */
+export async function createStaff(input: {
+  name: string;
+  username: string;
+  password: string;
+  role: Role;
+}): Promise<StaffAccount> {
   const db = getDb();
   const passwordHash = await bcrypt.hash(input.password, 10);
   const { rows } = await db.query<StaffRow>(
-    "INSERT INTO staff (name, username, password_hash) VALUES ($1, $2, $3) RETURNING id, name, username",
-    [input.name, input.username, passwordHash],
+    "INSERT INTO staff (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, username, role",
+    [input.name, input.username, passwordHash, input.role],
   );
-  return { id: rows[0].id, name: rows[0].name, username: rows[0].username };
+  return { id: rows[0].id, name: rows[0].name, username: rows[0].username, role: normalizeRole(rows[0].role) };
+}
+
+/**
+ * Change what an account may see.
+ *
+ * **The last admin cannot be demoted.** Not a nicety: a dashboard with no
+ * admin has nobody who can reach Settings, so the only way back would be
+ * an UPDATE typed into the database console. The check and the update are
+ * one statement for the reason `orders.ts` states — there are no
+ * interactive transactions on this driver, so two statements could
+ * straddle another demotion and leave nought.
+ */
+export async function updateStaffRole(id: number, role: Role): Promise<StaffAccount> {
+  const db = getDb();
+  const { rows } = await db.query<StaffRow>(
+    `UPDATE staff SET role = $2
+      WHERE id = $1
+        AND ($2 = 'admin' OR EXISTS (
+              SELECT 1 FROM staff other WHERE other.role = 'admin' AND other.id <> $1))
+      RETURNING id, name, username, role`,
+    [id, role],
+  );
+  if (rows.length === 0) {
+    // Nothing changed, and there are two reasons it might not have. The
+    // check costs a query only on the failure path, which is rare — and
+    // "there has to be one admin left" sent after an account that is not
+    // there sends somebody hunting for a rule that was never the problem.
+    const { rows: exists } = await db.query<{ id: number }>("SELECT id FROM staff WHERE id = $1", [id]);
+    if (exists.length === 0) throw new Error(`No staff account ${id}.`);
+    throw new LastAdminError("There has to be one admin left, or nobody can reach Settings.");
+  }
+  return { id: rows[0].id, name: rows[0].name, username: rows[0].username, role: normalizeRole(rows[0].role) };
+}
+
+/** Refusing to demote the last admin — a sentence for the UI, not a 500. */
+export class LastAdminError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LastAdminError";
+  }
 }
 
 export async function resetStaffPassword(id: number, password: string): Promise<void> {
@@ -476,11 +575,11 @@ export async function resetStaffPassword(id: number, password: string): Promise<
 
 export async function updateStaffName(id: number, name: string): Promise<StaffAccount> {
   const db = getDb();
-  const { rows } = await db.query<StaffRow>("UPDATE staff SET name = $1 WHERE id = $2 RETURNING id, name, username", [
-    name,
-    id,
-  ]);
-  return { id: rows[0].id, name: rows[0].name, username: rows[0].username };
+  const { rows } = await db.query<StaffRow>(
+    "UPDATE staff SET name = $1 WHERE id = $2 RETURNING id, name, username, role",
+    [name, id],
+  );
+  return { id: rows[0].id, name: rows[0].name, username: rows[0].username, role: normalizeRole(rows[0].role) };
 }
 
 /**

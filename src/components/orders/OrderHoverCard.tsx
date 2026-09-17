@@ -18,6 +18,7 @@ import { StageChip } from "./StageChip";
 import { EventTypeChip } from "./EventTypeChip";
 import { ContentChips } from "./ContentChips";
 import { count, currency } from "@/lib/money";
+import { useCanSeeMoney } from "@/components/RoleContext";
 
 
 const CARD_WIDTH = 300;
@@ -48,6 +49,7 @@ export function OrderHoverCard({
   children: ReactNode;
 }) {
   const { forOrder } = useVatView();
+  const money = useCanSeeMoney();
   return (
     <HoverCard
       width={CARD_WIDTH}
@@ -69,9 +71,13 @@ export function OrderHoverCard({
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <EventTypeChip value={order.customerType} />
               <StageChip stageKey={order.productionStatus} />
-              <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold text-ink">
-                {PAYMENT_STATUS_LABEL[order.paymentStatus]}
-              </span>
+              {/* Whether they have paid is money, and this card is the only
+                  place a Kanban card or a calendar pill says so. */}
+              {money && (
+                <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-semibold text-ink">
+                  {PAYMENT_STATUS_LABEL[order.paymentStatus]}
+                </span>
+              )}
             </div>
 
             <dl className="mt-3 flex flex-col gap-1 text-xs text-ink-soft">
@@ -112,13 +118,17 @@ export function OrderHoverCard({
 
             {/* The order's worth with its extras in, matching the order
                 sheet's Total — delivery no longer needs calling out beside
-                it, because it is part of the figure now. */}
-            <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">
-              <span className="text-sm font-semibold text-ink">{currency(forOrder(order))}</span>
-              <span className="text-xs text-ink-soft">
-                {order.deposit > 0 ? `${currency(order.deposit)} deposit` : "no deposit"}
-              </span>
-            </div>
+                it, because it is part of the figure now. The whole footer
+                goes on a staff account, rule included: a border with
+                nothing under it reads as a card that failed to load. */}
+            {money && (
+              <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">
+                <span className="text-sm font-semibold text-ink">{currency(forOrder(order))}</span>
+                <span className="text-xs text-ink-soft">
+                  {order.deposit > 0 ? `${currency(order.deposit)} deposit` : "no deposit"}
+                </span>
+              </div>
+            )}
         </>
         );
       }}

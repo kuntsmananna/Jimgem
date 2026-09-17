@@ -9,13 +9,14 @@ import {
   type OrderPackageLine,
   type Order,
   type OrderInput,
+  type OrderMoney,
 } from "./orderTypes";
 
 // Re-exported so existing server-side call sites (`@/lib/orders`) keep
 // working unchanged — client components should import these (and the
 // pure orderMonth/orderDay helpers) from `@/lib/orderTypes` directly to
 // avoid pulling this module's server-only deps into a client bundle.
-export type { PaymentStatus, ProductionStatus, OrderLineFlavor, OrderPackageLine, Order, OrderInput };
+export type { PaymentStatus, ProductionStatus, OrderLineFlavor, OrderPackageLine, Order, OrderInput, OrderMoney };
 export {
   PAYMENT_STATUS_LABEL,
   orderMonth,
@@ -279,6 +280,43 @@ export async function getOrders(): Promise<Order[]> {
   return orderRows.map((row) =>
     mapDbOrder(row, linesByOrder.get(row.id) ?? [], displaysByOrder.get(row.id) ?? []),
   );
+}
+
+/** Every money column of one order, and nothing else — see `OrderMoney`. */
+const MONEY_COLUMNS =
+  "total_amount, delivery_cost, delivery_option_id, mirrors_cost, display_cost, waitress_cost, kosher_cost, discount, discount_is_percent, vat_mode, vat_rate, deposit, payment_status";
+
+/**
+ * What an order costs, on its own.
+ *
+ * Read for one reason: a staff account's save carries the whole order but
+ * must not carry its money, so the route puts these back from the stored
+ * row (see `withStoredMoney` in redact.ts). A narrow select rather than a
+ * whole-order read because that is all it needs — there is no point
+ * fetching the package lines and their flavours to copy a deposit across.
+ */
+export async function getOrderMoney(id: number): Promise<OrderMoney | null> {
+  const { rows } = await getDb().query<DbOrderRow>(
+    `SELECT ${MONEY_COLUMNS} FROM orders WHERE id = $1 AND deleted_at IS NULL`,
+    [id],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    totalAmount: Number(row.total_amount ?? 0),
+    deliveryCost: row.delivery_cost === null ? null : Number(row.delivery_cost),
+    deliveryOptionId: row.delivery_option_id === null ? null : Number(row.delivery_option_id),
+    mirrorsCost: row.mirrors_cost === null ? null : Number(row.mirrors_cost),
+    displayCost: row.display_cost === null ? null : Number(row.display_cost),
+    waitressCost: row.waitress_cost === null ? null : Number(row.waitress_cost),
+    kosherCost: row.kosher_cost === null ? null : Number(row.kosher_cost),
+    discount: Number(row.discount ?? 0),
+    discountIsPercent: !!row.discount_is_percent,
+    vatMode: (row.vat_mode ?? "included") as OrderMoney["vatMode"],
+    vatRate: Number(row.vat_rate ?? 0),
+    deposit: Number(row.deposit ?? 0),
+    paymentStatus: (row.payment_status ?? "unpaid") as OrderMoney["paymentStatus"],
+  };
 }
 
 /**

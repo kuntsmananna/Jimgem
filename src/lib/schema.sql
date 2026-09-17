@@ -7,6 +7,14 @@ CREATE TABLE IF NOT EXISTS staff (
   name TEXT NOT NULL,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  -- What this login may see. 'admin' is the whole dashboard, 'staff' is
+  -- the order list, an order's details and the to-do list, with no money
+  -- anywhere. Unstated means the least privileged of the two -- a
+  -- permission that defaults open is one forgotten INSERT away from
+  -- handing out the accounts. See scripts/migrate-030-staff-roles.sql,
+  -- which back-fills the two existing rows as admins and then sets this
+  -- same default.
+  role TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

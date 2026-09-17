@@ -17,6 +17,7 @@ import {
 import { logout } from "@/app/login/actions";
 import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
+import { useIsAdmin } from "@/components/RoleContext";
 
 /**
  * The three the phone is for.
@@ -46,6 +47,21 @@ const MORE = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+/**
+ * The bar a staff account gets: the two pages it has, and no More.
+ *
+ * Two cells rather than four, so each is half the screen — the bar sizes
+ * itself from what is in it (`flex items-stretch`, every cell `flex-1`),
+ * which is what makes this a list rather than a layout. Expenses goes
+ * because it is money; More goes because everything behind it is one or
+ * the other, and a fourth target opening an empty sheet is worse than no
+ * fourth target.
+ */
+const STAFF_BAR = [
+  { href: "/orders", label: "Orders", icon: ClipboardList },
+  { href: "/tasks", label: "Tasks", icon: ListChecks },
+];
+
 const isActive = (href: string, path: string) =>
   href === "/" ? path === "/" : path.startsWith(href);
 
@@ -64,6 +80,7 @@ const isActive = (href: string, path: string) =>
 export function MobileNav({ name, version }: { name: string; version: string }) {
   const path = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const admin = useIsAdmin();
 
   return (
     <>
@@ -77,17 +94,26 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
         */
         className="on-ink fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-cream/15 pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        {BAR.map((item) => (
+        {(admin ? BAR : STAFF_BAR).map((item) => (
           <BarItem key={item.href} {...item} active={isActive(item.href, path)} />
         ))}
-        <BarItem
-          label="More"
-          icon={Ellipsis}
-          // Not a link: the four remaining destinations live behind it,
-          // and so do the controls that belong to no page at all.
-          active={moreOpen || MORE.some((item) => isActive(item.href, path))}
-          onClick={() => setMoreOpen(true)}
-        />
+        {/* Sign-out is the one thing behind More that a staff account still
+            needs, so it takes the fourth cell in its own right rather than
+            the sheet taking a cell to hold one row. */}
+        {admin ? (
+          <BarItem
+            label="More"
+            icon={Ellipsis}
+            // Not a link: the four remaining destinations live behind it,
+            // and so do the controls that belong to no page at all.
+            active={moreOpen || MORE.some((item) => isActive(item.href, path))}
+            onClick={() => setMoreOpen(true)}
+          />
+        ) : (
+          <form action={logout} className="flex flex-1">
+            <BarItem label="Sign out" icon={LogOut} active={false} type="submit" />
+          </form>
+        )}
       </nav>
 
       {moreOpen && <MoreSheet name={name} version={version} path={path} onClose={() => setMoreOpen(false)} />}
@@ -109,12 +135,15 @@ function BarItem({
   icon: Icon,
   active,
   onClick,
+  type = "button",
 }: {
   href?: string;
   label: string;
   icon: typeof ClipboardList;
   active: boolean;
   onClick?: () => void;
+  /** "submit" for the cell that is a form's button — staff's sign-out. */
+  type?: "button" | "submit";
 }) {
   const body = (
     <>
@@ -148,7 +177,13 @@ function BarItem({
       {body}
     </Link>
   ) : (
-    <button type="button" onClick={onClick} className={shape} aria-expanded={active}>
+    <button
+      type={type}
+      onClick={onClick}
+      className={shape}
+      // Only the cell that opens a sheet has an expanded state to report.
+      aria-expanded={type === "button" ? active : undefined}
+    >
       {body}
     </button>
   );

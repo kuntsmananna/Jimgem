@@ -37,10 +37,13 @@ import { HistoryPanel } from "@/components/settings/HistoryPanel";
 import { listSnapshots } from "@/lib/backup";
 import { getHistory } from "@/lib/history";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
+import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  // Money lives on this page — see requireAdminPage.
+  await requireAdminPage();
   const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring] =
     await Promise.all([
       getFlavors(),

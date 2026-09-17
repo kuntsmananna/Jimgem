@@ -11,6 +11,7 @@ import { Truck } from "lucide-react";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
 import { GroupLabel, SheetRow, YesNo } from "./OrderSheet";
 import { NumberStepper } from "./PackageLineEditor";
+import { useCanSeeMoney } from "@/components/RoleContext";
 
 /**
  * The Event tab: how big the event is and what it needs beyond the jelly.
@@ -29,6 +30,7 @@ export function OrderEventPanel({
   onChange: (draft: OrderInput) => void;
   rates: Rates;
 }) {
+  const money = useCanSeeMoney();
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
   const displayOptions = rates.displayOptions.filter(
     (option) => !option.archivedAt || quantityOf(draft.displays, option.id) > 0,
@@ -149,8 +151,12 @@ export function OrderEventPanel({
       {hasDelivery(draft) && (
         <p className="-mt-3 text-[11px] text-ink-soft">
             {draft.deliveryOptionId === null
-            ? "Set what this one costs on the money rail."
-            : "Priced from the destination — type over it on the rail if this trip is different."}
+            ? money
+              ? "Set what this one costs on the money rail."
+              : "Delivered, to somewhere not on the list."
+            : money
+              ? "Priced from the destination — type over it on the rail if this trip is different."
+              : "Delivered to a destination on the list."}
         </p>
       )}
     </div>

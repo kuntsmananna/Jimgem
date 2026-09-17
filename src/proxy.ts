@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import type { SessionData } from "@/lib/session";
+import { STAFF_HOME, staffCanReach } from "@/lib/roles";
 
 const SESSION_COOKIE_NAME = "jimgem_session";
 
@@ -15,6 +16,34 @@ export async function proxy(request: NextRequest) {
   if (!session.userId) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
+  }
+
+  /*
+   * The role gate.
+   *
+   * A staff account reaches the order list, an order's details and the
+   * to-do list, and nothing else — so every other page and every other
+   * API route is refused here, before any of them runs. That matters more
+   * than hiding a link: a page's React Server Component payload carries
+   * its real data, so a Dashboard a staff user cannot see the link to is
+   * still a Dashboard they can fetch.
+   *
+   * `session.role` is the cookie's copy, written at sign-in. It is used
+   * here because this runs on every request and cannot afford a query;
+   * anything that decides what data actually leaves the server asks the
+   * database instead — see `currentRole` in `auth.ts`. A session issued
+   * before roles existed carries none, and reads as an admin: every one
+   * of those belongs to Anna or Aviv.
+   *
+   * The refusal is a redirect for a page and a 403 for an API call. A
+   * redirect to a fetch is answered with the HTML of `/orders`, which the
+   * caller would parse as JSON and report as a baffling syntax error.
+   */
+  if (session.role === "staff" && !staffCanReach(request.nextUrl.pathname)) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Not available on a staff account." }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL(STAFF_HOME, request.url));
   }
 
   return response;

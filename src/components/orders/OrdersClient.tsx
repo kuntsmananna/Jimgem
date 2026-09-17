@@ -20,7 +20,8 @@ import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } fro
 import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
-import { COLUMNS, OrdersTable } from "./OrdersTable";
+import { COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
+import { useCanSeeMoney, useIsAdmin } from "@/components/RoleContext";
 import { ColumnsMenu } from "./ColumnsMenu";
 import { useHiddenColumns } from "./useColumnWidths";
 import { OrdersKanban } from "./OrdersKanban";
@@ -163,9 +164,39 @@ export function OrdersClient({
     than data, and keeping it always on means the table can never render
     with nothing in it at all.
   */
-  const hideable = useMemo(() => COLUMNS.filter((column) => column.id !== "select"), []);
+  /*
+   * A staff account sees no money, so Amount, Deposit and Payment are not
+   * in the menu and not in the table. Folded into the same hidden set the
+   * menu writes, rather than given the table a second mechanism: one way
+   * for a column to be absent means the header, the `<colgroup>` and every
+   * row's cell cannot disagree about which columns there are, which is
+   * exactly the invariant a `<col>` matching by position depends on.
+   */
+  const money = useCanSeeMoney();
+  /*
+   * Booking an order and deleting one are an admin's.
+   *
+   * Booking because it has to be priced, and a form with no money side
+   * would quote every new order at nothing; deleting because it goes
+   * through the batch route, which refuses a staff account outright. Both
+   * routes say so on the server too — this only stops the page offering a
+   * button that leads to a 403.
+   */
+  const admin = useIsAdmin();
+  const hideable = useMemo(
+    () =>
+      COLUMNS.filter(
+        (column) =>
+          column.id !== "select" && (money || !MONEY_COLUMNS.includes(column.id as (typeof MONEY_COLUMNS)[number])),
+      ),
+    [money],
+  );
   const hideableIds = useMemo(() => hideable.map((column) => column.id), [hideable]);
   const { hidden, toggle: toggleColumn, showAll: showAllColumns } = useHiddenColumns(hideableIds);
+  const hiddenColumns = useMemo(
+    () => (money ? hidden : new Set<string>([...hidden, ...MONEY_COLUMNS])),
+    [money, hidden],
+  );
   const undoToast = useUndoToast();
   const [batchNote, setBatchNote] = useState<string | null>(null);
 
@@ -466,7 +497,7 @@ export function OrdersClient({
             closePane();
             refresh();
           }}
-          onDelete={() => deleteOne(openOrder)}
+          onDelete={admin ? () => deleteOne(openOrder) : undefined}
         />
       )}
 
@@ -520,13 +551,17 @@ export function OrdersClient({
               active={scope !== "all"}
             />
           )}
-          <FilterDropdown
-            label="Payment"
-            icon={<Wallet size={13} />}
-            options={paymentOptions}
-            selected={paymentFilter}
-            onChange={setPaymentFilter}
-          />
+          {/* Whether a customer has paid is money, so the filter goes with
+              the column it narrows. */}
+          {money && (
+            <FilterDropdown
+              label="Payment"
+              icon={<Wallet size={13} />}
+              options={paymentOptions}
+              selected={paymentFilter}
+              onChange={setPaymentFilter}
+            />
+          )}
           <FilterDropdown
             label="Status"
             icon={<ListChecks size={13} />}
@@ -567,13 +602,15 @@ export function OrdersClient({
             label="Search orders by customer, type, location or note"
             className="w-48"
           />
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
-          >
-            <Plus size={15} />
-            Add order
-          </button>
+          {admin && (
+            <button
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
+            >
+              <Plus size={15} />
+              Add order
+            </button>
+          )}
         </div>
       </div>
 
@@ -623,13 +660,17 @@ export function OrdersClient({
             onChange={setScope}
             active={scope !== "all"}
           />
-          <FilterDropdown
-            label="Payment"
-            icon={<Wallet size={13} />}
-            options={paymentOptions}
-            selected={paymentFilter}
-            onChange={setPaymentFilter}
-          />
+          {/* Whether a customer has paid is money, so the filter goes with
+              the column it narrows. */}
+          {money && (
+            <FilterDropdown
+              label="Payment"
+              icon={<Wallet size={13} />}
+              options={paymentOptions}
+              selected={paymentFilter}
+              onChange={setPaymentFilter}
+            />
+          )}
           <FilterDropdown
             label="Status"
             icon={<ListChecks size={13} />}
@@ -638,10 +679,12 @@ export function OrdersClient({
             onChange={setStageFilter}
           />
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        {/* Two tiles rather than three on a staff account, which is shown
+            no money: a third saying ₪0 would be worse than the gap. */}
+        <div className={`mt-2 grid gap-2 ${money ? "grid-cols-3" : "grid-cols-2"}`}>
           <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
           <Figure label="Orders" value={String(totals.orders)} />
-          <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />
+          {money && <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
         </div>
       </div>
 
@@ -651,13 +694,15 @@ export function OrdersClient({
         "take an order on the spot" is half the reason the phone layout
         exists — in a toolbar it would be one more thing to find.
       */}
-      <button
-        onClick={() => setAdding(true)}
-        aria-label="Add order"
-        className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
-      >
-        <Plus size={22} />
-      </button>
+      {admin && (
+        <button
+          onClick={() => setAdding(true)}
+          aria-label="Add order"
+          className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+        >
+          <Plus size={22} />
+        </button>
+      )}
 
     {/*
       The summary rides beside the table and the board, not the calendar,
@@ -704,7 +749,7 @@ export function OrdersClient({
             onChanged={refresh}
             onOpen={setOpenKey}
             onOpenClient={setOpenClientId}
-            hidden={hidden}
+            hidden={hiddenColumns}
             emptyNote={
               // A search that finds nothing is its own answer: pointing
               // at the time scope would send you widening a window that

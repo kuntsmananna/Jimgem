@@ -10,6 +10,7 @@ import {
 } from "@/lib/orders";
 
 import { currentEditor } from "@/lib/editor";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,13 @@ type BatchBody =
  * before inserting), so it stays a settled batch.
  */
 export async function POST(request: NextRequest) {
+  // Admin only, and all five actions together: three of them are deletes
+  // or duplicates, and the other two set a status over a selection made
+  // with a control a staff account is never shown. Marking one order
+  // delivered goes through the PATCH beside this instead.
+  const refusal = await refuseNonAdmin();
+  if (refusal) return refusal;
+
   const body = (await request.json()) as BatchBody;
   const ids = Array.isArray(body?.ids) ? body.ids.map(Number).filter(Number.isFinite) : [];
   if (ids.length === 0) {

@@ -10,6 +10,7 @@ import { TextInput, TextArea } from "@/components/Field";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
+import { useCanSeeMoney } from "@/components/RoleContext";
 import { orderTypeIconElement } from "@/lib/icons";
 import type { Client } from "@/lib/clients";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
@@ -42,6 +43,7 @@ export function OrderCustomerPanel({
 }) {
   const orderTypes = useOrderTypes();
   const stages = useStages();
+  const money = useCanSeeMoney();
   // Only the notes field asks: on a laptop its height comes from `flex-1`
   // against the money rail, and an inline height would fight that.
   const mobile = useIsMobile();
@@ -176,15 +178,20 @@ export function OrderCustomerPanel({
               })),
             ]}
           />
-          <ChipSpread
-            label="Payment"
-            value={draft.paymentStatus}
-            onChange={(value) => set({ paymentStatus: value as PaymentStatus })}
-            options={(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => ({
-              value: s,
-              label: PAYMENT_STATUS_LABEL[s],
-            }))}
-          />
+          {/* Whether they have paid is money, so a staff account is neither
+              shown it nor able to set it — the route refuses that column
+              too, so a picker here would be a control with no effect. */}
+          {money && (
+            <ChipSpread
+              label="Payment"
+              value={draft.paymentStatus}
+              onChange={(value) => set({ paymentStatus: value as PaymentStatus })}
+              options={(Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[]).map((s) => ({
+                value: s,
+                label: PAYMENT_STATUS_LABEL[s],
+              }))}
+            />
+          )}
           <ChipSpread
             label="Status"
             value={draft.productionStatus}

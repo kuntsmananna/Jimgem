@@ -5,10 +5,13 @@ import { getFlavors, getProductionStages, getStaff } from "@/lib/settings";
 import { getVatView } from "@/lib/vatViewServer";
 import { DashboardClient, type FlavorLine } from "@/components/dashboard/DashboardClient";
 import { getTasks } from "@/lib/tasks";
+import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  // Money lives on this page — see requireAdminPage.
+  await requireAdminPage();
   const vatView = await getVatView();
   const [financials, orders, flavors, stages, tasks, staff] = await Promise.all([
     getYearlyFinancials(vatView),

@@ -416,6 +416,32 @@ export interface Order {
   updatedBy: string;
 }
 
+/**
+ * Every money column of an order, as one name.
+ *
+ * Stated as a `Pick` of `Order` rather than a list of its own, so a money
+ * column added later is either in here or is a deliberate omission —
+ * never a field that quietly fell out of the set because two lists had to
+ * be kept in step. It is what a staff account's save has put back from
+ * the stored row (see redact.ts) and what `getOrderMoney` reads.
+ */
+export type OrderMoney = Pick<
+  Order,
+  | "totalAmount"
+  | "deliveryCost"
+  | "deliveryOptionId"
+  | "mirrorsCost"
+  | "displayCost"
+  | "waitressCost"
+  | "kosherCost"
+  | "discount"
+  | "discountIsPercent"
+  | "vatMode"
+  | "vatRate"
+  | "deposit"
+  | "paymentStatus"
+>;
+
 export interface OrderInput {
   date: string;
   customer: string;

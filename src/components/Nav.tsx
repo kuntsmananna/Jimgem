@@ -7,7 +7,9 @@ import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { useVatView } from "@/components/VatViewContext";
+import { useIsAdmin } from "@/components/RoleContext";
 import { VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
+import { STAFF_HOME } from "@/lib/roles";
 
 /*
  * The desktop row. `/tasks` is deliberately **not** here: the same list is
@@ -27,6 +29,22 @@ const LINKS = [
 ];
 
 /**
+ * What a staff account is offered — the order list and the to-do list, and
+ * nothing else. Tasks earns a pill here that the desktop row deliberately
+ * does not give an admin: for an admin the same list is a pane on the
+ * Dashboard, which a staff account cannot reach, so without this the page
+ * would exist with no way in on a laptop.
+ *
+ * Hiding a link is not what stops anyone: `src/proxy.ts` refuses the other
+ * four before they render, payload and all. This only stops the nav
+ * offering four things that would bounce straight back.
+ */
+const STAFF_LINKS = [
+  { href: "/orders", label: "Orders" },
+  { href: "/tasks", label: "Tasks" },
+];
+
+/**
  * Two words max, so "TMP QA" gives TQ and a one-word name gives one
  * letter rather than two from the same word.
  */
@@ -38,6 +56,8 @@ export function initials(name: string): string {
 
 export function Nav({ name, version }: { name: string; version: string }) {
   const activeHref = usePathname();
+  const admin = useIsAdmin();
+  const links = admin ? LINKS : STAFF_LINKS;
   return (
     /* Below the breakpoint this row keeps only the wordmark: the six
        pills, the VAT toggle, the version, the name and sign-out are ~1000px
@@ -49,15 +69,18 @@ export function Nav({ name, version }: { name: string; version: string }) {
             Sized by height, and 40px rather than the 32 that would match
             the pills beside it: the script's hairlines close up below
             about 40 and it stops reading as a word at all. */}
+        {/* The way back to the first page this account has — which for a
+            staff account is the order list, since the Dashboard would only
+            bounce them here again. */}
         <Link
-          href="/"
-          aria-label="Gems — dashboard"
+          href={admin ? "/" : STAFF_HOME}
+          aria-label={admin ? "Gems — dashboard" : "Gems — orders"}
           className="shrink-0 text-brand transition hover:opacity-70"
         >
           <GemsLogo className="h-10 w-auto" />
         </Link>
         <nav className="flex items-center gap-1 max-md:hidden">
-          {LINKS.map((link) => {
+          {links.map((link) => {
             const active = link.href === "/" ? activeHref === "/" : activeHref.startsWith(link.href);
             return (
               <Link
@@ -89,7 +112,9 @@ export function Nav({ name, version }: { name: string; version: string }) {
       <HeaderSlotTarget className="ml-4 flex min-w-0 flex-1 items-center justify-end md:hidden" />
 
       <div className="flex items-center gap-3 max-md:hidden">
-        <VatViewToggle />
+        {/* The one control that governs what a shekel means, and so of no
+            use at all to an account that is shown none. */}
+        {admin && <VatViewToggle />}
         {/* On every page rather than just the Dashboard — it's how you tell
             which version you're looking at. */}
         <span

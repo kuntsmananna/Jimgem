@@ -13,6 +13,7 @@ import {
   type PaymentStatus,
 } from "@/lib/orderTypes";
 import { count, currency } from "@/lib/money";
+import { useCanSeeMoney } from "@/components/RoleContext";
 import { useVatView } from "@/components/VatViewContext";
 import { useStage } from "@/components/ProductionStagesContext";
 import { Figure } from "@/components/Figure";
@@ -110,6 +111,7 @@ function OrderCard({
   onOpen: (key: string) => void;
 }) {
   const { forOrder } = useVatView();
+  const money = useCanSeeMoney();
   const stage = useStage(order.productionStatus);
   const units = orderUnits(order.packageLines, unitsPerPackage);
   const displays = displayCount(order.displays);
@@ -171,7 +173,7 @@ function OrderCard({
         {order.location && <Figure label="Location" value={order.location} wide />}
         {order.guests !== null && <Figure label="Guests" value={String(order.guests)} />}
         <Figure label="Units" value={count(units)} />
-        {order.deposit > 0 && <Figure label="Deposit" value={currency(order.deposit)} />}
+        {money && order.deposit > 0 && <Figure label="Deposit" value={currency(order.deposit)} />}
       </dl>
 
       {/*
@@ -197,6 +199,12 @@ function OrderCard({
         </div>
       )}
 
+      {/*
+        The money line, and the rule above it, on an account that is shown
+        money. A staff account gets neither — not a rule with nothing under
+        it, which would read as a card that failed to finish loading.
+      */}
+      {money && (
       <div className="mt-2.5 flex items-center gap-2 border-t border-line/60 pt-2 text-xs">
         {/*
           The badge the table wears, not the plain grey text this had.
@@ -222,6 +230,7 @@ function OrderCard({
           {currency(forOrder(order))}
         </span>
       </div>
+      )}
     </button>
   );
 }

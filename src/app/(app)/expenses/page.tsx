@@ -4,10 +4,13 @@ import { getRecurringSummary } from "@/lib/recurringExpenses";
 import { getExpenseCategories, getPaymentMethods, getPrices, getStaff } from "@/lib/settings";
 import { ExpensesClient } from "@/components/expenses/ExpensesClient";
 import { EXPENSE_PANES_COOKIE, parseCollapsedPanes } from "@/lib/expensePanes";
+import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExpensesPage() {
+  // Money lives on this page — see requireAdminPage.
+  await requireAdminPage();
   const [periods, categories, paymentMethods, staff, prices, recurring, cookieStore] = await Promise.all([
     getExpensePeriods(),
     getExpenseCategories(),

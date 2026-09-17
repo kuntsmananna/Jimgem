@@ -3,6 +3,7 @@
 import { ArrowDownRight, ArrowUpRight, Package, Receipt, Sparkles } from "lucide-react";
 import { deltaPercent, type OrderTotals } from "@/lib/orderScope";
 import { UnitsIcon } from "@/lib/icons";
+import { useCanSeeMoney } from "@/components/RoleContext";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -26,7 +27,8 @@ export function OrdersSummary({
   /** False on "All time", where there is no previous window to compare with. */
   comparable: boolean;
 }) {
-  const tiles = [
+  const money = useCanSeeMoney();
+  const allTiles = [
     { key: "units", label: "Units", value: nf.format(totals.units), icon: <UnitsIcon size={13} /> },
     { key: "orders", label: "Orders", value: nf.format(totals.orders), icon: <Package size={13} /> },
     { key: "displays", label: "Display", value: nf.format(totals.displays), icon: <Sparkles size={13} /> },
@@ -47,6 +49,11 @@ export function OrdersSummary({
       note: totals.offers > 0 ? `excl. ${nf.format(totals.offers)} offer${totals.offers > 1 ? "s" : ""}` : null,
     },
   ] as const;
+  // A staff account is shown no money, so the rail is three counts. The
+  // tile is dropped rather than blanked: "Income ₪0" is a claim, and a
+  // wrong one. Filtered after `as const` so each key stays the literal the
+  // comparison below indexes `totals` by.
+  const tiles = allTiles.filter((tile) => money || tile.key !== "income");
 
   return (
     <div className="flex flex-col gap-2">

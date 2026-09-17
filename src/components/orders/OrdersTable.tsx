@@ -28,6 +28,7 @@ import { EventTypeChip } from "./EventTypeChip";
 import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
 import { useColumnWidths } from "./useColumnWidths";
 import { count, currency } from "@/lib/money";
+import { useIsAdmin } from "@/components/RoleContext";
 
 
 /**
@@ -101,6 +102,18 @@ export const COLUMNS = [
   { id: "payment", label: "Payment" },
 ] as const;
 
+/**
+ * The three columns that are money.
+ *
+ * A staff account is never shown them and is never offered them in the
+ * Columns menu — see `OrdersClient`, which folds them into the hidden set
+ * rather than teaching the table a second way to leave a column out. Named
+ * here beside `COLUMNS` so the two cannot drift: a money column added to
+ * that list and forgotten here would be one a staff account could switch
+ * back on.
+ */
+export const MONEY_COLUMNS = ["amount", "deposit", "payment"] as const;
+
 export function OrdersTable({
   orders,
   flavors,
@@ -135,6 +148,17 @@ export function OrdersTable({
   /** Columns the owner has switched off — see `ColumnsMenu`. */
   hidden: ReadonlySet<string>;
 }) {
+  /*
+   * Whether the tick boxes are drawn at all.
+   *
+   * Read from the context rather than taken as a prop, for the reason
+   * `RoleContext` gives: the answer is the same everywhere and threading
+   * it through would touch every caller to say one thing. Every bulk
+   * action behind those boxes is an admin's — the batch route refuses the
+   * lot — so on a staff account they would be a control that leads only to
+   * a 403.
+   */
+  const selectable = useIsAdmin();
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
   // A row is provisional when its stage says it is not income yet — the
@@ -263,7 +287,15 @@ export function OrdersTable({
             {visible.map(({ id, label }, at) => (
               <th key={id} className={`relative bg-cream px-2 py-2 ${!widths && id === "select" ? "w-6" : ""}`}>
                 {id === "select" ? (
-                  <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
+                  // Empty on a staff account: every bulk action is an
+                  // admin's, so the tick box is an affordance leading only
+                  // to a refused request. The cell itself stays — it is the
+                  // gutter the boxes sit beside, and a `<col>` matches by
+                  // position, so leaving the column out would re-width
+                  // every cell after it.
+                  selectable && (
+                    <input type="checkbox" checked={allSelected} onChange={onToggleAll} aria-label="Select all" />
+                  )
                 ) : (
                   label
                 )}
@@ -410,15 +442,17 @@ export function OrdersTable({
                 */}
                 {show("select") && (
                   <td className="px-2 py-2">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => onToggleSelect(order.key)}
-                      aria-label={`Select ${order.customer || "order"}`}
-                      // Revealed on hover so the column reads as data, not
-                      // controls — but a ticked box always stays visible.
-                      className={isSelected ? "" : "reveals-on-hover invisible group-hover:visible"}
-                    />
+                    {selectable && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggleSelect(order.key)}
+                        aria-label={`Select ${order.customer || "order"}`}
+                        // Revealed on hover so the column reads as data, not
+                        // controls — but a ticked box always stays visible.
+                        className={isSelected ? "" : "reveals-on-hover invisible group-hover:visible"}
+                      />
+                    )}
                   </td>
                 )}
                 {/* Status leads the row: it is what the table is scanned

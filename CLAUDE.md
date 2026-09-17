@@ -1876,9 +1876,13 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 - Login page at `/login`; session is a cookie, checked by
   `src/proxy.ts`, which redirects to `/login` when absent. Not
   HTTP Basic Auth.
-- No self-service signup and no account-deletion UI — exactly 2 staff
-  accounts (Anna, Aviv), created by a manual DB insert, not seeded from
-  env vars.
+- No self-service signup and no account-deletion UI. There are now more
+  than two accounts — Settings → Team adds one — but only an admin can
+  reach that pane, and there is still no delete: a staff row is pointed at
+  by every expense that names who spent it and every task assigned to
+  them, so removing one would orphan those rows or take real history with
+  it. Demoting somebody and changing their password is what "they have
+  left" looks like.
 - **Brute force is stopped at the edge, not in this code.** A Vercel
   Firewall rule rate-limits `POST /login` — the path a Server Action
   posts back to, and the only request that checks a password — to ten a
@@ -1892,6 +1896,95 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   also returns before reaching bcrypt for an unknown username, which is a
   small timing oracle for enumerating the two names; comparing against a
   dummy hash would close it.
+
+### Roles
+
+- **Two roles, on `staff.role`** (`scripts/migrate-030-staff-roles.sql`).
+  An **admin** — Anna and Aviv — is what every account was before: the
+  whole dashboard, money included. A **staff** account is the kitchen and
+  the floor: the order list, an order's details, and the shared to-do
+  list. No money anywhere and no other page. `src/lib/roles.ts` states all
+  of it and is deliberately **client-safe**, because the same three facts
+  are needed at the edge, on the server and in the browser, and three
+  copies would drift.
+- **The column back-fills to `admin` and then defaults to `staff`**, which
+  are two different questions. The back-fill has to say what the rows
+  already there are, and they are the two founders; from then on a row
+  inserted without a role must be the least privileged thing it could be,
+  because a permission that defaults open is one forgotten INSERT away
+  from handing out the accounts.
+- **Hiding a link is not what stops anyone.** A page's React Server
+  Component payload carries its real data, so a Dashboard with no link to
+  it is still a Dashboard that can be fetched. `src/proxy.ts` refuses
+  every page and route a staff account may not have, before any of them
+  runs — matched on the **first path segment**, because a prefix test on
+  `/` matches the whole app and because Next serves `/settings.rsc` beside
+  `/settings`. A trailing `.rsc` is stripped and anything unrecognised is
+  refused, so the Dashboard is out by construction rather than by being
+  named. A page gets a redirect and an API call a 403: a redirect answered
+  to a `fetch` hands back HTML, which the caller reports as a baffling
+  JSON syntax error.
+- **The cookie carries the role and the database decides.** `SessionData`
+  holds it because the gate runs on every request and cannot afford a
+  query; `currentRole()` in `auth.ts` reads the row, and that is what every
+  page and route uses to decide what data leaves the server. So demoting
+  somebody takes effect on their next page load rather than at their next
+  login. A session issued before roles existed carries none and reads as
+  an admin — every one of those belongs to Anna or Aviv, and the
+  alternative was signing both out of their own dashboard on deploy.
+- **The money is taken out on the server, not hidden in the browser**
+  (`src/lib/redact.ts`). `redactOrder`, `redactRates` and `redactPresets`
+  run in `orders/page.tsx` before the data reaches the tree. Two details
+  are not obvious: `deliveryCost` keeps its **null-ness** and loses only
+  its value, because `hasDelivery` is `deliveryCost !== null` and blanking
+  it would tell the kitchen an order needs no delivery — a fact about the
+  job, not the money; and `paymentStatus` is a placeholder rather than a
+  claim, since the type has no "unknown" and nothing in a staff tree draws
+  it.
+- **`RoleContext` still has to exist**, because a redacted order is full of
+  zeros and a page saying every order is worth ₪0 is worse than one that
+  does not mention money. `useCanSeeMoney()` is what the table, the cards,
+  the board, the hover card and the order form ask before drawing a figure.
+  It decides nothing — the server already did.
+- **A staff account may save an order but not price one.** That is how an
+  order gets marked delivered from the kitchen, which is half of why the
+  phone layout exists. The order form sends the *whole* order, so a save
+  from a tree that was never shown the amounts would write the redaction's
+  zeros over the real figures: `withStoredMoney` puts every money column
+  back from the stored row, and nothing the caller sends in them is read at
+  all. An inline `patch` is refused outright if it names a money field —
+  there is no correct merge for "set the deposit", only a request that
+  should not have been made. Creating, deleting and every batch action are
+  an admin's.
+- **Two locks, and they fail differently.** The gate reads the cookie,
+  which is a snapshot from sign-in; `refuseNonAdmin` / `requireAdminPage`
+  in `guard.ts` ask the database, which is current. The five pages that
+  *are* the money check for themselves as well, because the gate is one
+  regular expression in one file and a change to it that quietly stopped
+  matching would take every page's data with it.
+- **The last admin cannot be demoted** — the check and the UPDATE are one
+  statement, since this driver has no interactive transactions and two
+  statements could straddle another demotion and leave nought. A dashboard
+  with no admin has nobody who can reach Settings, so the only way back
+  would be an UPDATE typed into the database console.
+- **The read path survives its own migration not having been run yet.**
+  `getStaff` and `verifyCredentials` catch `isMissingColumn(error, "role")`
+  and read everyone as an admin — which is what they were a moment earlier
+  — so signing in is not the thing that breaks in the minutes between a
+  deploy and the paste. Creating an account still fails loudly, which is
+  right: a write that cannot record a role must not pretend it did.
+- **A staff account's nav is two pills, and `/tasks` earns one.** For an
+  admin the same list is a pane on the Dashboard, which a staff account
+  cannot reach, so without it the page would exist with no way in on a
+  laptop. On the phone the bottom bar is Orders, Tasks and **Sign out** —
+  everything behind More is money or a page they have not got, and a
+  fourth target opening an empty sheet is worse than no fourth target.
+- **The table keeps its tick-box column and draws nothing in it.** Every
+  bulk action is an admin's, so the boxes would lead only to a 403 — but
+  the column itself stays, because `.orders-rows > tr > td:first-child` is
+  the gutter the boxes sit beside and `> td:nth-child(2)` is what rounds
+  the left end. Take the column out and the Status chip falls outside the
+  box on every row.
 
 ## Environment variables
 
@@ -2186,6 +2279,13 @@ as separate things. A header button takes `PANE_ACTION_CLASS` — the same
 pill reversed. **Data lays out in two columns** like Lists, packed by
 height: a sync button beside the archive left half a screen of cream when
 they were stacked.
+
+**Team adds accounts now**, not only renames them and resets passwords:
+the business has more than two people in it. Each row carries a
+`Segmented` role track — the app's "selected is the fill" rule — and a new
+account defaults to **Staff**, the same fail-closed rule the column's own
+default follows. See the Roles section under Authentication for what the
+two roles mean and where each is enforced.
 
 Settings is four tabs: **Flavors** (flavour cards *and* presets — a preset
 is a package plus a recipe of these flavours, so keeping them apart meant

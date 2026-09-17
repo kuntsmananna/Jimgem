@@ -6,10 +6,13 @@ import { MONTH_NAMES_EN } from "@/lib/financials";
 import { getSumitDocuments } from "@/lib/sumitSync";
 import { getVatView } from "@/lib/vatViewServer";
 import { ClientsClient, type ClientOrderLine } from "@/components/clients/ClientsClient";
+import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
+  // Money lives on this page — see requireAdminPage.
+  await requireAdminPage();
   const vatView = await getVatView();
   const [clients, orders, stages, documents] = await Promise.all([
     getClientsWithStats(vatView),

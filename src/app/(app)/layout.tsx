@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { getSession } from "@/lib/session";
+import { currentRole } from "@/lib/auth";
 import { getOrderTypes, getProductionStages } from "@/lib/settings";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { Nav } from "@/components/Nav";
@@ -8,6 +9,7 @@ import { HeaderSlotProvider } from "@/components/HeaderSlot";
 import { OrderTypesProvider } from "@/components/OrderTypesContext";
 import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
 import { VatViewProvider } from "@/components/VatViewContext";
+import { RoleProvider } from "@/components/RoleContext";
 import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -18,8 +20,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
    * *offer* a type — the order form's pill and the table's Type cell —
    * filter the archived ones out themselves.
    */
-  const [session, orderTypes, stages, cookieStore] = await Promise.all([
+  const [session, role, orderTypes, stages, cookieStore] = await Promise.all([
     getSession(),
+    // Read from the database rather than from the cookie — see currentRole.
+    // Null means no account we can resolve, and everything below it treats
+    // that as the least privileged answer.
+    currentRole(),
     getOrderTypes(true),
     getProductionStages(true),
     cookies(),
@@ -29,6 +35,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const vatView = parseVatView(cookieStore.get(VAT_VIEW_COOKIE)?.value);
 
   return (
+    <RoleProvider role={role ?? "staff"}>
     <OrderTypesProvider types={orderTypes}>
       <ProductionStagesProvider stages={stages}>
       <VatViewProvider view={vatView}>
@@ -52,5 +59,6 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </VatViewProvider>
       </ProductionStagesProvider>
     </OrderTypesProvider>
+    </RoleProvider>
   );
 }

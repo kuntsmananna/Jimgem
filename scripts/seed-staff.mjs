@@ -34,6 +34,9 @@ for (const s of STAFF) {
   }
   const password = randomPassword();
   const hash = await bcrypt.hash(password, 10);
-  await sql`INSERT INTO staff (name, username, password_hash) VALUES (${s.name}, ${s.username}, ${hash})`;
+  // Admins: this script seeds the two founder accounts into a database
+  // built from scratch, and the column's own default is 'staff' (see
+  // migration 030 for why the least privileged answer is the default).
+  await sql`INSERT INTO staff (name, username, password_hash, role) VALUES (${s.name}, ${s.username}, ${hash}, 'admin')`;
   console.log(`${s.name}: username="${s.username}"  password="${password}"`);
 }

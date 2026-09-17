@@ -13,6 +13,7 @@ import { useVatView } from "@/components/VatViewContext";
 import { OrderHoverCard } from "./OrderHoverCard";
 import { ProductionStatusSelect } from "./StatusSelects";
 import { count, currency } from "@/lib/money";
+import { useCanSeeMoney } from "@/components/RoleContext";
 
 
 export function OrdersKanban({
@@ -30,6 +31,7 @@ export function OrdersKanban({
 }) {
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   const { forOrder } = useVatView();
+  const money = useCanSeeMoney();
   /*
    * One column per live stage, in the owner's order. Archived stages are
    * left out — the board is where work is moved *to*, and a retired stage
@@ -91,7 +93,7 @@ export function OrdersKanban({
                   <div className="mt-2 flex items-center justify-between">
                     {/* What the order is worth, extras included — the same
                         figure the order sheet calls Total. */}
-                    <p className="text-sm font-semibold text-ink">{currency(forOrder(order))}</p>
+                    {money && <p className="text-sm font-semibold text-ink">{currency(forOrder(order))}</p>}
                     <ProductionStatusSelect order={order} onChanged={onChanged} />
                   </div>
                 </OrderHoverCard>
