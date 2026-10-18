@@ -55,6 +55,7 @@ export function HoverCard({
   width,
   height,
   className = "",
+  tone = "card",
   render,
   children,
 }: {
@@ -62,6 +63,11 @@ export function HoverCard({
   /** Rough tallest height, for keeping the card on screen. */
   height: number;
   className?: string;
+  /**
+   * `ink` draws the card in negative, for money — the same black the order
+   * form's money rail wears, so a breakdown reads as that rail in small.
+   */
+  tone?: "card" | "ink";
   render: () => ReactNode;
   children: ReactNode;
 }) {
@@ -97,7 +103,9 @@ export function HoverCard({
           <div
             role="tooltip"
             style={{ left: at.left, top: at.top, width }}
-            className="motion-fade pointer-events-none fixed z-50 rounded-card border border-line bg-card p-4 shadow-xl"
+            className={`motion-fade pointer-events-none fixed z-50 rounded-card border p-4 shadow-xl ${
+              tone === "ink" ? "border-black bg-black text-cream" : "border-line bg-card"
+            }`}
           >
             {render()}
           </div>,

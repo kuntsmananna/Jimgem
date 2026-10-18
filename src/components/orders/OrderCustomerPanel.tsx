@@ -11,11 +11,12 @@ import { useIsMobile } from "@/components/useMediaQuery";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { useCanSeeMoney } from "@/components/RoleContext";
-import { orderTypeIconElement } from "@/lib/icons";
+import { orderTypeIconElement, paymentMethodIconElement } from "@/lib/icons";
 import type { Client } from "@/lib/clients";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
 import { ClientPicker } from "./ClientPicker";
 import { FieldLabel } from "./OrderSheet";
+import { usePaymentMethods } from "./PaymentMethodsContext";
 
 /**
  * The Customer tab: who the order is for, when, where, and how it is
@@ -44,6 +45,7 @@ export function OrderCustomerPanel({
   const orderTypes = useOrderTypes();
   const stages = useStages();
   const money = useCanSeeMoney();
+  const paymentMethods = usePaymentMethods();
   // Only the notes field asks: on a laptop its height comes from `flex-1`
   // against the money rail, and an inline height would fight that.
   const mobile = useIsMobile();
@@ -190,6 +192,31 @@ export function OrderCustomerPanel({
                 value: s,
                 label: PAYMENT_STATUS_LABEL[s],
               }))}
+            />
+          )}
+          {/* How they paid — money too, for the same reason. Informational
+              only: VAT is the order's own vat_mode, whatever the method. */}
+          {money && paymentMethods.length > 0 && (
+            <ChipSpread
+              label="Paid by"
+              value={draft.paymentMethodId === null ? "" : String(draft.paymentMethodId)}
+              onChange={(value) => set({ paymentMethodId: value ? Number(value) : null })}
+              options={[
+                { value: "", label: "Not yet" },
+                ...spreadOptions(
+                  paymentMethods,
+                  draft.paymentMethodId === null ? "" : String(draft.paymentMethodId),
+                  (m) => ({
+                    value: String(m.id),
+                    label: m.name,
+                    icon: paymentMethodIconElement(m.name),
+                    archivedAt: m.archivedAt,
+                  }),
+                  // Stored by id, so a method that has gone missing would
+                  // otherwise draw a chip reading "7".
+                  () => "Unknown method",
+                ),
+              ]}
             />
           )}
           <ChipSpread

@@ -276,6 +276,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5, 2) NOT NULL DEFA
 -- import can never be rejected by a name not on the list
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id);
 
+-- How the customer paid. The same owner-managed list an expense names, and
+-- informational only -- no figure is computed from it, VAT included
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method_id INTEGER REFERENCES payment_methods(id);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS sheet_row INTEGER;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS details TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS needs_review BOOLEAN NOT NULL DEFAULT false;

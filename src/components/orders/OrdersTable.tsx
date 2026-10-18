@@ -22,9 +22,13 @@ import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { HoverCard } from "@/components/HoverCard";
 import { saveError } from "@/components/saveError";
+import { AmountHoverCard } from "./AmountHoverCard";
 import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
 import { EventTypeChip } from "./EventTypeChip";
+import { PaymentMethodChip } from "./PaymentMethodChip";
+import { usePaymentMethods } from "./PaymentMethodsContext";
+import { useVatView } from "@/components/VatViewContext";
 import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
 import { useColumnWidths } from "./useColumnWidths";
 import { count, currency } from "@/lib/money";
@@ -100,10 +104,11 @@ export const COLUMNS = [
   { id: "amount", label: "Amount" },
   { id: "deposit", label: "Deposit" },
   { id: "payment", label: "Payment" },
+  { id: "method", label: "Paid by" },
 ] as const;
 
 /**
- * The three columns that are money.
+ * The columns that are money.
  *
  * A staff account is never shown them and is never offered them in the
  * Columns menu — see `OrdersClient`, which folds them into the hidden set
@@ -112,7 +117,7 @@ export const COLUMNS = [
  * that list and forgotten here would be one a staff account could switch
  * back on.
  */
-export const MONEY_COLUMNS = ["amount", "deposit", "payment"] as const;
+export const MONEY_COLUMNS = ["amount", "deposit", "payment", "method"] as const;
 
 export function OrdersTable({
   orders,
@@ -159,6 +164,8 @@ export function OrdersTable({
    * a 403.
    */
   const selectable = useIsAdmin();
+  const paymentMethods = usePaymentMethods();
+  const { forOrder } = useVatView();
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
   // A row is provisional when its stage says it is not income yet — the
@@ -639,12 +646,24 @@ export function OrdersTable({
                 )}
                 {show("amount") && (
                   <td className="px-2 py-2 font-semibold">
-                    <EditableCell
-                      type="number"
-                      displayValue={currency(order.totalAmount)}
-                      editValue={String(order.totalAmount)}
-                      onSave={(raw) => saveField(order, { totalAmount: Number(raw) || 0 })}
-                    />
+                    {/* The whole order — jelly, every extra, discount and
+                        VAT — in the nav's VAT convention, the same figure
+                        the Kanban card and the order form's Total show. It
+                        used to be the jelly alone, which read as the
+                        order's price and quietly left the extras out.
+
+                        Not edited in place any more: a total has no single
+                        column to write back to, and typing one into the
+                        jelly would change a figure the cell doesn't show.
+                        A click opens the order, where every part edits. */}
+                    <AmountHoverCard order={order}>
+                      <span
+                        title="Hover for the breakdown"
+                        className="block w-fit cursor-help border-b border-dotted border-ink-soft/60 pb-px tabular-nums"
+                      >
+                        {currency(forOrder(order))}
+                      </span>
+                    </AmountHoverCard>
                   </td>
                 )}
                 {show("deposit") && (
@@ -660,6 +679,27 @@ export function OrdersTable({
                 {show("payment") && (
                   <td className="px-2 py-2">
                     <PaymentStatusSelect order={order} onChanged={onChanged} />
+                  </td>
+                )}
+                {show("method") && (
+                  <td className="px-2 py-2">
+                    {/* Edits as a dropdown over the owner's list, like the
+                        Type cell: a typed value would match no row. Live
+                        methods only, plus whichever this order already
+                        names, so opening and closing the cell cannot
+                        change it. */}
+                    <EditableCell
+                      chip
+                      displayValue={<PaymentMethodChip methodId={order.paymentMethodId} />}
+                      editValue={order.paymentMethodId === null ? "" : String(order.paymentMethodId)}
+                      options={[
+                        { value: "", label: "Not yet" },
+                        ...paymentMethods
+                          .filter((m) => !m.archivedAt || m.id === order.paymentMethodId)
+                          .map((m) => ({ value: String(m.id), label: m.name })),
+                      ]}
+                      onSave={(raw) => saveField(order, { paymentMethodId: raw ? Number(raw) : null })}
+                    />
                   </td>
                 )}
               </tr>

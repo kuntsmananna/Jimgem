@@ -13,6 +13,7 @@
 
 import { createElement, type ReactElement } from "react";
 import {
+  Banknote,
   Bike,
   Box,
   Boxes,
@@ -21,17 +22,20 @@ import {
   Cake,
   Camera,
   ChefHat,
+  CreditCard,
   Cpu,
   Gift,
   GlassWater,
   Grid2x2,
   Grid3x3,
   Heart,
+  Landmark,
   Megaphone,
   Music,
   Package,
   PartyPopper,
   Receipt,
+  Smartphone,
   Star,
   Store,
   Tag,
@@ -39,6 +43,7 @@ import {
   Users,
   UtensilsCrossed,
   Video,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -177,4 +182,28 @@ export function packageTypeIcon(unitsPerPackage: number): LucideIcon {
  */
 export function packageTypeIconElement(unitsPerPackage: number, size = 14): ReactElement {
   return createElement(packageTypeIcon(unitsPerPackage), { size });
+}
+
+/**
+ * A payment method's mark, picked from its *name* by keyword.
+ *
+ * The list is the owner's (Settings → Lists → Payment methods) and has no
+ * icon column, so a fixed name → icon map would stop resolving the first
+ * time a method was renamed "Credit card (Visa)". Keywords survive that,
+ * in English or Hebrew, and anything unrecognised gets a plain wallet
+ * rather than a gap.
+ */
+const PAYMENT_METHOD_ICONS: { match: RegExp; Icon: LucideIcon }[] = [
+  { match: /cash|מזומן/i, Icon: Banknote },
+  { match: /card|credit|אשראי|כרטיס/i, Icon: CreditCard },
+  { match: /bank|transfer|wire|העברה|בנק/i, Icon: Landmark },
+  { match: /bit|paybox|pay ?box|apple|google|ביט|פייבוקס/i, Icon: Smartphone },
+];
+
+export function paymentMethodIcon(name: string): LucideIcon {
+  return PAYMENT_METHOD_ICONS.find((entry) => entry.match.test(name))?.Icon ?? Wallet;
+}
+
+export function paymentMethodIconElement(name: string, size = 11): ReactElement {
+  return createElement(paymentMethodIcon(name), { size });
 }

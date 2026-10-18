@@ -88,6 +88,7 @@ function draftFromOrder(order: Order | undefined, vatRate: number): OrderInput {
       vatRate,
       deposit: 0,
       paymentStatus: "unpaid",
+      paymentMethodId: null,
       productionStatus: "queue",
       notes: "",
     };
@@ -117,6 +118,7 @@ function draftFromOrder(order: Order | undefined, vatRate: number): OrderInput {
     vatRate: order.vatRate,
     deposit: order.deposit,
     paymentStatus: order.paymentStatus,
+    paymentMethodId: order.paymentMethodId,
     productionStatus: order.productionStatus ?? "queue",
     notes: order.notes,
   };

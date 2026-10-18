@@ -47,6 +47,7 @@ const ORDER: Order = {
   vatRate: 18,
   deposit: 1000,
   paymentStatus: "deposit",
+  paymentMethodId: 2,
   productionStatus: "queue",
   notes: "no nuts",
   needsReview: false,
@@ -74,6 +75,8 @@ describe("redactOrder", () => {
     // carries a figure.
     for (const key of AMOUNTS) expect(redacted[key] ?? 0, key).toBe(0);
     expect(redacted.packageLines[0].packagePrice).toBeNull();
+    // How a customer paid is money too.
+    expect(redacted.paymentMethodId).toBeNull();
   });
 
   it("is worth nothing, by the app's own arithmetic", () => {
@@ -158,6 +161,7 @@ describe("withStoredMoney", () => {
     expect(merged.vatMode).toBe("included");
     expect(merged.vatRate).toBe(18);
     expect(merged.paymentStatus).toBe("deposit");
+    expect(merged.paymentMethodId).toBe(2);
   });
 
   it("is worth exactly what it was worth before the round trip", () => {

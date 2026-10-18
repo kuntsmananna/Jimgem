@@ -393,6 +393,12 @@ export interface Order {
   vatRate: number;
   deposit: number;
   paymentStatus: PaymentStatus;
+  /**
+   * How the customer paid — an id into the owner's payment methods (the
+   * list expenses already use), or null when nobody has said. Informational
+   * only: no figure is computed from it, VAT included.
+   */
+  paymentMethodId: number | null;
   /** Never null: `orders.production_status` is NOT NULL DEFAULT 'queue'. */
   productionStatus: ProductionStatus;
   notes: string;
@@ -440,6 +446,7 @@ export type OrderMoney = Pick<
   | "vatRate"
   | "deposit"
   | "paymentStatus"
+  | "paymentMethodId"
 >;
 
 export interface OrderInput {
@@ -488,6 +495,12 @@ export interface OrderInput {
   vatRate: number;
   deposit: number;
   paymentStatus: PaymentStatus;
+  /**
+   * How the customer paid — an id into the owner's payment methods (the
+   * list expenses already use), or null when nobody has said. Informational
+   * only: no figure is computed from it, VAT included.
+   */
+  paymentMethodId: number | null;
   productionStatus: ProductionStatus;
   notes: string;
 }

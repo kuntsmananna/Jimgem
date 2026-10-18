@@ -63,6 +63,7 @@ function anOrder(over: Partial<OrderInput> = {}): OrderInput {
     vatRate: 18,
     deposit: 0,
     paymentStatus: "unpaid",
+    paymentMethodId: null,
     productionStatus: "queued",
     notes: "",
     ...over,

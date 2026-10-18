@@ -1145,6 +1145,22 @@ compares identity, and a panel builds a fresh draft before every call.
   rest, so a deliberate 70/30 stays 7:3 instead of flattening to thirds.
   Adding a zero-unit flavour instead read as the click being ignored, and
   left you hand-reducing another flavour to make room.
+- **An order names how it was paid** (`orders.payment_method_id`,
+  `scripts/migrate-031-order-payment-method.sql`), from the **same
+  `payment_methods` list expenses use** — one list in Settings → Lists, not
+  two that drift. It is **informational only**: nothing is computed from
+  it, VAT included, so the Dashboard and Biz Plan figures are exactly what
+  they were — VAT stays what the order's own `vat_mode` says. It is in
+  `OrderMoney`, so a staff account is neither sent it nor able to set it.
+  The table's **Paid by** column and the phone card wear it as a neutral
+  chip (`PaymentMethodChip`) — neutral because the payment *status* beside
+  it already owns the colour on that row — and its icon is matched from the
+  method's name by keyword (`paymentMethodIcon` in `icons.ts`), since the
+  list has no icon column. The list reaches the page through
+  `PaymentMethodsContext`, provided by `OrdersClient` rather than the app
+  layout: nothing outside Orders reads it. **Run migration 031 before
+  shipping** — the read path survives without the column (`SELECT *` just
+  lacks it), but every order save writes it.
 - **`clients.source` is where they came from**, free text like
   `orders.customer` and `expenses.business` — Instagram, a Google search, a
   friend, a wedding they ate at. Not a list of channels: the useful answer
@@ -2186,6 +2202,16 @@ default set does not use and made narrow windows scroll for nothing. Auto
 layout already refuses to squeeze columns past their content. Measured
 after: no horizontal scrollbar at 1000, 1080, 1130 or 1400px of container,
 and one at 940px, where the columns genuinely do not fit.
+
+**The Amount column is the whole order** — jelly, every extra, discount
+and VAT, through `forOrder`, so it is the figure the Kanban card and the
+form's Total show. It used to be `totalAmount`, the jelly alone, which read
+as the order's price and left delivery, display, waitressing and kosher
+out. Hovering it opens `AmountHoverCard`, the money rail in small and in
+the same black: the extras come from `ORDER_EXTRAS`, the list
+`orderSubtotal` sums, so the card and the cell cannot disagree about what
+counts. It is **no longer edited in place** — a total has no one column to
+write back to — and a click opens the order, where every part edits.
 
 **The order's note is behind an (i) icon**, not a line under the customer
 name. As a second line it set the row's height off the longest note in

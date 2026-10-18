@@ -2,7 +2,7 @@
 
 import { useState, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
-import { expenseCategoryIconElement } from "@/lib/icons";
+import { expenseCategoryIconElement, paymentMethodIconElement } from "@/lib/icons";
 import { ArchiveButton } from "./ArchiveButton";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 
@@ -21,11 +21,14 @@ const NOUN: Record<Resource, string> = {
  * rendered from a Server Component, and neither a lucide component nor a
  * function returning one can cross that boundary (see CLAUDE.md). Keying
  * it here also means the page can't pair a resource with the wrong
- * vocabulary. Payment methods have no icon set and get none — inventing
- * one for Cash and Credit card would be a guess, not a lookup.
+ * vocabulary. A payment method's icon is matched from its name by keyword
+ * (`paymentMethodIcon`), so the list here shows the same mark the Orders
+ * table's Paid by chip will wear — and a method nothing matches gets a
+ * plain wallet, which is the hint to rename it.
  */
 const ROW_ICON: Partial<Record<Resource, (name: string) => ReactElement>> = {
   "expense-categories": (name) => expenseCategoryIconElement(name, 14),
+  "payment-methods": (name) => paymentMethodIconElement(name, 14),
 };
 
 export function NameListPanel({

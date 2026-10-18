@@ -17,6 +17,7 @@ import { useCanSeeMoney } from "@/components/RoleContext";
 import { useVatView } from "@/components/VatViewContext";
 import { useStage } from "@/components/ProductionStagesContext";
 import { Figure } from "@/components/Figure";
+import { PaymentMethodChip } from "./PaymentMethodChip";
 import { EventTypeChip } from "./EventTypeChip";
 import { StageChip } from "./StageChip";
 
@@ -221,6 +222,9 @@ function OrderCard({
         >
           {paymentLabel(order)}
         </span>
+        {/* How they paid, only once someone has said — a dash beside the
+            badge would be one more mark to read past on most cards. */}
+        {order.paymentMethodId !== null && <PaymentMethodChip methodId={order.paymentMethodId} />}
         <span className="flex-1" />
         {/* `tabular-nums` and no more: `font-mono` is the version string's
             treatment, and nothing else in the app spends it on money.

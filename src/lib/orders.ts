@@ -50,6 +50,7 @@ export type EditableField =
   | "totalAmount"
   | "deposit"
   | "paymentStatus"
+  | "paymentMethodId"
   | "productionStatus"
   | "notes";
 
@@ -69,6 +70,7 @@ const COLUMN_FOR_FIELD: Record<EditableField, string> = {
   totalAmount: "total_amount",
   deposit: "deposit",
   paymentStatus: "payment_status",
+  paymentMethodId: "payment_method_id",
   productionStatus: "production_status",
   notes: "notes",
 };
@@ -139,6 +141,11 @@ interface DbOrderRow {
   total_amount: string;
   deposit: string;
   payment_status: PaymentStatus;
+  /**
+   * Undefined rather than null until migration 031 has run — `SELECT *`
+   * simply has no such column — which the mapping reads as "not said".
+   */
+  payment_method_id?: number | null;
   production_status: ProductionStatus;
   notes: string | null;
   sheet_row: number | null;
@@ -249,6 +256,7 @@ function mapDbOrder(
     vatRate: Number(row.vat_rate ?? 0),
     deposit: Number(row.deposit),
     paymentStatus: row.payment_status,
+    paymentMethodId: row.payment_method_id ?? null,
     productionStatus: row.production_status,
     notes: row.notes ?? "",
     needsReview: row.needs_review,
@@ -284,7 +292,7 @@ export async function getOrders(): Promise<Order[]> {
 
 /** Every money column of one order, and nothing else — see `OrderMoney`. */
 const MONEY_COLUMNS =
-  "total_amount, delivery_cost, delivery_option_id, mirrors_cost, display_cost, waitress_cost, kosher_cost, discount, discount_is_percent, vat_mode, vat_rate, deposit, payment_status";
+  "total_amount, delivery_cost, delivery_option_id, mirrors_cost, display_cost, waitress_cost, kosher_cost, discount, discount_is_percent, vat_mode, vat_rate, deposit, payment_status, payment_method_id";
 
 /**
  * What an order costs, on its own.
@@ -316,6 +324,7 @@ export async function getOrderMoney(id: number): Promise<OrderMoney | null> {
     vatRate: Number(row.vat_rate ?? 0),
     deposit: Number(row.deposit ?? 0),
     paymentStatus: (row.payment_status ?? "unpaid") as OrderMoney["paymentStatus"],
+    paymentMethodId: row.payment_method_id ?? null,
   };
 }
 
@@ -476,6 +485,7 @@ const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] 
   { column: "total_amount", value: (i) => i.totalAmount },
   { column: "deposit", value: (i) => i.deposit },
   { column: "payment_status", value: (i) => i.paymentStatus },
+  { column: "payment_method_id", value: (i) => i.paymentMethodId },
   { column: "production_status", value: (i) => i.productionStatus },
   { column: "notes", value: (i) => i.notes },
 ];
@@ -669,6 +679,7 @@ export async function duplicateOrder(id: number): Promise<Order> {
     vatRate: Number(source.vat_rate ?? 0),
     deposit: Number(source.deposit),
     paymentStatus: source.payment_status,
+    paymentMethodId: source.payment_method_id ?? null,
     productionStatus: source.production_status,
     notes: source.notes ?? "",
   });

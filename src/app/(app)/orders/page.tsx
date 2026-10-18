@@ -6,6 +6,7 @@ import {
   getDisplayOptions,
   getFlavors,
   getPackageTypes,
+  getPaymentMethods,
   getPrices,
 } from "@/lib/settings";
 import { OrdersClient } from "@/components/orders/OrdersClient";
@@ -16,7 +17,7 @@ import { redactOrders, redactPresets, redactRates } from "@/lib/redact";
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients] =
+  const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods] =
     await Promise.all([
     currentRole(),
     getOrders(),
@@ -33,6 +34,9 @@ export default async function OrdersPage() {
     // Archived included: an order already linked to a retired client
     // should still show their name in the picker (see ClientPicker).
     getClients(true),
+    // Archived included, like the lists above: an order paid by a method
+    // since retired still names it, and the picker filters it out itself.
+    getPaymentMethods(true),
   ]);
 
   /*
@@ -56,6 +60,9 @@ export default async function OrdersPage() {
       presets={money ? presets : redactPresets(presets)}
       clients={clients}
       rates={money ? rates : redactRates(rates)}
+      // The list itself is not money — the order's choice from it is, and
+      // redactOrders has already taken that out.
+      paymentMethods={paymentMethods}
     />
   );
 }

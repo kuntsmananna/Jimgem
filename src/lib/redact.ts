@@ -49,6 +49,7 @@ export function redactOrder(order: Order): Order {
     discountIsPercent: false,
     deposit: 0,
     paymentStatus: "unpaid",
+    paymentMethodId: null,
     packageLines: order.packageLines.map((line) => ({ ...line, packagePrice: null })),
   };
 }
@@ -105,6 +106,7 @@ export function withStoredMoney(input: OrderInput, stored: OrderMoney): OrderInp
     vatRate: stored.vatRate,
     deposit: stored.deposit,
     paymentStatus: stored.paymentStatus,
+    paymentMethodId: stored.paymentMethodId,
     // A package line's price is copied from a preset when it is applied,
     // and a staff account has no preset prices to copy — so a line it adds
     // carries none and falls back to the tiers, which is the correct
@@ -125,6 +127,7 @@ export const MONEY_FIELDS = [
   "discountIsPercent",
   "deposit",
   "paymentStatus",
+  "paymentMethodId",
   "vatMode",
   "vatRate",
 ] as const;

@@ -14,13 +14,14 @@ import {
   type Rates,
   type ProductionStatus,
 } from "@/lib/orderTypes";
-import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
+import type { ContentPreset, Flavor, PackageType, PaymentMethod } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
 import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
 import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
 import { COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
+import { PaymentMethodsProvider } from "./PaymentMethodsContext";
 import { useCanSeeMoney, useIsAdmin } from "@/components/RoleContext";
 import { ColumnsMenu } from "./ColumnsMenu";
 import { useHiddenColumns } from "./useColumnWidths";
@@ -106,6 +107,7 @@ export function OrdersClient({
   presets,
   clients,
   rates,
+  paymentMethods,
 }: {
   orders: Order[];
   flavors: Flavor[];
@@ -114,6 +116,8 @@ export function OrdersClient({
   /** Everyone on file, for the order form's customer picker. */
   clients: Client[];
   rates: Rates;
+  /** Archived included, so an order paid by a retired method still names it. */
+  paymentMethods: PaymentMethod[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -434,436 +438,438 @@ export function OrdersClient({
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
+    <PaymentMethodsProvider value={paymentMethods}>
+      <div className="flex flex-col gap-5">
+        <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
 
-      {/*
-        Their card, over the table. The orders it lists come from the ones
-        already on this page rather than a second read, and it gets no
-        `documents` — the Orders page does not load SUMIT's mirror, and the
-        section hides itself rather than reporting nothing synced.
-      */}
-      {openClient && clientCard && (
-        <ClientModal
-          client={openClient}
-          orders={clientCard.lines}
-          similar={clientCard.similar}
-          onClose={() => setOpenClientId(null)}
-          onSaved={() => {
-            setOpenClientId(null);
-            refresh();
-          }}
-        />
-      )}
-      {batchNote && (
-        <p className="text-xs font-semibold text-ink-soft">
-          {batchNote}{" "}
-          <button onClick={() => setBatchNote(null)} className="text-ink-soft/70 underline">
-            dismiss
-          </button>
-        </p>
-      )}
+        {/*
+          Their card, over the table. The orders it lists come from the ones
+          already on this page rather than a second read, and it gets no
+          `documents` — the Orders page does not load SUMIT's mirror, and the
+          section hides itself rather than reporting nothing synced.
+        */}
+        {openClient && clientCard && (
+          <ClientModal
+            client={openClient}
+            orders={clientCard.lines}
+            similar={clientCard.similar}
+            onClose={() => setOpenClientId(null)}
+            onSaved={() => {
+              setOpenClientId(null);
+              refresh();
+            }}
+          />
+        )}
+        {batchNote && (
+          <p className="text-xs font-semibold text-ink-soft">
+            {batchNote}{" "}
+            <button onClick={() => setBatchNote(null)} className="text-ink-soft/70 underline">
+              dismiss
+            </button>
+          </p>
+        )}
 
-      {adding && (
-        <OrderFormModal
-          flavors={flavors}
-          packageTypes={packageTypes}
-          presets={presets}
-          clients={clients}
-          rates={rates}
-          onClose={() => setAdding(false)}
-          onSaved={() => {
-            setAdding(false);
-            refresh();
-          }}
-        />
-      )}
+        {adding && (
+          <OrderFormModal
+            flavors={flavors}
+            packageTypes={packageTypes}
+            presets={presets}
+            clients={clients}
+            rates={rates}
+            onClose={() => setAdding(false)}
+            onSaved={() => {
+              setAdding(false);
+              refresh();
+            }}
+          />
+        )}
 
-      {/*
-        One popup for both adding and editing — the side pane it replaced
-        is still in the tree (OrderDetailsPane) but nothing routes to it,
-        so editing behaves identically wherever you start from.
-      */}
-      {openOrder && (
-        <OrderFormModal
-          order={openOrder}
-          flavors={flavors}
-          packageTypes={packageTypes}
-          presets={presets}
-          clients={clients}
-          rates={rates}
-          onClose={closePane}
-          onSaved={() => {
-            closePane();
-            refresh();
-          }}
-          onDelete={admin ? () => deleteOne(openOrder) : undefined}
-        />
-      )}
+        {/*
+          One popup for both adding and editing — the side pane it replaced
+          is still in the tree (OrderDetailsPane) but nothing routes to it,
+          so editing behaves identically wherever you start from.
+        */}
+        {openOrder && (
+          <OrderFormModal
+            order={openOrder}
+            flavors={flavors}
+            packageTypes={packageTypes}
+            presets={presets}
+            clients={clients}
+            rates={rates}
+            onClose={closePane}
+            onSaved={() => {
+              closePane();
+              refresh();
+            }}
+            onDelete={admin ? () => deleteOne(openOrder) : undefined}
+          />
+        )}
 
-      {/*
-        One toolbar row: filters, view switcher, add. Previously two rows —
-        a switcher row plus ten filter pills — which cost a lot of vertical
-        space above the table for controls used occasionally.
+        {/*
+          One toolbar row: filters, view switcher, add. Previously two rows —
+          a switcher row plus ten filter pills — which cost a lot of vertical
+          space above the table for controls used occasionally.
 
-        It spans the page rather than riding inside the content column. It
-        used to sit in the column, which put "Add order" on the table's
-        right edge where the rail begins — but the column is not the same
-        width in every view (the calendar drops the rail and takes the
-        page), so everything in the toolbar shifted as the view changed.
-        A control that moves out from under the cursor that just pressed
-        it is worse than a button not quite meeting an edge.
+          It spans the page rather than riding inside the content column. It
+          used to sit in the column, which put "Add order" on the table's
+          right edge where the rail begins — but the column is not the same
+          width in every view (the calendar drops the rail and takes the
+          page), so everything in the toolbar shifted as the view changed.
+          A control that moves out from under the cursor that just pressed
+          it is worse than a button not quite meeting an edge.
 
-        Three columns rather than two flanking `flex-1`s: `1fr auto 1fr`
-        with both sides allowed to shrink puts the switcher at the exact
-        centre of the page whatever the filters beside it happen to
-        contain. As flex children the flanks would not shrink past their
-        own contents, so the wider group won and nudged the middle across
-        — a little, but visibly, and differently on the calendar.
-      */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 max-md:hidden">
-        {/* When and what, together on the left: which orders are in play
-            at all, then which of those. The calendar has no time scope —
-            it navigates itself — so its first slot says how the grid is
-            drawn instead.
+          Three columns rather than two flanking `flex-1`s: `1fr auto 1fr`
+          with both sides allowed to shrink puts the switcher at the exact
+          centre of the page whatever the filters beside it happen to
+          contain. As flex children the flanks would not shrink past their
+          own contents, so the wider group won and nudged the middle across
+          — a little, but visibly, and differently on the calendar.
+        */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 max-md:hidden">
+          {/* When and what, together on the left: which orders are in play
+              at all, then which of those. The calendar has no time scope —
+              it navigates itself — so its first slot says how the grid is
+              drawn instead.
 
-            All three are the same dropdown, and each wears an icon
-            instead of its written name: the value is what changes and
-            what gets read, while "Payment:" and "Status:" were fixed
-            text costing more width than the values beside them. The
-            word survives as the pill's title and its accessible name.
-            The scope used to be four pills, which spent most of the
-            toolbar on a control changed a few times a day and left
-            nothing to centre the view switcher in. */}
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {view === "calendar" ? (
-            // Two options, both always worth seeing — a toggle says
-            // that at a glance where a dropdown hides half of it.
-            <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
-          ) : (
+              All three are the same dropdown, and each wears an icon
+              instead of its written name: the value is what changes and
+              what gets read, while "Payment:" and "Status:" were fixed
+              text costing more width than the values beside them. The
+              word survives as the pill's title and its accessible name.
+              The scope used to be four pills, which spent most of the
+              toolbar on a control changed a few times a day and left
+              nothing to centre the view switcher in. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {view === "calendar" ? (
+              // Two options, both always worth seeing — a toggle says
+              // that at a glance where a dropdown hides half of it.
+              <PillGroup items={CALENDAR_MODES} value={calendarMode} onChange={setCalendarMode} />
+            ) : (
+              <SelectDropdown
+                label="When"
+                icon={<CalendarRange size={13} />}
+                options={SCOPES}
+                value={scope}
+                onChange={setScope}
+                // "All time" narrows nothing, so it reads as unset.
+                active={scope !== "all"}
+              />
+            )}
+            {/* Whether a customer has paid is money, so the filter goes with
+                the column it narrows. */}
+            {money && (
+              <FilterDropdown
+                label="Payment"
+                icon={<Wallet size={13} />}
+                options={paymentOptions}
+                selected={paymentFilter}
+                onChange={setPaymentFilter}
+              />
+            )}
+            <FilterDropdown
+              label="Status"
+              icon={<ListChecks size={13} />}
+              options={stageOptions}
+              selected={stageFilter}
+              onChange={setStageFilter}
+            />
+          </div>
+
+          {/* The middle column, and so the centre of the page: the view
+              is what the whole page is, so it sits in the middle rather
+              than in a corner — and stays there when the view changes. */}
+          <PillGroup items={VIEWS} value={view} onChange={setView} />
+
+          {/* Search sits in the gap between the view switcher and Add
+              order, rather than at the head of the filters: it is the
+              widest net on the page — it runs before every filter and
+              narrows the board and the calendar too — and the left group
+              is already three controls that each narrow the one before. */}
+          <div className="flex min-w-0 items-center justify-end gap-3">
+            {/* Only on the table: the board and the calendar have no columns,
+                so the control would be a button that does nothing. */}
+            {view === "table" && (
+              <ColumnsMenu
+                columns={hideable}
+                hidden={hidden}
+                onToggle={toggleColumn}
+                onShowAll={showAllColumns}
+              />
+            )}
+            {/* `PageSearch`, so the same field also appears in the phone
+                header — this toolbar is `max-md:hidden`, but a portal is not
+                inside what hides it. */}
+            <PageSearch
+              value={query}
+              onChange={setQuery}
+              placeholder="Search orders"
+              label="Search orders by customer, type, location or note"
+              className="w-48"
+            />
+            {admin && (
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
+              >
+                <Plus size={15} />
+                Add order
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/*
+          The phone's whole toolbar, and what the list on screen adds up to.
+
+          Which orders comes first — the time scope on the left, Filters on
+          the right — and the figures under it. Search is not here at all: it
+          is in the header beside the wordmark, where it is always on screen
+          and costs the page nothing. See `PageSearch`.
+
+          The desktop rail is a column of right-aligned figures meant to be
+          compared down its length, which a phone has no room for — but these
+          are the numbers that answer "is this a busy fortnight", and that
+          question does not stop being asked away from a desk. Tiles rather
+          than one line of 11px text, which read as a caption rather than as
+          the figures it is.
+
+          The scope is not a tile. It is a control and the three beside it are
+          figures, and a fill around it said they were the same kind of thing
+          while costing a whole row of height — which two-by-two tiles then
+          cost again. It is a bare chip under its own heading, and the three
+          figures share one row beneath it. Four across would not have worked:
+          at 390px a quarter-width tile is about 80px, which truncates a
+          five-figure income to "₪18,…". Three is ~120px, which fits one.
+        */}
+        <div className="md:hidden">
+          {/*
+            The desktop toolbar's left group, moved to the phone: the same
+            three dropdowns wearing the same three icons. They were behind a
+            Filters button while the row also had to hold a search box; the
+            search went up to the header in v0.46, and a filter on the
+            surface needs no badge to say it is narrowing something.
+
+            `flex-wrap` because a payment summary is "All" on most days and
+            "Deposit paid" on some, and a row that wraps beats one that
+            overflows. Each list opens as a sheet from the bottom edge — see
+            `Dropdown`, which is also why the third chip's list cannot fall
+            off the right of the screen.
+          */}
+          <div className="flex flex-wrap items-center gap-2">
             <SelectDropdown
               label="When"
               icon={<CalendarRange size={13} />}
               options={SCOPES}
               value={scope}
               onChange={setScope}
-              // "All time" narrows nothing, so it reads as unset.
               active={scope !== "all"}
             />
-          )}
-          {/* Whether a customer has paid is money, so the filter goes with
-              the column it narrows. */}
-          {money && (
+            {/* Whether a customer has paid is money, so the filter goes with
+                the column it narrows. */}
+            {money && (
+              <FilterDropdown
+                label="Payment"
+                icon={<Wallet size={13} />}
+                options={paymentOptions}
+                selected={paymentFilter}
+                onChange={setPaymentFilter}
+              />
+            )}
             <FilterDropdown
-              label="Payment"
-              icon={<Wallet size={13} />}
-              options={paymentOptions}
-              selected={paymentFilter}
-              onChange={setPaymentFilter}
+              label="Status"
+              icon={<ListChecks size={13} />}
+              options={stageOptions}
+              selected={stageFilter}
+              onChange={setStageFilter}
             />
-          )}
-          <FilterDropdown
-            label="Status"
-            icon={<ListChecks size={13} />}
-            options={stageOptions}
-            selected={stageFilter}
-            onChange={setStageFilter}
-          />
+          </div>
+          {/* Two tiles rather than three on a staff account, which is shown
+              no money: a third saying ₪0 would be worse than the gap. */}
+          <div className={`mt-2 grid gap-2 ${money ? "grid-cols-3" : "grid-cols-2"}`}>
+            <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
+            <Figure label="Orders" value={String(totals.orders)} />
+            {money && <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
+          </div>
         </div>
-
-        {/* The middle column, and so the centre of the page: the view
-            is what the whole page is, so it sits in the middle rather
-            than in a corner — and stays there when the view changes. */}
-        <PillGroup items={VIEWS} value={view} onChange={setView} />
-
-        {/* Search sits in the gap between the view switcher and Add
-            order, rather than at the head of the filters: it is the
-            widest net on the page — it runs before every filter and
-            narrows the board and the calendar too — and the left group
-            is already three controls that each narrow the one before. */}
-        <div className="flex min-w-0 items-center justify-end gap-3">
-          {/* Only on the table: the board and the calendar have no columns,
-              so the control would be a button that does nothing. */}
-          {view === "table" && (
-            <ColumnsMenu
-              columns={hideable}
-              hidden={hidden}
-              onToggle={toggleColumn}
-              onShowAll={showAllColumns}
-            />
-          )}
-          {/* `PageSearch`, so the same field also appears in the phone
-              header — this toolbar is `max-md:hidden`, but a portal is not
-              inside what hides it. */}
-          <PageSearch
-            value={query}
-            onChange={setQuery}
-            placeholder="Search orders"
-            label="Search orders by customer, type, location or note"
-            className="w-48"
-          />
-          {admin && (
-            <button
-              onClick={() => setAdding(true)}
-              className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
-            >
-              <Plus size={15} />
-              Add order
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/*
-        The phone's whole toolbar, and what the list on screen adds up to.
-
-        Which orders comes first — the time scope on the left, Filters on
-        the right — and the figures under it. Search is not here at all: it
-        is in the header beside the wordmark, where it is always on screen
-        and costs the page nothing. See `PageSearch`.
-
-        The desktop rail is a column of right-aligned figures meant to be
-        compared down its length, which a phone has no room for — but these
-        are the numbers that answer "is this a busy fortnight", and that
-        question does not stop being asked away from a desk. Tiles rather
-        than one line of 11px text, which read as a caption rather than as
-        the figures it is.
-
-        The scope is not a tile. It is a control and the three beside it are
-        figures, and a fill around it said they were the same kind of thing
-        while costing a whole row of height — which two-by-two tiles then
-        cost again. It is a bare chip under its own heading, and the three
-        figures share one row beneath it. Four across would not have worked:
-        at 390px a quarter-width tile is about 80px, which truncates a
-        five-figure income to "₪18,…". Three is ~120px, which fits one.
-      */}
-      <div className="md:hidden">
-        {/*
-          The desktop toolbar's left group, moved to the phone: the same
-          three dropdowns wearing the same three icons. They were behind a
-          Filters button while the row also had to hold a search box; the
-          search went up to the header in v0.46, and a filter on the
-          surface needs no badge to say it is narrowing something.
-
-          `flex-wrap` because a payment summary is "All" on most days and
-          "Deposit paid" on some, and a row that wraps beats one that
-          overflows. Each list opens as a sheet from the bottom edge — see
-          `Dropdown`, which is also why the third chip's list cannot fall
-          off the right of the screen.
-        */}
-        <div className="flex flex-wrap items-center gap-2">
-          <SelectDropdown
-            label="When"
-            icon={<CalendarRange size={13} />}
-            options={SCOPES}
-            value={scope}
-            onChange={setScope}
-            active={scope !== "all"}
-          />
-          {/* Whether a customer has paid is money, so the filter goes with
-              the column it narrows. */}
-          {money && (
-            <FilterDropdown
-              label="Payment"
-              icon={<Wallet size={13} />}
-              options={paymentOptions}
-              selected={paymentFilter}
-              onChange={setPaymentFilter}
-            />
-          )}
-          <FilterDropdown
-            label="Status"
-            icon={<ListChecks size={13} />}
-            options={stageOptions}
-            selected={stageFilter}
-            onChange={setStageFilter}
-          />
-        </div>
-        {/* Two tiles rather than three on a staff account, which is shown
-            no money: a third saying ₪0 would be worse than the gap. */}
-        <div className={`mt-2 grid gap-2 ${money ? "grid-cols-3" : "grid-cols-2"}`}>
-          <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
-          <Figure label="Orders" value={String(totals.orders)} />
-          {money && <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
-        </div>
-      </div>
-
-      {/*
-        Add order, as the one thing you might arrive at this page wanting to
-        do. Above the bottom bar and clear of the home indicator, because
-        "take an order on the spot" is half the reason the phone layout
-        exists — in a toolbar it would be one more thing to find.
-      */}
-      {admin && (
-        <button
-          onClick={() => setAdding(true)}
-          aria-label="Add order"
-          className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
-        >
-          <Plus size={22} />
-        </button>
-      )}
-
-    {/*
-      The summary rides beside the table and the board, not the calendar,
-      which navigates by its own month and would otherwise carry two
-      different windows at once — and which wants every pixel of the page
-      for its grid.
-    */}
-    <div className="flex items-start gap-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-5">
 
         {/*
-          Both halves take the same `inScope` array — the mobile list is a
-          renderer, not a second filtering path — and each is hidden at the
-          other's width as well as gated on the hook, so neither can flash
-          before hydration has an opinion.
+          Add order, as the one thing you might arrive at this page wanting to
+          do. Above the bottom bar and clear of the home indicator, because
+          "take an order on the spot" is half the reason the phone layout
+          exists — in a toolbar it would be one more thing to find.
         */}
-        {view === "table" && mobile && (
-          <div className="md:hidden">
-            <OrdersMobileList
+        {admin && (
+          <button
+            onClick={() => setAdding(true)}
+            aria-label="Add order"
+            className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+          >
+            <Plus size={22} />
+          </button>
+        )}
+
+      {/*
+        The summary rides beside the table and the board, not the calendar,
+        which navigates by its own month and would otherwise carry two
+        different windows at once — and which wants every pixel of the page
+        for its grid.
+      */}
+      <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+
+          {/*
+            Both halves take the same `inScope` array — the mobile list is a
+            renderer, not a second filtering path — and each is hidden at the
+            other's width as well as gated on the hook, so neither can flash
+            before hydration has an opinion.
+          */}
+          {view === "table" && mobile && (
+            <div className="md:hidden">
+              <OrdersMobileList
+                orders={inScope}
+                unitsPerPackage={unitsPerPackage}
+                onOpen={setOpenKey}
+                emptyNote={
+                  needle && bySearch.length === 0
+                    ? `Nothing matches “${needle}”.`
+                    : filtered.length > 0
+                      ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
+                      : "No orders yet."
+                }
+              />
+            </div>
+          )}
+
+          {view === "table" && !mobile && (
+            <OrdersTable
               orders={inScope}
-              unitsPerPackage={unitsPerPackage}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              presets={presets}
+              selectedKeys={selectedKeys}
+              openKey={openKey}
+              onToggleSelect={toggleSelect}
+              onToggleAll={toggleAll}
+              onChanged={refresh}
               onOpen={setOpenKey}
+              onOpenClient={setOpenClientId}
+              hidden={hiddenColumns}
               emptyNote={
+                // A search that finds nothing is its own answer: pointing
+                // at the time scope would send you widening a window that
+                // was never the reason the table is empty.
                 needle && bySearch.length === 0
                   ? `Nothing matches “${needle}”.`
                   : filtered.length > 0
                     ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
-                    : "No orders yet."
+                    : "No orders match these filters."
               }
             />
-          </div>
-        )}
-
-        {view === "table" && !mobile && (
-          <OrdersTable
-            orders={inScope}
-            flavors={flavors}
-            packageTypes={packageTypes}
-            presets={presets}
-            selectedKeys={selectedKeys}
-            openKey={openKey}
-            onToggleSelect={toggleSelect}
-            onToggleAll={toggleAll}
-            onChanged={refresh}
-            onOpen={setOpenKey}
-            onOpenClient={setOpenClientId}
-            hidden={hiddenColumns}
-            emptyNote={
-              // A search that finds nothing is its own answer: pointing
-              // at the time scope would send you widening a window that
-              // was never the reason the table is empty.
-              needle && bySearch.length === 0
-                ? `Nothing matches “${needle}”.`
-                : filtered.length > 0
-                  ? `No orders in ${scopeLabel.toLowerCase()}. Try a wider time scope.`
-                  : "No orders match these filters."
-            }
-          />
-        )}
-        {view === "kanban" && (
-          <OrdersKanban
-            orders={inScope}
-            flavors={flavors}
-            packageTypes={packageTypes}
-            onChanged={refresh}
-            onOpen={setOpenKey}
-          />
-        )}
-        {view === "calendar" && (
-          <OrdersCalendar
-            orders={filtered}
-            flavors={flavors}
-            packageTypes={packageTypes}
-            mode={calendarMode}
-            onOpen={setOpenKey}
-          />
-        )}
-      </div>
-
-      {view !== "calendar" && (
-        <aside
-          /*
-           * A fixed 140px rather than a share of the page. It was 15%,
-           * which on a 13" laptop spent 180px on four short numbers and
-           * took them from the table beside it — the one thing on this
-           * page that genuinely needs the width.
-           *
-           * Gone entirely on the calendar, which takes the whole page
-           * for its grid. Nothing in the toolbar moves when it does,
-           * because the toolbar is no longer inside this row.
-           *
-           * Desktop only — the phone gets the one-line strip above the
-           * list instead, since a column of figures needs a column.
-           */
-          className="w-[140px] shrink-0 max-md:hidden"
-        >
-          <OrdersSummary
-            totals={totals}
-            previous={previousTotals}
-            scopeLabel={scopeLabel}
-            comparable={previous !== null}
-          />
-        </aside>
-      )}
-      </div>
-
-      {/*
-        Floating rather than inline: an action bar that appears in the flow
-        pushes the table down the moment you tick a row, moving the very
-        rows you are selecting.
-      */}
-      {selectedKeys.size > 0 && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-6 max-md:bottom-24">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-black px-4 py-2 text-cream shadow-2xl">
-            <span className="text-sm font-semibold">{selectedKeys.size} selected</span>
-
-            <span className="mx-1 h-5 w-px bg-cream/25" />
-            <BatchSelect
-              label="Payment"
-              disabled={batchBusy}
-              options={PAYMENT_STATUS_LABEL}
-              onPick={(status) => runBatch({ action: "paymentStatus", status }, "updated")}
+          )}
+          {view === "kanban" && (
+            <OrdersKanban
+              orders={inScope}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              onChanged={refresh}
+              onOpen={setOpenKey}
             />
-            <BatchSelect
-              label="Status"
-              disabled={batchBusy}
-              options={Object.fromEntries(
-                stages.filter((stage) => !stage.archivedAt).map((stage) => [stage.key, stage.label]),
-              )}
-              onPick={(status) => runBatch({ action: "productionStatus", status }, "updated")}
+          )}
+          {view === "calendar" && (
+            <OrdersCalendar
+              orders={filtered}
+              flavors={flavors}
+              packageTypes={packageTypes}
+              mode={calendarMode}
+              onOpen={setOpenKey}
             />
-
-            <span className="mx-1 h-5 w-px bg-cream/25" />
-            <button
-              disabled={batchBusy}
-              onClick={() => runBatch({ action: "duplicate" }, "duplicated")}
-              className="flex items-center gap-1.5 rounded-full border border-cream/30 px-3 py-1 text-xs font-semibold text-cream transition hover:bg-cream hover:text-ink disabled:opacity-50"
-            >
-              <Copy size={13} />
-              Duplicate
-            </button>
-            <button
-              disabled={batchBusy}
-              onClick={batchDelete}
-              className="flex items-center gap-1.5 rounded-full border border-red-400/50 px-3 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
-            >
-              <Trash2 size={13} />
-              Delete
-            </button>
-
-            <button
-              onClick={() => setSelectedKeys(new Set())}
-              aria-label="Clear selection"
-              className="ml-1 rounded-full p-1 text-cream/70 transition hover:bg-cream/20 hover:text-cream"
-            >
-              <X size={15} />
-            </button>
-          </div>
+          )}
         </div>
-      )}
-    </div>
+
+        {view !== "calendar" && (
+          <aside
+            /*
+             * A fixed 140px rather than a share of the page. It was 15%,
+             * which on a 13" laptop spent 180px on four short numbers and
+             * took them from the table beside it — the one thing on this
+             * page that genuinely needs the width.
+             *
+             * Gone entirely on the calendar, which takes the whole page
+             * for its grid. Nothing in the toolbar moves when it does,
+             * because the toolbar is no longer inside this row.
+             *
+             * Desktop only — the phone gets the one-line strip above the
+             * list instead, since a column of figures needs a column.
+             */
+            className="w-[140px] shrink-0 max-md:hidden"
+          >
+            <OrdersSummary
+              totals={totals}
+              previous={previousTotals}
+              scopeLabel={scopeLabel}
+              comparable={previous !== null}
+            />
+          </aside>
+        )}
+        </div>
+
+        {/*
+          Floating rather than inline: an action bar that appears in the flow
+          pushes the table down the moment you tick a row, moving the very
+          rows you are selecting.
+        */}
+        {selectedKeys.size > 0 && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-6 max-md:bottom-24">
+            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-black px-4 py-2 text-cream shadow-2xl">
+              <span className="text-sm font-semibold">{selectedKeys.size} selected</span>
+
+              <span className="mx-1 h-5 w-px bg-cream/25" />
+              <BatchSelect
+                label="Payment"
+                disabled={batchBusy}
+                options={PAYMENT_STATUS_LABEL}
+                onPick={(status) => runBatch({ action: "paymentStatus", status }, "updated")}
+              />
+              <BatchSelect
+                label="Status"
+                disabled={batchBusy}
+                options={Object.fromEntries(
+                  stages.filter((stage) => !stage.archivedAt).map((stage) => [stage.key, stage.label]),
+                )}
+                onPick={(status) => runBatch({ action: "productionStatus", status }, "updated")}
+              />
+
+              <span className="mx-1 h-5 w-px bg-cream/25" />
+              <button
+                disabled={batchBusy}
+                onClick={() => runBatch({ action: "duplicate" }, "duplicated")}
+                className="flex items-center gap-1.5 rounded-full border border-cream/30 px-3 py-1 text-xs font-semibold text-cream transition hover:bg-cream hover:text-ink disabled:opacity-50"
+              >
+                <Copy size={13} />
+                Duplicate
+              </button>
+              <button
+                disabled={batchBusy}
+                onClick={batchDelete}
+                className="flex items-center gap-1.5 rounded-full border border-red-400/50 px-3 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                Delete
+              </button>
+
+              <button
+                onClick={() => setSelectedKeys(new Set())}
+                aria-label="Clear selection"
+                className="ml-1 rounded-full p-1 text-cream/70 transition hover:bg-cream/20 hover:text-cream"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </PaymentMethodsProvider>
   );
 }
 
