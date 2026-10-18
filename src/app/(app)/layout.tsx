@@ -11,6 +11,8 @@ import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
 import { VatViewProvider } from "@/components/VatViewContext";
 import { RoleProvider } from "@/components/RoleContext";
 import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
+import { getUnseenAnnouncement } from "@/lib/announcementViews";
+import { WhatsNew } from "@/components/WhatsNew";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   /*
@@ -33,6 +35,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   // Read here, on the server, so the first paint is already in the right
   // convention — see VatViewProvider.
   const vatView = parseVatView(cookieStore.get(VAT_VIEW_COOKIE)?.value);
+  // After the role, because who an announcement is for is part of whether
+  // there is one to show — a staff login is never told about money.
+  const announcement = await getUnseenAnnouncement(role);
 
   return (
     <RoleProvider role={role ?? "staff"}>
@@ -54,6 +59,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             header carrying six pills and a name, and below the breakpoint
             that header is a thin strip with a wordmark on it. */}
         <main className="px-6 py-8 max-md:px-4 max-md:pt-4 max-md:pb-28">{children}</main>
+        {/* Once per person per release — see lib/announcement.ts. */}
+        {announcement && <WhatsNew announcement={announcement} />}
       </div>
       </HeaderSlotProvider>
       </VatViewProvider>

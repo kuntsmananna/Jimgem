@@ -73,7 +73,9 @@ export function staffCanReach(pathname: string): boolean {
   const first = (parts[0] ?? "").replace(/\.rsc$/, "");
   if (first === "api") {
     const resource = (parts[1] ?? "").replace(/\.rsc$/, "");
-    return STAFF_SEGMENTS.has(resource);
+    // Dismissing a "what's new" popup is every login's own business, and
+    // a staff login refused here would see the same popup on every visit.
+    return STAFF_SEGMENTS.has(resource) || resource === "announcements";
   }
   return STAFF_SEGMENTS.has(first);
 }

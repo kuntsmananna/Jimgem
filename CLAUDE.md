@@ -1729,6 +1729,23 @@ compares identity, and a panel builds a fresh draft before every call.
   moves, so editing a title cannot reshuffle the done half of the list.
   Watched by `row_revisions` like every other table holding real data, and
   soft-deleted like an order or an expense so the Undo bar is a real offer.
+- **A release is announced once to each person** (`WhatsNew`, a narrow
+  `Modal` with an illustration drawn from the app's own pieces). What it
+  says lives in `src/lib/announcement.ts` — **to announce the next release,
+  change its `id`**, since dismissals are recorded per id. They are kept in
+  `announcement_views` (`scripts/migrate-032-announcement-views.sql`), a
+  table of its own rather than a column on `staff`, because `staff` is
+  watched by `row_revisions` and every dismissal would land in the change
+  log as an edit to somebody's account. Per login, not per browser, so a
+  phone and a laptop are told once between them. The app layout asks
+  `getUnseenAnnouncement(role)`; an announcement carries an `audience`, and
+  the money ones are admin-only. **Without the table it never shows**,
+  rather than coming back on every page load with nowhere to record the
+  close. Any way of closing it counts as seen. It renders **browser-only**
+  (`useSyncExternalStore`), being the one popup open on arrival: `Modal`
+  portals to `document.body`, which a server render does not have.
+  `/api/announcements` is the one API resource a staff login may reach
+  beyond orders and tasks, so a staff announcement could be dismissed too.
 - **The read path survives its own migration not having been run yet.**
   `getSeriesHeads` catches `isMissingColumn(error, "recurring")` and
   answers "nothing repeats", so the Expenses page and Settings stay up in

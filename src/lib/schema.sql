@@ -617,3 +617,16 @@ CREATE INDEX IF NOT EXISTS tasks_open_idx ON tasks (done_at NULLS FIRST, created
 -- The list's own order: open first, newest at the top of each half
 CREATE INDEX IF NOT EXISTS tasks_open_idx ON tasks (done_at NULLS FIRST, created_at DESC)
   WHERE deleted_at IS NULL;
+
+-- Which "what's new" popups each login has already dismissed. A table of
+-- its own rather than a column on staff, because staff is watched by
+-- row_revisions and every dismissal would otherwise land in the change log
+-- as an edit to somebody's account. Not watched itself: a dismissed
+-- popup is not data anyone restores. See
+-- scripts/migrate-032-announcement-views.sql
+CREATE TABLE IF NOT EXISTS announcement_views (
+  staff_id INTEGER NOT NULL REFERENCES staff(id),
+  announcement_id TEXT NOT NULL,
+  seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (staff_id, announcement_id)
+);
