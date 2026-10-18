@@ -657,8 +657,9 @@ export function OrdersTable({
                         jelly would change a figure the cell doesn't show.
                         A click opens the order, where every part edits. */}
                     <AmountHoverCard order={order}>
+                      {/* No `title`: the browser's own tooltip opens over
+                          the breakdown card it would be announcing. */}
                       <span
-                        title="Hover for the breakdown"
                         className="block w-fit cursor-help border-b border-dotted border-ink-soft/60 pb-px tabular-nums"
                       >
                         {currency(forOrder(order))}
@@ -793,12 +794,13 @@ function YesNoCell({ value, onSave }: { value: boolean; onSave: (value: boolean)
  * The dotted underline is the affordance: `ContentHoverCard` wraps this
  * and spells the packages out, but a bare numeral gives no reason to point
  * at it. Nothing is underlined when there is nothing to elaborate on.
+ * Deliberately no `title`: the browser's tooltip would open on top of the
+ * very card it was pointing at.
  */
 function UnitsCell({ units }: { units: number }) {
   if (units <= 0) return <span className="text-ink-soft">—</span>;
   return (
     <span
-      title="Hover for packages and flavours"
       className="flex w-fit cursor-help items-center gap-1.5 border-b border-dotted border-ink-soft/60 pb-px font-semibold tabular-nums"
     >
       <UnitsIcon size={12} className="shrink-0 text-ink-soft" />
