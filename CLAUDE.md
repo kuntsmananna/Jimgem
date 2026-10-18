@@ -1734,11 +1734,23 @@ compares identity, and a panel builds a fresh draft before every call.
 - **A release is announced once to each person** (`WhatsNew`, a narrow
   `Modal` with an illustration drawn from the app's own pieces). What it
   says lives in `src/lib/announcement.ts` — **to announce the next release,
-  change its `id`**, since dismissals are recorded per id. Its `art` key
+  put a new entry at the top of `ANNOUNCEMENTS` with a new `id`**, since
+  dismissals are recorded per id; leave the older ones where they are.
+  **Everything a person has not seen is one popup, a page per release**,
+  newest first, with Back / Next, a dot per page and the arrow keys — so
+  somebody who missed a release gets both at once rather than two popups
+  on two visits, the older one arriving last. It is capped at
+  `MAX_ANNOUNCEMENT_PAGES` (3), because a login created today has seen none
+  of them and a tour of every release since the spring is a changelog. The
+  pages are stacked in one grid cell, so the popup is as tall as its
+  tallest page and does not jump on Next; a page turn scrolls the popup's
+  own box back to the top (not `scrollIntoView` on the page, which tucked
+  the title band out of sight on a phone). Its `art` key
   picks the picture (`paid-by` for v0.71, `refresh` for v0.74's new look,
-  which went to staff logins too and so is worded without money). Keep the
-  title short — it shares the popup's header with the close button and is
-  cut off past ~14 characters on a phone — and never `autoFocus` its
+  which went to staff logins too and so is worded without money), and its
+  `title` is that page's heading. The popup itself is always titled
+  "What's new" — it shares the header with the close button and is cut off
+  past ~14 characters on a phone. Never `autoFocus` its
   button: that scrolls the popup to the bottom and hides the picture on a
   short screen; it focuses with `preventScroll` instead. They are kept in
   `announcement_views` (`scripts/migrate-032-announcement-views.sql`), a
@@ -1746,10 +1758,11 @@ compares identity, and a panel builds a fresh draft before every call.
   watched by `row_revisions` and every dismissal would land in the change
   log as an edit to somebody's account. Per login, not per browser, so a
   phone and a laptop are told once between them. The app layout asks
-  `getUnseenAnnouncement(role)`; an announcement carries an `audience`, and
+  `getUnseenAnnouncements(role)`; an announcement carries an `audience`, and
   the money ones are admin-only. **Without the table it never shows**,
   rather than coming back on every page load with nowhere to record the
-  close. Any way of closing it counts as seen. It renders **browser-only**
+  close. Any way of closing it counts as seeing **every page** in it,
+  including on page one — closing is an answer about the rest too. It renders **browser-only**
   (`useSyncExternalStore`), being the one popup open on arrival: `Modal`
   portals to `document.body`, which a server render does not have.
   `/api/announcements` is the one API resource a staff login may reach

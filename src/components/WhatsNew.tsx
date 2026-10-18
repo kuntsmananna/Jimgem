@@ -22,14 +22,24 @@ const ITEM_ICON = {
 
 /**
  * The "what's new" popup, shown once to each person on their next visit
- * after a release (the app layout decides whether there is one to show —
- * see `getUnseenAnnouncement`).
+ * after a release (the app layout decides what there is to show — see
+ * `getUnseenAnnouncements`).
  *
- * Any way of closing it counts as having seen it: Got it, the close
- * button, Escape, a click on the dim. Asking somebody to find the one
+ * **Several releases are pages of one popup**, newest first, with Back and
+ * Next and a dot per page. Somebody who missed one release and then came
+ * back for the next would otherwise get two popups in two visits, the
+ * older one arriving after the newer and describing a page that has since
+ * moved on. Every page is mounted and stacked in one grid cell, so the
+ * popup is as tall as its tallest page and does not jump between them —
+ * the same reason the order form keeps one fixed body across its tabs.
+ * The arrow keys page too.
+ *
+ * Any way of closing it counts as having seen *all* of it: Got it, the
+ * close button, Escape, a click on the dim. Asking somebody to find the one
  * button that "really" dismisses an announcement is how it comes back
- * tomorrow and gets resented. The dismissal is sent and not awaited — if
- * it fails, the worst case is seeing the popup once more.
+ * tomorrow and gets resented, and closing on page one is an answer about
+ * the rest as well. The dismissal is sent and not awaited — if it fails,
+ * the worst case is seeing the popup once more.
  *
  * **Browser only.** Every other popup opens from a click, so `Modal`'s
  * portal to `document.body` has never had to survive a server render; this
@@ -37,63 +47,151 @@ const ITEM_ICON = {
  * the server and true on the client in the same pass that hydrates, the
  * trick `useMediaQuery` uses, so nothing renders until there is a body.
  */
-export function WhatsNew({ announcement }: { announcement: Announcement }) {
+export function WhatsNew({ announcements }: { announcements: Announcement[] }) {
   const [open, setOpen] = useState(true);
+  const [page, setPage] = useState(0);
   const inBrowser = useSyncExternalStore(
     noSubscription,
     () => true,
     () => false,
   );
-  const gotIt = useRef<HTMLButtonElement | null>(null);
+  const primary = useRef<HTMLButtonElement | null>(null);
+  const pages = useRef<HTMLDivElement | null>(null);
+  const turned = useRef(false);
   // Focus without scrolling: `autoFocus` scrolled the popup down to the
   // button, which on a phone hid the title and the picture above the fold.
+  // After a page turn the popup goes back to its top, since on a phone
+  // Next was pressed from the bottom of the last page. The top of the
+  // popup, not of the page: the title band scrolls with the body, and
+  // `scrollIntoView` on the page would tuck it out of sight.
   useEffect(() => {
-    if (open && inBrowser) gotIt.current?.focus({ preventScroll: true });
-  }, [open, inBrowser]);
+    if (!open || !inBrowser) return;
+    primary.current?.focus({ preventScroll: true });
+    if (turned.current) scrollerOf(pages.current)?.scrollTo({ top: 0 });
+  }, [open, inBrowser, page]);
   if (!open || !inBrowser) return null;
 
+  const count = announcements.length;
+  const last = page === count - 1;
+  const turnTo = (next: number) => {
+    if (next < 0 || next >= count) return;
+    turned.current = true;
+    setPage(next);
+  };
   const dismiss = () => {
     setOpen(false);
     void fetch("/api/announcements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: announcement.id }),
+      body: JSON.stringify({ ids: announcements.map((announcement) => announcement.id) }),
     }).catch(() => {});
   };
 
   return (
-    <Modal title={announcement.title} icon={<Sparkles size={16} />} onClose={dismiss}>
-      <div className="flex flex-col gap-5">
-        {announcement.art === "refresh" ? <RefreshIllustration /> : <Illustration />}
-        <p className="text-sm leading-relaxed text-ink">{announcement.lede}</p>
-        <ul className="flex flex-col gap-3.5">
-          {announcement.items.map((item) => {
-            const Icon = ITEM_ICON[item.icon];
-            return (
-              <li key={item.title} className="flex gap-3">
-                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-black text-cream">
-                  <Icon size={15} />
-                </span>
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-sm font-bold text-ink">{item.title}</span>
-                  <span className="text-[13px] leading-snug text-ink-soft">{item.text}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="flex justify-end">
+    // Short, because a popup's title shares its header with the close
+    // button and is cut off past ~14 characters on a phone — each page's
+    // own heading says which release it is.
+    <Modal title="What's new" icon={<Sparkles size={16} />} onClose={dismiss}>
+      <div
+        className="flex flex-col gap-5"
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") turnTo(page + 1);
+          else if (e.key === "ArrowLeft") turnTo(page - 1);
+        }}
+      >
+        <div ref={pages} className="grid">
+          {announcements.map((announcement, i) => (
+            <section
+              key={announcement.id}
+              aria-hidden={i !== page}
+              inert={i !== page}
+              className={`col-start-1 row-start-1 flex flex-col gap-5 ${i === page ? "motion-fade" : "invisible"}`}
+            >
+              <Page announcement={announcement} />
+            </section>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          {count > 1 && (
+            <div className="flex items-center" aria-label={`Page ${page + 1} of ${count}`}>
+              {announcements.map((announcement, i) => (
+                <button
+                  key={announcement.id}
+                  type="button"
+                  aria-label={`Page ${i + 1}`}
+                  aria-current={i === page ? "step" : undefined}
+                  onClick={() => turnTo(i)}
+                  className="flex h-8 items-center px-1"
+                >
+                  <span
+                    className={`h-1.5 rounded-full transition-all duration-150 ${
+                      i === page ? "w-4 bg-ink" : "w-1.5 bg-ink/25 hover:bg-ink/50"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+          <span className="flex-1 max-md:hidden" />
+          {page > 0 && (
+            <button
+              type="button"
+              onClick={() => turnTo(page - 1)}
+              className="press rounded-full px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-ink/[0.06] hover:text-ink max-md:py-3"
+            >
+              Back
+            </button>
+          )}
           <button
             type="button"
-            ref={gotIt}
-            onClick={dismiss}
-            className="press rounded-full bg-black px-5 py-2 text-sm font-semibold text-cream max-md:w-full max-md:py-3"
+            ref={primary}
+            onClick={last ? dismiss : () => turnTo(page + 1)}
+            className="press rounded-full bg-black px-5 py-2 text-sm font-semibold text-cream max-md:flex-1 max-md:py-3"
           >
-            Got it
+            {last ? "Got it" : "Next"}
           </button>
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** The nearest ancestor that actually scrolls — the popup's own box. */
+function scrollerOf(element: HTMLElement | null): HTMLElement | null {
+  for (let node = element?.parentElement ?? null; node; node = node.parentElement) {
+    if (node.scrollHeight > node.clientHeight && getComputedStyle(node).overflowY !== "visible") return node;
+  }
+  return null;
+}
+
+/** One release: its picture, its heading, what it changed. */
+function Page({ announcement }: { announcement: Announcement }) {
+  return (
+    <>
+      {announcement.art === "refresh" ? <RefreshIllustration /> : <Illustration />}
+      <div className="flex flex-col gap-1.5">
+        <h3 className="font-display text-lg leading-tight font-extrabold tracking-tight text-ink">
+          {announcement.title}
+        </h3>
+        <p className="text-sm leading-relaxed text-ink">{announcement.lede}</p>
+      </div>
+      <ul className="flex flex-col gap-3.5">
+        {announcement.items.map((item) => {
+          const Icon = ITEM_ICON[item.icon];
+          return (
+            <li key={item.title} className="flex gap-3">
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-black text-cream">
+                <Icon size={15} />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-ink">{item.title}</span>
+                <span className="text-[13px] leading-snug text-ink-soft">{item.text}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
