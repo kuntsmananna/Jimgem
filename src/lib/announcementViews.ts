@@ -1,6 +1,6 @@
 import { getDb, isMissingTable, reportMissingTable } from "./db";
 import { getSession } from "./session";
-import { ANNOUNCEMENTS, MAX_ANNOUNCEMENT_PAGES, type Announcement } from "./announcement";
+import { announcementsFor, MAX_ANNOUNCEMENT_PAGES, type Announcement } from "./announcement";
 import type { Role } from "./roles";
 
 /**
@@ -16,7 +16,7 @@ import type { Role } from "./roles";
  */
 export async function getUnseenAnnouncements(role: Role | null): Promise<Announcement[]> {
   if (!role) return [];
-  const forRole = ANNOUNCEMENTS.filter((announcement) => announcement.audience.includes(role));
+  const forRole = announcementsFor(role);
   if (forRole.length === 0) return [];
   try {
     const session = await getSession();

@@ -1737,15 +1737,25 @@ compares identity, and a panel builds a fresh draft before every call.
   put a new entry at the top of `ANNOUNCEMENTS` with a new `id`**, since
   dismissals are recorded per id; leave the older ones where they are.
   **Everything a person has not seen is one popup, a page per release**,
-  newest first, with Back / Next, a dot per page and the arrow keys — so
+  newest first, with Back / Next, a dot per page and the arrow keys
+  (listened for on the document, so they work after a click on the
+  picture or the band) — so
   somebody who missed a release gets both at once rather than two popups
   on two visits, the older one arriving last. It is capped at
   `MAX_ANNOUNCEMENT_PAGES` (3), because a login created today has seen none
-  of them and a tour of every release since the spring is a changelog. The
+  of them and a tour of every release since the spring is a changelog —
+  and the ones the cap leaves out are recorded as seen when the popup
+  closes (`dismissalFor`: everything for that role from the newest page
+  shown onwards), or they would reopen it on the next visit. The
   pages are stacked in one grid cell, so the popup is as tall as its
   tallest page and does not jump on Next; a page turn scrolls the popup's
-  own box back to the top (not `scrollIntoView` on the page, which tucked
-  the title band out of sight on a phone). Its `art` key
+  own box back to the top, which `Modal` hands down as
+  `useModalScroller()` — `scrollIntoView` on the page tucked the title band
+  out of sight on a phone, and hunting the DOM for a scroller could reach
+  the locked page behind the dialog. Next and Got it are one button in one
+  place, so it **refuses to close for `TURN_GRACE_MS` after a page turn**
+  and ignores a held Enter: a double-click on Next would otherwise close
+  the popup on a page nobody read, and closing records it. Its `art` key
   picks the picture (`paid-by` for v0.71, `refresh` for v0.74's new look,
   which went to staff logins too and so is worded without money), and its
   `title` is that page's heading. The popup itself is always titled
@@ -1762,7 +1772,9 @@ compares identity, and a panel builds a fresh draft before every call.
   the money ones are admin-only. **Without the table it never shows**,
   rather than coming back on every page load with nowhere to record the
   close. Any way of closing it counts as seeing **every page** in it,
-  including on page one — closing is an answer about the rest too. It renders **browser-only**
+  including on page one — closing is an answer about the rest too. The
+  route checks every id against the caller's role, so the audience rule is
+  the server's to keep rather than the popup's. It renders **browser-only**
   (`useSyncExternalStore`), being the one popup open on arrival: `Modal`
   portals to `document.body`, which a server render does not have.
   `/api/announcements` is the one API resource a staff login may reach

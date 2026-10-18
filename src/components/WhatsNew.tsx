@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Banknote, Boxes, CreditCard, Filter, Landmark, MousePointer2, Palette, Receipt, Sparkles, TrendingUp } from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
-import { Modal } from "@/components/Modal";
+import { Modal, useModalScroller } from "@/components/Modal";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import type { Announcement } from "@/lib/announcement";
@@ -32,7 +32,7 @@ const ITEM_ICON = {
  * moved on. Every page is mounted and stacked in one grid cell, so the
  * popup is as tall as its tallest page and does not jump between them —
  * the same reason the order form keeps one fixed body across its tabs.
- * The arrow keys page too.
+ * The arrow keys page too, from anywhere in the popup.
  *
  * Any way of closing it counts as having seen *all* of it: Got it, the
  * close button, Escape, a click on the dim. Asking somebody to find the one
@@ -49,35 +49,13 @@ const ITEM_ICON = {
  */
 export function WhatsNew({ announcements }: { announcements: Announcement[] }) {
   const [open, setOpen] = useState(true);
-  const [page, setPage] = useState(0);
   const inBrowser = useSyncExternalStore(
     noSubscription,
     () => true,
     () => false,
   );
-  const primary = useRef<HTMLButtonElement | null>(null);
-  const pages = useRef<HTMLDivElement | null>(null);
-  const turned = useRef(false);
-  // Focus without scrolling: `autoFocus` scrolled the popup down to the
-  // button, which on a phone hid the title and the picture above the fold.
-  // After a page turn the popup goes back to its top, since on a phone
-  // Next was pressed from the bottom of the last page. The top of the
-  // popup, not of the page: the title band scrolls with the body, and
-  // `scrollIntoView` on the page would tuck it out of sight.
-  useEffect(() => {
-    if (!open || !inBrowser) return;
-    primary.current?.focus({ preventScroll: true });
-    if (turned.current) scrollerOf(pages.current)?.scrollTo({ top: 0 });
-  }, [open, inBrowser, page]);
   if (!open || !inBrowser) return null;
 
-  const count = announcements.length;
-  const last = page === count - 1;
-  const turnTo = (next: number) => {
-    if (next < 0 || next >= count) return;
-    turned.current = true;
-    setPage(next);
-  };
   const dismiss = () => {
     setOpen(false);
     void fetch("/api/announcements", {
@@ -92,76 +70,133 @@ export function WhatsNew({ announcements }: { announcements: Announcement[] }) {
     // button and is cut off past ~14 characters on a phone — each page's
     // own heading says which release it is.
     <Modal title="What's new" icon={<Sparkles size={16} />} onClose={dismiss}>
-      <div
-        className="flex flex-col gap-5"
-        onKeyDown={(e) => {
-          if (e.key === "ArrowRight") turnTo(page + 1);
-          else if (e.key === "ArrowLeft") turnTo(page - 1);
-        }}
-      >
-        <div ref={pages} className="grid">
-          {announcements.map((announcement, i) => (
-            <section
-              key={announcement.id}
-              aria-hidden={i !== page}
-              inert={i !== page}
-              className={`col-start-1 row-start-1 flex flex-col gap-5 ${i === page ? "motion-fade" : "invisible"}`}
-            >
-              <Page announcement={announcement} />
-            </section>
-          ))}
-        </div>
-        <div className="flex items-center gap-3">
-          {count > 1 && (
-            <div className="flex items-center" aria-label={`Page ${page + 1} of ${count}`}>
-              {announcements.map((announcement, i) => (
-                <button
-                  key={announcement.id}
-                  type="button"
-                  aria-label={`Page ${i + 1}`}
-                  aria-current={i === page ? "step" : undefined}
-                  onClick={() => turnTo(i)}
-                  className="flex h-8 items-center px-1"
-                >
-                  <span
-                    className={`h-1.5 rounded-full transition-all duration-150 ${
-                      i === page ? "w-4 bg-ink" : "w-1.5 bg-ink/25 hover:bg-ink/50"
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-          <span className="flex-1 max-md:hidden" />
-          {page > 0 && (
-            <button
-              type="button"
-              onClick={() => turnTo(page - 1)}
-              className="press rounded-full px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-ink/[0.06] hover:text-ink max-md:py-3"
-            >
-              Back
-            </button>
-          )}
-          <button
-            type="button"
-            ref={primary}
-            onClick={last ? dismiss : () => turnTo(page + 1)}
-            className="press rounded-full bg-black px-5 py-2 text-sm font-semibold text-cream max-md:flex-1 max-md:py-3"
-          >
-            {last ? "Got it" : "Next"}
-          </button>
-        </div>
-      </div>
+      <Pages announcements={announcements} onDone={dismiss} />
     </Modal>
   );
 }
 
-/** The nearest ancestor that actually scrolls — the popup's own box. */
-function scrollerOf(element: HTMLElement | null): HTMLElement | null {
-  for (let node = element?.parentElement ?? null; node; node = node.parentElement) {
-    if (node.scrollHeight > node.clientHeight && getComputedStyle(node).overflowY !== "visible") return node;
-  }
-  return null;
+/**
+ * How long after a page turn the button under the pointer refuses to close
+ * the popup. Next and Got it are the same button in the same place, so a
+ * double-click on Next would otherwise turn to the last page and close it
+ * before a word of it was read — and closing records it as seen.
+ */
+const TURN_GRACE_MS = 450;
+
+/**
+ * The pages and their controls. A component of its own because it lives
+ * *inside* the `Modal`, which is what lets it ask for the popup's scroll
+ * box (`useModalScroller`) instead of hunting the DOM for one.
+ */
+function Pages({ announcements, onDone }: { announcements: Announcement[]; onDone: () => void }) {
+  const [page, setPage] = useState(0);
+  const scroller = useModalScroller();
+  const primary = useRef<HTMLButtonElement | null>(null);
+  const turnedAt = useRef<number | null>(null);
+  const count = announcements.length;
+  const last = page === count - 1;
+
+  const turnTo = useCallback(
+    (next: number) => {
+      if (next < 0 || next >= count) return;
+      turnedAt.current = performance.now();
+      setPage(next);
+    },
+    [count],
+  );
+
+  // Focus without scrolling: `autoFocus` scrolled the popup down to the
+  // button, which on a phone hid the title and the picture above the fold.
+  // After a page turn the popup goes back to its top, since on a phone
+  // Next was pressed from the bottom of the last page.
+  useEffect(() => {
+    primary.current?.focus({ preventScroll: true });
+    if (turnedAt.current !== null) scroller?.scrollTo({ top: 0 });
+  }, [page, scroller]);
+
+  // The arrow keys page from anywhere in the popup — clicking the picture
+  // or the title band moves focus off the buttons, and the keys should not
+  // stop working because of it. On the document, like Escape is.
+  useEffect(() => {
+    if (count < 2) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === "ArrowRight") turnTo(page + 1);
+      else if (e.key === "ArrowLeft") turnTo(page - 1);
+      else return;
+      e.preventDefault();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [count, page, turnTo]);
+
+  const pressPrimary = () => {
+    if (!last) return turnTo(page + 1);
+    if (turnedAt.current !== null && performance.now() - turnedAt.current < TURN_GRACE_MS) return;
+    onDone();
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="grid">
+        {announcements.map((announcement, i) => (
+          <section
+            key={announcement.id}
+            aria-hidden={i !== page}
+            inert={i !== page}
+            className={`col-start-1 row-start-1 flex flex-col gap-5 ${i === page ? "motion-fade" : "invisible"}`}
+          >
+            <Page announcement={announcement} />
+          </section>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        {count > 1 && (
+          <div role="group" aria-label={`Page ${page + 1} of ${count}`} className="flex items-center">
+            {announcements.map((announcement, i) => (
+              <button
+                key={announcement.id}
+                type="button"
+                aria-label={`Page ${i + 1} of ${count}`}
+                aria-current={i === page ? "step" : undefined}
+                onClick={() => turnTo(i)}
+                className="group flex h-8 items-center px-1"
+              >
+                <span
+                  className={`h-1.5 rounded-full transition-all duration-150 ${
+                    i === page ? "w-4 bg-ink" : "w-1.5 bg-ink/25 group-hover:bg-ink/50"
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+        )}
+        <span className="flex-1 max-md:hidden" />
+        {page > 0 && (
+          <button
+            type="button"
+            onClick={() => turnTo(page - 1)}
+            className="press rounded-full px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-ink/[0.06] hover:text-ink max-md:py-3"
+          >
+            Back
+          </button>
+        )}
+        <button
+          type="button"
+          ref={primary}
+          onClick={pressPrimary}
+          // A held Enter repeats the click: the first press turns the page
+          // and the repeats would land on Got it.
+          onKeyDown={(e) => {
+            if (e.repeat && e.key === "Enter") e.preventDefault();
+          }}
+          className="press rounded-full bg-black px-5 py-2 text-sm font-semibold text-cream max-md:flex-1 max-md:py-3"
+        >
+          {last ? "Got it" : "Next"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** One release: its picture, its heading, what it changed. */

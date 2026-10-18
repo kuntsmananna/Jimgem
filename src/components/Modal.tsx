@@ -27,6 +27,20 @@ export function useModalHeaderSlot(): HTMLElement | null {
   return useContext(HeaderSlot);
 }
 
+/**
+ * The dialog's own scrolling box, for content that needs to move it — the
+ * "what's new" popup going back to the top on each page turn. Stated by
+ * the modal rather than found by walking up the DOM, which could not tell
+ * this box from the locked page behind it once the dialog stopped
+ * overflowing. On a phone a `wide` dialog does not scroll itself (its
+ * children do), and scrolling it is then a harmless no-op.
+ */
+const ScrollBox = createContext<HTMLElement | null>(null);
+
+export function useModalScroller(): HTMLElement | null {
+  return useContext(ScrollBox);
+}
+
 export function Modal({
   title,
   icon,
@@ -49,6 +63,7 @@ export function Modal({
 }) {
   useOverlayDismiss(onClose);
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
 
   /*
     Below the breakpoint a wide dialog stops being a dialog and becomes
@@ -82,6 +97,7 @@ export function Modal({
       }}
     >
       <div
+        ref={setBox}
         /*
           A wide dialog takes 80% of the viewport, capped at 1400px. The
           order form outgrew a fixed 64rem the moment it carried three
@@ -130,7 +146,9 @@ export function Modal({
         {/* The column the form lays itself out in on a phone; an
             ordinary block on a laptop. */}
         <div className={phoneBody}>
-          <HeaderSlot.Provider value={slot}>{children}</HeaderSlot.Provider>
+          <ScrollBox.Provider value={box}>
+            <HeaderSlot.Provider value={slot}>{children}</HeaderSlot.Provider>
+          </ScrollBox.Provider>
         </div>
       </div>
     </div>,

@@ -87,6 +87,31 @@ export const ANNOUNCEMENTS: Announcement[] = [
   },
 ];
 
+/** The announcements `role` is meant to see, newest first. */
+export function announcementsFor(role: Role): Announcement[] {
+  return ANNOUNCEMENTS.filter((announcement) => announcement.audience.includes(role));
+}
+
+/**
+ * What closing the popup records, given the ids it showed: everything for
+ * this role from the newest shown onwards. That covers the pages on screen
+ * *and* the older ones `MAX_ANNOUNCEMENT_PAGES` cut off — recording only
+ * the shown ones would leave those unseen, and they would open the popup
+ * again on the next visit as exactly the changelog the cap exists to
+ * drop. Starting from the newest *shown* rather than the newest of all is
+ * what keeps a release deployed while the popup sat open from being
+ * marked read unseen.
+ *
+ * Null when an id is not one this role could have been shown — a staff
+ * login dismissing an admin-only release, or an id that no longer exists.
+ */
+export function dismissalFor(role: Role, shown: string[]): string[] | null {
+  const forRole = announcementsFor(role);
+  const positions = [...new Set(shown)].map((id) => forRole.findIndex((announcement) => announcement.id === id));
+  if (positions.length === 0 || positions.some((position) => position < 0)) return null;
+  return forRole.slice(Math.min(...positions)).map((announcement) => announcement.id);
+}
+
 /**
  * At most this many pages in one popup. A login created today has seen
  * none of them, and a tour of every release since the spring is a
