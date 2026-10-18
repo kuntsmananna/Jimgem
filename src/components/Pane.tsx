@@ -63,7 +63,7 @@ export const PANE_ACTION_CLASS =
    * here once and Flavors, Lists, Team and Data all get it together;
    * that leverage is why this is the first thing the mobile pass touched.
    */
-  "rounded-full bg-band-ink px-3 py-1 text-xs font-semibold text-band transition hover:bg-band-ink/85 " +
+  "press rounded-full bg-band-ink px-3 py-1 text-xs font-semibold text-band hover:bg-band-ink/85 " +
   "max-md:min-h-9 max-md:px-4 max-md:text-sm";
 
 /**

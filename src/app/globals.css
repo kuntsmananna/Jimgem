@@ -405,24 +405,23 @@ body {
 }
 
 /*
- * Prominent line hover, shared by every list of lines in the app: the
- * hovered one goes solid black with light text, so it separates from its
- * neighbours instead of being a slightly different shade of them.
+ * Line hover, shared by every list of lines in the app (v0.74): the
+ * hovered one lifts — near-white, a pixel up, a wide warm shadow — the
+ * same move the Orders table's rows make (see `.orders-rows` below).
  *
- * Deliberately written outside every @layer. Tailwind's utilities live in
- * `@layer utilities`, and unlayered rules beat every layer regardless of
- * specificity — which is what lets this flip a `text-ink-soft` cell to
- * cream without !important or a specificity arms race.
+ * It used to turn the line solid black with cream text. That separated a
+ * row from its neighbours, but it flashed a black bar under the pointer at
+ * every row it crossed on the way somewhere else, and it needed a whole
+ * apparatus of opt-outs (`.keeps-color`, `.chip-neutral`, ghost tints for
+ * buttons on a dark line) to stop chips vanishing into it. The lift
+ * changes no text colour, so none of that is needed any more; the two
+ * class names stay in the markup because they cost nothing and still say
+ * which chips carry information in their fill.
  *
- * Two opt-outs, because "make all the text light" is wrong for parts that
- * carry their own fill:
- *   .keeps-color  chips, badges and status pills, where the colour *is*
- *                 the information (a cream package chip given cream text
- *                 would simply vanish)
- *   .chip-neutral a chip whose fill is a tint of the surface it sits on,
- *                 so it has to invert along with that surface
- * Inputs and selects opt out by not being in the match list at all: they
- * bring their own background the moment they're focused.
+ * A real box can wear a box-shadow, so this is one — the drop-shadow
+ * filter the table needs is for a `<tr>`, which has no box. The transform
+ * is also what lifts the hovered line above its later siblings, which
+ * would otherwise paint over the bottom of its shadow.
  */
 /*
  * A control that waits for its row to be hovered, on a device that never
@@ -487,15 +486,20 @@ body {
 @media (hover: hover) {
 .hover-line {
   transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 180ms ease,
+    transform 180ms var(--ease-entrance);
 }
 
 .hover-line:hover {
-  background-color: var(--color-ink);
-  border-color: var(--color-ink);
-  color: var(--color-cream);
+  background-color: #fffdfb;
+  border-color: #f2e6de;
+  box-shadow:
+    0 0 0 1px #f2e6de,
+    0 3px 8px -4px rgb(150 95 65 / 0.16),
+    0 14px 30px -14px rgb(150 95 65 / 0.32);
+  transform: translateY(-1px);
 }
 
 /*
@@ -525,28 +529,6 @@ body {
 }
 
 /*
- * The one rule here that matches descendants rather than lines, and so the
- * one a nested span falls into.
- */
-.hover-line:hover :where(p, span, div, a, button, h3, h4, dt, dd):not(.keeps-color):not(.keeps-color *) {
-  color: var(--color-cream);
-}
-
-.hover-line:hover .chip-neutral {
-  background-color: --alpha(var(--color-cream) / 16%);
-  color: var(--color-cream);
-}
-
-/* Ghost hover states nested inside a dark line — the table's
-   click-to-edit cells tint themselves with black, invisible here.
-   A cell whose value is a chip is excluded at the source rather than
-   out-scored by a second rule below: it deepens the chip instead of
-   drawing a box, and one mechanism should stay one rule. */
-.hover-line:hover button:hover:not(.editable-cell.is-chip) {
-  background-color: --alpha(var(--color-cream) / 16%);
-}
-
-/*
  * What can be edited in place says so on hover: a soft fill under the
  * value, in whichever tone the surface is. Without it, a click-to-edit
  * cell and a plain one look identical until you happen to click, which is
@@ -572,10 +554,6 @@ body {
 
 .editable-cell.is-chip:hover .chip-neutral {
   background-color: --alpha(var(--color-ink) / 14%);
-}
-
-.hover-line:hover .editable-cell.is-chip:hover .chip-neutral {
-  background-color: --alpha(var(--color-cream) / 30%);
 }
 
 }
@@ -774,12 +752,35 @@ body {
 }
 
 /*
+ * The same arrival for a handful of siblings — a row of figures, a grid of
+ * panes, a short table — without each child being told its place: the
+ * parent says `.motion-stagger` and the children come in 40ms apart.
+ * Eight steps is as far as it counts; anything after arrives with the
+ * eighth, so a long table never makes anyone wait for its bottom row.
+ */
+.motion-stagger > * {
+  animation: row-in 260ms var(--ease-entrance) backwards;
+}
+.motion-stagger > :nth-child(2) { animation-delay: 40ms; }
+.motion-stagger > :nth-child(3) { animation-delay: 80ms; }
+.motion-stagger > :nth-child(4) { animation-delay: 120ms; }
+.motion-stagger > :nth-child(5) { animation-delay: 160ms; }
+.motion-stagger > :nth-child(6) { animation-delay: 200ms; }
+.motion-stagger > :nth-child(7) { animation-delay: 240ms; }
+.motion-stagger > :nth-child(n + 8) { animation-delay: 280ms; }
+
+/*
  * A button answers the pointer by growing a little and pressing in on
  * click — scale, not a lift, which was the owner's call: a button that
  * rises off its baseline reads as moving out from under the cursor.
  */
 .press {
-  transition: transform 140ms var(--ease-entrance), background-color 120ms ease, filter 120ms ease;
+  transition:
+    transform 140ms var(--ease-entrance),
+    background-color 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease,
+    filter 120ms ease;
 }
 
 @media (hover: hover) {
@@ -890,6 +891,7 @@ body {
   .motion-fade,
   .motion-reveal,
   .motion-row,
+  .motion-stagger > *,
   .skeleton,
   .jelly-hop > span {
     animation: none;
@@ -903,6 +905,7 @@ body {
 
   .press:hover:not(:disabled),
   .press:active:not(:disabled),
+  .hover-line:hover,
   .orders-rows > tr:not(.day-row):hover {
     transform: none;
   }

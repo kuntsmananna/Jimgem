@@ -16,6 +16,7 @@ import { formatOrderDate } from "@/lib/orderTypes";
 import { count, currency } from "@/lib/money";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { ClientsMobileList } from "./ClientsMobileList";
+import { EmptyState } from "@/components/EmptyState";
 
 /** A SUMIT document, flattened for this page. */
 export interface ClientDocumentLine {
@@ -183,6 +184,25 @@ export function ClientsClient({
   const balanceOf = (client: ClientWithStats) =>
     (ordersByClient.get(client.id) ?? []).reduce((sum, line) => sum + Math.max(0, line.balance), 0);
 
+  /* Why the list is empty, and the way out of it — see `EmptyState`. */
+  const emptyState = query.trim() ? (
+    <EmptyState
+      bare
+      title={`Nobody matches “${query.trim()}”`}
+      hint="Search looks through names, phone numbers and emails."
+      actions={
+        <button
+          onClick={() => setQuery("")}
+          className="press rounded-xl bg-card px-4 py-2 text-sm font-semibold text-ink shadow-[inset_0_0_0_1px_var(--color-line)]"
+        >
+          Clear search
+        </button>
+      }
+    />
+  ) : (
+    <EmptyState bare title="No clients yet" hint="A client appears here the first time an order is booked for them." />
+  );
+
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)] gap-6 max-md:grid-cols-1">
       {/* No card on a phone: the client cards are the content, and a card
@@ -243,14 +263,11 @@ export function ClientsClient({
 
         {mobile ? (
           <div className="mt-3">
-            <ClientsMobileList
-              clients={shown}
-              balanceOf={balanceOf}
-              onOpen={setOpenId}
-              emptyNote={
-                query ? "Nobody matches that." : "No clients yet — they appear as orders are booked."
-              }
-            />
+            {shown.length === 0 ? (
+              emptyState
+            ) : (
+              <ClientsMobileList clients={shown} balanceOf={balanceOf} onOpen={setOpenId} />
+            )}
           </div>
         ) : (
         <div className="flex flex-col">
@@ -266,13 +283,14 @@ export function ClientsClient({
             <span title={COLUMN_HELP.last}>Last order</span>
             <span title={COLUMN_HELP.due}>Due</span>
           </div>
-          {shown.map((client) => {
+          {shown.map((client, at) => {
             const balance = balanceOf(client);
             return (
               <button
                 key={client.id}
                 onClick={() => setOpenId(client.id)}
-                className={`hover-line grid ${LIST_COLUMNS} items-center gap-3 rounded-lg px-2 py-2 text-left`}
+                style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
+                className={`motion-row hover-line grid ${LIST_COLUMNS} items-center gap-3 rounded-lg px-2 py-2 text-left`}
               >
                 <span className="min-w-0 truncate text-sm font-semibold text-ink" title={COLUMN_HELP.name}>
                   {client.name}
@@ -298,11 +316,7 @@ export function ClientsClient({
               </button>
             );
           })}
-          {shown.length === 0 && (
-            <p className="py-6 text-sm text-ink-soft">
-              {query ? "Nobody matches that." : "No clients yet — they appear as orders are booked."}
-            </p>
-          )}
+          {shown.length === 0 && emptyState}
         </div>
         )}
       </section>

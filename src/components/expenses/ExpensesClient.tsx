@@ -21,6 +21,7 @@ import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { saveError } from "@/components/saveError";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
+import { EmptyState } from "@/components/EmptyState";
 import {
   EXPENSE_PANES_COOKIE,
   serializeCollapsedPanes,
@@ -228,6 +229,35 @@ export function ExpensesClient({
   */
   const mobile = useIsMobile();
 
+  /*
+   * One empty state for the rows and the phone's cards, worded by why the
+   * list is empty so its button turns the right knob — see `EmptyState`.
+   */
+  const ghostButton = "press rounded-xl bg-card px-4 py-2 text-sm font-semibold text-ink shadow-[inset_0_0_0_1px_var(--color-line)]";
+  const emptyState = needle ? (
+    <EmptyState
+      title={`Nothing matches “${needle}”`}
+      hint="Search looks through the business, the description, the category and who paid."
+      actions={<button onClick={() => setQuery("")} className={ghostButton}>Clear search</button>}
+    />
+  ) : categoryFilter.size > 0 ? (
+    <EmptyState
+      title="Nothing in those categories"
+      hint="No expense this period sits in the categories picked above."
+      actions={<button onClick={() => setCategoryFilter(new Set())} className={ghostButton}>Show every category</button>}
+    />
+  ) : (
+    <EmptyState
+      title="No expenses this period"
+      hint="A receipt in hand? Log it now and it lands in this month’s figures straight away."
+      actions={
+        <button onClick={() => setAdding(true)} className="press rounded-xl bg-black px-4 py-2 text-sm font-semibold text-cream">
+          + Add expense
+        </button>
+      }
+    />
+  );
+
   return (
     // The breakdown pane gives up width to the list: a donut reads fine
     // small, and the list is where every column had to fight for room.
@@ -348,7 +378,7 @@ export function ExpensesClient({
             />
             <button
               onClick={() => setAdding(true)}
-              className="flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
+              className="press flex items-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream"
             >
               <Plus size={13} />
               Add expense
@@ -390,24 +420,18 @@ export function ExpensesClient({
 
         {mobile ? (
           <div className="mt-3">
-            <ExpensesMobileList
-              entries={entries}
-              amountOf={forExpense}
-              onOpen={setEditingKey}
-              emptyNote={
-                needle
-                  ? `Nothing matches “${needle}” this period.`
-                  : categoryFilter.size > 0
-                    ? "Nothing in those categories this period."
-                    : "No expenses logged for this period yet."
-              }
-            />
+            {entries.length === 0 ? (
+              emptyState
+            ) : (
+              <ExpensesMobileList entries={entries} amountOf={forExpense} onOpen={setEditingKey} />
+            )}
           </div>
         ) : (
         <div className="mt-4 flex flex-col gap-1.5">
-          {entries.map((entry) => (
+          {entries.map((entry, at) => (
             <ExpenseRow
               key={entry.key}
+              index={at}
               entry={entry}
               value={forExpense(entry)}
               categories={categories}
@@ -418,15 +442,7 @@ export function ExpensesClient({
               onDelete={() => deleteEntry(entry.key)}
             />
           ))}
-          {entries.length === 0 && (
-            <p className="text-sm text-ink-soft">
-              {needle
-                ? `Nothing matches “${needle}” this period.`
-                : categoryFilter.size > 0
-                  ? "Nothing in those categories this period."
-                  : "No expenses logged for this period yet."}
-            </p>
-          )}
+          {entries.length === 0 && emptyState}
         </div>
         )}
 
@@ -439,7 +455,7 @@ export function ExpensesClient({
         <button
           onClick={() => setAdding(true)}
           aria-label="Add expense"
-          className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+          className="press fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
         >
           <Plus size={22} />
         </button>
@@ -602,6 +618,7 @@ function FoldButton({
  * a typo doesn't need a popup.
  */
 function ExpenseRow({
+  index,
   entry,
   value,
   categories,
@@ -611,6 +628,8 @@ function ExpenseRow({
   onPatch,
   onDelete,
 }: {
+  /** Its place in the arrival cascade — see `.motion-row`. */
+  index: number;
   entry: Expense;
   /** The amount in the current VAT convention — see ExpensesClient. */
   value: number;
@@ -630,7 +649,8 @@ function ExpenseRow({
         if ((event.target as HTMLElement).closest("button, input, select, a")) return;
         onOpen();
       }}
-      className="hover-line group grid min-w-0 cursor-pointer grid-cols-[5.25rem_9rem_minmax(0,1fr)_minmax(0,1.6fr)_auto_auto] items-center gap-x-2 rounded-xl border border-line px-3 py-2 text-sm"
+      style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
+      className="motion-row hover-line group grid min-w-0 cursor-pointer grid-cols-[5.25rem_9rem_minmax(0,1fr)_minmax(0,1.6fr)_auto_auto] items-center gap-x-2 rounded-xl border border-line bg-card/70 px-3 py-2 text-sm"
     >
       {/*
         Date, description and amount are the row: when, what for, what it
@@ -737,7 +757,7 @@ function ExpenseRow({
           onClick={onDelete}
           title="Delete this expense"
           aria-label="Delete this expense"
-          className="reveals-on-hover invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+          className="reveals-on-hover invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
         >
           <Trash2 size={13} />
         </button>
@@ -774,7 +794,7 @@ function DateCell({
           onClick={() => input.current?.showPicker()}
           title="Change the date"
           aria-label="Change the date"
-          className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+          className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
         >
           <CalendarDays size={13} />
         </button>
@@ -799,7 +819,7 @@ function DateCell({
         onClick={onOpen}
         title="Open this expense"
         aria-label="Open this expense"
-        className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+        className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
       >
         <Maximize2 size={13} />
       </button>

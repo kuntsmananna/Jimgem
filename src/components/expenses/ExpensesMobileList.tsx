@@ -36,26 +36,22 @@ export function ExpensesMobileList({
   entries,
   amountOf,
   onOpen,
-  emptyNote,
 }: {
   /** Already searched and filtered — the same array the desktop rows take. */
   entries: Expense[];
   /** The amount in the current VAT convention — see `useVatView`. */
   amountOf: (entry: Expense) => number;
   onOpen: (key: string) => void;
-  emptyNote: string;
 }) {
-  if (entries.length === 0) {
-    return <p className="px-1 py-6 text-sm text-ink-soft">{emptyNote}</p>;
-  }
-
+  // Never empty: the page draws its `EmptyState` instead of this list.
   return (
     <div className="flex flex-col gap-2">
-      {entries.map((entry) => (
+      {entries.map((entry, at) => (
         <button
           key={entry.key}
           onClick={() => onOpen(entry.key)}
-          className="w-full rounded-card border border-line bg-card px-4 py-3 text-left"
+          style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
+          className="motion-row w-full rounded-card border border-line bg-card px-4 py-3 text-left"
         >
           <div className="flex items-start gap-2">
             <p className="min-w-0 flex-1 truncate text-[15px] font-bold">

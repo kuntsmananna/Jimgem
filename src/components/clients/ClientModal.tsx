@@ -10,6 +10,7 @@ import { LastEdited } from "@/components/LastEdited";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { formatOrderDate } from "@/lib/orderTypes";
 import type { ClientDocumentLine, ClientOrderLine } from "./ClientsClient";
+import { JellyHop } from "@/components/JellyLoader";
 
 
 
@@ -284,9 +285,11 @@ export function ClientModal({
           <button
             onClick={save}
             disabled={busy || !draft.name.trim()}
-            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-60 max-md:flex-1 max-md:py-2.5 max-md:text-sm"
+            className={`press inline-flex min-w-[5rem] items-center justify-center rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream max-md:flex-1 max-md:py-2.5 max-md:text-sm ${
+              busy ? "" : "disabled:opacity-60"
+            }`}
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? <JellyHop label="Saving the client" /> : "Save"}
           </button>
         </div>
       </div>

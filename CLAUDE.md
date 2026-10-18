@@ -941,21 +941,19 @@ compares identity, and a panel builds a fresh draft before every call.
   `document` — bubbling, one keystroke dismissed the preset list *and*
   the half-typed order behind it.
 - Hovering a line — an orders-table row, a Kanban card, a calendar pill,
-  an expense row, a settings list item — turns it **solid black with
-  light text**, and that is the whole of the emphasis: the Orders table
-  used to fade every *other* row to 55% at the same time, which dimmed the
-  bulk of the table on the way past, and scanning a list is most of what
-  anyone is doing on that page. One mechanism in `globals.css`: add `.hover-line` to the
-  element (the Orders table gets it via `.orders-rows > tr` instead,
-  since a `<tr>` can't carry the transition cleanly). That block sits
-  **outside every `@layer` on purpose** — Tailwind's utilities live in
-  `@layer utilities`, and unlayered rules beat every layer, which is how
-  it recolors a `text-ink-soft` cell without `!important`. Two opt-outs
-  for things that carry their own fill: `.keeps-color` on chips, badges
-  and status pills where the color *is* the information (a cream package
-  chip given cream text simply vanishes), and `.chip-neutral` on a chip
-  whose fill is a tint of its surface, so it inverts along with it.
-  Inputs and selects opt out by not being in the match list.
+  an expense row, a client, a settings list item, a picker's suggestion —
+  **lifts it** (v0.74): near-white, a pixel up, a wide warm shadow. One
+  mechanism in `globals.css`: add `.hover-line` to the element (the Orders
+  table gets it via `.orders-rows > tr`, which needs a drop-shadow filter
+  rather than a box-shadow — see the Orders notes). It used to turn the
+  line **solid black** with cream text, which flashed a black bar under the
+  pointer at every row it crossed and needed a set of opt-outs so chips
+  did not vanish into it; the lift changes no text colour, so those rules
+  are gone. `.keeps-color` and `.chip-neutral` stay in the markup as
+  labels — harmless, and still true about which chips carry information in
+  their fill. The block sits **outside every `@layer`** so it beats
+  Tailwind's utilities, and inside `@media (hover: hover)` so a phone does
+  not keep the last-tapped row lifted.
 - `src/components/HoverCard.tsx` is the one hover mechanism: portal to
   `document.body` at fixed coordinates, flipping to the other side of the
   trigger rather than running off the edge. As an absolutely-positioned
@@ -1736,7 +1734,13 @@ compares identity, and a panel builds a fresh draft before every call.
 - **A release is announced once to each person** (`WhatsNew`, a narrow
   `Modal` with an illustration drawn from the app's own pieces). What it
   says lives in `src/lib/announcement.ts` — **to announce the next release,
-  change its `id`**, since dismissals are recorded per id. They are kept in
+  change its `id`**, since dismissals are recorded per id. Its `art` key
+  picks the picture (`paid-by` for v0.71, `refresh` for v0.74's new look,
+  which went to staff logins too and so is worded without money). Keep the
+  title short — it shares the popup's header with the close button and is
+  cut off past ~14 characters on a phone — and never `autoFocus` its
+  button: that scrolls the popup to the bottom and hides the picture on a
+  short screen; it focuses with `preventScroll` instead. They are kept in
   `announcement_views` (`scripts/migrate-032-announcement-views.sql`), a
   table of its own rather than a column on `staff`, because `staff` is
   watched by `row_revisions` and every dismissal would land in the change
@@ -2239,9 +2243,8 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   `filter: drop-shadow` on the `<tr>`: a `border-separate` row has no box,
   so a box-shadow paints a square slab behind the rounded cells, while a
   drop-shadow follows exactly what the cells paint. At rest the cells are
-  72% white so the hovered one is the brightest thing in the list. Every
-  other `.hover-line` (Kanban, calendar, Expenses, Settings) is still the
-  black invert until its own page is redone.
+  72% white so the hovered one is the brightest thing in the list. Since
+  v0.74 every other `.hover-line` lifts the same way.
 - **Rows are compact** (`py-1.5`, ~38px, centred) and **arrive in a
   cascade** (`.motion-row`, 22ms apart, capped at 12 steps). The animation
   fills `backwards`, never `both`: a held end state pins `transform` and
@@ -2264,8 +2267,9 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   (`stageHint`), from the two flags a stage actually has.
 - **Loaders are jelly.** `JellyPile` — six cubes dropped in turn that
   squash, bounce and tumble into a crooked heap, one keyframe driven by
-  per-cube custom properties — is the route loader (`orders/loading.tsx`,
-  over `.skeleton` rows). `JellyHop` is the small one for a button or chip
+  per-cube custom properties — is every page's route loader, through
+  `PageLoading` (a `loading.tsx` per page, plus `(app)/loading.tsx` for the
+  Dashboard), over `.skeleton` shapes sketched as a list or as panes. `JellyHop` is the small one for a button or chip
   that is working (the payment badge, the order form's Save). Both are
   server-safe markup; CSS does all the moving.
 - **Empty is a state with a way out** (`EmptyState`): an empty tray with
@@ -2277,6 +2281,19 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   moving out from under the cursor.
 - All of it is in the `prefers-reduced-motion` rule: the heap is shown
   built, the cascade and the lift are off.
+
+**v0.74 took the refresh to every page** without moving any layout: the
+lift on every `.hover-line`; the jelly route loader on every page; the
+`.motion-row` cascade on the Expenses, Clients and task rows and the
+phone's expense and client cards; `.motion-stagger` (children in 40ms
+apart, eight steps at most) on the Dashboard's and Biz Plan's figures,
+the Biz Plan table and Settings' panes; `EmptyState` on Expenses (search /
+categories / nothing yet), Clients (`bare`, inside its pane) and the to-do
+list; `JellyHop` on the expense, client and task Save/Add buttons; and
+`.press` on the shared strings — `PANE_ACTION_CLASS`, every toolbar
+`Dropdown` trigger and `ArchiveButton` — so most buttons got it without a
+call site changing. Segmented tracks deliberately do not press: they are a
+track, not a button.
 
 **The Amount column is the whole order** — jelly, every extra, discount
 and VAT, through `forOrder`, so it is the figure the Kanban card and the

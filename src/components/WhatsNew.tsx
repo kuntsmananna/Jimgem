@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import { Banknote, CreditCard, Filter, Landmark, Receipt, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Banknote, Boxes, CreditCard, Filter, Landmark, MousePointer2, Palette, Receipt, Sparkles, TrendingUp } from "lucide-react";
+import { cubeColors } from "@/components/JellyLoader";
 import { Modal } from "@/components/Modal";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
@@ -13,6 +14,10 @@ const ITEM_ICON = {
   amount: Receipt,
   card: CreditCard,
   filter: Filter,
+  palette: Palette,
+  lift: TrendingUp,
+  hover: MousePointer2,
+  jelly: Boxes,
 } as const;
 
 /**
@@ -39,6 +44,12 @@ export function WhatsNew({ announcement }: { announcement: Announcement }) {
     () => true,
     () => false,
   );
+  const gotIt = useRef<HTMLButtonElement | null>(null);
+  // Focus without scrolling: `autoFocus` scrolled the popup down to the
+  // button, which on a phone hid the title and the picture above the fold.
+  useEffect(() => {
+    if (open && inBrowser) gotIt.current?.focus({ preventScroll: true });
+  }, [open, inBrowser]);
   if (!open || !inBrowser) return null;
 
   const dismiss = () => {
@@ -53,7 +64,7 @@ export function WhatsNew({ announcement }: { announcement: Announcement }) {
   return (
     <Modal title={announcement.title} icon={<Sparkles size={16} />} onClose={dismiss}>
       <div className="flex flex-col gap-5">
-        <Illustration />
+        {announcement.art === "refresh" ? <RefreshIllustration /> : <Illustration />}
         <p className="text-sm leading-relaxed text-ink">{announcement.lede}</p>
         <ul className="flex flex-col gap-3.5">
           {announcement.items.map((item) => {
@@ -74,9 +85,9 @@ export function WhatsNew({ announcement }: { announcement: Announcement }) {
         <div className="flex justify-end">
           <button
             type="button"
+            ref={gotIt}
             onClick={dismiss}
-            autoFocus
-            className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-cream max-md:w-full max-md:py-3"
+            className="press rounded-full bg-black px-5 py-2 text-sm font-semibold text-cream max-md:w-full max-md:py-3"
           >
             Got it
           </button>
@@ -165,6 +176,80 @@ function Chip({ icon, label }: { icon: React.ReactNode; label: string }) {
     <span className="flex w-fit items-center gap-1 rounded-full bg-card px-2 py-0.5 text-[10px] font-semibold text-ink shadow-sm">
       {icon}
       {label}
+    </span>
+  );
+}
+
+/**
+ * The v0.74 refresh in one picture, built from the pieces it introduced:
+ * three order rows with the middle one lifted off the list and casting
+ * its warm shadow, sharp flavour cubes in the units column, a dark detail
+ * card hanging under one of them, and a small heap of jelly — the loader —
+ * settled in the corner.
+ *
+ * Static on purpose: the popup is read, and a picture that moves under the
+ * words competes with them. The real loader moves; this one is its photo.
+ */
+function RefreshIllustration() {
+  const row =
+    "absolute left-6 right-28 flex h-9 items-center gap-2.5 rounded-xl bg-card/75 px-3 text-[11px] shadow-[inset_0_0_0_1px_var(--color-line)] max-md:right-6";
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <div className={`${row} top-5`}>
+        <span className="rounded-full bg-tile-peach px-2 py-0.5 font-bold">Queued</span>
+        <span className="font-semibold">Noa</span>
+        <span className="flex-1" />
+        <Cubes colors={[SERIES_COLORS.berry, SERIES_COLORS.jasmine]} />
+        <span className="font-bold">240</span>
+      </div>
+      <div
+        className={`${row} top-[3.9rem] z-10 -translate-y-[2px] bg-[#fffdfb] shadow-[0_0_0_1px_#f2e6de,0_4px_10px_-4px_rgb(150_95_65/0.2),0_18px_34px_-14px_rgb(150_95_65/0.4)]`}
+      >
+        <span className="rounded-full bg-tile-sage px-2 py-0.5 font-bold">Ready</span>
+        <span className="font-semibold">Bilduts</span>
+        <span className="flex-1" />
+        <Cubes colors={[SERIES_COLORS.royale]} />
+        <span className="border-b border-dotted border-ink-soft/60 font-bold">120</span>
+      </div>
+      <div className={`${row} top-[6.8rem]`}>
+        <span className="rounded-full bg-tile-peach px-2 py-0.5 font-bold">Queued</span>
+        <span className="font-semibold">Studio Lev</span>
+        <span className="flex-1" />
+        <Cubes colors={[SERIES_COLORS.midori, SERIES_COLORS.berry]} />
+        <span className="font-bold">300</span>
+      </div>
+      {/* The detail card, hanging under the lifted row's units. */}
+      <div className="absolute top-[6.4rem] right-32 z-20 w-36 rounded-lg bg-black p-2.5 text-[10px] leading-relaxed text-cream/80 shadow-xl max-md:right-10">
+        <p className="mb-1 font-bold text-cream">4 × 30-unit trays</p>
+        <p className="flex justify-between"><span>Kir Royale</span><b className="text-cream">120</b></p>
+      </div>
+      {/* The loader's heap, at rest. */}
+      <div className="absolute right-5 bottom-4 h-14 w-[4.4rem] max-md:hidden">
+        {[
+          { left: 2, bottom: 0, rf: -3, c: SERIES_COLORS.berry },
+          { left: 24, bottom: 0, rf: 2, c: SERIES_COLORS.midori },
+          { left: 46, bottom: 0, rf: -1, c: SERIES_COLORS.jasmine },
+          { left: 12, bottom: 19, rf: -6, c: SERIES_COLORS.royale },
+          { left: 35, bottom: 18, rf: 5, c: SERIES_COLORS.sage },
+          { left: 24, bottom: 37, rf: -2, c: SERIES_COLORS.berry },
+        ].map((cube, i) => (
+          <span
+            key={i}
+            className="jelly-cube absolute h-[19px] w-[19px]"
+            style={{ ...cubeColors(cube.c), left: cube.left, bottom: cube.bottom, transform: `rotate(${cube.rf}deg)` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Cubes({ colors }: { colors: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS][] }) {
+  return (
+    <span className="flex gap-[3px]">
+      {colors.map((color, i) => (
+        <span key={i} className="jelly-cube h-2.5 w-2.5" style={cubeColors(color)} />
+      ))}
     </span>
   );
 }

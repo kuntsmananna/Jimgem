@@ -72,7 +72,7 @@ function Dropdown({
         aria-expanded={open}
         title={label}
         aria-label={label}
-        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition max-md:px-3.5 max-md:py-2 max-md:text-sm ${
+        className={`press flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap max-md:px-3.5 max-md:py-2 max-md:text-sm ${
           active ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
         }`}
       >

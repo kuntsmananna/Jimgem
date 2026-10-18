@@ -214,7 +214,7 @@ export function DashboardClient({
           uses: there the tiles are a rail beside the list and the list is
           the subject, while here the figures *are* the page — which is what
           the owner asked for — so they get the second row of height. */}
-      <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2">
+      <div className="motion-stagger grid grid-cols-4 gap-4 max-md:grid-cols-2">
         {KPI_TILES.map(({ metric, label, tile, Icon, format }) => (
           <KpiTile
             key={metric}

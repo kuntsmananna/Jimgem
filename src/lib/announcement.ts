@@ -14,33 +14,48 @@ import type { Role } from "./roles";
  */
 export interface Announcement {
   id: string;
-  /** Who it is for. These features are money, which a staff login never sees. */
+  /** Who it is for — a release about money is admin-only, since a staff login never sees money. */
   audience: Role[];
+  /** Which picture heads it — see `WhatsNew`. */
+  art: "paid-by" | "refresh";
   title: string;
   lede: string;
-  items: { icon: "amount" | "card" | "filter"; title: string; text: string }[];
+  items: { icon: "amount" | "card" | "filter" | "palette" | "lift" | "hover" | "jelly"; title: string; text: string }[];
 }
 
+/*
+ * v0.74: the new look, for everyone. Worded without money on purpose — a
+ * staff login sees this one too, and "hover the amount" would describe a
+ * column they have not got.
+ */
 export const ANNOUNCEMENT: Announcement = {
-  id: "v0.71-paid-by",
-  audience: ["admin"],
+  id: "v0.74-refresh",
+  audience: ["admin", "staff"],
+  art: "refresh",
+  // Short, because a popup's title shares its header with the close
+  // button and is cut off past ~14 characters on a phone.
   title: "What's new",
-  lede: "Every order's money now tells the whole story — and remembers how it was paid.",
+  lede: "A fresh coat of jelly: Jimgem has a new look — warmer, calmer and quicker to read, with more of what you need on one screen.",
   items: [
     {
-      icon: "amount",
-      title: "Amount is the whole order",
-      text: "Jelly, delivery, display, waitressing and kosher, less any discount, VAT in. Hover it for the breakdown.",
+      icon: "palette",
+      title: "Warmer and easier on the eye",
+      text: "A softer cream, a new typeface and slimmer figures, so the lists get the room.",
     },
     {
-      icon: "card",
-      title: "Paid by",
-      text: "Cash, credit card or bank transfer — set it in the table's new column or in the order form. Edit the list in Settings → Lists.",
+      icon: "lift",
+      title: "Rows that lift",
+      text: "The row under your pointer rises out of the list instead of turning black, and more of them fit on screen.",
     },
     {
-      icon: "filter",
-      title: "Filter by how they paid",
-      text: "A new Paid by filter beside Payment, including the orders nobody has marked yet.",
+      icon: "hover",
+      title: "The detail is a hover away",
+      text: "Point at a figure, a status or a row of flavour cubes to see what’s behind it.",
+    },
+    {
+      icon: "jelly",
+      title: "Jelly while you wait",
+      text: "Pages load with a little heap of jelly, and an empty list now tells you why — with the button that fixes it.",
     },
   ],
 };

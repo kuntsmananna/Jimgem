@@ -15,13 +15,20 @@ export function EmptyState({
   title,
   hint,
   actions,
+  bare = false,
 }: {
   title: string;
   hint?: string;
   actions?: ReactNode;
+  /** Already inside a pane, so no box of its own — a box in a box is one edge too many. */
+  bare?: boolean;
 }) {
   return (
-    <section className="motion-rise flex flex-col items-center gap-2.5 rounded-card bg-card/35 px-6 py-14 text-center shadow-[inset_0_0_0_1px_var(--color-line)]">
+    <section
+      className={`motion-rise flex flex-col items-center gap-2.5 text-center ${
+        bare ? "px-4 py-10" : "rounded-card bg-card/35 px-6 py-14 shadow-[inset_0_0_0_1px_var(--color-line)]"
+      }`}
+    >
       <div aria-hidden className="mb-2 grid grid-cols-3 gap-1 rounded-lg p-2 shadow-[inset_0_0_0_1.5px_var(--color-line)]">
         {Array.from({ length: 9 }, (_, i) =>
           i === 4 ? (

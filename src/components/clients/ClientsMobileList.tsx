@@ -46,27 +46,23 @@ export function ClientsMobileList({
   clients,
   balanceOf,
   onOpen,
-  emptyNote,
 }: {
   /** Already searched and sorted — the same array the desktop rows take. */
   clients: ClientWithStats[];
   /** What is still owed across their booked orders — see `ordersByClient`. */
   balanceOf: (client: ClientWithStats) => number;
   onOpen: (id: number) => void;
-  emptyNote: string;
 }) {
-  if (clients.length === 0) {
-    return <p className="px-1 py-6 text-sm text-ink-soft">{emptyNote}</p>;
-  }
-
+  // Never empty: the page draws its `EmptyState` instead of this list.
   return (
     <div className="flex flex-col gap-2">
-      {clients.map((client) => {
+      {clients.map((client, at) => {
         const balance = balanceOf(client);
         return (
           <div
             key={client.id}
-            className="flex items-stretch overflow-hidden rounded-card border border-line bg-card"
+            style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
+            className="motion-row flex items-stretch overflow-hidden rounded-card border border-line bg-card"
           >
             <button onClick={() => onOpen(client.id)} className="min-w-0 flex-1 px-4 py-3 text-left">
             <div className="flex items-start gap-2">

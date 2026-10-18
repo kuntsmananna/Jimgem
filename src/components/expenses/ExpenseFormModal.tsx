@@ -11,6 +11,7 @@ import { Modal } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
 import { VAT_MODES, vatOn } from "@/lib/orderTypes";
+import { JellyHop } from "@/components/JellyLoader";
 
 const emptyDraft = (vatRate: number): ExpenseInput => ({
   date: new Date().toISOString().slice(0, 10),
@@ -363,9 +364,9 @@ export function ExpenseFormModal({
           <button
             onClick={submit}
             disabled={busy}
-            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50 max-md:flex-1 max-md:py-2.5 max-md:text-sm"
+            className="press inline-flex min-w-[6rem] items-center justify-center rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream max-md:flex-1 max-md:py-2.5 max-md:text-sm"
           >
-            {isEdit ? "Save" : "Save expense"}
+            {busy ? <JellyHop label="Saving the expense" /> : isEdit ? "Save" : "Save expense"}
           </button>
         </div>
       </div>

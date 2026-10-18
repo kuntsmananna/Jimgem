@@ -66,7 +66,7 @@ export function ArchiveButton({
        * padding is stated here, so every list that offers archiving gets
        * it at once.
        */
-      className="reveals-on-hover shrink-0 rounded-full p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50 max-md:p-2.5"
+      className="press reveals-on-hover shrink-0 rounded-full p-1 text-ink-soft opacity-0 group-hover:opacity-100 hover:bg-black/[0.06] hover:text-ink focus-visible:opacity-100 disabled:opacity-50 max-md:p-2.5"
     >
       <Archive size={13} className="max-md:size-4" />
     </button>

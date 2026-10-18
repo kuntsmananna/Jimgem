@@ -55,7 +55,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
         screen edge instead of stopping short of it, which is what says
         there is more to swipe to. Scroll snapping makes it land on a tile.
       */}
-      <div className="grid grid-cols-5 gap-4 max-md:-mx-4 max-md:flex max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto max-md:px-4">
+      <div className="motion-stagger grid grid-cols-5 gap-4 max-md:-mx-4 max-md:flex max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto max-md:px-4">
         <KpiTile label="YTD Revenue" value={currency(ytd.revenue)} tile="peach" />
         <KpiTile label="YTD Profit" value={currency(ytd.profit)} tile="mint" />
         <KpiTile label="YTD Orders" value={count(ytd.orders)} tile="lavender" />
@@ -134,7 +134,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
                 <th className="px-3 py-2">Units sold</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="motion-stagger">
               {tableRows.map((m) => {
                 const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
                 return (

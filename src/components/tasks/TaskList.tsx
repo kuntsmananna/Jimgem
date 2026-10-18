@@ -8,6 +8,8 @@ import type { StaffAccount } from "@/lib/settings";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { Modal } from "@/components/Modal";
 import { Field, TextInput } from "@/components/Field";
+import { EmptyState } from "@/components/EmptyState";
+import { JellyHop } from "@/components/JellyLoader";
 
 /**
  * The shared to-do list — the Dashboard's pane and the whole of `/tasks`.
@@ -120,7 +122,7 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
         */}
         <button
           onClick={() => setAdding(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-xs font-semibold text-cream md:hidden"
+          className="press flex shrink-0 items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-xs font-semibold text-cream md:hidden"
         >
           <Plus size={14} />
           Add
@@ -143,9 +145,10 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
       )}
 
       <ul className="mt-2 flex flex-col gap-1.5">
-        {rows.map((task) => (
+        {rows.map((task, at) => (
           <TaskRow
             key={task.key}
+            index={at}
             task={task}
             staff={staff}
             onToggle={() => toggle(task)}
@@ -154,8 +157,11 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
           />
         ))}
         {rows.length === 0 && (
-          <li className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-sm text-ink-soft">
-            Nothing on the list. Type the first one above.
+          <li>
+            <EmptyState
+              title="Nothing on the list"
+              hint="Anything the two of you owe each other — order more trays, call the accountant — goes here instead of WhatsApp."
+            />
           </li>
         )}
       </ul>
@@ -230,10 +236,18 @@ function Composer({ staff, onAdded }: { staff: StaffAccount[]; onAdded: () => vo
       <button
         onClick={() => void add()}
         disabled={!title.trim() || busy}
-        className="flex shrink-0 items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-xs font-semibold text-cream transition disabled:opacity-40"
+        className={`press flex min-w-[4.5rem] shrink-0 items-center justify-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-xs font-semibold text-cream ${
+          busy ? "" : "disabled:opacity-40"
+        }`}
       >
-        <Plus size={14} />
-        Add
+        {busy ? (
+          <JellyHop label="Adding the task" />
+        ) : (
+          <>
+            <Plus size={14} />
+            Add
+          </>
+        )}
       </button>
     </div>
   );
@@ -307,9 +321,11 @@ function AddTaskModal({
           <button
             onClick={() => void add()}
             disabled={!title.trim() || busy}
-            className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
+            className={`press inline-flex min-w-[5.5rem] items-center justify-center rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream ${
+              busy ? "" : "disabled:opacity-50"
+            }`}
           >
-            Add task
+            {busy ? <JellyHop label="Adding the task" /> : "Add task"}
           </button>
         </div>
       </div>
@@ -326,12 +342,15 @@ function AddTaskModal({
  * about swallowing its inline editors' clicks.
  */
 function TaskRow({
+  index,
   task,
   staff,
   onToggle,
   onSave,
   onDelete,
 }: {
+  /** Its place in the arrival cascade — see `.motion-row`. */
+  index: number;
   task: Task;
   staff: StaffAccount[];
   onToggle: () => void;
@@ -368,7 +387,8 @@ function TaskRow({
         Nothing moves on a laptop: at that width every child fits and a
         wrapping row that does not wrap is the row it was.
       */
-      className={`group flex flex-wrap items-center gap-2.5 rounded-xl border border-line px-3 py-2 ${
+      style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
+      className={`motion-row group flex flex-wrap items-center gap-2.5 rounded-xl border border-line px-3 py-2 ${
         // A finished task takes the cream the page is already made of, the
         // same way a delivered order does on the phone's Orders list: the
         // list then separates at a glance into what is left and what is
