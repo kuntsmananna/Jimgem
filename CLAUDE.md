@@ -2001,14 +2001,18 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 
 ## Shipping
 
-**Work lands on `main`, not on a review branch.** The owner watches the
-deployed app rather than a diff, so a change that only exists on a feature
-branch is a change they cannot see. Build on the session's branch, then
-fast-forward `main` onto it and push both — no pull request, and no
-waiting to be asked. This is the owner's own instruction and it stands
-until they say otherwise, so what goes to `main` has to be finished:
-lint clean, `npm run build` green, and any migration it needs called out
-by name so it can be run against the database first.
+**Work is previewed on its branch first, and lands on `main` only when the
+owner says so.** The owner judges a change by using it, not by reading a
+diff, so build on the session's branch and push *that branch* — Vercel
+gives every pushed branch a preview deployment of its own, which is where
+the change is looked at. **Do not touch `main` until the owner says to
+ship it**; then fast-forward `main` onto the branch and push it — still no
+pull request. Asking before shipping is the owner's own instruction (it
+replaced "fast-forward `main` without asking") and stands until they say
+otherwise. Every push is still finished work, because a preview is what
+the owner decides on: lint clean, `npm run build` green, and any
+migration it needs called out by name so it can be run against the
+database first.
 
 ## Versioning
 
