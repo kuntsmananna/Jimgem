@@ -22,6 +22,7 @@ import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
 import { COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
 import { PaymentMethodsProvider } from "./PaymentMethodsContext";
+import { EmptyState } from "@/components/EmptyState";
 import { useCanSeeMoney, useIsAdmin } from "@/components/RoleContext";
 import { ColumnsMenu } from "./ColumnsMenu";
 import { useHiddenColumns } from "./useColumnWidths";
@@ -290,6 +291,64 @@ export function OrdersClient({
     stageIndex,
     forOrder,
   );
+
+  /*
+   * What the list says when it is empty — one component for the table and
+   * the phone's cards, worded by *why* it is empty so the button under it
+   * turns the right knob. A search that finds nothing is its own answer:
+   * pointing at the time scope would send you widening a window that was
+   * never the reason.
+   */
+  const emptyButton = "press rounded-xl px-4 py-2 text-sm font-semibold";
+  const addButton = admin && (
+    <button onClick={() => setAdding(true)} className={`${emptyButton} bg-black text-cream`}>
+      + New order
+    </button>
+  );
+  const emptyState =
+    needle && bySearch.length === 0 ? (
+      <EmptyState
+        title={`Nothing matches “${needle}”`}
+        hint="Search looks through the customer, the type of event, the location and the notes."
+        actions={
+          <button onClick={() => setQuery("")} className={`${emptyButton} bg-card text-ink shadow-[inset_0_0_0_1px_var(--color-line)]`}>
+            Clear search
+          </button>
+        }
+      />
+    ) : orders.length === 0 ? (
+      <EmptyState title="No orders yet" hint="The first booking you take will show up here." actions={addButton} />
+    ) : filtered.length > 0 ? (
+      <EmptyState
+        title={`No orders in ${scopeLabel.toLowerCase()}`}
+        hint="A quiet stretch. Widen the window to see what’s further out, or take a new booking."
+        actions={
+          <>
+            <button onClick={() => setScope("all")} className={`${emptyButton} bg-card text-ink shadow-[inset_0_0_0_1px_var(--color-line)]`}>
+              Show all time
+            </button>
+            {addButton}
+          </>
+        }
+      />
+    ) : (
+      <EmptyState
+        title="No orders match these filters"
+        hint="Every order is filtered out by the payment, paid-by or status choices above."
+        actions={
+          <button
+            onClick={() => {
+              setPaymentFilter(new Set());
+              setMethodFilter(new Set());
+              setStageFilter(new Set());
+            }}
+            className={`${emptyButton} bg-card text-ink shadow-[inset_0_0_0_1px_var(--color-line)]`}
+          >
+            Clear filters
+          </button>
+        }
+      />
+    );
 
   const openOrder = openKey ? (orders.find((o) => o.key === openKey) ?? null) : null;
   const openClient = openClientId === null ? null : (clients.find((c) => c.id === openClientId) ?? null);
@@ -655,7 +714,7 @@ export function OrdersClient({
             {admin && (
               <button
                 onClick={() => setAdding(true)}
-                className="flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
+                className="press flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap text-cream"
               >
                 <Plus size={15} />
                 Add order
@@ -758,7 +817,7 @@ export function OrdersClient({
           <button
             onClick={() => setAdding(true)}
             aria-label="Add order"
-            className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+            className="press fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
           >
             <Plus size={22} />
           </button>
@@ -771,7 +830,28 @@ export function OrdersClient({
         for its grid.
       */}
       <div className="flex items-start gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          {/*
+            The figures, as one slim strip above the list rather than a rail
+            beside it (v0.73): the rail took 140px of width from the table
+            for four numbers. Not on the calendar, which navigates by its
+            own month and would otherwise carry two windows at once. The
+            phone has its own three tiles further up.
+          */}
+          {view !== "calendar" && (
+            <div className="max-md:hidden">
+              <OrdersSummary
+                orders={inScope}
+                totals={totals}
+                previous={previousTotals}
+                scopeLabel={scopeLabel}
+                comparable={previous !== null}
+                stages={stageIndex}
+                unitsPerPackage={unitsPerPackage}
+                flavors={flavors}
+              />
+            </div>
+          )}
 
           {/*
             Both halves take the same `inScope` array — the mobile list is a
@@ -779,7 +859,8 @@ export function OrdersClient({
             other's width as well as gated on the hook, so neither can flash
             before hydration has an opinion.
           */}
-          {view === "table" && mobile && (
+          {view === "table" && inScope.length === 0 && emptyState}
+          {view === "table" && mobile && inScope.length > 0 && (
             <div className="md:hidden">
               <OrdersMobileList
                 orders={inScope}
@@ -796,7 +877,7 @@ export function OrdersClient({
             </div>
           )}
 
-          {view === "table" && !mobile && (
+          {view === "table" && !mobile && inScope.length > 0 && (
             <OrdersTable
               orders={inScope}
               flavors={flavors}
@@ -810,6 +891,7 @@ export function OrdersClient({
               onOpen={setOpenKey}
               onOpenClient={setOpenClientId}
               hidden={hiddenColumns}
+              onUndoable={undoToast.show}
               emptyNote={
                 // A search that finds nothing is its own answer: pointing
                 // at the time scope would send you widening a window that
@@ -842,31 +924,6 @@ export function OrdersClient({
           )}
         </div>
 
-        {view !== "calendar" && (
-          <aside
-            /*
-             * A fixed 140px rather than a share of the page. It was 15%,
-             * which on a 13" laptop spent 180px on four short numbers and
-             * took them from the table beside it — the one thing on this
-             * page that genuinely needs the width.
-             *
-             * Gone entirely on the calendar, which takes the whole page
-             * for its grid. Nothing in the toolbar moves when it does,
-             * because the toolbar is no longer inside this row.
-             *
-             * Desktop only — the phone gets the one-line strip above the
-             * list instead, since a column of figures needs a column.
-             */
-            className="w-[140px] shrink-0 max-md:hidden"
-          >
-            <OrdersSummary
-              totals={totals}
-              previous={previousTotals}
-              scopeLabel={scopeLabel}
-              comparable={previous !== null}
-            />
-          </aside>
-        )}
         </div>
 
         {/*

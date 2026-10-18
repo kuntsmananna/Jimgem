@@ -24,8 +24,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Orders, expenses and clients for Gems Cocktail Bites",
     start_url: "/orders",
     display: "standalone",
-    background_color: "#F4EBE7",
-    theme_color: "#F4EBE7",
+    background_color: "#F6EEEA",
+    theme_color: "#F6EEEA",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

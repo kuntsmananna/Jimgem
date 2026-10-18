@@ -8,6 +8,7 @@ import {
   displayCount,
   isBooked,
   stageMap,
+  orderFlavorUnits,
   orderUnits,
   unitsPerPackageMap,
   withDelivery,
@@ -17,7 +18,6 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { Info, Pencil } from "lucide-react";
-import { UnitsIcon } from "@/lib/icons";
 import { useOrderTypes } from "@/components/OrderTypesContext";
 import { useStages } from "@/components/ProductionStagesContext";
 import { HoverCard } from "@/components/HoverCard";
@@ -29,7 +29,8 @@ import { EventTypeChip } from "./EventTypeChip";
 import { PaymentMethodChip } from "./PaymentMethodChip";
 import { usePaymentMethods } from "./PaymentMethodsContext";
 import { useVatView } from "@/components/VatViewContext";
-import { PaymentStatusSelect, ProductionStatusSelect } from "./StatusSelects";
+import { PaymentStatusSelect, ProductionStatusSelect, stageHint } from "./StatusSelects";
+import { cubeColors } from "@/components/JellyLoader";
 import { useColumnWidths } from "./useColumnWidths";
 import { count, currency } from "@/lib/money";
 import { useIsAdmin } from "@/components/RoleContext";
@@ -133,6 +134,7 @@ export function OrdersTable({
   onOpenClient,
   emptyNote,
   hidden,
+  onUndoable,
 }: {
   orders: Order[];
   flavors: Flavor[];
@@ -152,6 +154,8 @@ export function OrdersTable({
   emptyNote: string;
   /** Columns the owner has switched off — see `ColumnsMenu`. */
   hidden: ReadonlySet<string>;
+  /** Offers a change back on the page's Undo bar — see `useUndoToast`. */
+  onUndoable?: (message: string, undo: () => Promise<void>) => void;
 }) {
   /*
    * Whether the tick boxes are drawn at all.
@@ -173,6 +177,7 @@ export function OrdersTable({
   // the same treatment without another special case here.
   const stageIndex = stageMap(useStages());
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  const flavorById = new Map(flavors.map((flavor) => [String(flavor.id), flavor]));
   // Built once rather than per row: the list is the same for all 74 of
   // them, and a fresh array per row also denies the cell any reuse.
   const typeOptions = orderTypes
@@ -229,6 +234,9 @@ export function OrdersTable({
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
     onOpen(key);
   }
+
+  // Each row's place in the arrival cascade, counted across the days.
+  let rowAt = 0;
 
   return (
     /*
@@ -428,9 +436,12 @@ export function OrdersTable({
                 // to survive the row turning black on hover.
                 /* No border here: a row in a `border-separate` table cannot
                    paint one, and the box's edges are the cells'. */
-                className={`group cursor-pointer align-top ${isOpen ? "is-open" : ""} ${
+                className={`motion-row group cursor-pointer align-middle ${isOpen ? "is-open" : ""} ${
                   isBooked(order, stageIndex) ? "" : "is-offer"
                 }`}
+                // The arrival cascade's place in line, capped so a long
+                // list is in within half a second — see `.motion-row`.
+                style={{ "--i": Math.min(rowAt++, 12) } as React.CSSProperties}
               >
                 {/*
                   The tick box, in a gutter *beside* the box rather than
@@ -448,7 +459,7 @@ export function OrdersTable({
                   left end instead.
                 */}
                 {show("select") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     {selectable && (
                       <input
                         type="checkbox"
@@ -469,12 +480,27 @@ export function OrdersTable({
                     so it reads as the row's state rather than as another
                     of its values. */}
                 {show("status") && (
-                  <td className="px-2 py-2">
-                    <ProductionStatusSelect order={order} onChanged={onChanged} />
+                  <td className="px-2 py-1.5">
+                    {/* What the stage means, a hover away — the select
+                        itself still opens the list on a click. */}
+                    <HoverCard
+                      width={220}
+                      height={70}
+                      tone="ink"
+                      placement="below-left"
+                      className="w-fit"
+                      render={() => (
+                        <p className="text-xs leading-relaxed text-cream/85">
+                          {stageHint(stageIndex.get(order.productionStatus))}
+                        </p>
+                      )}
+                    >
+                      <ProductionStatusSelect order={order} onChanged={onChanged} />
+                    </HoverCard>
                   </td>
                 )}
                 {show("date") && (
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  <td className="px-2 py-1.5 whitespace-nowrap">
                     <EditableCell
                       type="date"
                       displayValue={formatOrderDate(order.date)}
@@ -484,7 +510,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("customer") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     <div className="flex items-center gap-1.5">
                       {/*
                         The name is two things at once: the client it belongs
@@ -519,7 +545,7 @@ export function OrdersTable({
                               onClick={startEditing}
                               title="Rename the customer on this order"
                               aria-label="Edit the customer name"
-                              className="reveals-on-hover invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-cream/20 hover:text-cream"
+                              className="reveals-on-hover invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
                             >
                               <Pencil size={11} />
                             </button>
@@ -551,7 +577,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("type") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     <EditableCell
                       displayValue={
                         order.customerType.trim() ? <EventTypeChip value={order.customerType} /> : "—"
@@ -566,7 +592,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("location") && (
-                  <td className="max-w-[130px] px-2 py-2">
+                  <td className="max-w-[130px] px-2 py-1.5">
                     <EditableCell
                       displayValue={order.location || "—"}
                       editValue={order.location}
@@ -575,7 +601,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("guests") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     <EditableCell
                       type="number"
                       displayValue={order.guests ?? "—"}
@@ -589,7 +615,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("units") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     {/* The count is the scannable number; the packages and
                         their flavours are a hover away. The dotted underline
                         is what says so — a row of bare numerals gives no
@@ -601,12 +627,15 @@ export function OrdersTable({
                       presets={presets}
                       className="w-fit"
                     >
-                      <UnitsCell units={orderUnits(order.packageLines, unitsPerPackage)} />
+                      <UnitsCell
+                        units={orderUnits(order.packageLines, unitsPerPackage)}
+                        cubes={flavourCubes(order, flavorById)}
+                      />
                     </ContentHoverCard>
                   </td>
                 )}
                 {show("mirrors") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     {/* Read-only here, unlike the counts either side of it:
                         an order can carry several display types at once, and
                         one number in a cell has nowhere to say which. The
@@ -615,7 +644,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("waitress") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     <EditableCell
                       type="number"
                       displayValue={order.waitresses ?? "—"}
@@ -629,12 +658,12 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("kosher") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     <YesNoCell value={order.kosher} onSave={(kosher) => saveField(order, { kosher })} />
                   </td>
                 )}
                 {show("delivery") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     {/* Whether there is delivery, not what it costs — the
                         price lives with the other extras on the order
                         sheet's money side. */}
@@ -645,7 +674,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("amount") && (
-                  <td className="px-2 py-2 font-semibold">
+                  <td className="px-2 py-1.5 font-semibold">
                     {/* The whole order — jelly, every extra, discount and
                         VAT — in the nav's VAT convention, the same figure
                         the Kanban card and the order form's Total show. It
@@ -668,7 +697,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("deposit") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     <EditableCell
                       type="number"
                       displayValue={currency(order.deposit)}
@@ -678,12 +707,12 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("payment") && (
-                  <td className="px-2 py-2">
-                    <PaymentStatusSelect order={order} onChanged={onChanged} />
+                  <td className="px-2 py-1.5">
+                    <PaymentStatusSelect order={order} onChanged={onChanged} onUndoable={onUndoable} />
                   </td>
                 )}
                 {show("method") && (
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-1.5">
                     {/* Edits as a dropdown over the owner's list, like the
                         Type cell: a typed value would match no row. Live
                         methods only, plus whichever this order already
@@ -797,14 +826,36 @@ function YesNoCell({ value, onSave }: { value: boolean; onSave: (value: boolean)
  * Deliberately no `title`: the browser's tooltip would open on top of the
  * very card it was pointing at.
  */
-function UnitsCell({ units }: { units: number }) {
+function UnitsCell({ units, cubes }: { units: number; cubes: Flavor[] }) {
   if (units <= 0) return <span className="text-ink-soft">—</span>;
   return (
-    <span
-      className="flex w-fit cursor-help items-center gap-1.5 border-b border-dotted border-ink-soft/60 pb-px font-semibold tabular-nums"
-    >
-      <UnitsIcon size={12} className="shrink-0 text-ink-soft" />
-      {count(units)}
+    <span className="flex w-fit cursor-help items-center gap-[3px] font-semibold tabular-nums">
+      {/* One sharp cube per flavour, largest share first, so a glance
+          says what is in it before the hover card says how much. A tray
+          with no mix decided yet shows one empty cube — that is the order
+          the kitchen most needs to ask about. */}
+      {cubes.length === 0 ? (
+        <span aria-hidden className="h-2.5 w-2.5 shrink-0 shadow-[inset_0_0_0_1.5px_var(--color-ink-soft)] opacity-50" />
+      ) : (
+        cubes.map((flavor) => (
+          <span
+            key={flavor.id}
+            aria-hidden
+            className="jelly-cube h-2.5 w-2.5 shrink-0"
+            style={cubeColors(flavor)}
+          />
+        ))
+      )}
+      <span className="ml-1.5 border-b border-dotted border-ink-soft/60 pb-px">{count(units)}</span>
     </span>
   );
+}
+
+/** Up to four flavours on an order, largest share first. */
+function flavourCubes(order: Order, flavorById: Map<string, Flavor>): Flavor[] {
+  return orderFlavorUnits(order.packageLines)
+    .sort((a, b) => b.units - a.units)
+    .map((entry) => flavorById.get(entry.flavorId))
+    .filter((flavor): flavor is Flavor => flavor !== undefined)
+    .slice(0, 4);
 }

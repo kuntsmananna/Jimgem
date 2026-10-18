@@ -17,10 +17,37 @@ const GAP = 8;
  * bottom. It cannot be measured before the card exists, and measuring
  * after would cost a second paint to move it.
  */
-function position(rect: DOMRect, width: number, height: number): { left: number; top: number } {
+function position(
+  rect: DOMRect,
+  width: number,
+  height: number,
+  placement: Placement = "side",
+): { left: number; top: number } {
+  if (placement !== "side") return positionBelow(rect, width, height, placement);
   const fitsRight = rect.right + GAP + width <= window.innerWidth - GAP;
   const left = fitsRight ? rect.right + GAP : Math.max(GAP, rect.left - GAP - width);
   const top = Math.max(GAP, Math.min(rect.top, window.innerHeight - height - GAP));
+  return { left, top };
+}
+
+type Placement = "side" | "below-left" | "below-right";
+
+/**
+ * Under the trigger, lined up with its left or right edge, and above it
+ * instead when there is no room below. For a trigger in a row of similar
+ * ones — a strip of figures — where a card to the side would sit on top of
+ * the neighbour you might hover next.
+ */
+function positionBelow(
+  rect: DOMRect,
+  width: number,
+  height: number,
+  placement: "below-left" | "below-right",
+): { left: number; top: number } {
+  const wanted = placement === "below-left" ? rect.left : rect.right - width;
+  const left = Math.max(GAP, Math.min(wanted, window.innerWidth - width - GAP));
+  const fitsBelow = rect.bottom + GAP + height <= window.innerHeight - GAP;
+  const top = fitsBelow ? rect.bottom + GAP : Math.max(GAP, rect.top - GAP - height);
   return { left, top };
 }
 
@@ -56,6 +83,7 @@ export function HoverCard({
   height,
   className = "",
   tone = "card",
+  placement = "side",
   render,
   children,
 }: {
@@ -68,6 +96,8 @@ export function HoverCard({
    * form's money rail wears, so a breakdown reads as that rail in small.
    */
   tone?: "card" | "ink";
+  /** Beside the trigger (the default), or under it — see `positionBelow`. */
+  placement?: Placement;
   render: () => ReactNode;
   children: ReactNode;
 }) {
@@ -84,7 +114,7 @@ export function HoverCard({
       className={className}
       onMouseEnter={(e) => {
         if (coarse) return;
-        setAt(position(e.currentTarget.getBoundingClientRect(), width, height));
+        setAt(position(e.currentTarget.getBoundingClientRect(), width, height, placement));
       }}
       onMouseLeave={() => {
         if (!coarse) setAt(null);
@@ -92,7 +122,7 @@ export function HoverCard({
       onClick={(e) => {
         if (!coarse) return;
         setAt((open) =>
-          open ? null : position(e.currentTarget.getBoundingClientRect(), width, height),
+          open ? null : position(e.currentTarget.getBoundingClientRect(), width, height, placement),
         );
       }}
     >

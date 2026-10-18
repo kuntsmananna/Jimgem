@@ -37,6 +37,7 @@ import {
   toPackageLines,
   type DraftPackageLine,
 } from "./PackageLineEditor";
+import { JellyHop } from "@/components/JellyLoader";
 
 /**
  * The form's three tabs, in the order an order is actually filled in:
@@ -630,7 +631,7 @@ export function OrderForm({
         <span className="flex-1 max-md:basis-full" />
         <button
           onClick={onCancel}
-          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink max-md:flex-1 max-md:py-2.5 max-md:text-sm"
+          className="press rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-ink max-md:flex-1 max-md:py-2.5 max-md:text-sm"
         >
           {cancelLabel}
         </button>
@@ -640,9 +641,13 @@ export function OrderForm({
           title={
             draft.customer.trim().length === 0 ? "Give the order a customer name first" : undefined
           }
-          className="rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream disabled:opacity-40 max-md:flex-1 max-md:py-2.5 max-md:text-sm"
+          // Full strength while saving, so the loader inside reads as
+          // working rather than as a button that has gone dead.
+          className={`press inline-flex min-w-[6.5rem] items-center justify-center rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream max-md:flex-1 max-md:py-2.5 max-md:text-sm ${
+            busy ? "" : "disabled:opacity-40"
+          }`}
         >
-          {isEdit ? "Save changes" : "Save order"}
+          {busy ? <JellyHop label="Saving the order" /> : isEdit ? "Save changes" : "Save order"}
         </button>
       </div>
 

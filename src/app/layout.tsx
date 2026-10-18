@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bricolage_Grotesque } from "next/font/google";
+import { Plus_Jakarta_Sans, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+/*
+ * Plus Jakarta Sans for the interface, Bricolage for figures and headings.
+ * Jakarta replaced Inter in the v0.73 refresh: its rounder, slightly wider
+ * forms sit closer to Bricolage, so a row of a name, a chip and a figure
+ * reads as one voice rather than two.
+ */
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-jakarta",
 });
 
 const bricolageGrotesque = Bricolage_Grotesque({
@@ -54,12 +60,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#F4EBE7",
+  themeColor: "#F6EEEA",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${bricolageGrotesque.variable}`}>
+    <html lang="en" className={`${jakarta.variable} ${bricolageGrotesque.variable}`}>
       <body>{children}</body>
     </html>
   );

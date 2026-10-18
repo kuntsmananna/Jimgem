@@ -718,11 +718,15 @@ for a 400px pane; on a 328px card it eats most of the top row.
 Pulled from gem-bites.com's own site plus owner-directed visual
 iteration (not guessed) — define these as `@theme` tokens in
 `src/app/globals.css`, don't hardcode hex values in components:
-- Cream `#F4EBE7` background, black `#000000` for nav/buttons/pills,
-  muted sage `#4f6f52` as the one UI accent (chart lines, links).
-- Type: **Inter** (500/600/700) for body/dense UI, **Bricolage
-  Grotesque** (700/800) for the wordmark/headlines/big KPI numbers —
-  both loaded via `next/font/google`.
+- Cream `#F6EEEA` background (warmed from `#F4EBE7` in v0.73), ink
+  `#2A2520` — a brown-black rather than a cold one — black `#000000` for
+  nav/buttons/pills, muted sage `#4f6f52` as the one UI accent (chart
+  lines, links).
+- Type: **Plus Jakarta Sans** (500/600/700) for body/dense UI, **Bricolage
+  Grotesque** (700/800) for the wordmark/headlines/big KPI numbers — both
+  loaded via `next/font/google`. Jakarta replaced Inter in v0.73: its
+  rounder forms sit closer to Bricolage, so a name, a chip and a figure on
+  one row read as one voice.
 - Shape: 20-22px card radius, `999px` (pill) on buttons/nav/badges.
 - Icons: **lucide-react**, used where they aid scanning (KPI tiles,
   action buttons, view switcher, event types, expense categories) and
@@ -2224,6 +2228,55 @@ default set does not use and made narrow windows scroll for nothing. Auto
 layout already refuses to squeeze columns past their content. Measured
 after: no horizontal scrollbar at 1000, 1080, 1130 or 1400px of container,
 and one at 940px, where the columns genuinely do not fit.
+
+**The v0.73 refresh started on Orders, and is meant to spread page by
+page.** It came out of a design canvas (directions A/B/C, then five
+variations on B) where the owner picked B5's warm palette with less round
+corners and B4's sharp jelly cubes. What it changed on Orders:
+
+- **A hovered order lifts instead of turning black.** The row brightens to
+  near-white, rises 1px and casts a wide warm shadow. The shadow is a
+  `filter: drop-shadow` on the `<tr>`: a `border-separate` row has no box,
+  so a box-shadow paints a square slab behind the rounded cells, while a
+  drop-shadow follows exactly what the cells paint. At rest the cells are
+  72% white so the hovered one is the brightest thing in the list. Every
+  other `.hover-line` (Kanban, calendar, Expenses, Settings) is still the
+  black invert until its own page is redone.
+- **Rows are compact** (`py-1.5`, ~38px, centred) and **arrive in a
+  cascade** (`.motion-row`, 22ms apart, capped at 12 steps). The animation
+  fills `backwards`, never `both`: a held end state pins `transform` and
+  the hover lift could not move the row.
+- **The figures are a strip, not a rail** — `OrdersSummary` is four slim
+  tiles above the list (Income, Balance due, Orders, Units), no shadow and
+  no colour, each with its detail in a dark `HoverCard` under it: who owes
+  what, orders by status, units by flavour. It used to be a 140px column
+  beside the table. `HoverCard` gained `placement` for that (`below-left` /
+  `below-right`), since a card to the side of a tile sits on its neighbour.
+- **Sharp jelly cubes** are `.jelly-cube`, coloured through `--g/--b/--s`
+  (`cubeColors` in `JellyLoader.tsx`), so any flavour row or chart ramp can
+  wear one. The Units cell leads with one per flavour, largest first; a
+  tray with no mix decided shows an empty outline.
+- **The payment badge opens a list** (`PaymentStatusSelect`), portalled to
+  the top layer like `HoverCard` so no row can cover it, flipping above
+  the badge when there is no room below, closed by Escape, a click outside
+  or a scroll. The badge holds `JellyHop` while saving and the page's Undo
+  bar offers the change back. Status chips explain their stage on hover
+  (`stageHint`), from the two flags a stage actually has.
+- **Loaders are jelly.** `JellyPile` — six cubes dropped in turn that
+  squash, bounce and tumble into a crooked heap, one keyframe driven by
+  per-cube custom properties — is the route loader (`orders/loading.tsx`,
+  over `.skeleton` rows). `JellyHop` is the small one for a button or chip
+  that is working (the payment badge, the order form's Save). Both are
+  server-safe markup; CSS does all the moving.
+- **Empty is a state with a way out** (`EmptyState`): an empty tray with
+  one cube, a sentence naming *why* the list is empty — a search, the time
+  window, the filters, or no orders at all — and the button that fixes
+  that cause.
+- **Buttons press, they do not rise** (`.press`: scale 1.04 on hover, 0.97
+  on click) — the owner's call; a button lifting off its baseline reads as
+  moving out from under the cursor.
+- All of it is in the `prefers-reduced-motion` rule: the heap is shown
+  built, the cascade and the lift are off.
 
 **The Amount column is the whole order** — jelly, every extra, discount
 and VAT, through `forOrder`, so it is the figure the Kanban card and the
