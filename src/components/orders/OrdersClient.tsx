@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, CalendarRange, Columns3, Copy, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, Columns3, Copy, CreditCard, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   isBooked,
@@ -100,6 +100,9 @@ function optionsWithCounts<T extends string>(labels: Record<T, string>, values: 
   }));
 }
 
+/** The Paid by filter's value for an order with no payment method yet. */
+const NO_METHOD = "none";
+
 export function OrdersClient({
   orders,
   flavors,
@@ -124,6 +127,8 @@ export function OrdersClient({
   const stages = useStages();
   const [view, setView] = useState<View>("table");
   const [paymentFilter, setPaymentFilter] = useState<Set<PaymentStatus>>(new Set());
+  // Payment-method ids as strings, plus NO_METHOD for "nobody has said yet".
+  const [methodFilter, setMethodFilter] = useState<Set<string>>(new Set());
   // The next fortnight by default: the page is a work queue first and an
   // archive second, and 74 orders spanning a year buries the ones due.
   const [scope, setScope] = useState<ScopeId>("14d");
@@ -225,6 +230,16 @@ export function OrdersClient({
     [bySearch, paymentFilter],
   );
 
+  const byMethod = useMemo(
+    () =>
+      byPayment.filter(
+        (o) =>
+          methodFilter.size === 0 ||
+          methodFilter.has(o.paymentMethodId === null ? NO_METHOD : String(o.paymentMethodId)),
+      ),
+    [byPayment, methodFilter],
+  );
+
   /**
    * Table and calendar narrow to the chosen stages. Kanban does not use
    * this: it *is* the production board, its columns already are the
@@ -232,8 +247,8 @@ export function OrdersClient({
    * is meant to be tracking.
    */
   const filtered = useMemo(
-    () => byPayment.filter((o) => stageFilter.size === 0 || stageFilter.has(o.productionStatus)),
-    [byPayment, stageFilter],
+    () => byMethod.filter((o) => stageFilter.size === 0 || stageFilter.has(o.productionStatus)),
+    [byMethod, stageFilter],
   );
 
   /*
@@ -251,7 +266,7 @@ export function OrdersClient({
    * two lists — so the choice is made once here rather than at each of
    * the four places that used to repeat the ternary.
    */
-  const source = view === "kanban" ? byPayment : filtered;
+  const source = view === "kanban" ? byMethod : filtered;
   const inScope = source.filter((o) => inRange(o.date, range));
 
   // The summary describes exactly the list on screen, against the same
@@ -315,6 +330,26 @@ export function OrdersClient({
       ),
     [orders],
   );
+
+  /**
+   * The owner's payment methods with how many orders each holds, then "Not
+   * yet" for orders nobody has given one. Live methods are offered; a
+   * retired one only while orders still name it, so those can be found
+   * rather than filtered into nowhere — the rule `stageOptions` follows.
+   */
+  const methodOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const order of orders) {
+      const key = order.paymentMethodId === null ? NO_METHOD : String(order.paymentMethodId);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [
+      ...paymentMethods
+        .filter((m) => !m.archivedAt || (counts.get(String(m.id)) ?? 0) > 0)
+        .map((m) => ({ value: String(m.id), label: m.name, count: counts.get(String(m.id)) ?? 0 })),
+      { value: NO_METHOD, label: "Not yet", count: counts.get(NO_METHOD) ?? 0 },
+    ];
+  }, [orders, paymentMethods]);
 
   const stageOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -567,6 +602,16 @@ export function OrdersClient({
                 onChange={setPaymentFilter}
               />
             )}
+            {/* How they paid is money too — the same rule. */}
+            {money && (
+              <FilterDropdown
+                label="Paid by"
+                icon={<CreditCard size={13} />}
+                options={methodOptions}
+                selected={methodFilter}
+                onChange={setMethodFilter}
+              />
+            )}
             <FilterDropdown
               label="Status"
               icon={<ListChecks size={13} />}
@@ -674,6 +719,16 @@ export function OrdersClient({
                 options={paymentOptions}
                 selected={paymentFilter}
                 onChange={setPaymentFilter}
+              />
+            )}
+            {/* How they paid is money too — the same rule. */}
+            {money && (
+              <FilterDropdown
+                label="Paid by"
+                icon={<CreditCard size={13} />}
+                options={methodOptions}
+                selected={methodFilter}
+                onChange={setMethodFilter}
               />
             )}
             <FilterDropdown

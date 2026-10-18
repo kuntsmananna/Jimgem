@@ -1161,6 +1161,11 @@ compares identity, and a panel builds a fresh draft before every call.
   layout: nothing outside Orders reads it. **Run migration 031 before
   shipping** — the read path survives without the column (`SELECT *` just
   lacks it), but every order save writes it.
+  It is also a **Paid by filter** in the Orders toolbar, beside Payment —
+  the same `FilterDropdown`, admin-only like the column, with a **Not
+  yet** option for orders with no method. It narrows the board too,
+  unlike Status, since the board's columns are stages and not methods. On
+  a phone the toolbar is four chips now and wraps to two rows at 360-390px.
 - **`clients.source` is where they came from**, free text like
   `orders.customer` and `expenses.business` — Instagram, a Google search, a
   friend, a wedding they ate at. Not a list of channels: the useful answer
