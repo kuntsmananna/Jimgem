@@ -111,6 +111,7 @@ export function ClientModal({
           </Field>
           <Field label="Phone">
             <TextInput
+              data-private
               value={draft.phone}
               onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
               placeholder="050…"
@@ -146,7 +147,7 @@ export function ClientModal({
           {client.phone && (
             <span className="flex items-center gap-1">
               <Phone size={12} />
-              {client.phone}
+              <span data-private>{client.phone}</span>
             </span>
           )}
           {client.email && (

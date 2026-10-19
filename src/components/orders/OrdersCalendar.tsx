@@ -279,7 +279,7 @@ export function OrdersCalendar({
                           <p data-private className="truncate font-semibold text-ink">
                             {order.customer || "(no name)"}
                           </p>
-                          {order.location && <p className="truncate text-ink-soft">{order.location}</p>}
+                          {order.location && <p data-private className="truncate text-ink-soft">{order.location}</p>}
                           {units > 0 && <p className="text-ink-soft">{units} units</p>}
                         </button>
                       </OrderHoverCard>

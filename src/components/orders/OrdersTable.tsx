@@ -526,7 +526,7 @@ export function OrdersTable({
                         displayValue={
                           order.location ? (
                             <Tip label={`Where the event is: ${order.location}`} className="block truncate text-ink-soft">
-                              {order.location}
+                              <span data-private>{order.location}</span>
                             </Tip>
                           ) : (
                             <span className="text-ink-soft/50">—</span>

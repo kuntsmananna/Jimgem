@@ -295,7 +295,7 @@ export function ClientsClient({
                 <span data-private className="min-w-0 truncate text-sm font-semibold text-ink" title={COLUMN_HELP.name}>
                   {client.name}
                 </span>
-                <span className="truncate text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.phone}>
+                <span data-private className="truncate text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.phone}>
                   {client.phone || "—"}
                 </span>
                 <span className="text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.orders}>

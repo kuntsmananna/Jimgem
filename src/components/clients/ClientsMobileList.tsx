@@ -92,7 +92,7 @@ export function ClientsMobileList({
                   card's right edge — a figure clipped mid-digit, which is
                   worse than a number cut short next to a button that
                   dials it anyway. */}
-              <span className="min-w-0 truncate tabular-nums">{client.phone || "no phone"}</span>
+              <span data-private={client.phone ? true : undefined} className="min-w-0 truncate tabular-nums">{client.phone || "no phone"}</span>
               {client.orderCount > 0 && (
                 <span className="shrink-0">
                   · {client.orderCount}

@@ -198,7 +198,7 @@ function OrderCard({
             location 7px after its label, which truncates a venue name to a
             single character — a card that shows less than the table it
             replaced. Across both columns it gets ~270px. */}
-        {order.location && <Figure label="Location" value={order.location} wide />}
+        {order.location && <Figure label="Location" value={order.location} wide isPrivate />}
         {order.guests !== null && (
           <div className="flex items-baseline justify-between gap-2">
             <dt className="shrink-0 text-ink-soft">Guests</dt>

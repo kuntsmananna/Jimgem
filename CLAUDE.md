@@ -2014,7 +2014,8 @@ compares identity, and a panel builds a fresh draft before every call.
   cleared, so at rest it is exactly the element it was. One rAF loop runs
   only while something is moving.
 - **Hide mode** (v0.85, `src/components/HideMode.tsx`) blurs every money
-  figure and every client name — for a screen shown across a table or
+  figure and everything that says who and where — client names, phone
+  numbers and event locations — for a screen shown across a table or
   opened in public. An eye beside Jelly mode's blob (and beside it again at
   the top of the phone's More sheet). **Quantities stay sharp** — units,
   guests and counts are not what anybody is hiding, the owner's call. It
@@ -2028,7 +2029,8 @@ compares identity, and a panel builds a fresh draft before every call.
   because JSX's `₪{x}` is two text nodes. A new screen is covered the day
   it is written. Money *inputs* hold their figure as a value, so those say
   `data-money` themselves (`MoneyInput`, `DiscountInput`, the expense
-  amount, `RateList`), and names carry `data-private` where drawn —
+  amount, `RateList`), and names, phones and locations carry `data-private` where drawn (`Figure`'s
+  `isPrivate` for the phone card's location) —
   `Modal`'s `privateTitle` for the client card's band. A focused field
   unblurs, so it can be typed in. The first pass waits for the load event
   and an idle moment: written before React hydrates a Suspense boundary,

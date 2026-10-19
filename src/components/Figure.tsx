@@ -16,16 +16,26 @@ export function Figure({
   label,
   value,
   wide = false,
+  isPrivate = false,
 }: {
   label: string;
   value: string;
   /** Span both columns of a two-column grid, for a value that needs the room. */
   wide?: boolean;
+  /** A value hide mode blurs — a venue, rather than a count. */
+  isPrivate?: boolean;
 }) {
   return (
-    <div className={`flex items-baseline justify-between gap-2 ${wide ? "col-span-2" : ""}`}>
+    <div
+      className={`flex items-baseline justify-between gap-2 ${wide ? "col-span-2" : ""}`}
+    >
       <dt className="shrink-0 text-ink-soft">{label}</dt>
-      <dd className="min-w-0 truncate font-semibold text-ink tabular-nums">{value}</dd>
+      <dd
+        data-private={isPrivate || undefined}
+        className="min-w-0 truncate font-semibold text-ink tabular-nums"
+      >
+        {value}
+      </dd>
     </div>
   );
 }

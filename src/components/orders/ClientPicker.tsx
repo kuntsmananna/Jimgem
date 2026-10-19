@@ -111,7 +111,7 @@ export function ClientPicker({
                 className="flex items-center gap-1 text-ink-soft max-md:gap-1.5 max-md:text-base max-md:text-ink max-md:tabular-nums"
               >
                 <Phone size={11} className="max-md:h-[15px] max-md:w-[15px] max-md:text-ink-soft" />
-                {picked.phone}
+                <span data-private>{picked.phone}</span>
               </a>
             )}
             {picked.sumitCustomerId && <span className="text-ink-soft">· linked to SUMIT</span>}
@@ -139,6 +139,7 @@ export function ClientPicker({
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
+                data-private
                 value={phone}
                 onChange={(e) => onPhone(e.target.value)}
                 placeholder="Phone"
@@ -168,7 +169,7 @@ export function ClientPicker({
                 className="hover-line flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink"
               >
                 <span data-private className="truncate font-semibold">{client.name}</span>
-                {client.phone && <span className="shrink-0 text-[11px] text-ink-soft">{client.phone}</span>}
+                {client.phone && <span data-private className="shrink-0 text-[11px] text-ink-soft">{client.phone}</span>}
                 {client.archivedAt && <span className="shrink-0 text-[11px] text-ink-soft">archived</span>}
               </button>
             </li>

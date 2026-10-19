@@ -78,7 +78,7 @@ export function OrderReview({
           {draft.location && (
             <span className="flex min-w-0 items-center gap-1.5">
               <MapPin size={15} aria-hidden className="shrink-0 text-ink-soft" />
-              <span className="truncate">{draft.location}</span>
+              <span data-private className="truncate">{draft.location}</span>
             </span>
           )}
         </div>

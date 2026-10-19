@@ -104,7 +104,7 @@ export function DashboardOrdersPane({ orders: previewOrders }: { orders: OrderPr
               <EventTypeChip value={order.customerType} className="w-28 shrink-0" />
               <span className="flex min-w-0 flex-1 items-center gap-1 text-xs text-ink-soft">
                 <MapPin size={12} className="shrink-0" />
-                <span className="truncate" title={order.location}>
+                <span data-private className="truncate" title={order.location}>
                   {order.location || "—"}
                 </span>
               </span>

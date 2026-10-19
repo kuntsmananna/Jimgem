@@ -84,7 +84,7 @@ export function OrderHoverCard({
               {order.location && (
                 <div className="flex items-start gap-1.5">
                   <MapPin size={12} className="mt-0.5 shrink-0" />
-                  <span>{order.location}</span>
+                  <span data-private>{order.location}</span>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

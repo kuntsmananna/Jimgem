@@ -182,6 +182,7 @@ export function OrderCustomerPanel({
               />
               <TextInput
                 value={draft.location}
+                data-private
                 onChange={(e) => set({ location: e.target.value })}
                 placeholder="Location"
                 aria-label="Location"
