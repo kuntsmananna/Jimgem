@@ -246,7 +246,9 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
 function Page({ announcement }: { announcement: Announcement }) {
   return (
     <>
-      {announcement.art === "orders-table" ? (
+      {announcement.art === "jelly-mode" ? (
+        <JellyModeIllustration />
+      ) : announcement.art === "orders-table" ? (
         <OrdersTableIllustration />
       ) : announcement.art === "refresh" ? (
         <RefreshIllustration />
@@ -505,6 +507,44 @@ function OrdersTableIllustration() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * v0.79's picture: a few of the app's chips and cubes caught mid-wobble —
+ * skewed and squashed the way `wobble` poses them — with the switch's own
+ * cube lit in its black pill. Drawn still; the picture says what moves.
+ */
+function JellyModeIllustration() {
+  const pieces: { label?: string; tint?: string; cube?: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS]; pose: string }[] = [
+    { label: "Queued", tint: "bg-tile-lavender", pose: "skewX(-12deg) scale(1.06, 0.94)" },
+    { cube: SERIES_COLORS.berry, pose: "skewX(10deg) scale(0.92, 1.08) rotate(-6deg)" },
+    { label: "Deposit paid", tint: "bg-tile-peach", pose: "skewX(8deg) scale(0.95, 1.05)" },
+    { cube: SERIES_COLORS.jasmine, pose: "skewX(-14deg) scale(1.08, 0.92) rotate(5deg)" },
+    { label: "Birthday", tint: "bg-tile-mint", pose: "skewX(-6deg) scale(1.03, 0.97)" },
+    { cube: SERIES_COLORS.midori, pose: "skewX(12deg) scale(0.94, 1.06) rotate(-3deg)" },
+  ];
+  return (
+    <div aria-hidden className="relative flex flex-col items-center gap-5 overflow-hidden rounded-2xl bg-band px-4 py-7">
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {pieces.map((piece, i) =>
+          piece.cube ? (
+            <span key={i} className="jelly-cube h-5 w-5" style={{ ...cubeColors(piece.cube), transform: piece.pose }} />
+          ) : (
+            <span
+              key={i}
+              className={`rounded-full px-3 py-1 text-[11px] font-bold text-ink ${piece.tint}`}
+              style={{ transform: piece.pose }}
+            >
+              {piece.label}
+            </span>
+          ),
+        )}
+      </div>
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black">
+        <span className="jelly-cube h-3.5 w-3.5" style={cubeColors(SERIES_COLORS.berry)} />
+      </span>
     </div>
   );
 }

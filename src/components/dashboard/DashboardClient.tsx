@@ -307,7 +307,7 @@ function KpiTile({
   const deltaText = delta === null ? "—" : `${delta > 0 ? "+" : ""}${Math.round(delta)}%`;
 
   return (
-    <div className="rounded-card p-5 max-md:p-4" style={{ background: `var(--color-tile-${tile})` }}>
+    <div data-jiggle className="rounded-card p-5 max-md:p-4" style={{ background: `var(--color-tile-${tile})` }}>
       <div className="flex items-start justify-between">
         <p className="text-xs font-semibold text-ink/70">{label}</p>
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-cream">

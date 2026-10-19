@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Box,
   ClipboardList,
   Ellipsis,
   LayoutDashboard,
@@ -19,6 +20,7 @@ import { logout } from "@/app/login/actions";
 import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
 import { WhatsNew, WhatsNewButton } from "@/components/WhatsNew";
+import { JellyModeButton, useJellyMode } from "@/components/JellyMode";
 import { announcementsFor } from "@/lib/announcement";
 import { useIsAdmin } from "@/components/RoleContext";
 
@@ -87,6 +89,7 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
   const admin = useIsAdmin();
   const [newsOpen, setNewsOpen] = useState(false);
   const staffNews = admin ? [] : announcementsFor("staff");
+  const jelly = useJellyMode();
 
   return (
     <>
@@ -122,6 +125,9 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
             {staffNews.length > 0 && (
               <BarItem label="What's new" icon={Sparkles} active={newsOpen} onClick={() => setNewsOpen(true)} />
             )}
+            {/* Jelly mode, which an admin finds in More — a staff account
+                has no More, so it takes a cell. */}
+            <BarItem label="Jelly" icon={Box} active={jelly.on} onClick={jelly.toggle} pressed />
             <form action={logout} className="flex flex-1">
               <BarItem label="Sign out" icon={LogOut} active={false} type="submit" />
             </form>
@@ -151,6 +157,7 @@ function BarItem({
   active,
   onClick,
   type = "button",
+  pressed = false,
 }: {
   href?: string;
   label: string;
@@ -159,6 +166,8 @@ function BarItem({
   onClick?: () => void;
   /** "submit" for the cell that is a form's button — staff's sign-out. */
   type?: "button" | "submit";
+  /** A switch rather than a sheet-opener — reports `aria-pressed` instead. */
+  pressed?: boolean;
 }) {
   const body = (
     <>
@@ -197,7 +206,8 @@ function BarItem({
       onClick={onClick}
       className={shape}
       // Only the cell that opens a sheet has an expanded state to report.
-      aria-expanded={type === "button" ? active : undefined}
+      aria-expanded={type === "button" && !pressed ? active : undefined}
+      aria-pressed={pressed ? active : undefined}
     >
       {body}
     </button>
@@ -251,6 +261,7 @@ function MoreSheet({
 
         <div className="border-t border-cream/15">
           <WhatsNewButton variant="row" />
+          <JellyModeButton variant="row" />
         </div>
 
         {/*

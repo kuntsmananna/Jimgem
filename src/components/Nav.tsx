@@ -11,6 +11,7 @@ import { useIsAdmin } from "@/components/RoleContext";
 import { VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
 import { STAFF_HOME } from "@/lib/roles";
 import { WhatsNewButton } from "@/components/WhatsNew";
+import { JellyModeButton } from "@/components/JellyMode";
 
 /*
  * The desktop row. `/tasks` is deliberately **not** here: the same list is
@@ -116,6 +117,8 @@ export function Nav({ name, version }: { name: string; version: string }) {
         {/* Every release again, on demand — for staff too, who are told
             about the ones that concern them. */}
         <WhatsNewButton />
+        {/* Jelly mode — a toy, for everyone, off each new visit. */}
+        <JellyModeButton />
         {/* The one control that governs what a shekel means, and so of no
             use at all to an account that is shown none. */}
         {admin && <VatViewToggle />}

@@ -9,6 +9,7 @@ import { HeaderSlotProvider } from "@/components/HeaderSlot";
 import { OrderTypesProvider } from "@/components/OrderTypesContext";
 import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
 import { VatViewProvider } from "@/components/VatViewContext";
+import { JellyModeProvider } from "@/components/JellyMode";
 import { RoleProvider } from "@/components/RoleContext";
 import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
 import { getSeenAnnouncements } from "@/lib/announcementViews";
@@ -52,6 +53,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           something to put there — today, a search box. Above `Nav` and
           `main` both, because one writes the slot and the other fills it. */}
       <HeaderSlotProvider>
+      {/* Jelly mode's switch lives in both navs and its motion on every
+          page — see JellyMode.tsx. Off at the start of every visit. */}
+      <JellyModeProvider>
       <div className="min-h-screen">
         {/* Version lives in the nav so every page carries it, not just the
             Dashboard — it is how a deployed build is identified. */}
@@ -66,6 +70,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {/* Once per person per release — see lib/announcement.ts. */}
         {announcements.length > 0 && <WhatsNew announcements={announcements} />}
       </div>
+      </JellyModeProvider>
       </HeaderSlotProvider>
       </VatViewProvider>
       </ProductionStagesProvider>

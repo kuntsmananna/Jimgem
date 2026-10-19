@@ -171,6 +171,7 @@ function KpiTile({ label, value, tile }: { label: string; value: string; tile: "
      * keeps five tiles of different label lengths reading as one row.
      */
     <div
+      data-jiggle
       className="rounded-card p-5 max-md:flex max-md:aspect-square max-md:w-40 max-md:shrink-0 max-md:snap-start max-md:flex-col max-md:justify-end max-md:p-4"
       style={{ background: `var(--color-tile-${tile})` }}
     >

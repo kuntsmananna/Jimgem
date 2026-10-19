@@ -4,6 +4,7 @@ import { memo, useMemo, useRef, type PointerEvent } from "react";
 import { evenSplit, type OrderLineFlavor } from "@/lib/orderTypes";
 import type { Flavor } from "@/lib/settings";
 import { flavorCubeGradient, isMixFlavor } from "@/lib/flavorStyle";
+import { wobble, WOBBLE_MS } from "@/components/wobble";
 
 /**
  * Above this many units a literal grid stops being readable — cubes drop
@@ -269,8 +270,6 @@ function Grid({
 
 /** At most one new wobble this often while the pointer keeps moving. */
 const JIGGLE_EVERY_MS = 110;
-/** How long one wobble takes to settle. */
-const JIGGLE_MS = 700;
 /** How far the pointer travels between two wobbles for one to be as big as it gets. */
 const JIGGLE_FULL_PX = 96;
 
@@ -297,13 +296,12 @@ const JIGGLE_FULL_PX = 96;
  */
 function useJiggle(columns: number) {
   const last = useRef<{ x: number; y: number; at: number } | null>(null);
-  const running = useRef(new WeakMap<Element, Animation>());
   return (e: PointerEvent<HTMLDivElement>) => {
     const now = performance.now();
     const previous = last.current;
     if (previous && now - previous.at < JIGGLE_EVERY_MS) return;
     last.current = { x: e.clientX, y: e.clientY, at: now };
-    if (!previous || now - previous.at > JIGGLE_MS) return;
+    if (!previous || now - previous.at > WOBBLE_MS) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const dx = e.clientX - previous.x;
@@ -326,27 +324,7 @@ function useJiggle(columns: number) {
       // event tray of a thousand cubes still animates a few dozen.
       const reach = 1 - distance / (size * 6);
       if (reach <= 0) return;
-      const lean = strength * reach;
-      const pose = (k: number) => {
-        const skew = -ux * 14 * lean * k;
-        const shift = ux * 2 * lean * k;
-        // Pushed down it squashes, pulled up it stretches.
-        const squash = 1 - uy * 0.12 * lean * k;
-        return `translateX(${shift}px) skewX(${skew}deg) scale(${2 - squash}, ${squash})`;
-      };
-      running.current.get(cube)?.cancel();
-      const wobble = cube.animate(
-        [
-          { transform: "none" },
-          { transform: pose(1), offset: 0.16 },
-          { transform: pose(-0.55), offset: 0.4 },
-          { transform: pose(0.28), offset: 0.62 },
-          { transform: pose(-0.1), offset: 0.82 },
-          { transform: "none" },
-        ],
-        { duration: JIGGLE_MS, easing: "ease-out", delay: Math.min(120, distance * 0.35), fill: "backwards" },
-      );
-      running.current.set(cube, wobble);
+      wobble(cube, ux, uy, strength * reach, Math.min(120, distance * 0.35));
     });
   };
 }

@@ -730,6 +730,7 @@ function Extras({ order }: { order: Order }) {
       {slots.map(({ icon: Icon, on, label }) => (
         <Tip key={label} label={label}>
           <span
+            data-jiggle
             className={`relative flex h-6 w-6 items-center justify-center rounded-[7px] ${
               on ? "bg-band text-ink" : "text-ink-soft opacity-25"
             }`}

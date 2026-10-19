@@ -18,7 +18,7 @@ export interface Announcement {
   /** Who it is for — a release about money is admin-only, since a staff login never sees money. */
   audience: Role[];
   /** Which picture heads it — see `WhatsNew`. */
-  art: "paid-by" | "refresh" | "orders-table";
+  art: "paid-by" | "refresh" | "orders-table" | "jelly-mode";
   /** This release's page heading. The popup itself is always titled "What's new". */
   title: string;
   lede: string;
@@ -30,6 +30,31 @@ export interface Announcement {
 }
 
 export const ANNOUNCEMENTS: Announcement[] = [
+  // v0.79: jelly mode, for everyone — a toy, so worded as one.
+  {
+    id: "v0.79-jelly-mode",
+    audience: ["admin", "staff"],
+    art: "jelly-mode",
+    title: "Jelly mode",
+    lede: "A little cube beside the sparkle switches on jelly mode: the app's cubes, chips and tiles wobble like the real thing.",
+    items: [
+      {
+        icon: "hover",
+        title: "On a laptop",
+        text: "Move the mouse past them and they wobble, harder the faster you go.",
+      },
+      {
+        icon: "jelly",
+        title: "On a phone",
+        text: "Shake it and everything bounces; tilt it and the jelly leans. Find it in More (or the bottom bar).",
+      },
+      {
+        icon: "lift",
+        title: "Never in the way",
+        text: "It holds still while a popup is open or you’re typing, and it’s off again next visit.",
+      },
+    ],
+  },
   /*
    * v0.78, the admin half: the money columns and the tick boxes, neither of
    * which a staff account has — so it is a page of its own rather than

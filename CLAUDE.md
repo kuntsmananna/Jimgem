@@ -1824,6 +1824,32 @@ compares identity, and a panel builds a fresh draft before every call.
   on close. The icon carries a `HoverCard` saying what it is, which opens
   the moment the pointer arrives — a bare sparkle explains nothing, and a
   `title` takes a second to appear.
+- **Jelly mode** (v0.79, `src/components/JellyMode.tsx`) is a toy the
+  owner asked for: a small jelly cube beside the What's new sparkle (a row
+  in the phone's More sheet; a **Jelly** cell in a staff account's bottom
+  bar, which has no More) that makes the app's **decorative pieces only**
+  wobble — jelly cubes, chips and badges (`.keeps-color`, `.chip-neutral`,
+  which every chip already wears, so a new chip joins without opting in)
+  and `data-jiggle` on the extras marks and the figure tiles. Rows, panes,
+  fields and text never move, so the list can still be worked with it on.
+  On a laptop the mouse ripples the pieces it passes, nearest first and
+  harder the faster it moves; on a phone a **shake** (`devicemotion`,
+  gravity removed) bounces everything on screen and a **tilt**
+  (`deviceorientation`'s gamma, eased) leans it through `--jelly-tilt` on
+  the root — applied as `rotate`, not `transform`, so a shake's wobble
+  composes with the lean, and only under `.jelly-tilt` because a `rotate`
+  creates a stacking context nothing else should pay for. iOS motion
+  permission is asked from inside the tap that switches it on, the only
+  place iOS allows. It **holds still** while a popup is open
+  (`overlayOpen()` in `useOverlayDismiss.ts`) or the caret is in a field,
+  and it is **off at the start of every visit** — plain state in the app
+  layout's `JellyModeProvider`, no cookie, the owner's call. The motion
+  itself is `wobble()` in `src/components/wobble.ts`, shared with the tray
+  preview's brush-to-jiggle so the two are the same jelly.
+- **`HoverCard` measures on tap before it sets state.** Its tap-to-open
+  read `e.currentTarget` inside a `setAt` updater, which React can run
+  after the event's target has been cleared — every tap that opened a card
+  on a phone threw. Found while testing jelly mode on a touch screen.
 - **The read path survives its own migration not having been run yet.**
   `getSeriesHeads` catches `isMissingColumn(error, "recurring")` and
   answers "nothing repeats", so the Expenses page and Settings stay up in

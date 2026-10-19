@@ -219,6 +219,7 @@ function OrderCard({
           {extras.map(({ icon: Icon, short }) => (
             <span
               key={short}
+              data-jiggle
               className="flex items-center gap-1 rounded-full bg-band px-2 py-0.5 text-[11px] font-semibold text-ink"
             >
               <Icon size={12} aria-hidden />

@@ -123,9 +123,11 @@ export function HoverCard({
       }}
       onClick={(e) => {
         if (!coarse) return;
-        setAt((open) =>
-          open ? null : position(e.currentTarget.getBoundingClientRect(), width, height, placement),
-        );
+        // Measured now, not inside the updater: React can run that later,
+        // when the event's `currentTarget` has already been cleared — which
+        // threw on every tap that opened a card.
+        const rect = e.currentTarget.getBoundingClientRect();
+        setAt((open) => (open ? null : position(rect, width, height, placement)));
       }}
     >
       {children}

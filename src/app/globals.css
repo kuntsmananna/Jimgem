@@ -1102,3 +1102,15 @@ thead .pick-box,
   border-start-end-radius: 0.75rem;
   border-end-end-radius: 0.75rem;
 }
+
+/*
+ * Jelly mode's tilt (v0.79): on a phone, tilting it leans every jiggly
+ * piece the way it tips, set as one property on the root by `JellyMode`.
+ * `rotate` rather than `transform`, so a shake's wobble — which animates
+ * `transform` — composes with the lean instead of replacing it. Only while
+ * `.jelly-tilt` is on the root: a `rotate` creates a stacking context, and
+ * nothing should be paying for that on a laptop or with the mode off.
+ */
+.jelly-tilt :is(.jelly-cube, .keeps-color, .chip-neutral, [data-jiggle]) {
+  rotate: var(--jelly-tilt, 0deg);
+}

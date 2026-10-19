@@ -5,6 +5,11 @@ import { useEffect, useRef } from "react";
 /** How many overlays are currently open. */
 let openCount = 0;
 
+/** Whether any popup or sheet is open right now — jelly mode holds still then. */
+export function overlayOpen(): boolean {
+  return openCount > 0;
+}
+
 /** Where the page was when the first of them opened. */
 let lockedAt = 0;
 

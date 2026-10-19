@@ -189,6 +189,7 @@ function Tile({
     >
       <div
         tabIndex={0}
+        data-jiggle
         className="flex cursor-help flex-col gap-1 rounded-2xl bg-card/45 px-4 py-3 shadow-[inset_0_0_0_1px_var(--color-line)] transition-colors hover:bg-card/80"
       >
         <span className="truncate text-xs font-semibold text-ink-soft">{label}</span>
