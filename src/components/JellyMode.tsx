@@ -33,6 +33,13 @@ const JellyModeContext = createContext<{ on: boolean; toggle: () => void }>({ on
  * pills and the logo (`data-jiggle-item`). One selector, so a new chip or
  * button joins without opting in.
  *
+ * **Not the tray previews' cubes** (`data-tray`), which can number in the
+ * hundreds: measuring each on every ripple is the per-cube read the
+ * tray's own `useJiggle` exists to avoid, and with the mouse that hook
+ * already wobbles them — a second push from here doubled every cube's
+ * impulse. A shaken phone reaches them through `trayCubes` instead, which
+ * measures one grid and none of its cubes.
+ *
  * **Never the boxes they sit in** (v0.79.3). Rows, cards, tiles and panes
  * stood still while the pieces inside them wobbled: a square with straight
  * edges can only ever be leaned and stretched, which the owner found read
@@ -67,14 +74,40 @@ function holdingStill(): boolean {
 
 type Piece = { el: Element; x: number; y: number; width: number; height: number };
 
+const offScreen = (r: DOMRect) =>
+  r.width === 0 || r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth;
+
 /** Every piece that is on screen, with its centre and size. */
 function onScreen(): Piece[] {
   const out: Piece[] = [];
   for (const el of document.querySelectorAll(JIGGLY)) {
     const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.bottom < 0 || r.top > window.innerHeight) continue;
+    if (offScreen(r)) continue;
     if (r.width > MAX_PIECE || r.height > MAX_PIECE) continue;
     out.push({ el, x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height });
+  }
+  return out;
+}
+
+/** At most this many tray cubes answer a shaken phone. */
+const MAX_TRAY_CUBES = 240;
+
+/**
+ * The cubes of every tray preview on screen, for the phone. One rect per
+ * grid, not per cube: every cube in a grid is the same size, so the
+ * first one's box stands for all of them.
+ */
+function trayCubes(): Piece[] {
+  const out: Piece[] = [];
+  for (const tray of document.querySelectorAll("[data-tray]")) {
+    if (out.length >= MAX_TRAY_CUBES) break;
+    if (offScreen(tray.getBoundingClientRect())) continue;
+    const first = tray.firstElementChild?.getBoundingClientRect();
+    if (!first) continue;
+    for (const el of tray.children) {
+      if (out.length >= MAX_TRAY_CUBES) break;
+      out.push({ el, x: 0, y: 0, width: first.width, height: first.height });
+    }
   }
   return out;
 }
@@ -148,7 +181,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     if (!on || !matchesNow(COARSE_POINTER)) return;
-    let pieces: Element[] = [];
+    let pieces: Piece[] = [];
     let refreshedAt = 0;
     let lastAt = 0;
     // Gravity, estimated, for phones that only report it mixed in.
@@ -161,7 +194,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       if (holdingStill()) return;
       if (now - refreshedAt > 1000) {
         refreshedAt = now;
-        pieces = onScreen().map((p) => p.el);
+        pieces = [...onScreen(), ...trayCubes()];
       }
       // Linear acceleration (m/s²), gravity removed — the sensor's own
       // where it gives one, else a high-pass of the mixed reading.
@@ -183,7 +216,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       const fx = -ax * MOTION_GAIN + turnX * TURN_GAIN;
       const fy = ay * MOTION_GAIN + turnY * TURN_GAIN;
       if (Math.abs(fx) + Math.abs(fy) < 40) return;
-      for (const el of pieces) shove(el, fx, fy, dt);
+      for (const piece of pieces) shove(piece.el, fx, fy, dt, piece);
     };
     window.addEventListener("devicemotion", onMotion);
     return () => window.removeEventListener("devicemotion", onMotion);

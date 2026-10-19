@@ -58,7 +58,7 @@ type Body = {
   width: number;
   height: number;
   radius: number;
-  /** An SVG icon has no outline to flow, only a transform. */
+  /** An SVG icon has no outline to flow, and a sharp piece keeps its corners. */
   shaped: boolean;
 };
 
@@ -134,9 +134,23 @@ function step(now: number) {
   frame = bodies.size > 0 ? requestAnimationFrame(step) : 0;
 }
 
+/** Each piece's resting corner, read once ever rather than once per wobble. */
+const radii = new WeakMap<Element, string>();
+
+/**
+ * Below this resting radius a piece is sharp, and stays sharp: the tray's
+ * cubes and the Units cell's are drawn square on purpose, and melting them
+ * turned a tray — a picture of a split — into a grid of dots.
+ */
+const SHARP = 3;
+
 /** A piece's corner radius at rest, in px, capped where the browser caps it. */
 function restingRadius(el: Element, width: number, height: number): number {
-  const value = getComputedStyle(el).borderTopLeftRadius;
+  let value = radii.get(el);
+  if (value === undefined) {
+    value = getComputedStyle(el).borderTopLeftRadius;
+    radii.set(el, value);
+  }
   const half = Math.min(width, height) / 2;
   const px = value.endsWith("%") ? (parseFloat(value) / 100) * Math.min(width, height) : parseFloat(value);
   return clamp(Number.isFinite(px) ? px : 0, 0, half);
@@ -146,7 +160,8 @@ function bodyFor(el: Element, size: { width: number; height: number }, reach?: n
   if (!(el instanceof HTMLElement || el instanceof SVGElement)) return null;
   let b = bodies.get(el);
   if (!b) {
-    const shaped = el instanceof HTMLElement;
+    const radius = el instanceof HTMLElement ? restingRadius(el, size.width, size.height) : 0;
+    const shaped = el instanceof HTMLElement && radius >= SHARP;
     b = {
       el,
       x: 0,
@@ -164,7 +179,7 @@ function bodyFor(el: Element, size: { width: number; height: number }, reach?: n
       gain: 0.55 + Math.random() * 0.9,
       width: size.width,
       height: size.height,
-      radius: shaped ? restingRadius(el, size.width, size.height) : 0,
+      radius,
       shaped,
     };
     bodies.set(el, b);
@@ -216,11 +231,11 @@ export function wobble(
 /**
  * A continuous force on a piece for one sensor reading — the phone being
  * accelerated or tilted — as an acceleration in px/s² applied over `dt`
- * seconds. The jelly's own inertia does the rest: it lags, overshoots and
+ * seconds. `size` is its box when the caller has already measured it. The jelly's own inertia does the rest: it lags, overshoots and
  * settles when the force stops.
  */
-export function shove(el: Element, ax: number, ay: number, dt: number, reach?: number) {
-  const b = bodies.get(el) ?? bodyFor(el, el.getBoundingClientRect(), reach);
+export function shove(el: Element, ax: number, ay: number, dt: number, size?: { width: number; height: number }) {
+  const b = bodies.get(el) ?? bodyFor(el, size ?? el.getBoundingClientRect());
   if (!b) return;
   b.vx += ax * dt * b.gain;
   b.vy += ay * dt * b.gain;

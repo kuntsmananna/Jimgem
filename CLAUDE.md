@@ -1834,8 +1834,7 @@ compares identity, and a panel builds a fresh draft before every call.
   which has no More). It makes the **small pieces** of every page wobble,
   each its own body: jelly cubes, chips and badges (`.keeps-color`,
   `.chip-neutral`, which every chip already wears, so a new chip joins
-  without opting in), the extras marks, every tray preview's cubes and
-  the Settings flavour swatches (`data-jiggle`), every icon
+  without opting in), the extras marks (`data-jiggle`), every icon
   (`svg.lucide`), every shared button (`.press`, which the filter chips
   wear), the nav's pills and the logo (`data-jiggle-item`). **Never the
   boxes they sit in** (v0.79.3): rows, cards, tiles and panes stand still,
@@ -1845,7 +1844,16 @@ compares identity, and a panel builds a fresh draft before every call.
   edges stay straight. Each body draws its own springiness and heft at
   random (`spring`, `gain` in `wobble.ts`), because identical bodies under
   one force move in lockstep — the speed ceiling scales with the heft for
-  the same reason. Fields never move.
+  the same reason. Fields never move. **The tray previews' cubes are
+  not in that selector** (v0.79.5): there can be hundreds, measuring each
+  on every ripple is the per-cube read `useJiggle` exists to avoid, and
+  with the mouse that hook already wobbles them — a second push doubled
+  their impulse. A shaken phone reaches them through `trayCubes`, which
+  measures one rect per grid (`data-tray`) and caps the count. A piece
+  whose resting radius is under 3px (`SHARP` in `wobble.ts`) keeps its
+  corners — the cubes are square on purpose — and resting radii are read
+  once per element (a `WeakMap`), not once per wobble. Pieces scrolled
+  out sideways (the flavour strip) are skipped like those above or below.
   The mouse ripples the pieces it passes, nearest first
   and harder and further the faster it moves — and **a big sweep (`SWEEP`)
   is a shockwave across the whole interface**: every piece on screen,

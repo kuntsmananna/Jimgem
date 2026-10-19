@@ -172,7 +172,7 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
         {flavors.map((f) => (
           <div key={f.id} className="w-[180px] shrink-0 rounded-xl border border-line p-3">
             <button className="block w-full" onClick={() => setEditing(f)}>
-              <div data-jiggle className="h-16 w-full rounded-lg" style={{ background: flavorGradient(f) }} />
+              <div className="h-16 w-full rounded-lg" style={{ background: flavorGradient(f) }} />
             </button>
             <p className="mt-2 text-sm font-semibold text-ink">{f.name}</p>
             <p className="text-xs text-ink-soft">{f.isAlcoholic ? "Alcoholic" : "Non-alcoholic"}</p>

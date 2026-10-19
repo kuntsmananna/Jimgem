@@ -246,6 +246,7 @@ function Grid({
   return (
     <div
       onPointerMove={jiggle}
+      data-tray
       className="grid gap-[2px] rounded-lg bg-black/[0.07] p-2 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -259,7 +260,6 @@ function Grid({
         return (
           <span
             key={i}
-            data-jiggle
             className={`aspect-square origin-bottom rounded-[2px] ${background ? "" : "bg-line/60"}`}
             style={background ? { background } : undefined}
           />
