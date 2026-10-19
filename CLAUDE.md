@@ -1791,7 +1791,7 @@ compares identity, and a panel builds a fresh draft before every call.
   the popup on a page nobody read, and closing records it. Its `art` key
   picks the picture (`paid-by` for v0.71, `refresh` for v0.74's new look,
   which went to staff logins too and so is worded without money,
-  `orders-table` for v0.78's reorganised list, drawn from the table's own
+  `orders-table` for v0.78's reorganised list, `jelly-mode` for v0.79 — the pieces and the switch beside a phone being shaken, its own cards mid-wobble, so the picture says the mode is on the phone too, drawn from the table's own
   new marks — shared with staff too, so its money half is a separate
   admin-only page), and its
   `title` is that page's heading. The popup itself is always titled

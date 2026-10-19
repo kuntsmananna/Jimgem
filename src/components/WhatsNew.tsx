@@ -517,36 +517,81 @@ function OrdersTableIllustration() {
  * skewed and squashed the way `wobble` poses them — with the switch's own
  * blob quivering in its black pill, as it does while the mode is on.
  */
+/**
+ * The laptop half and the phone half side by side: the pieces wobbling
+ * around the switch, and a phone being shaken with its own cards caught
+ * mid-wobble — so the page says in a picture that the mode is on the phone
+ * too, not only in its second paragraph. The poses lean and round the
+ * corners rather than skew, the way the real motion does since v0.79.3.
+ */
 function JellyModeIllustration() {
-  const pieces: { label?: string; tint?: string; cube?: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS]; pose: string }[] = [
-    { label: "Queued", tint: "bg-tile-lavender", pose: "skewX(-12deg) scale(1.06, 0.94)" },
-    { cube: SERIES_COLORS.berry, pose: "skewX(10deg) scale(0.92, 1.08) rotate(-6deg)" },
-    { label: "Deposit paid", tint: "bg-tile-peach", pose: "skewX(8deg) scale(0.95, 1.05)" },
-    { cube: SERIES_COLORS.jasmine, pose: "skewX(-14deg) scale(1.08, 0.92) rotate(5deg)" },
-    { label: "Birthday", tint: "bg-tile-mint", pose: "skewX(-6deg) scale(1.03, 0.97)" },
-    { cube: SERIES_COLORS.midori, pose: "skewX(12deg) scale(0.94, 1.06) rotate(-3deg)" },
+  const pieces: { label?: string; tint?: string; cube?: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS]; pose: string; shape?: string }[] = [
+    { label: "Queued", tint: "bg-tile-lavender", pose: "rotate(-4deg)", shape: "60% 40% 45% 55% / 70% 55% 45% 30%" },
+    { cube: SERIES_COLORS.berry, pose: "rotate(-8deg) translateY(-2px)" },
+    { label: "Deposit paid", tint: "bg-tile-peach", pose: "rotate(3deg)", shape: "45% 60% 50% 40% / 55% 70% 30% 45%" },
+    { cube: SERIES_COLORS.jasmine, pose: "rotate(7deg) translateY(2px)" },
+    { label: "Birthday", tint: "bg-tile-mint", pose: "rotate(-2deg)", shape: "55% 45% 60% 40% / 40% 60% 45% 55%" },
+    { cube: SERIES_COLORS.midori, pose: "rotate(-5deg)" },
   ];
   return (
-    <div aria-hidden className="relative flex flex-col items-center gap-5 overflow-hidden rounded-2xl bg-band px-4 py-7">
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        {pieces.map((piece, i) =>
-          piece.cube ? (
-            <span key={i} className="jelly-cube h-5 w-5" style={{ ...cubeColors(piece.cube), transform: piece.pose }} />
-          ) : (
-            <span
-              key={i}
-              className={`rounded-full px-3 py-1 text-[11px] font-bold text-ink ${piece.tint}`}
-              style={{ transform: piece.pose }}
-            >
-              {piece.label}
-            </span>
-          ),
-        )}
+    <div aria-hidden className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-band px-4 py-6">
+      <div className="flex min-w-0 flex-1 flex-col items-center gap-5">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {pieces.map((piece, i) =>
+            piece.cube ? (
+              <span key={i} className="jelly-cube h-5 w-5" style={{ ...cubeColors(piece.cube), transform: piece.pose }} />
+            ) : (
+              <span
+                key={i}
+                className={`px-3 py-1 text-[11px] font-bold text-ink ${piece.tint}`}
+                style={{ transform: piece.pose, borderRadius: piece.shape }}
+              >
+                {piece.label}
+              </span>
+            ),
+          )}
+        </div>
+        <span className="jelly-switch is-on relative flex h-9 w-12 items-center justify-center rounded-full">
+          <WiggleLines />
+          <JellyBlob size={20} on />
+        </span>
       </div>
-      <span className="jelly-switch is-on relative flex h-9 w-12 items-center justify-center rounded-full">
-        <WiggleLines />
-        <JellyBlob size={20} on />
-      </span>
+      <ShakenPhone />
+    </div>
+  );
+}
+
+/** A phone mid-shake: its frame tilted, motion lines either side, and the
+ *  cards on its screen each caught leaning its own way. */
+function ShakenPhone() {
+  const cards: { chip: string; cube: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS]; pose: string; shape: string }[] = [
+    { chip: "bg-tile-lavender", cube: SERIES_COLORS.berry, pose: "rotate(-5deg) translateX(-1px)", shape: "60% 40% 50% 50% / 70% 50% 50% 30%" },
+    { chip: "bg-tile-peach", cube: SERIES_COLORS.jasmine, pose: "rotate(4deg) translateX(2px)", shape: "40% 60% 45% 55% / 50% 70% 30% 50%" },
+    { chip: "bg-tile-mint", cube: SERIES_COLORS.midori, pose: "rotate(-3deg)", shape: "55% 45% 60% 40% / 45% 55% 50% 50%" },
+  ];
+  return (
+    <div className="relative shrink-0 px-4">
+      <svg viewBox="0 0 120 180" className="jelly-lines absolute inset-0 h-full w-full" fill="none" strokeLinecap="round" strokeWidth="2.2">
+        <path d="M12 70 Q4 90 12 110" />
+        <path d="M5 60 Q-5 90 5 120" />
+        <path d="M108 70 Q116 90 108 110" />
+        <path d="M115 60 Q125 90 115 120" />
+      </svg>
+      <div className="relative h-[172px] w-[88px] rotate-[-9deg] rounded-[20px] bg-black p-[5px] shadow-[0_10px_24px_-10px_rgb(0_0_0/0.45)]">
+        <div className="flex h-full flex-col gap-1.5 overflow-hidden rounded-[15px] bg-cream px-1.5 pt-1.5 pb-0">
+          <span className="mx-auto mb-0.5 h-[7px] w-7 shrink-0 rounded-full bg-black" />
+          {cards.map((card, i) => (
+            <div key={i} className="rounded-md border border-line bg-white p-1.5" style={{ transform: card.pose }}>
+              <span className="block h-[3px] w-9 rounded-full bg-ink/70" />
+              <span className="mt-1 flex items-center gap-1">
+                <span className={`h-[6px] w-6 ${card.chip}`} style={{ borderRadius: card.shape }} />
+                <span className="jelly-cube h-[7px] w-[7px]" style={cubeColors(card.cube)} />
+              </span>
+            </div>
+          ))}
+          <span className="-mx-1.5 mt-auto h-4 shrink-0 bg-black" />
+        </div>
+      </div>
     </div>
   );
 }
