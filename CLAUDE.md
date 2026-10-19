@@ -54,26 +54,42 @@ something here isn't obvious.
   server module. `version.ts` is the counter-example: it must stay
   server-only, because the bundler does not tree-shake its
   `package.json` import.
-- `src/components/**` — `charts/` (inline SVG `LineChart` + CSS
-  `conic-gradient` `DonutChart`, no charting library), plus one
+- `src/components/**` — `charts/` (inline SVG `LineChart` and the
+  ranked-bars `BarBreakdown`, no charting library), plus one
   subfolder per page for its Client Components. Settings is split into
   tabs (`SettingsTabs`) rather than one stacked screen — the flavor grid
   alone filled it and pushed the five smaller lists below the fold.
-- **Every line chart takes its colours from `SERIES_COLORS` in
-  `src/lib/chartPalette.ts`**, never a hex literal at the call site. A
-  series colour is the same three-stop shape as a flavour
-  (`colorGlow`/`colorBase`/`colorShadow`), and the ramps *are* the product's
-  flavour colours — Vodka Berry, Jasmine, Kir Royale — plus a `sage` ramp
-  built from the house accent, which stays on whichever series is the
-  subject of its chart. `LineChart` runs the ramp across the plot in user
-  space as the stroke (top-left to bottom-right, the same light source
-  `flavorStyle.ts` uses, so a chart line and a jelly cube are lit alike),
-  fades `colorBase` out beneath it, and hands the legend and hover dots to
-  `flavorCubeGradient` — the same recipe as the Settings swatches.
-  **Every series gets an area fill**, but only the first at full strength
-  and each one dies back to a third by `AREA_FALLOFF`: equal-weight fills
-  blend where they cross into a colour nobody plotted, and three of them
-  stacked came out flat grey.
+- **The charts are the "jelly glass" line and ranked bars, in dusty
+  colours** (v0.77 — the owner's pick from a page of three styles and
+  three colourings). Every chart takes its colours from **`CHART_COLORS`**
+  in `src/lib/chartPalette.ts`, never a hex literal at the call site: the
+  flavour hues taken down to dusty versions of themselves (sage, plum,
+  ochre, rose, slate), named by hue so the call site says what each means.
+  `sage`, the house accent, stays on whichever series is the subject of its
+  chart. `SERIES_COLORS` beside it keeps the vivid flavour ramps for things
+  drawn *as jelly* — the loader's heap, the empty state, the What's new
+  pictures — and charts no longer touch it. A colour is the same three-stop
+  shape as a flavour (`colorGlow`/`colorBase`/`colorShadow`).
+  `LineChart` runs the ramp across the plot in user space as the stroke
+  (top-left to bottom-right, the light source `flavorStyle.ts` uses, so a
+  line and a jelly cube are lit alike) at 3px, puts a glow under each line
+  that is gone by `AREA_FALLOFF` (only the first at full strength —
+  equal-weight fills blend into a colour nobody plotted), and marks a
+  hovered month with a small lit cube per series and a dark reading card.
+  It has **a dashed grid and a real scale** in a 44px column on the left
+  (`niceTicks`: round steps, so every label is a value the scale reaches;
+  `axisFormat`, `₪20k` by default), and none under `normalizePerSeries`,
+  where there is no one scale to label. Two fixes rode in with it: the
+  curve is **monotone** (Fritsch–Carlson), because the Catmull-Rom it
+  replaced overshot — a ₪0 month after a busy one dipped the line below
+  zero, drawing a loss nobody made — and **months still to come are not
+  drawn**: the trailing months where every series is zero are the rest of
+  the year, not a crash to zero, so the lines stop and the labels dim.
+  **A part-of-whole chart is `BarBreakdown`**, where there was a donut:
+  ranked largest first, each bar measured against the largest, figure and
+  share written on every row and a total under them. Bars are compared
+  against a straight edge where a ring's slices are guessed by angle, and
+  nothing hides behind a hover the way the donut's centre readout did.
 - `src/components/orders/TrayPreview.tsx` draws a package as its actual
   grid of jelly cubes. **The grid is as square as the count allows** —
   `gridColumns` is `ceil(sqrt(total))`, so 9 units are 3 × 3 and 100 are
@@ -330,7 +346,7 @@ the picker already names the period, so the figure is what the line is for
 is the other half of why the phone layout exists. The two flanks are **not
 rendered** rather than hidden (`!mobile &&`), which is both the only
 option for a grid template computed into an inline `style` and the right
-one for a `DonutChart` and a `LineChart` a phone will never show. Each
+one for a `BarBreakdown` and a `LineChart` a phone will never show. Each
 expense is a card (`ExpensesMobileList`) with the business leading, its
 category chip beside it, and the date, description and amount on a second
 line; the staff and payment chips, the VAT mode and the delete are all
@@ -442,22 +458,15 @@ slack, and one more digit would not; the tile's padding is `max-md:p-4` to
 buy that much. The value carries no `truncate` on purpose, because silently
 cutting a digit off money is worse than spilling.
 
-**Both charts stop being pictures on a phone**, and neither fix touches a
-laptop. `DonutChart` stacks (`max-md:flex-col`) so its legend gets the
-card's full width instead of ~166px beside a 140px ring — stacking rather
-than shrinking the ring is also what avoids threading a `size` prop through
-both call sites, that box being an inline `style` no class can reach — and
-**the absolute value joins the legend row** as an always-rendered
-`md:hidden` span. It used to live only in the ring's centre readout, which
-is drawn only while a slice is hovered, so the one figure the chart exists
-to give was unreachable. Rendered rather than tapped for: there is room on
-a stacked legend, and a tap state would be a second way to read the same
-number. `LineChart`'s per-month hit rects gain an `onClick` beside their
-`onMouseEnter`, so a tap reads a month; it changes nothing on a mouse,
-where hovering has already set the same index by the time a click lands,
-and the rects hit-test on touch because they are filled `transparent`
-rather than `none`. Twelve x-labels measure 16px each with a 7px gap at
-360px, so they were left alone.
+**The charts read on a phone without a phone variant.** `BarBreakdown` is
+a line of text over a bar, which holds at any width, and its figures are
+written on every row rather than hovered for. `LineChart`'s per-month hit
+rects carry an `onClick` beside their `onMouseEnter`, so a tap reads a
+month; it changes nothing on a mouse, where hovering has already set the
+same index by the time a click lands, and the rects hit-test on touch
+because they are filled `transparent` rather than `none`. Twelve
+x-labels measure 16px each with room to spare at 360px even beside the
+scale's 44px column.
 
 **Settings on a phone is the two tabs the owner actually reaches for** —
 Lists, and Flavors with its presets. **Data is not offered there at all**
@@ -912,7 +921,8 @@ compares identity, and a panel builds a fresh draft before every call.
   `.motion-veil` and `.motion-rise` for a popup (the dim fades, the dialog
   rises 10px), `.motion-drop` for a popover under its trigger,
   `.motion-lift` for the undo bar coming up off the bottom edge,
-  `.motion-fade` for a hover card, and `.motion-reveal` for a line chart. Nothing animates something the eye was already on — a table
+  `.motion-fade` for a hover card, `.motion-reveal` for a line chart, and
+  `.motion-bar` for a breakdown's bars, which grow on the same keyframe. Nothing animates something the eye was already on — a table
   row, a figure, a field — because movement in the middle of reading is an
   interruption. Durations are 110–170ms: past about 200ms a control used
   fifty times a day stops reading as polish and starts reading as lag. The
@@ -1789,7 +1799,9 @@ compares identity, and a panel builds a fresh draft before every call.
   switch (`WhatsNewButton`, for staff too) and a row in the phone's More
   sheet: the same popup with *all* the releases for that role rather than
   the arrival popup's three, opened with `replay`, which records nothing
-  on close.
+  on close. The icon carries a `HoverCard` saying what it is, which opens
+  the moment the pointer arrives — a bare sparkle explains nothing, and a
+  `title` takes a second to appear.
 - **The read path survives its own migration not having been run yet.**
   `getSeriesHeads` catches `isMissingColumn(error, "recurring")` and
   answers "nothing repeats", so the Expenses page and Settings stay up in
@@ -2275,7 +2287,13 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   so a box-shadow paints a square slab behind the rounded cells, while a
   drop-shadow follows exactly what the cells paint. At rest the cells are
   72% white so the hovered one is the brightest thing in the list. Since
-  v0.74 every other `.hover-line` lifts the same way.
+  v0.74 every other `.hover-line` lifts the same way. The hovered row is
+  **`position: relative; z-index: 15`** — above the day headings (z-10),
+  below the header (z-20) — because a day heading is sticky and opaque,
+  and the next day's heading cut the shadow of a day's last order off flat.
+  The scroller keeps `pr-3 pb-6` of room for that shadow, and wears
+  `.quiet-scroll`: a thin bar in the line colour, where the platform's
+  default was a dark 15px slab, the darkest thing on the page.
 - **Rows are a box, and only the hovered one is drawn in full** (v0.76):
   `py-2.5`, ~46px, centred. At rest a row is a weak fill (42% white) with
   **no stroke** — the edge is there but transparent, so gaining its colour
@@ -2361,7 +2379,7 @@ The two surfaces then diverge deliberately. **`financials.ts` drops offers
 entirely** — revenue, order count and units sold — because it is the
 financial report, and counting a quote in `orderCount` while leaving its
 money out would quietly deflate the average order value the Biz Plan
-divides out of those two. The Dashboard's flavour donut drops them for the
+divides out of those two. The Dashboard's flavour split drops them for the
 same reason: it shares a page with a units-sold KPI. **`totalOf` keeps
 them in the counts** and out of Income only — the rail's counts are
 operational ("an offer has units to make if it lands"), so it carries an

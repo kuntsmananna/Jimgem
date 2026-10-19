@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { Banknote, Boxes, CreditCard, Filter, Landmark, MousePointer2, Palette, Receipt, Sparkles, TrendingUp } from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
+import { HoverCard } from "@/components/HoverCard";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import { announcementsFor, type Announcement } from "@/lib/announcement";
@@ -419,15 +420,30 @@ export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "row" 
   return (
     <>
       {variant === "icon" ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="What's new"
-          title="What's new"
-          className="press flex h-8 w-8 items-center justify-center rounded-full text-ink-soft transition hover:bg-black/5 hover:text-ink"
+        // Says what it is the moment the pointer arrives — a bare sparkle
+        // is not self-explanatory, and the browser's own `title` tooltip
+        // takes a second to appear and is gone by the time it is read.
+        <HoverCard
+          width={210}
+          height={70}
+          tone="ink"
+          placement="below-right"
+          render={() => (
+            <div className="text-xs leading-snug">
+              <p className="font-bold">What&apos;s new</p>
+              <p className="mt-0.5 opacity-75">See every release again, with what changed in each.</p>
+            </div>
+          )}
         >
-          <Sparkles size={15} />
-        </button>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="What's new: see every release again"
+            className="press flex h-8 w-8 items-center justify-center rounded-full text-ink-soft transition hover:bg-black/5 hover:text-ink"
+          >
+            <Sparkles size={15} />
+          </button>
+        </HoverCard>
       ) : (
         <button
           type="button"

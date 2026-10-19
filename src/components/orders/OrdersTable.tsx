@@ -246,7 +246,12 @@ export function OrdersTable({
       meant to sit *outside* the boxes, on the page's own cream, which
       they cannot do inside a white card.
     */
-    <div className="max-h-[70vh] overflow-auto">
+    /*
+      Padded on the right and the bottom so a hovered row's shadow has room
+      before the scroller clips it — the left has the tick-box gutter
+      already. `quiet-scroll` keeps the bar thin and pale.
+    */
+    <div className="quiet-scroll max-h-[70vh] overflow-auto pr-3 pb-6">
       {/*
         **No `min-width` floor.** There was a 1100px one, set when all
         fifteen columns showed, and it is what put a horizontal scrollbar

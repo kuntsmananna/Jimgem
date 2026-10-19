@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import type { Expense, ExpensePeriod } from "@/lib/expenses";
 import type { RecurringSummary } from "@/lib/recurringExpenses";
 import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/settings";
-import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
+import { BarBreakdown, type BreakdownSlice } from "@/components/charts/BarBreakdown";
 import { LineChart } from "@/components/charts/LineChart";
-import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
+import { CHART_COLORS, EXPENSE_PALETTE } from "@/lib/chartPalette";
 import { CalendarDays, CreditCard, Maximize2, Plus, Repeat, Tags, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
@@ -108,7 +108,7 @@ export function ExpensesClient({
     [period, categoryFilter, query],
   );
 
-  const slices: DonutSlice[] = useMemo(() => {
+  const slices: BreakdownSlice[] = useMemo(() => {
     const totals: Record<string, number> = {};
     for (const entry of entries) {
       totals[entry.categoryName] = (totals[entry.categoryName] ?? 0) + forExpense(entry);
@@ -222,7 +222,7 @@ export function ExpensesClient({
   const chartsFolded = collapsed.has("charts");
   /*
     On a phone this page is the list and nothing else. The two flanks are
-    not *rendered* rather than hidden in CSS — a `DonutChart`, a
+    not *rendered* rather than hidden in CSS — a `BarBreakdown`, a
     `LineChart` and a list of periods built for a screen that will never
     show them — which is the same call the Orders table's is, and the only
     one available for the grid template, since that is computed at runtime
@@ -476,7 +476,7 @@ export function ExpensesClient({
               <FoldButton side="right" title="Fold the charts away" onClick={() => togglePane("charts")} />
             </div>
             <div className="mt-4">
-              <DonutChart slices={slices} />
+              <BarBreakdown slices={slices} />
             </div>
           </section>
 
@@ -518,7 +518,7 @@ export function ExpensesClient({
             <p className="mt-0.5 mb-3 text-xs text-ink-soft">Adding up across the period.</p>
             {cumulative.values.length > 1 ? (
               <LineChart
-                series={[{ label: "Spent", color: SERIES_COLORS.jasmine, values: cumulative.values }]}
+                series={[{ label: "Spent", color: CHART_COLORS.ochre, values: cumulative.values }]}
                 xLabels={cumulative.labels}
                 height={150}
               />

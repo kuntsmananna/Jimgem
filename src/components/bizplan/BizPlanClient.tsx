@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { MonthlyFinancials } from "@/lib/financials";
 import { LineChart } from "@/components/charts/LineChart";
 import { useVatView } from "@/components/VatViewContext";
-import { SERIES_COLORS } from "@/lib/chartPalette";
+import { CHART_COLORS } from "@/lib/chartPalette";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { MonthsMobileList } from "@/components/bizplan/MonthsMobileList";
 import { count, currency } from "@/lib/money";
@@ -70,9 +70,9 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
             <LineChart
               xLabels={financials.map((m) => m.monthLabel)}
               series={[
-                { label: "Revenue", color: SERIES_COLORS.sage, values: financials.map((m) => m.revenue) },
-                { label: "Expenses", color: SERIES_COLORS.jasmine, values: financials.map((m) => m.expenses) },
-                { label: "Profit", color: SERIES_COLORS.berry, values: financials.map((m) => m.profit) },
+                { label: "Revenue", color: CHART_COLORS.sage, values: financials.map((m) => m.revenue) },
+                { label: "Expenses", color: CHART_COLORS.ochre, values: financials.map((m) => m.expenses) },
+                { label: "Profit", color: CHART_COLORS.plum, values: financials.map((m) => m.profit) },
               ]}
             />
           </div>
@@ -86,8 +86,8 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
               valueFormat={(v) => count(v)}
               xLabels={financials.map((m) => m.monthLabel)}
               series={[
-                { label: "Units sold", color: SERIES_COLORS.royale, values: financials.map((m) => m.unitsSold) },
-                { label: "Orders", color: SERIES_COLORS.sage, values: financials.map((m) => m.orderCount) },
+                { label: "Units sold", color: CHART_COLORS.rose, values: financials.map((m) => m.unitsSold) },
+                { label: "Orders", color: CHART_COLORS.sage, values: financials.map((m) => m.orderCount) },
               ]}
             />
           </div>

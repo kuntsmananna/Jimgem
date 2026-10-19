@@ -8,8 +8,8 @@ import type { Task } from "@/lib/tasks";
 import type { StaffAccount } from "@/lib/settings";
 import { LineChart } from "@/components/charts/LineChart";
 import { useVatView } from "@/components/VatViewContext";
-import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
-import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
+import { BarBreakdown, type BreakdownSlice } from "@/components/charts/BarBreakdown";
+import { CHART_COLORS, EXPENSE_PALETTE } from "@/lib/chartPalette";
 import { TaskList } from "@/components/tasks/TaskList";
 import { SelectDropdown } from "@/components/orders/Dropdown";
 import { count, currency } from "@/lib/money";
@@ -139,13 +139,13 @@ export function DashboardClient({
   const deltaFor = (metric: Metric): number | null =>
     comparison ? percentChange(comparison.current[metric], comparison.previous[metric]) : null;
 
-  const expenseSlices: DonutSlice[] = Object.entries(scoped.expensesByCategory).map(([label, value], i) => ({
+  const expenseSlices: BreakdownSlice[] = Object.entries(scoped.expensesByCategory).map(([label, value], i) => ({
     label,
     value,
     color: EXPENSE_PALETTE[i % EXPENSE_PALETTE.length],
   }));
 
-  const flavorSlices: DonutSlice[] = useMemo(() => {
+  const flavorSlices: BreakdownSlice[] = useMemo(() => {
     const scopedLines =
       selectedMonth === "all" ? flavorLines : flavorLines.filter((l) => l.month === selectedMonth);
     const byFlavor = new Map<string, number>();
@@ -259,8 +259,8 @@ export function DashboardClient({
                 xLabels={financials.map((m) => m.monthLabel)}
                 highlightIndex={highlightIndex}
                 series={[
-                  { label: "Revenue", color: SERIES_COLORS.sage, values: financials.map((m) => m.revenue) },
-                  { label: "Profit", color: SERIES_COLORS.berry, values: financials.map((m) => m.profit) },
+                  { label: "Revenue", color: CHART_COLORS.sage, values: financials.map((m) => m.revenue) },
+                  { label: "Profit", color: CHART_COLORS.plum, values: financials.map((m) => m.profit) },
                 ]}
               />
             </div>
@@ -269,14 +269,14 @@ export function DashboardClient({
           <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Expense category split</h2>
             <div className="mt-4">
-              <DonutChart slices={expenseSlices} />
+              <BarBreakdown slices={expenseSlices} />
             </div>
           </section>
 
           <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Flavor split</h2>
             <div className="mt-4">
-              <DonutChart slices={flavorSlices} valueFormat={(v) => `${count(v)} units`} />
+              <BarBreakdown slices={flavorSlices} valueFormat={(v) => `${count(v)} units`} />
             </div>
           </section>
         </div>

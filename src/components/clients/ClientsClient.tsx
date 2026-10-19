@@ -6,7 +6,7 @@ import { Clock, Coins, ArrowDownAZ } from "lucide-react";
 import { Segmented } from "@/components/orders/OrderSheet";
 import type { ClientWithStats } from "@/lib/clients";
 import { looksLikeSameClient } from "@/lib/clientName";
-import { SERIES_COLORS } from "@/lib/chartPalette";
+import { CHART_COLORS } from "@/lib/chartPalette";
 import { LineChart } from "@/components/charts/LineChart";
 import { ClientModal } from "./ClientModal";
 import { PaneHeader } from "@/components/Pane";
@@ -366,12 +366,13 @@ export function ClientsClient({
           </p>
           <LineChart
             series={[
-              { label: "Returning", color: SERIES_COLORS.sage, values: returningOrders },
-              { label: "New", color: SERIES_COLORS.berry, values: newOrders },
+              { label: "Returning", color: CHART_COLORS.sage, values: returningOrders },
+              { label: "New", color: CHART_COLORS.plum, values: newOrders },
             ]}
             xLabels={months}
             height={150}
             valueFormat={(v) => `${count(v)} orders`}
+            axisFormat={count}
           />
         </section>
 

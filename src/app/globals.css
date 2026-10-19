@@ -521,6 +521,13 @@ body {
 .orders-rows > tr:not(.day-row):hover {
   filter: drop-shadow(0 3px 6px rgb(150 95 65 / 0.1)) drop-shadow(0 16px 26px rgb(150 95 65 / 0.2));
   transform: translateY(-1px);
+  /*
+   * Above the day headings (z-10), below the table header (z-20). A day
+   * heading is sticky and opaque cream, so the next day's heading painted
+   * over the shadow of a day's last order and cut it off flat (v0.77).
+   */
+  position: relative;
+  z-index: 15;
 }
 
 .orders-rows > tr:not(.day-row):hover > td:not(:first-child) {
@@ -723,6 +730,33 @@ body {
 }
 
 /*
+ * A breakdown's bar growing out from the left as the chart arrives — the
+ * same arrival the line chart's wipe makes, at bar scale. `reveal-in` is
+ * that wipe's keyframe, a scaleX from nothing, so the two read as one
+ * family of motion.
+ */
+.motion-bar {
+  transform-origin: left;
+  animation: reveal-in var(--motion-slow) var(--ease-draw);
+}
+
+/*
+ * An inner scroller that does not shout (v0.77). The Orders list scrolls
+ * inside its own box, and the platform's default bar beside it was a dark
+ * 15px slab running the height of the page — the darkest thing on screen,
+ * next to a list of pale boxes. Thin and in the line colour, darkening a
+ * step under the pointer.
+ */
+.quiet-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: --alpha(var(--color-ink) / 18%) transparent;
+}
+
+.quiet-scroll:hover {
+  scrollbar-color: --alpha(var(--color-ink) / 32%) transparent;
+}
+
+/*
  * Someone who has asked their system for less motion has asked for less
  * motion. Kept as one rule rather than a variant per animation: a new
  * entrance added later is covered without anyone remembering to.
@@ -890,6 +924,7 @@ body {
   .motion-lift,
   .motion-fade,
   .motion-reveal,
+  .motion-bar,
   .motion-row,
   .motion-stagger > *,
   .skeleton,
