@@ -73,6 +73,7 @@ export function ChipSpread({
   onChange,
   showLabel = true,
   size = "sm",
+  endOnPhone = showLabel,
 }: {
   label: string;
   value: string;
@@ -92,6 +93,14 @@ export function ChipSpread({
    * fields. The label still reaches screen readers as the group's name.
    */
   showLabel?: boolean;
+  /**
+   * Right-align the chips below the breakpoint (v0.84, the owner's call):
+   * on a phone each spread sits under a ruled heading, and the chips
+   * answer it from the right edge the way a `SheetRow`'s control does.
+   * On by default for a captioned spread; a spread inside a row of its
+   * own — a package line's sizes — keeps to the left.
+   */
+  endOnPhone?: boolean;
 }) {
   /*
    * The captioned form wraps the chips in a column; the uncaptioned one is
@@ -100,7 +109,11 @@ export function ChipSpread({
    * and delete onto a second line.
    */
   const chips = (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1.5">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={`flex flex-wrap items-center gap-1.5 ${endOnPhone ? "max-md:justify-end" : ""}`}
+    >
         {options.map((option) => {
           const on = option.value === value;
           return (
@@ -155,7 +168,12 @@ export function ChipSpread({
   if (!showLabel) return chips;
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase">{label}</span>
+      {/* On a phone the caption is a section heading with its hairline,
+          the same as the Event tab's `GroupLabel`s, so the two tabs read
+          as one form rather than two styles of one. */}
+      <span className="text-[10.5px] font-extrabold tracking-[0.14em] text-ink uppercase max-md:mt-1.5 max-md:block max-md:border-b max-md:border-current/12 max-md:pb-2 max-md:text-xs">
+        {label}
+      </span>
       {chips}
     </div>
   );

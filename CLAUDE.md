@@ -330,7 +330,17 @@ location sits behind its pin, with the real date field laid over it at zero
 opacity so a tap still opens the phone's own picker — the browser's date box
 took 165px of the line and pushed the location onto one of its own. **Open
 client card** rides the "On file" line there (`ClientPicker`'s `trailing`)
-rather than a line under it.
+rather than a line under it — as a mark alone (v0.84), beside the client's
+number set like the date (mark and value at 16px) and dialling when tapped.
+
+**On a phone every heading in the form is ruled and every chip spread
+answers from the right** (v0.84, the owner's call): `ChipSpread`'s caption
+takes `GroupLabel`'s hairline below the breakpoint and its chips
+`justify-end` (`endOnPhone`, on by default for a captioned spread, off for a
+package line's sizes), `FieldLabel` (Notes) takes the same rule, and
+Delivery on the Event tab becomes a section like the two above it — a ruled
+heading, then its destinations from the right — where beside its heading
+they wrapped into a narrow column. Desktop keeps its left-aligned chips.
 
 **The phone's footer is one bar** (`PhoneFooter`): the total, with what is
 still due under it, as a tap target that opens the money sheet, and the

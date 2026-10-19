@@ -1,5 +1,6 @@
 "use client";
 
+import { dialable } from "@/components/clients/ClientsMobileList";
 import { useMemo, useRef, useState } from "react";
 import { Phone, UserPlus } from "lucide-react";
 import type { Client } from "@/lib/clients";
@@ -99,11 +100,17 @@ export function ClientPicker({
         {picked && (
           <>
             <span className="font-semibold text-accent">On file</span>
+            {/* On a phone the number is set like the date under it — the
+                mark and the value at reading size (v0.84) — and dials when
+                tapped, since that is what a number is for there. */}
             {picked.phone && (
-              <span className="flex items-center gap-1 text-ink-soft">
-                <Phone size={11} />
+              <a
+                href={`tel:${dialable(picked.phone)}`}
+                className="flex items-center gap-1 text-ink-soft max-md:gap-1.5 max-md:text-base max-md:text-ink max-md:tabular-nums"
+              >
+                <Phone size={11} className="max-md:h-[15px] max-md:w-[15px] max-md:text-ink-soft" />
                 {picked.phone}
-              </span>
+              </a>
             )}
             {picked.sumitCustomerId && <span className="text-ink-soft">· linked to SUMIT</span>}
             {trailing}

@@ -15,7 +15,7 @@ import { currency } from "@/lib/money";
  * test dropped the country code off exactly those, dialling them as
  * domestic numbers.
  */
-const dialable = (phone: string) => {
+export const dialable = (phone: string) => {
   const digits = phone.replace(/\D/g, "");
   return /^\D*\+/.test(phone) ? `+${digits}` : digits;
 };

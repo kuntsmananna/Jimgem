@@ -8,6 +8,7 @@ import {
   type Rates,
 } from "@/lib/orderTypes";
 import { Truck } from "lucide-react";
+import { useIsMobile } from "@/components/useMediaQuery";
 import { ChipSpread, spreadOptions } from "./ChipSpread";
 import { GroupLabel, SheetRow, YesNo } from "./OrderSheet";
 import { NumberStepper } from "./PackageLineEditor";
@@ -31,6 +32,7 @@ export function OrderEventPanel({
   rates: Rates;
 }) {
   const money = useCanSeeMoney();
+  const mobile = useIsMobile();
   const set = (patch: Partial<OrderInput>) => onChange({ ...draft, ...patch });
   const displayOptions = rates.displayOptions.filter(
     (option) => !option.archivedAt || quantityOf(draft.displays, option.id) > 0,
@@ -106,8 +108,12 @@ export function OrderEventPanel({
         two words and then put a pair of chips beneath, which read as a
         group with one empty row in it.
       */}
-      <section className="flex min-w-0 items-center justify-between gap-4">
-        <GroupLabel rule={false} icon={<Truck size={13} />}>
+      {/* On a phone it is a section like the two above it (v0.84, the
+          owner's call): a ruled heading, then the destinations from the
+          right edge — beside the heading they wrapped into a narrow column
+          on the right of a line that was mostly empty. */}
+      <section className="flex min-w-0 items-center justify-between gap-4 max-md:flex-col max-md:items-stretch max-md:gap-0">
+        <GroupLabel rule={mobile} icon={<Truck size={13} />}>
           Delivery
         </GroupLabel>
         {/*
@@ -120,6 +126,7 @@ export function OrderEventPanel({
         <ChipSpread
           label="Delivery"
           showLabel={false}
+          endOnPhone
           value={hasDelivery(draft) ? String(draft.deliveryOptionId ?? "other") : "none"}
           onChange={(value) =>
             onChange(

@@ -96,7 +96,7 @@ export function OrderCustomerPanel({
           onPhone={onNewClientPhone}
           // On a phone the link rides the "On file" line (v0.84, the owner's
           // call) rather than a line of its own under it.
-          trailing={mobile && draft.clientId !== null ? <ClientCardLink clientId={draft.clientId} /> : null}
+          trailing={mobile && draft.clientId !== null ? <ClientCardLink clientId={draft.clientId} iconOnly /> : null}
         />
 
         {/*
@@ -291,7 +291,23 @@ export function OrderCustomerPanel({
  * popup is holding unsaved work, and a link that navigated away from it
  * would trade an order for a lookup.
  */
-function ClientCardLink({ clientId }: { clientId: number }) {
+function ClientCardLink({ clientId, iconOnly = false }: { clientId: number; iconOnly?: boolean }) {
+  // On a phone the mark alone, at a thumb's size (v0.84): the words cost
+  // the "On file" line most of its width beside a dialable number.
+  if (iconOnly) {
+    return (
+      <a
+        href={`/clients?client=${clientId}`}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Open client card"
+        title="Open client card"
+        className="press flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent"
+      >
+        <ExternalLink size={15} />
+      </a>
+    );
+  }
   return (
     <a
       href={`/clients?client=${clientId}`}

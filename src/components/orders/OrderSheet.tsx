@@ -84,7 +84,9 @@ export function GroupLabel({
  */
 export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] uppercase max-md:text-xs">
+    /* Ruled on a phone like every other heading on the Customer tab
+       (v0.84), so Notes does not read as the one section left over. */
+    <span className="mb-1 block text-[10.5px] font-extrabold tracking-[0.14em] uppercase max-md:mt-1.5 max-md:mb-2.5 max-md:border-b max-md:border-current/12 max-md:pb-2 max-md:text-xs">
       {children}
     </span>
   );
