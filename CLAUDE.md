@@ -343,6 +343,17 @@ the same panel; there the "On file" line is not drawn until a name gives it
 something to say, and a new client's phone is a filled box with a mark like
 Location's, asking for the phone keypad (v0.84.2).
 
+**Every tab opens on a hero box on a phone** (v0.84.3): the Event tab's
+own facts — guests, waitresses, kosher — sit in the same tinted box, and
+the Content tab leads with one `PackageLineEditor` draws itself (`md:hidden`,
+since a laptop has the rail for this): the units the order comes to, how
+many packages, and one coverage chip (`LineNote`) summed per line as
+unassigned *and* over separately, so a line short and another over cannot
+cancel into "Balanced". The packages follow under a ruled **Packages**
+heading on the page itself — the cream panel around them is dropped there,
+a tinted box of white boxes under a tinted box being one frame too many —
+and **+ Add package** grows to a thumb's size.
+
 **On a phone every heading in the form is ruled and every chip spread
 answers from the right** (v0.84, the owner's call): `ChipSpread`'s caption
 takes `GroupLabel`'s hairline below the breakpoint and its chips

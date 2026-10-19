@@ -47,7 +47,10 @@ export function OrderEventPanel({
       rather than stretching a stepper across the whole panel.
     */
     <div className="flex max-w-lg flex-col gap-5">
-      <section className="flex min-w-0 flex-col">
+      {/* On a phone the event's own facts are the tab's hero (v0.84.3): the
+          same tinted box the Customer tab leads with, so each tab opens on
+          what it is mostly about. */}
+      <section className="flex min-w-0 flex-col max-md:rounded-card max-md:border max-md:border-line/70 max-md:bg-cream/70 max-md:px-3 max-md:pt-2 max-md:pb-1">
         <GroupLabel>The event</GroupLabel>
         <SheetRow label="Guests">
           <NumberStepper

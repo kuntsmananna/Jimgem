@@ -224,14 +224,52 @@ export function PackageLineEditor({
     });
   }
 
+  // The order's whole content in one figure, for the phone's hero box.
+  const packed = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
+  const unassigned = lines.reduce(
+    (sum, line) => sum + Math.max(0, linePackedUnits(line, unitsPerPackage) - lineAssignedUnits(line)),
+    0,
+  );
+  const over = lines.reduce(
+    (sum, line) => sum + Math.max(0, lineAssignedUnits(line) - linePackedUnits(line, unitsPerPackage)),
+    0,
+  );
+
   return (
     /*
-      No heading and no unit total: the tab this sits in is already called
-      Content and already carries the count. An empty order is then exactly
-      its two ways in — add a package, or start from a preset — with nothing
-      else to read first.
+      No heading and no unit total on a laptop: the tab this sits in is
+      already called Content and the rail beside it carries the count. An
+      empty order is then exactly its two ways in — add a package, or start
+      from a preset — with nothing else to read first.
+
+      **A phone has no rail beside it**, so there the tab opens on a hero
+      box (v0.84.3, the same tinted box the Customer tab leads with): the
+      units the order comes to, how many packages, and whether every unit
+      has a flavour — summed per line, so one line short and another over
+      cannot cancel out into "Balanced". The packages then sit under a
+      ruled heading on the page itself, the cream panel around them dropped:
+      a tinted box of white boxes under a tinted box was one frame too many.
     */
-    <div className="rounded-card bg-cream/60 p-4">
+    <div className="rounded-card bg-cream/60 p-4 max-md:rounded-none max-md:bg-transparent max-md:p-0">
+      <div className="mb-5 rounded-card border border-line/70 bg-cream/70 px-4 py-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <UnitsIcon size={20} className="text-ink-soft" />
+          <span className="font-display text-[28px] leading-none font-extrabold tabular-nums">{nf.format(packed)}</span>
+          <span className="text-sm text-ink-soft">units</span>
+          <span className="flex-1" />
+          <LineNote remaining={unassigned > 0 ? unassigned : -over} packed={packed} />
+        </div>
+        <p className="mt-1.5 text-sm text-ink-soft">
+          {lines.length === 0
+            ? "Nothing packed yet — add a package or start from a preset."
+            : `${lines.length} ${lines.length === 1 ? "package" : "packages"}`}
+        </p>
+      </div>
+      {lines.length > 0 && (
+        <span className="mt-1.5 mb-2.5 block border-b border-current/12 pb-2 text-xs font-extrabold tracking-[0.14em] uppercase md:hidden">
+          Packages
+        </span>
+      )}
       {lines.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">
           {lines.map((line) => (
@@ -256,7 +294,7 @@ export function PackageLineEditor({
         <button
           type="button"
           onClick={addBlankLine}
-          className="shrink-0 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream transition hover:opacity-85"
+          className="shrink-0 rounded-full bg-black px-3 py-1.5 text-xs font-semibold text-cream transition hover:opacity-85 max-md:px-4 max-md:py-2.5 max-md:text-sm"
         >
           + Add package
         </button>
