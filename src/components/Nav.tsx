@@ -77,6 +77,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
         <Link
           href={admin ? "/" : STAFF_HOME}
           aria-label={admin ? "Gems — dashboard" : "Gems — orders"}
+          data-jiggle-item
           className="shrink-0 text-brand transition hover:opacity-70"
         >
           <GemsLogo className="h-10 w-auto" />

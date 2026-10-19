@@ -569,14 +569,29 @@ function Cubes({ colors }: { colors: (typeof SERIES_COLORS)[keyof typeof SERIES_
  * All of them rather than the arrival popup's three, because this one is
  * asked for.
  */
-export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "row" }) {
+/**
+ * `icon` is the desktop header's sparkle, with its explaining hover card;
+ * `sheet` is the same icon in the phone's More sheet, beside the name — on
+ * black and with no hover card, since on touch a card opens on the tap the
+ * button needs.
+ */
+export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "sheet" }) {
   const role = useRole();
   const [open, setOpen] = useState(false);
   const announcements = announcementsFor(role);
   if (announcements.length === 0) return null;
   return (
     <>
-      {variant === "icon" ? (
+      {variant === "sheet" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="What's new: see every release again"
+          className="press flex h-10 w-10 items-center justify-center rounded-full opacity-75 transition hover:bg-cream/10 hover:opacity-100"
+        >
+          <Sparkles size={18} />
+        </button>
+      ) : (
         // Says what it is the moment the pointer arrives — a bare sparkle
         // is not self-explanatory, and the browser's own `title` tooltip
         // takes a second to appear and is gone by the time it is read.
@@ -601,15 +616,6 @@ export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "row" 
             <Sparkles size={15} />
           </button>
         </HoverCard>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm font-semibold opacity-60"
-        >
-          <Sparkles size={17} />
-          What&apos;s new
-        </button>
       )}
       {open && <WhatsNew announcements={announcements} replay onClose={() => setOpen(false)} />}
     </>

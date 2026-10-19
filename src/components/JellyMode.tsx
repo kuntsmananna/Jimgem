@@ -39,7 +39,19 @@ const JIGGLY = ".jelly-cube, .keeps-color, .chip-neutral, [data-jiggle]";
  * Orders table's rows — the whole interface, briefly, and much more gently
  * than the pieces (`wobble` scales its swing down with size).
  */
-const WHOLE = "main section, main .rounded-card, .orders-rows > tr:not(.day-row)";
+const WHOLE = "main section, main .rounded-card";
+
+/**
+ * The things a person reads one at a time — a list's rows and cards, the
+ * nav's pills, the toolbar's buttons, the logo. Each is its own body of
+ * jelly (v0.79.2): the owner found a list that wobbled as one block read
+ * as the page sliding, not as jelly. `.motion-row` is what every list row
+ * and phone card already wears for the arrival cascade, and `.press` every
+ * shared button, so a new list or button joins without opting in;
+ * `data-jiggle-item` is for the few that wear neither.
+ */
+const ITEMS =
+  ".motion-row, .hover-line, .orders-rows > tr:not(.day-row), .press, header nav a, nav[aria-label] a, nav[aria-label] button, [data-jiggle-item]";
 
 /** How far from a slow pointer a piece still feels it, in px; a fast one reaches further. */
 const REACH = 150;
@@ -53,27 +65,6 @@ const FULL_PX = 90;
 const MOTION_GAIN = 130;
 /** A phone's turning (°/s) into the jelly's push (px/s²). */
 const TURN_GAIN = 5;
-
-/**
- * The page's blocks for the phone's whole-screen jelly: the children of
- * the page's root, skipping anything fixed or sticky — the Add order
- * button, the undo bar — and stepping inside a block that holds one,
- * because a transform on an ancestor makes a fixed element scroll away
- * with it.
- */
-function pageBlocks(): Element[] {
-  const out: Element[] = [];
-  const visit = (parent: Element, depth: number) => {
-    for (const child of parent.children) {
-      if (child.matches(".fixed, .sticky")) continue;
-      if (child.querySelector(".fixed, .sticky") && depth < 3) visit(child, depth + 1);
-      else if (!child.querySelector(".fixed, .sticky")) out.push(child);
-    }
-  };
-  const main = document.querySelector("main");
-  if (main) visit(main, 0);
-  return out;
-}
 
 function holdingStill(): boolean {
   if (overlayOpen()) return true;
@@ -145,7 +136,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       }
       // A faster pointer reaches further, up to three times as far.
       const radius = REACH * Math.min(3, 1 + speed / 120);
-      for (const piece of onScreen(JIGGLY)) {
+      for (const piece of onScreen(`${ITEMS}, ${JIGGLY}`)) {
         const distance = Math.hypot(piece.x - e.clientX, piece.y - e.clientY);
         const reach = 1 - distance / radius;
         if (reach <= 0) continue;
@@ -172,7 +163,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     if (!on || !matchesNow(COARSE_POINTER)) return;
-    let blocks: Element[] = [];
+    let items: Element[] = [];
     let pieces: Element[] = [];
     let refreshedAt = 0;
     let lastAt = 0;
@@ -186,7 +177,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       if (holdingStill()) return;
       if (now - refreshedAt > 1000) {
         refreshedAt = now;
-        blocks = pageBlocks();
+        items = onScreen(ITEMS).map((p) => p.el);
         pieces = onScreen(JIGGLY).map((p) => p.el);
       }
       // Linear acceleration (m/s²), gravity removed — the sensor's own
@@ -209,8 +200,10 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       const fx = -ax * MOTION_GAIN + turnX * TURN_GAIN;
       const fy = ay * MOTION_GAIN + turnY * TURN_GAIN;
       if (Math.abs(fx) + Math.abs(fy) < 40) return;
-      blocks.forEach((el, i) => shove(el, fx * (1 + (i % 3) * 0.15), fy, dt));
-      for (const el of pieces) shove(el, fx * 0.5, fy * 0.5, dt);
+      // Items swing nearly as far as small pieces, however wide: on a
+      // phone the point is that the list itself is jelly.
+      for (const el of items) shove(el, fx, fy, dt, 0.8);
+      for (const el of pieces) shove(el, fx * 0.7, fy * 0.7, dt);
     };
     window.addEventListener("devicemotion", onMotion);
     return () => window.removeEventListener("devicemotion", onMotion);
@@ -278,19 +271,25 @@ export function WiggleLines() {
   );
 }
 
-export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "row" }) {
+/**
+ * `icon` is the desktop header's switch, with its explaining hover card;
+ * `sheet` is the same switch in the phone's More sheet, beside the name,
+ * thumb-sized and with no hover card (on touch a card opens on the tap the
+ * switch needs).
+ */
+export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "sheet" }) {
   const { on, toggle } = useJellyMode();
-  if (variant === "row") {
+  if (variant === "sheet") {
     return (
       <button
         type="button"
         onClick={toggle}
         aria-pressed={on}
-        className={`flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm font-semibold ${on ? "" : "opacity-60"}`}
+        aria-label={on ? "Jelly mode is on. Turn it off" : "Jelly mode: make the interface wobble"}
+        className={`jelly-switch press relative flex h-10 w-13 items-center justify-center rounded-full ${on ? "is-on" : ""}`}
       >
-        <JellyBlob size={17} on={on} />
-        <span className="flex-1">Jelly mode</span>
-        <span className="text-xs font-medium opacity-70">{on ? "On — shake the phone" : "Off"}</span>
+        <WiggleLines />
+        <JellyBlob size={21} on={on} />
       </button>
     );
   }

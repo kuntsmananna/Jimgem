@@ -162,6 +162,7 @@ function OrderCard({
         to the non-final stages — which is exactly the moment the
         distinction is worth drawing.
       */
+      data-jiggle-item
       className={`w-full rounded-card border border-line px-4 py-3 text-left ${
         stage?.isFinal ? "bg-cream" : "bg-card"
       } ${booked ? "" : "is-offer"}`}

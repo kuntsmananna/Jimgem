@@ -40,6 +40,16 @@ type Body = {
   tvy: number;
   /** How much of the motion a piece shows: 1 for small, less for big. */
   reach: number;
+  /** How far it may turn: a wide row turning a degree sweeps its far end a long way. */
+  turnScale: number;
+  /**
+   * Its own springiness, drawn at random once. Bodies alike in every way
+   * pushed by one force move in lockstep, which reads as one slab rather
+   * than a tray of separate jellies; a little spread desyncs them.
+   */
+  spring: number;
+  /** And its own heft: how hard the same push moves it, also at random. */
+  gain: number;
   gooey: boolean;
 };
 
@@ -59,7 +69,7 @@ const TOP_DAMPING = 3.6;
 /** A push of `lean` 1 sets off at this speed, px/s. */
 const PUSH = 120;
 /** The fastest a body may move, px/s — repeated pushes cannot run away. */
-const MAX_SPEED = 320;
+const MAX_SPEED = 420;
 /** Below this, a body is at rest and is let go. */
 const REST = 0.05;
 
@@ -68,12 +78,14 @@ function step(now: number) {
   last = now;
   for (const [el, b] of bodies) {
     // Semi-implicit Euler: stable for these springs at any frame rate.
-    b.vx += (-STIFFNESS * b.x - DAMPING * b.vx) * dt;
-    b.vy += (-STIFFNESS * b.y - DAMPING * b.vy) * dt;
+    const k = STIFFNESS * b.spring;
+    b.vx += (-k * b.x - DAMPING * b.vx) * dt;
+    b.vy += (-k * b.y - DAMPING * b.vy) * dt;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
-    b.tvx += (TOP_STIFFNESS * (b.x - b.tx) - TOP_DAMPING * b.tvx) * dt;
-    b.tvy += (TOP_STIFFNESS * (b.y - b.ty) - TOP_DAMPING * b.tvy) * dt;
+    const tk = TOP_STIFFNESS * b.spring;
+    b.tvx += (tk * (b.x - b.tx) - TOP_DAMPING * b.tvx) * dt;
+    b.tvy += (tk * (b.y - b.ty) - TOP_DAMPING * b.tvy) * dt;
     b.tx += b.tvx * dt;
     b.ty += b.tvy * dt;
 
@@ -87,7 +99,7 @@ function step(now: number) {
     const r = b.reach;
     // Lean is the top trailing the base; squash follows vertical travel.
     const lean = (b.tx - b.x) * 2.2 * r;
-    const turn = b.x * 0.45 * r;
+    const turn = b.x * 0.45 * r * b.turnScale;
     const squash = Math.max(-0.22, Math.min(0.22, (b.y - b.ty) * 0.035 * r + b.y * 0.012 * r));
     const sx = 1 + squash;
     b.el.style.transform =
@@ -120,6 +132,9 @@ function bodyFor(el: Element, size: { width: number; height: number }, reach?: n
       // Large pieces — a figure tile, a pane — swing less, or a 300px
       // tile turned a few degrees would sweep across its neighbours.
       reach: reach ?? Math.min(1, 60 / Math.max(size.width, size.height, 1)) * 0.65 + 0.35,
+      turnScale: Math.min(1, 120 / Math.max(size.width, 1)),
+      spring: 0.65 + Math.random() * 0.7,
+      gain: 0.55 + Math.random() * 0.9,
       gooey: size.width <= 40 && size.height <= 40,
     };
     bodies.set(el, b);
@@ -132,10 +147,13 @@ function bodyFor(el: Element, size: { width: number; height: number }, reach?: n
 }
 
 function clampSpeed(b: Body) {
+  // Scaled by the body's heft, or every body hitting the ceiling would
+  // move identically again.
+  const limit = MAX_SPEED * b.gain;
   const speed = Math.hypot(b.vx, b.vy);
-  if (speed > MAX_SPEED) {
-    b.vx *= MAX_SPEED / speed;
-    b.vy *= MAX_SPEED / speed;
+  if (speed > limit) {
+    b.vx *= limit / speed;
+    b.vy *= limit / speed;
   }
 }
 
@@ -157,8 +175,8 @@ export function wobble(
   const go = () => {
     const b = bodyFor(el, size ?? el.getBoundingClientRect(), reach);
     if (!b) return;
-    b.vx += ux * lean * PUSH;
-    b.vy += uy * lean * PUSH;
+    b.vx += ux * lean * PUSH * b.gain;
+    b.vy += uy * lean * PUSH * b.gain;
     clampSpeed(b);
   };
   if (delay > 0) setTimeout(go, delay);
@@ -171,11 +189,10 @@ export function wobble(
  * seconds. The jelly's own inertia does the rest: it lags, overshoots and
  * settles when the force stops.
  */
-export function shove(el: Element, ax: number, ay: number, dt: number, reach = 1) {
-  const b = bodyFor(el, { width: 1, height: 1 }, reach);
+export function shove(el: Element, ax: number, ay: number, dt: number, reach?: number) {
+  const b = bodies.get(el) ?? bodyFor(el, el.getBoundingClientRect(), reach);
   if (!b) return;
-  b.gooey = false;
-  b.vx += ax * dt;
-  b.vy += ay * dt;
+  b.vx += ax * dt * b.gain;
+  b.vy += ay * dt * b.gain;
   clampSpeed(b);
 }

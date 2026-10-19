@@ -1178,6 +1178,19 @@ button:hover .jelly-blob {
   background: #000;
 }
 
+/* On the black More sheet, black would be no change at all. */
+.on-ink .jelly-switch {
+  background: rgb(232 45 199 / 0.3);
+}
+
+.on-ink .jelly-switch.is-on {
+  background: rgb(232 45 199 / 0.6);
+}
+
+.on-ink .jelly-lines {
+  stroke: rgb(255 255 255 / 0.6);
+}
+
 .jelly-lines {
   stroke: rgb(138 24 120 / 0.45);
 }

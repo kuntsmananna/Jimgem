@@ -1816,8 +1816,8 @@ compares identity, and a panel builds a fresh draft before every call.
   `/api/announcements` is the one API resource a staff login may reach
   beyond orders and tasks, so a staff announcement could be dismissed too.
   **Every release can be read again** from a sparkle icon beside the VAT
-  switch (`WhatsNewButton`, for staff too) and a row in the phone's More
-  sheet — and, for a staff account on a phone, which has no More, a
+  switch (`WhatsNewButton`, for staff too) and the same sparkle beside the
+  name at the top of the phone's More sheet (`variant="sheet"`) — and, for a staff account on a phone, which has no More, a
   **What's new** cell in the bottom bar beside Sign out: the same popup
   with *all* the releases for that role rather than
   the arrival popup's three, opened with `replay`, which records nothing
@@ -1827,14 +1827,25 @@ compares identity, and a panel builds a fresh draft before every call.
 - **Jelly mode** (v0.79, `src/components/JellyMode.tsx`) is a toy the
   owner asked for: a small jelly blob beside the What's new sparkle
   (`.jelly-blob` — a lopsided dome on a flat base, which quivers for as
-  long as the mode is on, so the switch itself says the state) (a row
-  in the phone's More sheet; a **Jelly** cell in a staff account's bottom
-  bar, which has no More). On a laptop it makes the app's **decorative
-  pieces only** wobble — jelly cubes, chips and badges (`.keeps-color`,
+  long as the mode is on, so the switch itself says the state) (on a
+  phone, an icon beside the name at the top of the More sheet, next to
+  What's new's sparkle and the close button — icons without words, so the
+  pair costs no row; a **Jelly** cell in a staff account's bottom bar,
+  which has no More). It makes two kinds of thing wobble, **each its own
+  body**: the *pieces* — jelly cubes, chips and badges (`.keeps-color`,
   `.chip-neutral`, which every chip already wears, so a new chip joins
   without opting in) and `data-jiggle` on the extras marks and the figure
-  tiles; rows, panes, fields and text never move, so the list can still be
-  worked with it on. The mouse ripples the pieces it passes, nearest first
+  tiles — and the *items* (`ITEMS`, v0.79.2): every list row and phone
+  card (`.motion-row`, `.hover-line`, the Orders rows), every shared
+  button (`.press`, which the filter chips wear), the nav's pills and the
+  logo (`data-jiggle-item`). The owner found a list that moved as one
+  block read as the page sliding rather than as jelly, so no container
+  moves on its own; and each body draws its own springiness and heft at
+  random (`spring`, `gain` in `wobble.ts`), because identical bodies under
+  one force move in lockstep — the speed ceiling scales with the heft for
+  the same reason. A wide row's turn is scaled down (`turnScale`), or a
+  degree swept its far end across its neighbours. Panes and fields never
+  move. The mouse ripples the pieces and items it passes, nearest first
   and harder and further the faster it moves — and **a big sweep (`SWEEP`)
   is a shockwave across the whole interface**: every piece, plus the panes
   and the Orders rows (`WHOLE`) at a fraction of the strength.
@@ -1844,11 +1855,8 @@ compares identity, and a panel builds a fresh draft before every call.
   was missed by real shakes, so all anyone saw was the old tilt-lean. Linear
   acceleration (the sensor's own, or a high-pass of the gravity-mixed
   reading) pushes against the phone's movement, which is inertia, and
-  `rotationRate` sways it; both go to every block of the page
-  (`pageBlocks`) and, at half strength, to the pieces inside them. A block
-  that is or holds something `fixed`/`sticky` is skipped or stepped into,
-  because a transform on an ancestor makes the Add order button and the
-  undo bar scroll away with it. iOS motion permission is asked from inside
+  `rotationRate` sways it; both go to every item and piece on screen, each
+  answering in its own time. iOS motion permission is asked from inside
   the tap that switches it on, the only place iOS allows. It **holds still**
   while a popup is open (`overlayOpen()` in `useOverlayDismiss.ts`) or the
   caret is in a field, and it is **off at the start of every visit** —

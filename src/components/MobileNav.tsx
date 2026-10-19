@@ -249,7 +249,9 @@ function MoreSheet({
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cream text-[11px] font-bold text-ink">
             {initials(name)}
           </span>
-          <span className="flex-1 truncate text-sm font-semibold">{name}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
+          <WhatsNewButton variant="sheet" />
+          <JellyModeButton variant="sheet" />
           <SheetClose onClose={onClose} />
         </div>
 
@@ -267,11 +269,6 @@ function MoreSheet({
               {label}
             </Link>
           ))}
-        </div>
-
-        <div className="border-t border-cream/15">
-          <WhatsNewButton variant="row" />
-          <JellyModeButton variant="row" />
         </div>
 
         {/*
