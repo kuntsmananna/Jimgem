@@ -229,6 +229,27 @@ export function JellyBlob({ size = 16, on = false }: { size?: number; on?: boole
  * phone's More sheet or a cell in a staff account's bottom bar (`row`,
  * `cell`). Selected is the fill, as everywhere in the app.
  */
+/**
+ * The cartoon "it's moving" marks either side of the blob — two short arcs
+ * a side, the way a comic draws a wobble. Faint and still while the mode
+ * is off; while it is on they pulse outward (`.jelly-switch.is-on`), so the
+ * button reads as a mode that animates, not as one more icon.
+ */
+export function WiggleLines() {
+  return (
+    <svg aria-hidden viewBox="0 0 44 32" className="jelly-lines pointer-events-none absolute inset-0 h-full w-full" fill="none">
+      <g className="jelly-lines-left" strokeLinecap="round" strokeWidth="1.6">
+        <path d="M9 11 Q6 16 9 21" />
+        <path d="M5.5 9 Q1.5 16 5.5 23" />
+      </g>
+      <g className="jelly-lines-right" strokeLinecap="round" strokeWidth="1.6">
+        <path d="M35 11 Q38 16 35 21" />
+        <path d="M38.5 9 Q42.5 16 38.5 23" />
+      </g>
+    </svg>
+  );
+}
+
 export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "row" }) {
   const { on, toggle } = useJellyMode();
   if (variant === "row") {
@@ -265,11 +286,10 @@ export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "row"
         onClick={toggle}
         aria-pressed={on}
         aria-label={on ? "Jelly mode is on. Turn it off" : "Jelly mode: make the interface wobble"}
-        className={`press flex h-8 w-8 items-center justify-center rounded-full transition ${
-          on ? "bg-black" : "hover:bg-black/5"
-        }`}
+        className={`jelly-switch press relative flex h-8 w-11 items-center justify-center rounded-full ${on ? "is-on" : ""}`}
       >
-        <JellyBlob size={20} on={on} />
+        <WiggleLines />
+        <JellyBlob size={18} on={on} />
       </button>
     </HoverCard>
   );

@@ -1169,3 +1169,55 @@ button:hover .jelly-blob {
     animation: none;
   }
 }
+
+/*
+ * The jelly switch's own surface, so it reads as a mode rather than one
+ * more grey icon: a berry tint at rest, black once on — the app's
+ * "selected is the fill" — with the wiggle marks either side of the blob
+ * faint at rest and pulsing outward while the mode runs.
+ */
+.jelly-switch {
+  background: rgb(232 45 199 / 0.13);
+  transition: background-color 160ms ease;
+}
+
+.jelly-switch:hover {
+  background: rgb(232 45 199 / 0.22);
+}
+
+.jelly-switch.is-on {
+  background: #000;
+}
+
+.jelly-lines {
+  stroke: rgb(138 24 120 / 0.45);
+}
+
+.jelly-switch.is-on .jelly-lines {
+  stroke: rgb(255 255 255 / 0.75);
+}
+
+.jelly-switch.is-on .jelly-lines-left {
+  animation: jelly-lines-left 0.8s ease-in-out infinite;
+}
+
+.jelly-switch.is-on .jelly-lines-right {
+  animation: jelly-lines-right 0.8s ease-in-out infinite;
+}
+
+@keyframes jelly-lines-left {
+  0%, 100% { transform: translateX(0); opacity: 0.35; }
+  50% { transform: translateX(-1.5px); opacity: 1; }
+}
+
+@keyframes jelly-lines-right {
+  0%, 100% { transform: translateX(0); opacity: 0.35; }
+  50% { transform: translateX(1.5px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jelly-switch.is-on .jelly-lines-left,
+  .jelly-switch.is-on .jelly-lines-right {
+    animation: none;
+  }
+}

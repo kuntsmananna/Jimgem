@@ -1827,7 +1827,10 @@ compares identity, and a panel builds a fresh draft before every call.
 - **Jelly mode** (v0.79, `src/components/JellyMode.tsx`) is a toy the
   owner asked for: a small jelly blob beside the What's new sparkle
   (`.jelly-blob` — a lopsided dome on a flat base, which quivers for as
-  long as the mode is on, so the switch itself says the state) (a row
+  long as the mode is on — on a `.jelly-switch` pill with comic-style
+  wiggle lines either side: berry-tinted at rest, black with the lines
+  pulsing outward while on, so the button reads as a mode that animates
+  rather than one more icon) (a row
   in the phone's More sheet; a **Jelly** cell in a staff account's bottom
   bar, which has no More) that makes the app's **decorative pieces only**
   wobble — jelly cubes, chips and badges (`.keeps-color`, `.chip-neutral`,

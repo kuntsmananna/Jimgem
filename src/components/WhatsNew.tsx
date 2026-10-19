@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
-import { JellyBlob } from "@/components/JellyMode";
+import { JellyBlob, WiggleLines } from "@/components/JellyMode";
 import { HoverCard } from "@/components/HoverCard";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
@@ -543,7 +543,8 @@ function JellyModeIllustration() {
           ),
         )}
       </div>
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black">
+      <span className="jelly-switch is-on relative flex h-9 w-12 items-center justify-center rounded-full">
+        <WiggleLines />
         <JellyBlob size={20} on />
       </span>
     </div>
