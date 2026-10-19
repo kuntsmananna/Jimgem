@@ -34,7 +34,7 @@ export function ClientPicker({
   phone,
   onPick,
   onPhone,
-  trailing = null,
+  leading = null,
 }: {
   clients: Client[];
   name: string;
@@ -43,8 +43,8 @@ export function ClientPicker({
   phone: string;
   onPick: (patch: { customer: string; clientId: number | null }) => void;
   onPhone: (phone: string) => void;
-  /** Drawn at the end of the "On file" line — the phone's client-card link. */
-  trailing?: React.ReactNode;
+  /** Drawn at the start of the "On file" line — the phone's client-card link. */
+  leading?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -96,9 +96,10 @@ export function ClientPicker({
         className="keeps-size w-full rounded-xl px-2.5 py-1 font-display text-[28px] leading-tight font-extrabold tracking-tight placeholder:text-ink-soft/35"
       />
 
-      <div className="mt-1 flex min-h-[1.25rem] items-center gap-2 text-[11px]">
+      <div className="mt-1 flex min-h-[1.25rem] items-center gap-2 text-[11px] max-md:pl-1.5">
         {picked && (
           <>
+            {leading}
             <span className="font-semibold text-accent">On file</span>
             {/* On a phone the number is set like the date under it — the
                 mark and the value at reading size (v0.84) — and dials when
@@ -113,7 +114,6 @@ export function ClientPicker({
               </a>
             )}
             {picked.sumitCustomerId && <span className="text-ink-soft">· linked to SUMIT</span>}
-            {trailing}
           </>
         )}
         {isNew && (

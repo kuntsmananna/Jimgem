@@ -87,104 +87,113 @@ export function OrderCustomerPanel({
           order to them. That link is what every client view and every
           SUMIT document hangs off — free text has nowhere to keep an id.
         */}
-        <ClientPicker
-          clients={clients}
-          name={draft.customer}
-          clientId={draft.clientId}
-          phone={newClientPhone}
-          onPick={(patch) => set(patch)}
-          onPhone={onNewClientPhone}
-          // On a phone the link rides the "On file" line (v0.84, the owner's
-          // call) rather than a line of its own under it.
-          trailing={mobile && draft.clientId !== null ? <ClientCardLink clientId={draft.clientId} iconOnly /> : null}
-        />
+        {/*
+          The order's hero on a phone (v0.84.1, the owner's call): the name,
+          who they are on file and when and where, in one brighter tinted
+          box above the chip groups — the part of the form that says which
+          order this is, set apart from the parts that classify it. A plain
+          column on a laptop, where nothing changes.
+        */}
+        <div className="flex flex-col max-md:rounded-card max-md:border max-md:border-line/70 max-md:bg-cream/70 max-md:px-2 max-md:py-2.5">
+          <ClientPicker
+            clients={clients}
+            name={draft.customer}
+            clientId={draft.clientId}
+            phone={newClientPhone}
+            onPick={(patch) => set(patch)}
+            onPhone={onNewClientPhone}
+            // On a phone the link leads the "On file" line (v0.84, the owner's
+            // call) rather than taking a line of its own under it.
+            leading={mobile && draft.clientId !== null ? <ClientCardLink clientId={draft.clientId} iconOnly /> : null}
+          />
 
-        {/*
-          When and where, on the line under the name — they are the rest of
-          "which order", and each is one short value that would waste a row
-          of its own. Both go uncaptioned: a date field is self-evident,
-          and the location box says "Location" until it has one, behind a
-          pin so it reads as a place rather than as more free text.
-        */}
-        {/*
-          The way to the client's own card, once the order has one.
-          Deliberately a new tab: this popup is holding unsaved work, and a
-          link that navigated away from it would trade an order for a
-          lookup. Under the name rather than beside it — the name is a
-          headline and a link tucked into its baseline would be read as
-          part of it.
-        */}
-        {draft.clientId !== null && !mobile && (
-          <div className="mt-1.5">
-            <ClientCardLink clientId={draft.clientId} />
-          </div>
-        )}
+          {/*
+            When and where, on the line under the name — they are the rest of
+            "which order", and each is one short value that would waste a row
+            of its own. Both go uncaptioned: a date field is self-evident,
+            and the location box says "Location" until it has one, behind a
+            pin so it reads as a place rather than as more free text.
+          */}
+          {/*
+            The way to the client's own card, once the order has one.
+            Deliberately a new tab: this popup is holding unsaved work, and a
+            link that navigated away from it would trade an order for a
+            lookup. Under the name rather than beside it — the name is a
+            headline and a link tucked into its baseline would be read as
+            part of it.
+          */}
+          {draft.clientId !== null && !mobile && (
+            <div className="mt-1.5">
+              <ClientCardLink clientId={draft.clientId} />
+            </div>
+          )}
 
-        {/*
-          Two on a line on a laptop; on a phone the location takes a line
-          of its own. Measured at 390px: a date field at 16px wants 165 of
-          the 358 available — that is the browser's own intrinsic width for
-          the value plus its picker button, not padding that could be
-          trimmed — which leaves the location under half the screen for the
-          one field here anybody types a sentence into. `basis-full` on the
-          location is what breaks the line.
-        */}
-        {/*
-          **One line on a phone too** (v0.84, the owner's call): the date
-          is written short — "Sun 19/10", behind a calendar mark the way the
-          location sits behind its pin — with the real date field laid over
-          it invisibly, so a tap still opens the phone's own picker. The
-          browser's own date box was 165px of a 358px line for the same
-          fact, which is what forced the location onto a line of its own.
-        */}
-        <div className="mt-2.5 flex items-center gap-2.5 max-md:gap-1.5">
-          {mobile ? (
-            <label className="relative flex shrink-0 items-center gap-1.5 rounded-xl py-1.5 pr-2 pl-2.5 text-base active:bg-ink/[0.06]">
-              <CalendarDays size={15} aria-hidden className="text-ink-soft" />
-              <span className="tabular-nums">
-                {draft.date ? `${orderWeekday(draft.date)} ${formatOrderDate(draft.date)}` : "Date"}
-              </span>
-              <input
-                type="date"
-                value={draft.date}
-                onChange={(e) => set({ date: e.target.value })}
-                aria-label="Date"
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          {/*
+            Two on a line on a laptop; on a phone the location takes a line
+            of its own. Measured at 390px: a date field at 16px wants 165 of
+            the 358 available — that is the browser's own intrinsic width for
+            the value plus its picker button, not padding that could be
+            trimmed — which leaves the location under half the screen for the
+            one field here anybody types a sentence into. `basis-full` on the
+            location is what breaks the line.
+          */}
+          {/*
+            **One line on a phone too** (v0.84, the owner's call): the date
+            is written short — "Sun 19/10", behind a calendar mark the way the
+            location sits behind its pin — with the real date field laid over
+            it invisibly, so a tap still opens the phone's own picker. The
+            browser's own date box was 165px of a 358px line for the same
+            fact, which is what forced the location onto a line of its own.
+          */}
+          <div className="mt-2.5 flex items-center gap-2.5 max-md:gap-1.5">
+            {mobile ? (
+              <label className="relative flex shrink-0 items-center gap-1.5 rounded-xl py-1.5 pr-2 pl-2.5 text-base active:bg-ink/[0.06]">
+                <CalendarDays size={15} aria-hidden className="text-ink-soft" />
+                <span className="tabular-nums">
+                  {draft.date ? `${orderWeekday(draft.date)} ${formatOrderDate(draft.date)}` : "Date"}
+                </span>
+                <input
+                  type="date"
+                  value={draft.date}
+                  onChange={(e) => set({ date: e.target.value })}
+                  aria-label="Date"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+            ) : (
+            <TextInput
+              type="date"
+              value={draft.date}
+              onChange={(e) => set({ date: e.target.value })}
+              aria-label="Date"
+              // Sized to the date plus its button and no further: at 9.5rem the
+              // picker sat at the far right of a box the date only half filled,
+              // reading as a control belonging to nothing in particular.
+              // Wider on a phone: the same date is 16px there, and the box
+              // is sized to the date plus its picker button and no further.
+              className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums max-md:w-[10.5rem]"
+            />
+            )}
+            <label className="relative flex min-w-0 flex-1 items-center">
+              <MapPin
+                size={14}
+                aria-hidden
+                className="pointer-events-none absolute left-2.5 text-ink-soft"
+              />
+              <TextInput
+                value={draft.location}
+                onChange={(e) => set({ location: e.target.value })}
+                placeholder="Location"
+                aria-label="Location"
+                className="w-full py-1.5 pr-2.5 pl-8 text-sm"
               />
             </label>
-          ) : (
-          <TextInput
-            type="date"
-            value={draft.date}
-            onChange={(e) => set({ date: e.target.value })}
-            aria-label="Date"
-            // Sized to the date plus its button and no further: at 9.5rem the
-            // picker sat at the far right of a box the date only half filled,
-            // reading as a control belonging to nothing in particular.
-            // Wider on a phone: the same date is 16px there, and the box
-            // is sized to the date plus its picker button and no further.
-            className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums max-md:w-[10.5rem]"
-          />
-          )}
-          <label className="relative flex min-w-0 flex-1 items-center">
-            <MapPin
-              size={14}
-              aria-hidden
-              className="pointer-events-none absolute left-2.5 text-ink-soft"
-            />
-            <TextInput
-              value={draft.location}
-              onChange={(e) => set({ location: e.target.value })}
-              placeholder="Location"
-              aria-label="Location"
-              className="w-full py-1.5 pr-2.5 pl-8 text-sm"
-            />
-          </label>
+          </div>
         </div>
 
         {/* No heading here either: three captioned chip rows say what they
             are, and a section title over them was a heading for headings. */}
-        <div className="mt-7 flex flex-col gap-4">
+        <div className="mt-7 flex flex-col gap-4 max-md:mt-5">
           <ChipSpread
             label="Order type"
             value={draft.customerType}

@@ -333,6 +333,13 @@ client card** rides the "On file" line there (`ClientPicker`'s `trailing`)
 rather than a line under it — as a mark alone (v0.84), beside the client's
 number set like the date (mark and value at 16px) and dialling when tapped.
 
+**The Customer tab's hero is a tinted box on a phone** (v0.84.1, the
+owner's call): the name, the "On file" line — led by the client-card mark
+(`ClientPicker`'s `leading`) — and the date and location sit in one
+cream-tinted, edged box above the chip groups, the part that says which
+order this is set apart from the parts that classify it. A plain column on
+a laptop.
+
 **On a phone every heading in the form is ruled and every chip spread
 answers from the right** (v0.84, the owner's call): `ChipSpread`'s caption
 takes `GroupLabel`'s hairline below the breakpoint and its chips
