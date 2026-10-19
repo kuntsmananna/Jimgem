@@ -22,10 +22,48 @@ export interface Announcement {
   /** This release's page heading. The popup itself is always titled "What's new". */
   title: string;
   lede: string;
-  items: { icon: "amount" | "card" | "filter" | "palette" | "lift" | "hover" | "jelly"; title: string; text: string }[];
+  items: {
+    icon: "amount" | "card" | "filter" | "palette" | "lift" | "hover" | "jelly" | "day" | "columns" | "extras" | "select";
+    title: string;
+    text: string;
+  }[];
 }
 
 export const ANNOUNCEMENTS: Announcement[] = [
+  /*
+   * v0.78: the Orders list reorganised, for everyone. Worded without money,
+   * like v0.74's, because a staff login gets the same table less its money
+   * columns — so it says nothing about Still due or the payment badge.
+   */
+  {
+    id: "v0.78-orders-table",
+    audience: ["admin", "staff"],
+    art: "refresh",
+    title: "The orders list, reorganised",
+    lede: "Each order now reads left to right in the same order every time: when, the order, what to make — so one row is quicker to read and two are easier to compare.",
+    items: [
+      {
+        icon: "day",
+        title: "The day in the margin",
+        text: "The date sits in its own column, once per day, with today in green. The list no longer stops for a heading.",
+      },
+      {
+        icon: "extras",
+        title: "Extras at a glance",
+        text: "Display, waitresses, kosher and delivery are one column of marks — lit when the order has it, with a count when there’s more than one.",
+      },
+      {
+        icon: "hover",
+        title: "Every mark explains itself",
+        text: "Point at any icon, figure or badge and a label says what it means, straight away.",
+      },
+      {
+        icon: "select",
+        title: "Select inside the row",
+        text: "The tick box is the first thing in each row, and every box stays showing once you’ve ticked one.",
+      },
+    ],
+  },
   /*
    * v0.74: the new look, for everyone. Worded without money on purpose — a
    * staff login sees this one too, and "hover the amount" would describe a

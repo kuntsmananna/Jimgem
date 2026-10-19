@@ -1,7 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Banknote, Boxes, CreditCard, Filter, Landmark, MousePointer2, Palette, Receipt, Sparkles, TrendingUp } from "lucide-react";
+import {
+  Banknote,
+  Boxes,
+  CalendarDays,
+  Columns3,
+  CreditCard,
+  Filter,
+  Landmark,
+  MousePointer2,
+  Palette,
+  Receipt,
+  Sparkles,
+  SquareCheck,
+  TrendingUp,
+  Truck,
+} from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
 import { HoverCard } from "@/components/HoverCard";
@@ -20,6 +35,10 @@ const ITEM_ICON = {
   lift: TrendingUp,
   hover: MousePointer2,
   jelly: Boxes,
+  day: CalendarDays,
+  columns: Columns3,
+  extras: Truck,
+  select: SquareCheck,
 } as const;
 
 /**

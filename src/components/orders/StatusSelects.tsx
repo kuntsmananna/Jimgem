@@ -14,6 +14,8 @@ import {
 import { JellyHop } from "@/components/JellyLoader";
 import { saveError } from "@/components/saveError";
 import { useStage, useStages } from "@/components/ProductionStagesContext";
+import { paymentMethodIconElement } from "@/lib/icons";
+import { usePaymentMethods } from "./PaymentMethodsContext";
 
 /**
  * The payment status, as the badge it is everywhere else — and a click on
@@ -45,6 +47,15 @@ export function PaymentStatusSelect({
   const chip = useRef<HTMLButtonElement | null>(null);
   const menu = useRef<HTMLDivElement | null>(null);
   const statuses = Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[];
+  /*
+   * How it was paid rides in the same badge and the same list (v0.78): the
+   * method's icon sits inside the badge, and the list has a Paid by half
+   * under the statuses. It was a column of its own beside this one — two
+   * cells answering one question, "has this been paid, and how".
+   */
+  const allMethods = usePaymentMethods();
+  const method = allMethods.find((m) => m.id === order.paymentMethodId) ?? null;
+  const methods = allMethods.filter((m) => !m.archivedAt || m.id === order.paymentMethodId);
 
   const close = useCallback(() => setAt(null), []);
 
@@ -78,7 +89,7 @@ export function PaymentStatusSelect({
   function open() {
     const rect = chip.current?.getBoundingClientRect();
     if (!rect) return;
-    const height = statuses.length * 34 + 12;
+    const height = statuses.length * 34 + 12 + (methods.length ? (methods.length + 1) * 34 + 30 : 0);
     const below = rect.bottom + 6 + height <= window.innerHeight - 8;
     setAt({
       left: Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8),
@@ -86,11 +97,11 @@ export function PaymentStatusSelect({
     });
   }
 
-  async function write(status: PaymentStatus): Promise<boolean> {
+  async function write(patch: { paymentStatus: PaymentStatus } | { paymentMethodId: number | null }): Promise<boolean> {
     const response = await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "patch", paymentStatus: status }),
+      body: JSON.stringify({ mode: "patch", ...patch }),
     });
     const failure = await saveError(response, "order");
     if (failure) alert(failure);
@@ -102,12 +113,29 @@ export function PaymentStatusSelect({
     if (status === order.paymentStatus) return;
     const before = order.paymentStatus;
     setBusy(true);
-    const ok = await write(status);
+    const ok = await write({ paymentStatus: status });
     setBusy(false);
     onChanged();
     if (ok) {
       onUndoable?.(`${order.customer || "Order"} — ${PAYMENT_STATUS_LABEL[status]}`, async () => {
-        await write(before);
+        await write({ paymentStatus: before });
+        onChanged();
+      });
+    }
+  }
+
+  async function chooseMethod(id: number | null) {
+    close();
+    if (id === order.paymentMethodId) return;
+    const before = order.paymentMethodId;
+    setBusy(true);
+    const ok = await write({ paymentMethodId: id });
+    setBusy(false);
+    onChanged();
+    if (ok) {
+      const name = allMethods.find((m) => m.id === id)?.name ?? "not paid yet";
+      onUndoable?.(`${order.customer || "Order"} — paid by ${name}`, async () => {
+        await write({ paymentMethodId: before });
         onChanged();
       });
     }
@@ -130,7 +158,7 @@ export function PaymentStatusSelect({
         disabled={busy}
         aria-haspopup="listbox"
         aria-expanded={at !== null}
-        aria-label={`Payment: ${PAYMENT_STATUS_LABEL[order.paymentStatus]}. Change`}
+        aria-label={`Payment: ${PAYMENT_STATUS_LABEL[order.paymentStatus]}${method ? `, by ${method.name}` : ""}. Change`}
         onClick={() => (at ? close() : open())}
         className={`press keeps-color inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${paymentBadgeClass(order.paymentStatus)}`}
       >
@@ -138,6 +166,7 @@ export function PaymentStatusSelect({
           <JellyHop size={5} label="Saving" />
         ) : (
           <>
+            {method && <span className="shrink-0">{paymentMethodIconElement(method.name)}</span>}
             {PAYMENT_STATUS_LABEL[order.paymentStatus]}
             <ChevronDown size={11} aria-hidden className="opacity-60" />
           </>
@@ -170,6 +199,32 @@ export function PaymentStatusSelect({
                 </button>
               );
             })}
+            {methods.length > 0 && (
+              <>
+                <p className="mt-1.5 border-t border-line px-2 pt-2 pb-1 text-[10px] font-bold tracking-[0.12em] text-ink-soft uppercase">
+                  Paid by
+                </p>
+                {[{ id: null, name: "Not yet" }, ...methods].map((m) => {
+                  const current = m.id === order.paymentMethodId;
+                  return (
+                    <button
+                      key={m.id ?? "none"}
+                      type="button"
+                      role="option"
+                      aria-selected={current}
+                      onClick={() => chooseMethod(m.id)}
+                      className="flex h-8 items-center gap-2 rounded-lg px-2 text-left text-[12.5px] text-ink outline-none transition-colors hover:bg-cream focus-visible:bg-cream"
+                    >
+                      <span className="flex w-3 shrink-0 justify-center text-ink-soft" aria-hidden>
+                        {m.id !== null && paymentMethodIconElement(m.name)}
+                      </span>
+                      <span className={`flex-1 ${current ? "font-bold" : "font-medium"}`}>{m.name}</span>
+                      {current && <Check size={13} className="text-accent" aria-hidden />}
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </div>,
           document.body,
         )}

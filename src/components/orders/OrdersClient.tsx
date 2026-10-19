@@ -23,7 +23,7 @@ import { OrdersSummary } from "./OrdersSummary";
 import { PaneRail } from "@/components/PaneFold";
 import { ORDERS_FIGURES_COOKIE, serializeFiguresFolded } from "@/lib/paneFolds";
 import { writePrefCookie } from "@/lib/prefCookie";
-import { COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
+import { COLUMNS, FIXED_COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
 import { PaymentMethodsProvider } from "./PaymentMethodsContext";
 import { EmptyState } from "@/components/EmptyState";
 import { useCanSeeMoney, useIsAdmin } from "@/components/RoleContext";
@@ -211,7 +211,8 @@ export function OrdersClient({
     () =>
       COLUMNS.filter(
         (column) =>
-          column.id !== "select" && (money || !MONEY_COLUMNS.includes(column.id as (typeof MONEY_COLUMNS)[number])),
+          !FIXED_COLUMNS.includes(column.id) &&
+          (money || !MONEY_COLUMNS.includes(column.id as (typeof MONEY_COLUMNS)[number])),
       ),
     [money],
   );

@@ -16,6 +16,9 @@
   --color-ink-soft: #6a6056;
   --color-line: #eadcd3;
   --color-accent: #4f6f52;
+  /* Money still to collect on the Orders table (v0.78): amber, the one
+     warm warning in a sage-and-cream palette, and 5.4:1 on white. */
+  --color-due: #a35a12;
 
   /* The ink the Gems mark is drawn in — the logo's own colour, kept as a
      token so the one place it is stated is here. */
@@ -526,16 +529,89 @@ body {
 }
 
 /*
- * Above the day headings (z-10), below the table header (z-20). A day
- * heading is sticky and opaque cream, so the next day's heading painted
- * over the shadow of a day's last order and cut it off flat (v0.77). Only
- * when the row is clear of the headings pinned at the top, though —
- * `liftIfClear` in OrdersTable decides — or a row scrolling under a pinned
- * heading would be drawn over the label naming its day. The row is
- * `position: relative` at rest (below), so this changes paint only.
+ * Above every other row, below the sticky header (z-20). Rows paint in
+ * order, so without it the next row's cells drew over the shadow of the
+ * hovered one and cut it off flat. The row is `position: relative` at
+ * rest (below), so this changes paint only. It used to be conditional on
+ * the row being clear of the sticky day headings (`liftIfClear`); with the
+ * day a column since v0.78 there is nothing left for it to cover.
  */
-.orders-rows > tr.lifts-over:hover {
+.orders-rows > tr:not(.day-row):hover {
   z-index: 15;
+}
+
+/*
+ * The table's tick boxes (v0.78): an outline square until ticked, then the
+ * black fill with a cream tick — the app's "selected is the fill" rule.
+ * The browser's own box was a grey, slightly glossy square that read as
+ * already half-chosen. Shown while the row is hovered, on a ticked box,
+ * on every box once anything is selected (`is-selecting` on the table, so
+ * a selection being built can be seen whole), and always on the header's
+ * select-all and wherever there is no hover to reveal it.
+ */
+.pick-box {
+  appearance: none;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid --alpha(var(--color-ink) / 35%);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.pick-box:hover {
+  border-color: --alpha(var(--color-ink) / 60%);
+}
+
+.pick-box:checked,
+.pick-box:indeterminate {
+  background: #000;
+  border-color: #000;
+}
+
+.pick-box:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border: 2px solid var(--color-cream);
+  border-top: 0;
+  border-right: 0;
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.pick-box:indeterminate::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-cream);
+}
+
+.pick-box:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+tr:hover .pick-box,
+thead .pick-box,
+.is-selecting .pick-box,
+.pick-box:checked,
+.pick-box:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .pick-box {
+    opacity: 1;
+  }
 }
 
 .orders-rows > tr:not(.day-row):hover > td:not(:first-child) {
@@ -957,11 +1033,9 @@ body {
 /*
  * An order is a box.
  *
- * The phone's cards were liked enough to be asked for on the laptop, and
- * this is the half of that which is not the day heading: the table stops
- * being a ruled ledger and becomes a column of separated boxes on the
- * page's own cream, with the day headings between them rather than inside
- * the frame.
+ * The phone's cards were liked enough to be asked for on the laptop: the
+ * table stops being a ruled ledger and becomes a column of separated boxes
+ * on the page's own cream, with the day written in the margin beside them.
  *
  * A `<table>` can only do that through `border-separate`: a row cannot
  * carry a background or a border in that mode, so **the cells are the
@@ -982,7 +1056,7 @@ body {
   background-color: --alpha(var(--color-card) / 42%);
   border-block: 1px solid transparent;
   /* Every cell's padding, stated once here rather than as the same two
-     utilities on sixteen <td>s — the day heading's `px-2` matches it. */
+     utilities on every <td> — the header's `px-2` matches it. */
   padding: 0.625rem 0.5rem;
   transition: background-color 140ms ease, border-color 140ms ease;
 }
@@ -995,15 +1069,16 @@ body {
 }
 
 /*
- * The first cell is the tick box's gutter, and it is **not part of the
- * box**: it holds a control that is invisible until hovered and has no
- * data of its own, so inside the surface it was 30px of nothing before
- * every order's first value. The box starts at the second cell, which
- * closes and rounds the left end in its place.
+ * The first cell is the day column, and it is **not part of the box**: the
+ * date sits in the margin, written once per day, and a hovered row never
+ * lights it. The box starts at the second cell, which closes and rounds
+ * the left end in its place. (It was the tick box's gutter until v0.78;
+ * the box now sits inside, as the order's first cell.)
  */
 .orders-rows > tr > td:first-child {
   background-color: transparent;
   border: 0;
+  padding-left: 0;
 }
 
 .orders-rows > tr > td:nth-child(2) {

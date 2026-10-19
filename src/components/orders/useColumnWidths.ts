@@ -199,15 +199,14 @@ export function useColumnWidths(ids: readonly string[]) {
 }
 
 /**
- * Hidden until somebody says otherwise.
+ * Hidden until somebody says otherwise — nothing, since v0.78.
  *
- * **Date**, since v0.68.0: the list is divided by day and every heading
- * already names the date of every row beneath it, so the column repeated
- * it once per order. It is still in the menu and one click brings it
- * back — the grouping made it redundant, which is a reason to stop
- * *drawing* it by default and not a reason to take it away.
+ * It was the Date column from v0.68 to v0.77, when every day heading
+ * already named the date of every row beneath it. The day is a column of
+ * its own now that the menu does not offer, so there is nothing left that
+ * repeats; the hook keeps the mechanism for the next column that does.
  */
-const HIDDEN_BY_DEFAULT = ["date"];
+const HIDDEN_BY_DEFAULT: string[] = [];
 
 /**
  * Which columns the table is not showing.
@@ -216,8 +215,8 @@ const HIDDEN_BY_DEFAULT = ["date"];
  * menu; the moment they do, their own list is what counts — including an
  * empty one, which is why "Show all columns" writes `[]` rather than
  * clearing the key. Clearing it would mean "no opinion", and the default
- * would put Date straight back on a table somebody had just asked to show
- * everything.
+ * would put the default straight back on a table somebody had just asked
+ * to show everything in full.
  *
  * The stored list is sanitised against the ids it is asked about, so a
  * column dropped from the table later cannot linger in storage and quietly

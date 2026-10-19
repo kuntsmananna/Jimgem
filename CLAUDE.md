@@ -170,8 +170,8 @@ rather than worked there. Every page now has a phone layout.
 (`src/components/orders/OrdersMobileList.tsx`), one per order, under a
 heading per day. The table is fifteen columns and 1100px wide — three
 screens of sideways scrolling to read one row — so the card carries
-**every column the table has**: location, guests, units and deposit in a
-labelled grid, then the amount with its payment status under a rule. Only
+**every column the table has**: location, guests and units in a labelled
+grid, then the payment badge, what is still due and the total under a rule. Only
 the fields an order *has* are drawn — a card of thirteen rows, nine of them
 "—", is worse than the table it replaced, because the table's dashes sit in
 columns you read past while on a card each costs a line. `hasDelivery` and
@@ -181,12 +181,12 @@ measured at 360px a half-width cell left it 7px after its label, which
 truncates a venue to one character.
 
 **Display, waitressing, kosher and delivery are a row of chips**, not four
-more labelled rows. They are flags — a yes or a small number — and a whole
+more labelled rows — each wearing its mark from the table's Extras column
+(`extraSlots`) and keeping its word, since a phone has no hover to say
+what a mark means. Still due sits before the total in the table's amber,
+and the day heading says **Today** in the accent. They are flags — a yes or a small number — and a whole
 line apiece put four of them across two grid rows, which on a busy order
-was most of the card's height for the least of its meaning. Worded rather
-than iconised: `Sparkles` and `Truck` have marks elsewhere in the app but
-kosher and waitressing do not, and inventing two marks is worse than
-reading four short words.
+was most of the card's height for the least of its meaning.
 
 It briefly offered a second, folded card shape with a switcher between them
 (v0.59.0). The owner kept only the full one: the fold was the better answer
@@ -1004,8 +1004,8 @@ compares identity, and a panel builds a fresh draft before every call.
   line or two, and the total — the thing the column is scanned for — was
   what got pushed out. Kanban and calendar still use `ContentChips`; they
   have the width and no hover-side table to lean on.
-- The Orders table's **Type** cell edits as a dropdown over the owner's
-  order types (`EditableCell`'s `options`), not free text: a typed variant
+- The Orders table's **type mark** (beside the customer's name since
+  v0.78) edits as a dropdown over the owner's order types (`EditableCell`'s `options`), not free text: a typed variant
   would render uncoloured and quietly become a type of its own. A value
   already on an order but missing from the list stays selectable, so
   opening the cell and closing it can't retype the order.
@@ -1182,9 +1182,11 @@ compares identity, and a panel builds a fresh draft before every call.
   it, VAT included, so the Dashboard and Biz Plan figures are exactly what
   they were — VAT stays what the order's own `vat_mode` says. It is in
   `OrderMoney`, so a staff account is neither sent it nor able to set it.
-  The table's **Paid by** column and the phone card wear it as a neutral
-  chip (`PaymentMethodChip`) — neutral because the payment *status* beside
-  it already owns the colour on that row — and its icon is matched from the
+  Since v0.78 it rides **inside the payment badge** as its icon, in the
+  table and on the phone card (which names it in words too), and is set
+  from the badge's own menu; it was a column of neutral chips
+  (`PaymentMethodChip`, still used by Kanban and the hover cards) beside
+  the badge, two cells answering one question. Its icon is matched from the
   method's name by keyword (`paymentMethodIcon` in `icons.ts`), since the
   list has no icon column. The list reaches the page through
   `PaymentMethodsContext`, provided by `OrdersClient` rather than the app
@@ -2090,12 +2092,11 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   laptop. On the phone the bottom bar is Orders, Tasks, **What's new** and
   **Sign out** — everything else behind More is money or a page they have
   not got, and a target opening an empty sheet is worse than no target.
-- **The table keeps its tick-box column and draws nothing in it.** Every
-  bulk action is an admin's, so the boxes would lead only to a 403 — but
-  the column itself stays, because `.orders-rows > tr > td:first-child` is
-  the gutter the boxes sit beside and `> td:nth-child(2)` is what rounds
-  the left end. Take the column out and the Status chip falls outside the
-  box on every row.
+- **The table drops its tick-box column for a staff account.** Every bulk
+  action is an admin's, so the boxes would lead only to a 403. It had to
+  stay as an empty column until v0.78, because it was the gutter the box
+  started beside; the day column is that gutter now, and
+  `> td:nth-child(2)` rounds whichever cell comes next.
 
 ## Environment variables
 
@@ -2179,7 +2180,7 @@ missing is a data problem, and silently dropping the order's money would
 hide it. `scripts/migrate-010-production-stages.mjs` seeds the four in use
 and drops the CHECK constraint.
 
-**Status is the table's first column**, drawn as a squared chip in the
+**Status leads the order** (after the day and the tick box), drawn as a squared chip in the
 stage's own colour — deliberately not a pill, so it reads as the row's
 state rather than as another of its values, and not the same shape as the
 payment badge or the event-type chip. It was the last column, where it sat
@@ -2193,59 +2194,74 @@ booked order on the page where that difference matters most. The faint fill
 stays row-only, because a `<tr>` has no surface of its own while a card
 does and tinting it only muddies the white.
 
-**The desktop table is divided by day too** (v0.67.0), the same heading
-the phone's cards have carried since v0.44.0: the weekday and the date,
-and nothing else. It carried the day's order count for a version and the
-owner had it out again — the rows are right there to be counted, and a
-heading is a label. Brought over because people liked reading the list
-that way and asked for it; the two are now the same list in two shapes
-rather than two ways of reading one page.
+**The v0.78 table is read left to right in zones**, after the owner said
+the old one was hard to read a line of: fifteen columns in the order each
+had been added, six of them chips, and a full-width day heading that
+stopped the list at every date and sat between the column titles and the
+rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
 
-It is a **run boundary, not a grouping pass**: `getOrders` returns
-`ORDER BY date DESC, id DESC`, so a day's orders already arrive together
-and `byDay` only has to notice where one stops. Sorting there would be a
-second opinion about the list's order, and a heading could then disagree
-with the rows beneath it.
-
-**Each day is one `<tbody>`, heading and orders together**, and the
-heading **sticks under the table header** as you scroll. Those two facts
-are the same fact: a sticky cell only stays put while its own section is
-on screen, so a heading alone in a section un-sticks the instant its
-single row scrolls — which is to say never sticks at all. It was written
-that way first (v0.67.0) and did not work.
-
-Sharing a section means sharing `.orders-rows`, whose rules draw the box
-and turn it black on hover — everything a heading must not do. **The
-heading is a `<th>` for exactly that reason**: every one of those rules is
-written `> td`, so a `<th>` is out of reach of all of them by
-construction, and the single rule that matches *descendants* instead
-carries the one `:not(.day-row)` this needs. Its `colSpan` is
-`visible.length`, so it follows the Columns menu like the empty-state row.
-
-**Its `top` is the header's measured height**, watched with a
-`ResizeObserver` (`useHeadHeight`) rather than written as a number: the
-header is one line of 11px text until a column is dragged narrow enough to
-wrap its label, and then it is two — a guessed offset would leave a gap or
-hide the heading behind the header the moment that happened. Chrome pins
-sticky table cells against the *table* rather than their section, so the
-headings do not push one another out; they stack, exactly overlapping, and
-the last one to arrive is both the one painted on top and the day you are
-actually in. They are opaque cream, and every heading but the first is the
-same height, so nothing shows around the edges of the one on top.
-
-**The Date column is hidden by default** (`HIDDEN_BY_DEFAULT` in
-`useColumnWidths.ts`), since every heading already names the date of every
-row beneath it. Still in the menu, one click away: the grouping made the
-column redundant, which is a reason to stop *drawing* it and not a reason
-to take it away. The default applies only to somebody who has never opened
-the menu — from then on their own list counts, including an empty one,
-which is why **Show all columns writes `[]` rather than clearing the key**.
-Clearing it would mean "no opinion", and the default would put Date
-straight back on a table somebody had just asked to show everything.
+- **The day is a column, not a row.** The first cell is the date, written
+  only on its day's first row (weekday small over the date in Bricolage;
+  **Today** in the accent), out in the margin — `> td:first-child` paints
+  no surface, so a hovered row never lights it. Days are separated by a
+  `.day-row` spacer of one empty `<th>` that adds a little more than the
+  rows' own gap; every box rule is written `> td`, so a `<th>` is out of
+  their reach by construction. It is a **run boundary, not a grouping
+  pass** (`order.date !== orders[at - 1]?.date`): `getOrders` already
+  returns `ORDER BY date DESC, id DESC`, and sorting here would be a
+  second opinion about the list's order. The column has **no title** — its
+  first row says what it is — and is not offered in the Columns menu
+  (`FIXED_COLUMNS`). This replaced the sticky per-day headings of
+  v0.67-v0.77, and with them `useHeadHeight`, `liftIfClear` and the
+  `.lifts-over` class: with nothing sticky inside the list there is
+  nothing for a hovered row to cover, so its `z-index` is unconditional.
+- **Three quiet group labels over the header** — *The order*, *What to
+  make*, *Money* — computed as runs of neighbouring columns sharing a
+  `group`, so hiding a column narrows its label rather than leaving one
+  over nothing. No vertical lines in the rows.
+- **One form per kind of value**: words left-aligned, numbers
+  right-aligned in tabular figures (`NUMERIC`), and colour only where it
+  means something — the stage and the payment state. **The event type is
+  a 22px tinted square beside the name** (`TypeMark`, the owner's colour
+  and icon), where it was a chip in a column of its own; it is the cell's
+  edit button too, still a dropdown over the owner's list. **Guests wear a
+  person mark.**
+- **Extras are one column of four fixed slots** — display, waitresses,
+  kosher, delivery (`extraSlots`, shared with the phone card) — lit on the
+  band colour when the order has it, faint at 25% when not, with a count
+  badge where there is more than one. They were four columns of "Yes",
+  "No" and "—". Read-only, as Display already was: a click opens the order.
+- **Money says what acts**: Total, then **Still due** (`orderBalance`,
+  gross like the figures pane's Balance due) in amber — `--color-due` —
+  or "Paid" in the accent once it is nothing, and a dash on an order with
+  no price yet, which is not "paid". A quote's balance is drawn quiet,
+  since a quote owes nothing. It replaced the Deposit column: the deposit
+  is the past, what is still owed is the job. **Paid by moved into the
+  payment badge** as its icon, and into the badge's own menu as a second
+  half under the statuses (`PaymentStatusSelect.chooseMethod`, with the
+  same Undo offer) — two cells had been answering one question.
+- **Every mark explains itself** through `Tip` (`src/components/Tip.tsx`):
+  a dark one-line label that opens the moment the pointer arrives, where
+  `title` takes a second and is gone by the time it is read. It is the
+  lighter sibling of `HoverCard` — no width to state, nothing rendered
+  lazily — portalled the same way, flipping below its trigger near the
+  top of the screen, and closed by a press so it never sits over the list
+  the press opened. **Mouse only**: on a touchscreen a tap opens the order,
+  and the phone card spells these things out in words instead. Units and
+  Total keep their richer `HoverCard`s and carry no `Tip`, which would
+  open on top of them.
+- **The tick box is the first cell inside the box** (`.pick-box` in
+  `globals.css`): an outline square until ticked, then black with a cream
+  tick — the browser's own grey box read as already half-chosen. Shown on
+  the hovered row, on a ticked box, on **every** box once anything is
+  selected (`is-selecting` on the table, so a selection being built can be
+  seen whole), on the header's select-all (which goes indeterminate on a
+  partial selection), and always where there is no hover. On a staff
+  account the column is not rendered at all — the gutter it used to sit
+  beside is the day column now, so nothing positional depends on it.
 
 **An order is a box**, and the boxes sit on the page's own cream with the
-headings between them — the phone's cards, brought to the laptop with the
-grouping. A `<table>` can only do that through `border-separate`: a row
+day in the margin beside them — the phone's cards, brought to the laptop. A `<table>` can only do that through `border-separate`: a row
 carries neither background nor border in that mode, so **the cells are the
 box**. Every `<td>` paints the surface and the top and bottom edge, and
 `:first-child`/`:last-child` close the ends and round them — by position
@@ -2255,8 +2271,8 @@ moved from the `<tr>` to `> td` with it; the row's `:hover` is still what
 selects them, so one pointer still lights one order.
 
 The scrolling card around the table went with the change: a frame around a
-column of boxes is one edge too many, and the headings are meant to sit
-*outside* the boxes, which they cannot do inside a white card. The sticky
+column of boxes is one edge too many, and the day column is meant to sit
+*outside* the boxes, which it cannot do inside a white card. The sticky
 header takes `bg-cream` for the same reason — it has to be opaque, and it
 is on the page now rather than on a card.
 
@@ -2269,20 +2285,6 @@ its last value, because a stretched box with a stroke round it read as an
 empty frame past its content; with no stroke at rest that objection went,
 and the owner wanted the width used. A busy list fills and wraps exactly
 as before either way.
-
-**The tick box sits in a gutter beside the box, not inside it.** That
-column holds a control which is invisible until the row is hovered and has
-no data of its own, so within the surface it was ~30px of nothing before
-every order's first value — the box extending past its own content, which
-is what the owner saw. It is still a real cell in the real column, so
-selection, the select-all above it and the stored widths are untouched; it
-simply opts out of the box. `> td:first-child` paints no surface and no
-edge, `> td:nth-child(2)` closes and rounds the left end in its place, and
-every fill (hover, open, offer) is `:not(:first-child)` so none of them
-tint the gutter. **The day heading skips that column too** — the day row
-is two `<th>`s, an empty gutter and the heading over the box — and takes
-the cells' own `px-2`, so its first letter and the first value beneath it
-share a left edge to the pixel. Measured: both at 61px.
 
 **The permanent horizontal scrollbar was a resize handle, not a column.**
 Each handle is an 8px strip `translate-x-1/2` across its column's right
@@ -2309,17 +2311,13 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   72% white so the hovered one is the brightest thing in the list. Since
   v0.74 every other `.hover-line` lifts the same way. The hovered row is
   **`z-index: 15`** (on a row that is `position: relative` at rest, so the
-  hover changes only paint) — above the day headings (z-10),
-  below the header (z-20) — because a day heading is sticky and opaque,
-  and the next day's heading cut the shadow of a day's last order off flat.
-  **Only when the row is clear of the headings pinned at the top**:
-  `liftIfClear` measures on mouse-enter and sets `.lifts-over`, and any
-  scroll drops it (`dropLifts`) — a row scrolling under a pinned heading
-  lifted over it would cover the label naming its day.
+  hover changes only paint) — above every other row, below the sticky
+  header (z-20) — because rows paint in order and the next row's cells
+  otherwise drew over the hovered one's shadow and cut it off flat.
   **Chromium clips that drop-shadow to the table's own box**, so room
   outside the table does nothing: the table carries `pr-6` (a
-  separated-borders table takes padding), the left has the tick-box
-  gutter, and the wide shadow's blur is held to 20px to fit inside it.
+  separated-borders table takes padding), the left has the day column,
+  and the wide shadow's blur is held to 20px to fit inside it.
   The scroller keeps `pb-6` of room below, and wears
   `.quiet-scroll`: a thin bar in the line colour, where the platform's
   default was a dark 15px slab, the darkest thing on the page.
@@ -2386,7 +2384,7 @@ list; `JellyHop` on the expense, client and task Save/Add buttons; and
 call site changing. Segmented tracks deliberately do not press: they are a
 track, not a button.
 
-**The Amount column is the whole order** — jelly, every extra, discount
+**The Total column is the whole order** (it was called Amount until v0.78) — jelly, every extra, discount
 and VAT, through `forOrder`, so it is the figure the Kanban card and the
 form's Total show. It used to be `totalAmount`, the jelly alone, which read
 as the order's price and left delivery, display, waitressing and kosher
@@ -2519,8 +2517,9 @@ icon at the right of the toolbar, on the table view only — the board and
 the calendar have no columns. Everything is shown by default, so nothing
 changes for anyone who never opens it. `COLUMNS` is exported from
 `OrdersTable` and is the menu's source, so the list is stated once; the
-**select column is not offered**, being the selection control rather than
-data, which also means the table can never render with nothing in it. The
+**day and select columns are not offered** (`FIXED_COLUMNS`), being how
+the list is read and worked rather than data, which also means the table
+can never render with nothing in it. The
 state lives in `OrdersClient` because the control does — the table is
 inside a scrolling card with a sticky header and has nowhere to put a
 button that isn't sitting over a column. Hiding one filters the header,

@@ -1,10 +1,11 @@
 "use client";
 
 import { Fragment } from "react";
+import { UserRound } from "lucide-react";
 import {
-  displayCount,
   formatOrderDate,
-  hasDelivery,
+  orderBalance,
+  orderTotal,
   orderUnits,
   orderWeekday,
   PAYMENT_STATUS_LABEL,
@@ -12,19 +13,21 @@ import {
   type Order,
   type PaymentStatus,
 } from "@/lib/orderTypes";
+import { paymentMethodIconElement } from "@/lib/icons";
 import { count, currency } from "@/lib/money";
 import { useCanSeeMoney } from "@/components/RoleContext";
 import { useVatView } from "@/components/VatViewContext";
 import { useStage } from "@/components/ProductionStagesContext";
 import { Figure } from "@/components/Figure";
-import { PaymentMethodChip } from "./PaymentMethodChip";
+import { usePaymentMethods } from "./PaymentMethodsContext";
 import { EventTypeChip } from "./EventTypeChip";
 import { StageChip } from "./StageChip";
+import { extraSlots } from "./OrdersTable";
 
 /**
  * The Orders page on a phone: one card per order, under a heading per day.
  *
- * The table is fifteen columns and 1100px wide, which on a 390px screen is
+ * The table is eleven columns across a laptop, which on a 390px screen is
  * three screens of sideways scrolling to read one row. A card carries
  * **every column the table has** in a labelled grid instead.
  *
@@ -51,6 +54,10 @@ export function OrdersMobileList({
   onOpen: (key: string) => void;
   emptyNote: string;
 }) {
+  // Local, like the table's day column: "today" is where a queue is read from.
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
   if (orders.length === 0) {
     return (
       <p className="rounded-card border border-line bg-card px-4 py-8 text-center text-sm text-ink-soft">
@@ -69,11 +76,19 @@ export function OrdersMobileList({
             and it is what turns a scroll into "what is on Thursday".
           */}
           {order.date !== orders[at - 1]?.date && (
-            <h2 className="mt-3 flex items-baseline gap-1.5 px-1 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase first:mt-0">
+            <h2
+              className={`mt-3 flex items-baseline gap-1.5 px-1 text-[11px] font-extrabold tracking-[0.14em] uppercase first:mt-0 ${
+                order.date === today ? "text-accent" : "text-ink-soft"
+              }`}
+            >
               {/* The weekday first, because "is that a Saturday" is most of
-                  what a queue of dates is read for. See `orderWeekday` for
-                  why an old imported order's could be wrong. */}
-              <span className="text-ink">{orderWeekday(order.date)}</span>
+                  what a queue of dates is read for — or "Today", in the
+                  accent, as the laptop's day column says it. See
+                  `orderWeekday` for why an old imported order's could be
+                  wrong. */}
+              <span className={order.date === today ? "" : "text-ink"}>
+                {order.date === today ? "Today" : orderWeekday(order.date)}
+              </span>
               {formatOrderDate(order.date)}
             </h2>
           )}
@@ -115,14 +130,11 @@ function OrderCard({
   const money = useCanSeeMoney();
   const stage = useStage(order.productionStatus);
   const units = orderUnits(order.packageLines, unitsPerPackage);
-  const displays = displayCount(order.displays);
-  /* What the order *has*, in the order the event sheet asks for it. */
-  const flags = [
-    displays > 0 && `${displays} display`,
-    order.waitresses ? `${order.waitresses} waitress` : null,
-    order.kosher && "Kosher",
-    hasDelivery(order) && "Delivery",
-  ].filter((flag): flag is string => typeof flag === "string");
+  /* What the order *has*, in the table's slot order — the same list. */
+  const extras = extraSlots(order).filter((slot) => slot.on > 0);
+  const method = usePaymentMethods().find((m) => m.id === order.paymentMethodId);
+  const total = orderTotal(order);
+  const balance = orderBalance(order);
 
   return (
     <button
@@ -172,9 +184,17 @@ function OrderCard({
             single character — a card that shows less than the table it
             replaced. Across both columns it gets ~270px. */}
         {order.location && <Figure label="Location" value={order.location} wide />}
-        {order.guests !== null && <Figure label="Guests" value={String(order.guests)} />}
+        {order.guests !== null && (
+          <div className="flex items-baseline justify-between gap-2">
+            <dt className="shrink-0 text-ink-soft">Guests</dt>
+            {/* The person mark the table's Guests column wears. */}
+            <dd className="flex items-center gap-1 font-semibold text-ink tabular-nums">
+              <UserRound size={12} aria-hidden className="self-center opacity-55" />
+              {count(order.guests)}
+            </dd>
+          </div>
+        )}
         <Figure label="Units" value={count(units)} />
-        {money && order.deposit > 0 && <Figure label="Deposit" value={currency(order.deposit)} />}
       </dl>
 
       {/*
@@ -182,19 +202,24 @@ function OrderCard({
         chips rather than a labelled row each. They are flags — a yes or a
         small number — and a whole line apiece put four of them across two
         grid rows, which on a busy order was most of the card's height for
-        the least of its meaning. Worded rather than iconised: `Sparkles`
-        and `Truck` have marks elsewhere in the app but kosher and
-        waitressing do not, and inventing two is worse than reading four
-        short words.
+        the least of its meaning.
+
+        Each wears the mark its slot has in the laptop's Extras column
+        (v0.78), so the two read as one vocabulary — **and keeps its word**:
+        the table explains a mark on hover, which a phone cannot do, so
+        here the word is the explanation. Only the extras the order has: a
+        faint "not kosher" slot is right in a column read down a list and
+        wrong on a card, where it is one more thing to read past.
       */}
-      {flags.length > 0 && (
+      {extras.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {flags.map((flag) => (
+          {extras.map(({ icon: Icon, short }) => (
             <span
-              key={flag}
-              className="chip-neutral rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] font-semibold text-ink-soft"
+              key={short}
+              className="flex items-center gap-1 rounded-full bg-band px-2 py-0.5 text-[11px] font-semibold text-ink"
             >
-              {flag}
+              <Icon size={12} aria-hidden />
+              {short}
             </span>
           ))}
         </div>
@@ -216,16 +241,37 @@ function OrderCard({
           being decided here.
         */}
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentBadgeClass(
+          className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentBadgeClass(
             order.paymentStatus,
           )}`}
         >
+          {/* How they paid rides inside the badge as its mark, as it does in
+              the table (v0.78) — and is named in words after it, since a
+              phone has no hover to say what the mark means. */}
+          {method && paymentMethodIconElement(method.name)}
           {paymentLabel(order)}
+          {method && <span className="font-medium opacity-75">· {method.name}</span>}
         </span>
-        {/* How they paid, only once someone has said — a dash beside the
-            badge would be one more mark to read past on most cards. */}
-        {order.paymentMethodId !== null && <PaymentMethodChip methodId={order.paymentMethodId} />}
         <span className="flex-1" />
+        {/*
+          What is still owed, in the table's amber, before the total —
+          "Paid" in the accent once it is nothing. Gross, like the figures
+          pane's Balance due: it is money a customer hands over. Nothing at
+          all on an unpriced order, which is not "paid" but unpriced.
+        */}
+        {total > 0 &&
+          (balance > 0 ? (
+            // A quote owes nothing yet, so its balance is drawn quiet.
+            <span
+              className={`shrink-0 font-bold tabular-nums ${
+                stage?.countsAsIncome === false ? "text-ink-soft/70" : "text-due"
+              }`}
+            >
+              {currency(balance)} due
+            </span>
+          ) : (
+            <span className="shrink-0 font-semibold text-accent">Paid</span>
+          ))}
         {/* `tabular-nums` and no more: `font-mono` is the version string's
             treatment, and nothing else in the app spends it on money.
             `forOrder` is the whole VAT convention — gross or net by the
