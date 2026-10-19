@@ -30,9 +30,12 @@ export interface Announcement {
 }
 
 export const ANNOUNCEMENTS: Announcement[] = [
-  // v0.79: jelly mode, for everyone — a toy, so worded as one.
+  // v0.79: jelly mode, for everyone — a toy, so worded as one. Re-announced
+  // in v0.79.7 under a new id (it was "v0.79-jelly-mode") so the picture
+  // with the phone reaches everyone who had already closed the first one;
+  // renamed rather than duplicated, so a replay lists it once.
   {
-    id: "v0.79-jelly-mode",
+    id: "v0.79.7-jelly-mode",
     audience: ["admin", "staff"],
     art: "jelly-mode",
     title: "Jelly mode",

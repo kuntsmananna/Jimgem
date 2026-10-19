@@ -1768,7 +1768,7 @@ compares identity, and a panel builds a fresh draft before every call.
   `Modal` with an illustration drawn from the app's own pieces). What it
   says lives in `src/lib/announcement.ts` — **to announce the next release,
   put a new entry at the top of `ANNOUNCEMENTS` with a new `id`**, since
-  dismissals are recorded per id; leave the older ones where they are.
+  dismissals are recorded per id; leave the older ones where they are. **To re-announce** one everybody has already closed, rename its `id` rather than adding a copy — a replay would otherwise list it twice; the old id's dismissals simply stop matching anything.
   **Everything a person has not seen is one popup, a page per release**,
   newest first, with Back / Next, a dot per page and the arrow keys
   (listened for on the document, so they work after a click on the
