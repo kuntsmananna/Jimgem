@@ -1827,39 +1827,43 @@ compares identity, and a panel builds a fresh draft before every call.
 - **Jelly mode** (v0.79, `src/components/JellyMode.tsx`) is a toy the
   owner asked for: a small jelly blob beside the What's new sparkle
   (`.jelly-blob` — a lopsided dome on a flat base, which quivers for as
-  long as the mode is on — on a `.jelly-switch` pill with comic-style
-  wiggle lines either side: berry-tinted at rest, black with the lines
-  pulsing outward while on, so the button reads as a mode that animates
-  rather than one more icon) (a row
+  long as the mode is on, so the switch itself says the state) (a row
   in the phone's More sheet; a **Jelly** cell in a staff account's bottom
-  bar, which has no More) that makes the app's **decorative pieces only**
-  wobble — jelly cubes, chips and badges (`.keeps-color`, `.chip-neutral`,
-  which every chip already wears, so a new chip joins without opting in)
-  and `data-jiggle` on the extras marks and the figure tiles. Rows, panes,
-  fields and text never move, so the list can still be worked with it on.
-  On a laptop the mouse ripples the pieces it passes, nearest first and
-  harder and further the faster it moves — and **a big sweep (`SWEEP`) is
-  a shockwave across the whole interface**: every piece, plus the panes
-  and the Orders rows (`WHOLE`) at a fraction of the strength, rippling
-  out from the pointer; on a phone a **shake** (`devicemotion`,
-  gravity removed) bounces everything on screen and a **tilt**
-  (`deviceorientation`'s gamma, eased) leans it through `--jelly-tilt` on
-  the root — applied as `rotate`, not `transform`, so a shake's wobble
-  composes with the lean, and only under `.jelly-tilt` because a `rotate`
-  creates a stacking context nothing else should pay for. iOS motion
-  permission is asked from inside the tap that switches it on, the only
-  place iOS allows. It **holds still** while a popup is open
-  (`overlayOpen()` in `useOverlayDismiss.ts`) or the caret is in a field,
-  and it is **off at the start of every visit** — plain state in the app
-  layout's `JellyModeProvider`, no cookie, the owner's call. The motion
-  itself is `wobble()` in `src/components/wobble.ts`, shared with the tray
-  preview's brush-to-jiggle so the two are the same jelly: **a damped
-  spring sampled into keyframes, its parts on staggered phases** — the
-  shove leads, the lean lags, the volume-keeping squash lags further — and
-  small pieces soften their corners mid-wobble. The first version skewed
-  everything in lockstep and the owner found it read as a square being
-  distorted rather than as jelly. A hard shake (twice the threshold) is the
-  same shockwave as a big mouse sweep.
+  bar, which has no More). On a laptop it makes the app's **decorative
+  pieces only** wobble — jelly cubes, chips and badges (`.keeps-color`,
+  `.chip-neutral`, which every chip already wears, so a new chip joins
+  without opting in) and `data-jiggle` on the extras marks and the figure
+  tiles; rows, panes, fields and text never move, so the list can still be
+  worked with it on. The mouse ripples the pieces it passes, nearest first
+  and harder and further the faster it moves — and **a big sweep (`SWEEP`)
+  is a shockwave across the whole interface**: every piece, plus the panes
+  and the Orders rows (`WHOLE`) at a fraction of the strength.
+  **On a phone the whole screen is the jelly** (v0.79.1, the owner's call:
+  "more drastic and noticeable"). `devicemotion` is read as a *continuous
+  force*, not a shake that must cross a threshold — the threshold version
+  was missed by real shakes, so all anyone saw was the old tilt-lean. Linear
+  acceleration (the sensor's own, or a high-pass of the gravity-mixed
+  reading) pushes against the phone's movement, which is inertia, and
+  `rotationRate` sways it; both go to every block of the page
+  (`pageBlocks`) and, at half strength, to the pieces inside them. A block
+  that is or holds something `fixed`/`sticky` is skipped or stepped into,
+  because a transform on an ancestor makes the Add order button and the
+  undo bar scroll away with it. iOS motion permission is asked from inside
+  the tap that switches it on, the only place iOS allows. It **holds still**
+  while a popup is open (`overlayOpen()` in `useOverlayDismiss.ts`) or the
+  caret is in a field, and it is **off at the start of every visit** —
+  plain state in the app layout's `JellyModeProvider`, no cookie.
+  **The motion is a spring simulation** (`src/components/wobble.ts`, v0.79.1),
+  shared with the tray preview's brush-to-jiggle so the two are the same
+  jelly. Each pushed element is a body with a soft, lightly damped base
+  spring and a slower top spring chasing it; the gap is drawn as lean, the
+  vertical travel as a volume-keeping squash, and small pieces' corners go
+  gooey with the energy. **Pushes add velocity to what is already moving**
+  — the canned keyframe animations before it restarted from rest on every
+  push, which is what made a moving mouse feel rough — and a body swings
+  down over a couple of seconds and is let go, its inline `transform`
+  cleared, so at rest it is exactly the element it was. One rAF loop runs
+  only while something is moving.
 - **`HoverCard` measures on tap before it sets state.** Its tap-to-open
   read `e.currentTarget` inside a `setAt` updater, which React can run
   after the event's target has been cleared — every tap that opened a card

@@ -6,14 +6,15 @@ import { cubeColors } from "@/components/JellyLoader";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import { overlayOpen } from "./useOverlayDismiss";
 import { COARSE_POINTER, matchesNow } from "./useMediaQuery";
-import { wobble } from "./wobble";
+import { shove, wobble } from "./wobble";
 
 /**
  * Jelly mode (v0.79): an experience switch, not a setting. While it is on,
  * the app's decorative pieces — jelly cubes, chips, badges, the extras
  * marks and the figure tiles — wobble like jelly: as the mouse moves past
- * them on a laptop, and when the phone is shaken or tilted. Rows, panes,
- * fields and text never move, so the list can still be worked with it on.
+ * them on a laptop. Rows, panes, fields and text stay put there, so the
+ * list can still be worked with it on. On a phone the whole screen is the
+ * jelly, moved by the phone moving.
  *
  * **Off at the start of every visit**, the owner's call: it is a toy you
  * switch on, not a preference to remember — so it is plain React state in
@@ -21,7 +22,7 @@ import { wobble } from "./wobble";
  *
  * **It holds still while someone is working**: whenever a popup or sheet
  * is open (`overlayOpen`) or the caret is in a field, nothing wobbles and
- * the tilt eases back to upright.
+ * whatever was moving settles.
  */
 const JellyModeContext = createContext<{ on: boolean; toggle: () => void }>({ on: false, toggle: () => {} });
 
@@ -48,10 +49,31 @@ const SWEEP = 260;
 const EVERY_MS = 90;
 /** Pointer travel between two ripples for one to be as big as it gets. */
 const FULL_PX = 90;
-/** Acceleration (m/s², gravity removed) that counts as a shake. */
-const SHAKE = 11;
-/** Furthest a tilted phone leans the pieces, in degrees. */
-const MAX_TILT = 6;
+/** A phone's acceleration (m/s²) into the jelly's push (px/s²). */
+const MOTION_GAIN = 130;
+/** A phone's turning (°/s) into the jelly's push (px/s²). */
+const TURN_GAIN = 5;
+
+/**
+ * The page's blocks for the phone's whole-screen jelly: the children of
+ * the page's root, skipping anything fixed or sticky — the Add order
+ * button, the undo bar — and stepping inside a block that holds one,
+ * because a transform on an ancestor makes a fixed element scroll away
+ * with it.
+ */
+function pageBlocks(): Element[] {
+  const out: Element[] = [];
+  const visit = (parent: Element, depth: number) => {
+    for (const child of parent.children) {
+      if (child.matches(".fixed, .sticky")) continue;
+      if (child.querySelector(".fixed, .sticky") && depth < 3) visit(child, depth + 1);
+      else if (!child.querySelector(".fixed, .sticky")) out.push(child);
+    }
+  };
+  const main = document.querySelector("main");
+  if (main) visit(main, 0);
+  return out;
+}
 
 function holdingStill(): boolean {
   if (overlayOpen()) return true;
@@ -137,55 +159,61 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
     };
   }, [on]);
 
-  // The phone: a shake bounces everything on screen; a tilt leans it.
+  /*
+   * The phone: the whole screen is one body of jelly. Moving the phone
+   * pushes it — the content's inertia, so a jolt right throws it left —
+   * and turning the phone sways it, both as continuous forces from the
+   * motion sensor rather than a shake that has to cross a threshold (the
+   * first version's threshold was missed by real shakes, so all anyone saw
+   * was the tilt). The page's blocks are the bodies, each with a little
+   * spring of its own, so the screen ripples rather than sliding as a slab;
+   * the chips inside them are bodies too, at half the push, which is what
+   * makes it read as jelly on jelly.
+   */
   useEffect(() => {
     if (!on || !matchesNow(COARSE_POINTER)) return;
-    const html = document.documentElement;
-    const root = html.style;
-    html.classList.add("jelly-tilt");
-    let lastShake = 0;
-    let frame = 0;
-    let tilt = 0;
+    let blocks: Element[] = [];
+    let pieces: Element[] = [];
+    let refreshedAt = 0;
+    let lastAt = 0;
+    // Gravity, estimated, for phones that only report it mixed in.
+    let gx = 0;
+    let gy = 0;
     const onMotion = (e: DeviceMotionEvent) => {
-      const a = e.acceleration;
-      if (!a || a.x === null || a.y === null) return;
-      const force = Math.hypot(a.x, a.y, a.z ?? 0);
       const now = performance.now();
-      if (force < SHAKE || now - lastShake < 350 || holdingStill()) return;
-      lastShake = now;
-      // Screen y runs down where the sensor's runs up.
-      const len = Math.hypot(a.x, a.y) || 1;
-      const strength = Math.min(1, force / (SHAKE * 2.5));
-      // A hard shake moves the whole interface, like a big mouse sweep.
-      if (force > SHAKE * 2) {
-        shockwave(window.innerWidth / 2, window.innerHeight / 2, a.x / len, -a.y / len, strength);
-        return;
+      const dt = Math.min(0.05, lastAt ? (now - lastAt) / 1000 : 1 / 60);
+      lastAt = now;
+      if (holdingStill()) return;
+      if (now - refreshedAt > 1000) {
+        refreshedAt = now;
+        blocks = pageBlocks();
+        pieces = onScreen(JIGGLY).map((p) => p.el);
       }
-      for (const piece of onScreen(JIGGLY)) {
-        wobble(piece.el, a.x / len, -a.y / len, strength, Math.random() * 140, piece);
+      // Linear acceleration (m/s²), gravity removed — the sensor's own
+      // where it gives one, else a high-pass of the mixed reading.
+      let ax = e.acceleration?.x ?? null;
+      let ay = e.acceleration?.y ?? null;
+      if (ax === null || ay === null) {
+        const raw = e.accelerationIncludingGravity;
+        if (!raw || raw.x === null || raw.y === null) return;
+        gx = gx * 0.9 + raw.x * 0.1;
+        gy = gy * 0.9 + raw.y * 0.1;
+        ax = raw.x - gx;
+        ay = raw.y - gy;
       }
-    };
-    const onTilt = (e: DeviceOrientationEvent) => {
-      // Left-right tilt, -90..90; a gentle tilt is enough to see it. Eased
-      // toward the reading rather than jumping to it, so a hand's tremor
-      // is a sway and holding still settles upright smoothly.
-      const target = holdingStill() ? 0 : Math.max(-1, Math.min(1, (e.gamma ?? 0) / 35)) * MAX_TILT;
-      tilt += (target - tilt) * 0.2;
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        root.setProperty("--jelly-tilt", `${tilt.toFixed(2)}deg`);
-      });
+      // Turning (°/s): tipping left-right is gamma, forward-back is beta.
+      const turnX = e.rotationRate?.gamma ?? 0;
+      const turnY = e.rotationRate?.beta ?? 0;
+      // Into screen px/s²: inertia opposes the phone's own movement, and
+      // the sensor's y runs up where the screen's runs down.
+      const fx = -ax * MOTION_GAIN + turnX * TURN_GAIN;
+      const fy = ay * MOTION_GAIN + turnY * TURN_GAIN;
+      if (Math.abs(fx) + Math.abs(fy) < 40) return;
+      blocks.forEach((el, i) => shove(el, fx * (1 + (i % 3) * 0.15), fy, dt));
+      for (const el of pieces) shove(el, fx * 0.5, fy * 0.5, dt);
     };
     window.addEventListener("devicemotion", onMotion);
-    window.addEventListener("deviceorientation", onTilt);
-    return () => {
-      window.removeEventListener("devicemotion", onMotion);
-      window.removeEventListener("deviceorientation", onTilt);
-      cancelAnimationFrame(frame);
-      root.removeProperty("--jelly-tilt");
-      html.classList.remove("jelly-tilt");
-    };
+    return () => window.removeEventListener("devicemotion", onMotion);
   }, [on]);
 
   const value = useMemo(() => ({ on, toggle }), [on, toggle]);
@@ -193,14 +221,14 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * iOS gives motion and orientation only after the person agrees, and only
+ * iOS gives motion only after the person agrees, and only
  * when asked from inside a tap — which the switch is. Elsewhere the two
  * functions do not exist and the events simply arrive. A refusal leaves
  * the mode on and still; there is nothing useful to say about it.
  */
 function askForMotion() {
   type Asks = { requestPermission?: () => Promise<string> };
-  for (const api of [globalThis.DeviceMotionEvent, globalThis.DeviceOrientationEvent] as unknown as Asks[]) {
+  for (const api of [globalThis.DeviceMotionEvent] as unknown as Asks[]) {
     api?.requestPermission?.().catch(() => {});
   }
 }
@@ -262,7 +290,7 @@ export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "row"
       >
         <JellyBlob size={17} on={on} />
         <span className="flex-1">Jelly mode</span>
-        <span className="text-xs font-medium opacity-70">{on ? "On — shake or tilt" : "Off"}</span>
+        <span className="text-xs font-medium opacity-70">{on ? "On — shake the phone" : "Off"}</span>
       </button>
     );
   }
