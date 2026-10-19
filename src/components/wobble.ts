@@ -2,32 +2,38 @@
  * Jelly physics, shared by the tray preview's cubes and jelly mode.
  *
  * Every piece that has been pushed is a little **spring body** simulated
- * frame by frame (v0.79.1), not a canned animation. That is what makes it
- * feel like jelly rather than an effect:
+ * frame by frame (v0.79.1), not a canned animation:
  *
  * - **Pushes add up.** A new push adds velocity to whatever the piece is
  *   already doing, so a mouse moving across a row keeps it swaying instead
  *   of restarting the wobble from rest on every move — the restart was the
  *   "rough" feel the first versions had.
  * - **It settles slowly.** The spring is soft and lightly damped, so a
- *   piece swings through several shrinking oscillations over a couple of
- *   seconds before it comes to rest exactly where it was.
+ *   piece swings through several shrinking oscillations before it comes to
+ *   rest exactly where it was.
  * - **The top lags the base.** Each body carries a second, slower spring
- *   for its top, which chases the base; the gap between the two is drawn
- *   as lean (skew) and the vertical movement as a volume-keeping squash —
- *   the base moves, the top catches up late and overshoots, which is the
- *   motion that reads as jelly.
- * - **Small pieces go gooey**: their corners soften with how hard they are
- *   moving and firm up as they settle.
+ *   for its top, which chases the base; the gap between them is the lean.
+ *
+ * **The shape is what moves, not just the box** (v0.79.3). A transform can
+ * only lean, turn and stretch a box, and its straight edges stay straight —
+ * which the owner kept seeing as a square being distorted rather than as
+ * jelly. So there is no skew at all now: the lean and the squash are drawn
+ * mostly as **the outline itself flowing**, each corner's radius swelling
+ * or shrinking with which way the jelly is sloshing, from the piece's own
+ * radius at rest (read once, so the first frame does not jump) towards a
+ * blob. The transform that is left is a small drift, a slight turn and a
+ * gentle squash.
  *
  * One `requestAnimationFrame` loop runs while anything is moving and stops
  * when everything is still, clearing the inline styles it wrote so a piece
- * at rest is exactly the element it was. It writes `transform` and, for a
- * gooey piece, `border-radius` — never layout.
+ * at rest is exactly the element it was. It writes `transform` and
+ * `border-radius` — never layout.
  */
 
+type Styled = Element & ElementCSSInlineStyle;
+
 type Body = {
-  el: HTMLElement;
+  el: Styled;
   /** Base offset (px) and velocity. */
   x: number;
   y: number;
@@ -40,17 +46,20 @@ type Body = {
   tvy: number;
   /** How much of the motion a piece shows: 1 for small, less for big. */
   reach: number;
-  /** How far it may turn: a wide row turning a degree sweeps its far end a long way. */
-  turnScale: number;
   /**
-   * Its own springiness, drawn at random once. Bodies alike in every way
-   * pushed by one force move in lockstep, which reads as one slab rather
-   * than a tray of separate jellies; a little spread desyncs them.
+   * Its own springiness and heft, drawn at random once. Bodies alike in
+   * every way pushed by one force move in lockstep, which reads as one
+   * slab rather than a tray of separate jellies; a little spread desyncs
+   * them.
    */
   spring: number;
-  /** And its own heft: how hard the same push moves it, also at random. */
   gain: number;
-  gooey: boolean;
+  /** Its box and its radius at rest, for the outline to flow from. */
+  width: number;
+  height: number;
+  radius: number;
+  /** An SVG icon has no outline to flow, only a transform. */
+  shaped: boolean;
 };
 
 const bodies = new Map<Element, Body>();
@@ -62,16 +71,18 @@ let last = 0;
 
 /** The base's spring: soft, lightly damped — several slow swings. */
 const STIFFNESS = 85;
-const DAMPING = 4.2;
+const DAMPING = 4.6;
 /** The top's spring, chasing the base: softer, so it lags and overshoots. */
 const TOP_STIFFNESS = 55;
-const TOP_DAMPING = 3.6;
+const TOP_DAMPING = 4;
 /** A push of `lean` 1 sets off at this speed, px/s. */
-const PUSH = 120;
+const PUSH = 70;
 /** The fastest a body may move, px/s — repeated pushes cannot run away. */
-const MAX_SPEED = 420;
+const MAX_SPEED = 240;
 /** Below this, a body is at rest and is let go. */
 const REST = 0.05;
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 function step(now: number) {
   const dt = Math.min(1 / 30, (now - last) / 1000 || 1 / 60);
@@ -92,33 +103,50 @@ function step(now: number) {
     const energy = Math.abs(b.x) + Math.abs(b.y) + Math.abs(b.tx) + Math.abs(b.ty) + (Math.abs(b.vx) + Math.abs(b.vy)) / 20;
     if (energy < REST) {
       b.el.style.transform = "";
-      if (b.gooey) b.el.style.borderRadius = "";
+      if (b.shaped) b.el.style.borderRadius = "";
       bodies.delete(el);
       continue;
     }
     const r = b.reach;
-    // Lean is the top trailing the base; squash follows vertical travel.
-    const lean = (b.tx - b.x) * 2.2 * r;
-    const turn = b.x * 0.45 * r * b.turnScale;
-    const squash = Math.max(-0.22, Math.min(0.22, (b.y - b.ty) * 0.035 * r + b.y * 0.012 * r));
+    // Which way the jelly is sloshing: the top trailing the base, -1…1.
+    const slosh = clamp((b.tx - b.x) / 5, -1, 1);
+    const lift = clamp((b.ty - b.y) / 5, -1, 1);
+    const turn = (b.tx - b.x) * 0.5 * r;
+    const squash = clamp((b.y - b.ty) * 0.02 * r, -0.08, 0.08);
     const sx = 1 + squash;
     b.el.style.transform =
-      `translate(${(b.x * r).toFixed(2)}px, ${(b.y * r).toFixed(2)}px) ` +
-      `rotate(${turn.toFixed(2)}deg) skewX(${lean.toFixed(2)}deg) scale(${sx.toFixed(3)}, ${(1 / sx).toFixed(3)})`;
-    if (b.gooey) {
-      const melt = Math.min(1, energy / 10);
-      b.el.style.borderRadius =
-        `${(12 + 32 * melt).toFixed(0)}% ${(9 + 38 * melt).toFixed(0)}% ` +
-        `${(14 + 28 * melt).toFixed(0)}% ${(8 + 36 * melt).toFixed(0)}%`;
+      `translate(${(b.x * 0.6 * r).toFixed(2)}px, ${(b.y * 0.6 * r).toFixed(2)}px) ` +
+      `rotate(${turn.toFixed(2)}deg) scale(${sx.toFixed(3)}, ${(1 / sx).toFixed(3)})`;
+    if (b.shaped) {
+      // Each corner swells or tightens with the slosh, from the piece's own
+      // radius towards half its side — the edges between them bow.
+      const melt = Math.min(0.75, energy / 8) * r;
+      const hw = b.width / 2;
+      const hh = b.height / 2;
+      const corner = (half: number, bias: number) =>
+        clamp(b.radius + (half - b.radius) * melt * (0.55 + 0.45 * bias), 0, half).toFixed(1);
+      // Horizontal radii follow the sideways slosh, vertical the lift.
+      const h = [corner(hw, slosh), corner(hw, -slosh), corner(hw, -slosh * 0.6), corner(hw, slosh * 0.6)];
+      const v = [corner(hh, lift), corner(hh, lift), corner(hh, -lift), corner(hh, -lift)];
+      b.el.style.borderRadius = `${h.join("px ")}px / ${v.join("px ")}px`;
     }
   }
   frame = bodies.size > 0 ? requestAnimationFrame(step) : 0;
 }
 
+/** A piece's corner radius at rest, in px, capped where the browser caps it. */
+function restingRadius(el: Element, width: number, height: number): number {
+  const value = getComputedStyle(el).borderTopLeftRadius;
+  const half = Math.min(width, height) / 2;
+  const px = value.endsWith("%") ? (parseFloat(value) / 100) * Math.min(width, height) : parseFloat(value);
+  return clamp(Number.isFinite(px) ? px : 0, 0, half);
+}
+
 function bodyFor(el: Element, size: { width: number; height: number }, reach?: number): Body | null {
-  if (!(el instanceof HTMLElement)) return null;
+  if (!(el instanceof HTMLElement || el instanceof SVGElement)) return null;
   let b = bodies.get(el);
   if (!b) {
+    const shaped = el instanceof HTMLElement;
     b = {
       el,
       x: 0,
@@ -129,13 +157,15 @@ function bodyFor(el: Element, size: { width: number; height: number }, reach?: n
       ty: 0,
       tvx: 0,
       tvy: 0,
-      // Large pieces — a figure tile, a pane — swing less, or a 300px
-      // tile turned a few degrees would sweep across its neighbours.
-      reach: reach ?? Math.min(1, 60 / Math.max(size.width, size.height, 1)) * 0.65 + 0.35,
-      turnScale: Math.min(1, 120 / Math.max(size.width, 1)),
+      // Larger pieces swing less, or a long button would sweep across its
+      // neighbours.
+      reach: reach ?? Math.min(1, 40 / Math.max(size.width, size.height, 1)) * 0.6 + 0.4,
       spring: 0.65 + Math.random() * 0.7,
       gain: 0.55 + Math.random() * 0.9,
-      gooey: size.width <= 40 && size.height <= 40,
+      width: size.width,
+      height: size.height,
+      radius: shaped ? restingRadius(el, size.width, size.height) : 0,
+      shaped,
     };
     bodies.set(el, b);
   }

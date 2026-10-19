@@ -10,11 +10,10 @@ import { shove, wobble } from "./wobble";
 
 /**
  * Jelly mode (v0.79): an experience switch, not a setting. While it is on,
- * the app's decorative pieces — jelly cubes, chips, badges, the extras
- * marks and the figure tiles — wobble like jelly: as the mouse moves past
- * them on a laptop. Rows, panes, fields and text stay put there, so the
- * list can still be worked with it on. On a phone the whole screen is the
- * jelly, moved by the phone moving.
+ * the small pieces of every page — cubes, chips, badges, icons, buttons —
+ * wobble like jelly: as the mouse moves past them on a laptop, and as the
+ * phone moves. Rows, panes, fields and text stay put, so the list can
+ * still be worked with it on.
  *
  * **Off at the start of every visit**, the owner's call: it is a toy you
  * switch on, not a preference to remember — so it is plain React state in
@@ -27,31 +26,25 @@ import { shove, wobble } from "./wobble";
 const JellyModeContext = createContext<{ on: boolean; toggle: () => void }>({ on: false, toggle: () => {} });
 
 /**
- * What wobbles. The two chip markers every chip in the app already wears
- * (`.keeps-color`, `.chip-neutral`), the jelly cubes, and `data-jiggle` for
- * the rest — the extras marks and the figure tiles. One selector, so a new
- * chip wobbles without anyone remembering to opt it in.
+ * What wobbles: the small things on a page — the jelly cubes, every chip
+ * and badge (`.keeps-color`, `.chip-neutral`, which every chip already
+ * wears), the extras marks (`data-jiggle`), every icon (`svg.lucide`),
+ * every shared button (`.press`, which the filter chips wear), the nav's
+ * pills and the logo (`data-jiggle-item`). One selector, so a new chip or
+ * button joins without opting in.
+ *
+ * **Never the boxes they sit in** (v0.79.3). Rows, cards, tiles and panes
+ * stood still while the pieces inside them wobbled: a square with straight
+ * edges can only ever be leaned and stretched, which the owner found read
+ * as a square being distorted rather than as jelly. `MAX_PIECE` is what
+ * enforces it, so a big `.press` button or a figure tile is left alone by
+ * size rather than by name.
  */
-const JIGGLY = ".jelly-cube, .keeps-color, .chip-neutral, [data-jiggle]";
+const JIGGLY =
+  ".jelly-cube, .keeps-color, .chip-neutral, [data-jiggle], svg.lucide, .press, header nav a, nav[aria-label] a, nav[aria-label] button, [data-jiggle-item]";
 
-/**
- * What a big sweep or a hard shake moves as well: the page's panes and the
- * Orders table's rows — the whole interface, briefly, and much more gently
- * than the pieces (`wobble` scales its swing down with size).
- */
-const WHOLE = "main section, main .rounded-card";
-
-/**
- * The things a person reads one at a time — a list's rows and cards, the
- * nav's pills, the toolbar's buttons, the logo. Each is its own body of
- * jelly (v0.79.2): the owner found a list that wobbled as one block read
- * as the page sliding, not as jelly. `.motion-row` is what every list row
- * and phone card already wears for the arrival cascade, and `.press` every
- * shared button, so a new list or button joins without opting in;
- * `data-jiggle-item` is for the few that wear neither.
- */
-const ITEMS =
-  ".motion-row, .hover-line, .orders-rows > tr:not(.day-row), .press, header nav a, nav[aria-label] a, nav[aria-label] button, [data-jiggle-item]";
+/** Anything wider or taller than this, in px, is a box rather than a piece. */
+const MAX_PIECE = 160;
 
 /** How far from a slow pointer a piece still feels it, in px; a fast one reaches further. */
 const REACH = 150;
@@ -62,9 +55,9 @@ const EVERY_MS = 90;
 /** Pointer travel between two ripples for one to be as big as it gets. */
 const FULL_PX = 90;
 /** A phone's acceleration (m/s²) into the jelly's push (px/s²). */
-const MOTION_GAIN = 130;
+const MOTION_GAIN = 65;
 /** A phone's turning (°/s) into the jelly's push (px/s²). */
-const TURN_GAIN = 5;
+const TURN_GAIN = 2.5;
 
 function holdingStill(): boolean {
   if (overlayOpen()) return true;
@@ -74,32 +67,26 @@ function holdingStill(): boolean {
 
 type Piece = { el: Element; x: number; y: number; width: number; height: number };
 
-/** Everything matching `selector` that is on screen, with its centre and size. */
-function onScreen(selector: string): Piece[] {
+/** Every piece that is on screen, with its centre and size. */
+function onScreen(): Piece[] {
   const out: Piece[] = [];
-  for (const el of document.querySelectorAll(selector)) {
+  for (const el of document.querySelectorAll(JIGGLY)) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.bottom < 0 || r.top > window.innerHeight) continue;
+    if (r.width > MAX_PIECE || r.height > MAX_PIECE) continue;
     out.push({ el, x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height });
   }
   return out;
 }
 
 /**
- * Everything on screen at once, rippling out from (`x`, `y`) — a big sweep
- * of the mouse or a hard shake. The pieces take it at full strength and
- * the panes and rows at a fraction, so the whole interface moves but only
- * the jelly really wobbles.
+ * Every piece on screen at once, rippling out from (`x`, `y`) — a big
+ * sweep of the mouse.
  */
 function shockwave(x: number, y: number, ux: number, uy: number, strength: number) {
-  for (const [selector, scale] of [
-    [WHOLE, 0.45],
-    [JIGGLY, 1],
-  ] as const) {
-    for (const piece of onScreen(selector)) {
-      const distance = Math.hypot(piece.x - x, piece.y - y);
-      wobble(piece.el, ux, uy, strength * scale, Math.min(320, distance * 0.35), piece);
-    }
+  for (const piece of onScreen()) {
+    const distance = Math.hypot(piece.x - x, piece.y - y);
+    wobble(piece.el, ux, uy, strength, Math.min(320, distance * 0.35), piece);
   }
 }
 
@@ -136,7 +123,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       }
       // A faster pointer reaches further, up to three times as far.
       const radius = REACH * Math.min(3, 1 + speed / 120);
-      for (const piece of onScreen(`${ITEMS}, ${JIGGLY}`)) {
+      for (const piece of onScreen()) {
         const distance = Math.hypot(piece.x - e.clientX, piece.y - e.clientY);
         const reach = 1 - distance / radius;
         if (reach <= 0) continue;
@@ -151,19 +138,16 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
   }, [on]);
 
   /*
-   * The phone: the whole screen is one body of jelly. Moving the phone
-   * pushes it — the content's inertia, so a jolt right throws it left —
-   * and turning the phone sways it, both as continuous forces from the
-   * motion sensor rather than a shake that has to cross a threshold (the
-   * first version's threshold was missed by real shakes, so all anyone saw
-   * was the tilt). The page's blocks are the bodies, each with a little
-   * spring of its own, so the screen ripples rather than sliding as a slab;
-   * the chips inside them are bodies too, at half the push, which is what
-   * makes it read as jelly on jelly.
+   * The phone: every piece on screen at once. Moving the phone pushes
+   * them — their inertia, so a jolt right throws them left — and turning
+   * it sways them, both as continuous forces from the motion sensor rather
+   * than a shake that has to cross a threshold (the first version's
+   * threshold was missed by real shakes, so all anyone saw was the tilt).
+   * Each piece has a spring of its own, so they ripple rather than move as
+   * one.
    */
   useEffect(() => {
     if (!on || !matchesNow(COARSE_POINTER)) return;
-    let items: Element[] = [];
     let pieces: Element[] = [];
     let refreshedAt = 0;
     let lastAt = 0;
@@ -177,8 +161,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       if (holdingStill()) return;
       if (now - refreshedAt > 1000) {
         refreshedAt = now;
-        items = onScreen(ITEMS).map((p) => p.el);
-        pieces = onScreen(JIGGLY).map((p) => p.el);
+        pieces = onScreen().map((p) => p.el);
       }
       // Linear acceleration (m/s²), gravity removed — the sensor's own
       // where it gives one, else a high-pass of the mixed reading.
@@ -200,10 +183,7 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       const fx = -ax * MOTION_GAIN + turnX * TURN_GAIN;
       const fy = ay * MOTION_GAIN + turnY * TURN_GAIN;
       if (Math.abs(fx) + Math.abs(fy) < 40) return;
-      // Items swing nearly as far as small pieces, however wide: on a
-      // phone the point is that the list itself is jelly.
-      for (const el of items) shove(el, fx, fy, dt, 0.8);
-      for (const el of pieces) shove(el, fx * 0.7, fy * 0.7, dt);
+      for (const el of pieces) shove(el, fx, fy, dt);
     };
     window.addEventListener("devicemotion", onMotion);
     return () => window.removeEventListener("devicemotion", onMotion);

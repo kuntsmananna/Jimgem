@@ -1831,31 +1831,29 @@ compares identity, and a panel builds a fresh draft before every call.
   phone, an icon beside the name at the top of the More sheet, next to
   What's new's sparkle and the close button — icons without words, so the
   pair costs no row; a **Jelly** cell in a staff account's bottom bar,
-  which has no More). It makes two kinds of thing wobble, **each its own
-  body**: the *pieces* — jelly cubes, chips and badges (`.keeps-color`,
+  which has no More). It makes the **small pieces** of every page wobble,
+  each its own body: jelly cubes, chips and badges (`.keeps-color`,
   `.chip-neutral`, which every chip already wears, so a new chip joins
-  without opting in) and `data-jiggle` on the extras marks and the figure
-  tiles — and the *items* (`ITEMS`, v0.79.2): every list row and phone
-  card (`.motion-row`, `.hover-line`, the Orders rows), every shared
-  button (`.press`, which the filter chips wear), the nav's pills and the
-  logo (`data-jiggle-item`). The owner found a list that moved as one
-  block read as the page sliding rather than as jelly, so no container
-  moves on its own; and each body draws its own springiness and heft at
+  without opting in), the extras marks (`data-jiggle`), every icon
+  (`svg.lucide`), every shared button (`.press`, which the filter chips
+  wear), the nav's pills and the logo (`data-jiggle-item`). **Never the
+  boxes they sit in** (v0.79.3): rows, cards, tiles and panes stand still,
+  enforced by size (`MAX_PIECE`, 160px) rather than by name. v0.79.2 moved
+  every row and card too, and the owner found it read as squares being
+  skewed — a transform can only lean and stretch a box, and its straight
+  edges stay straight. Each body draws its own springiness and heft at
   random (`spring`, `gain` in `wobble.ts`), because identical bodies under
   one force move in lockstep — the speed ceiling scales with the heft for
-  the same reason. A wide row's turn is scaled down (`turnScale`), or a
-  degree swept its far end across its neighbours. Panes and fields never
-  move. The mouse ripples the pieces and items it passes, nearest first
+  the same reason. Fields never move.
+  The mouse ripples the pieces it passes, nearest first
   and harder and further the faster it moves — and **a big sweep (`SWEEP`)
-  is a shockwave across the whole interface**: every piece, plus the panes
-  and the Orders rows (`WHOLE`) at a fraction of the strength.
-  **On a phone the whole screen is the jelly** (v0.79.1, the owner's call:
-  "more drastic and noticeable"). `devicemotion` is read as a *continuous
+  is a shockwave across the whole interface**: every piece on screen,
+  rippling out from the pointer. **On a phone** `devicemotion` is read as a *continuous
   force*, not a shake that must cross a threshold — the threshold version
   was missed by real shakes, so all anyone saw was the old tilt-lean. Linear
   acceleration (the sensor's own, or a high-pass of the gravity-mixed
   reading) pushes against the phone's movement, which is inertia, and
-  `rotationRate` sways it; both go to every item and piece on screen, each
+  `rotationRate` sways it; both go to every piece on screen, each
   answering in its own time. iOS motion permission is asked from inside
   the tap that switches it on, the only place iOS allows. It **holds still**
   while a popup is open (`overlayOpen()` in `useOverlayDismiss.ts`) or the
@@ -1864,9 +1862,13 @@ compares identity, and a panel builds a fresh draft before every call.
   **The motion is a spring simulation** (`src/components/wobble.ts`, v0.79.1),
   shared with the tray preview's brush-to-jiggle so the two are the same
   jelly. Each pushed element is a body with a soft, lightly damped base
-  spring and a slower top spring chasing it; the gap is drawn as lean, the
-  vertical travel as a volume-keeping squash, and small pieces' corners go
-  gooey with the energy. **Pushes add velocity to what is already moving**
+  spring and a slower top spring chasing it. **There is no skew**
+  (v0.79.3): the slosh between the two springs is drawn as **the outline
+  flowing** — each corner's radius swelling or tightening from the piece's
+  own resting radius (read once, so the first frame does not jump) towards
+  half its side, so the edges between them bow — with only a small drift,
+  a slight turn and a gentle squash left in the transform. An SVG icon has
+  no outline to flow and takes the transform alone. **Pushes add velocity to what is already moving**
   — the canned keyframe animations before it restarted from rest on every
   push, which is what made a moving mouse feel rough — and a body swings
   down over a couple of seconds and is let go, its inline `transform`

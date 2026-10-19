@@ -46,7 +46,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
       {
         icon: "jelly",
         title: "On a phone",
-        text: "The whole screen is jelly — shake it, swing it or turn it and everything wobbles and slowly settles. Find it in More (or the bottom bar).",
+        text: "Shake it, swing it or turn it and the chips, buttons and icons wobble and slowly settle. Find it in More (or the bottom bar).",
       },
       {
         icon: "lift",
