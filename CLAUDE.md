@@ -324,6 +324,14 @@ the full money rail under it, open, since the price is what is most often
 adjusted last. An existing order keeps the tabs: a correction is a jump to
 one field, not a walk.
 
+**The Customer tab's when and where are one line on a phone** (v0.83.1):
+the date is written short ("Fri 23/10") behind a calendar mark, the way the
+location sits behind its pin, with the real date field laid over it at zero
+opacity so a tap still opens the phone's own picker — the browser's date box
+took 165px of the line and pushed the location onto one of its own. **Open
+client card** rides the "On file" line there (`ClientPicker`'s `trailing`)
+rather than a line under it.
+
 **The phone's footer is one bar** (`PhoneFooter`): the total, with what is
 still due under it, as a tap target that opens the money sheet, and the
 one thing to do next — Next, Save order or Save changes — beside it, with

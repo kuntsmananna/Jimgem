@@ -4,8 +4,10 @@ import {
   PAYMENT_STATUS_LABEL,
   type OrderInput,
   type PaymentStatus,
+  formatOrderDate,
+  orderWeekday,
 } from "@/lib/orderTypes";
-import { ExternalLink, MapPin } from "lucide-react";
+import { CalendarDays, ExternalLink, MapPin } from "lucide-react";
 import { TextInput, TextArea } from "@/components/Field";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { useOrderTypes } from "@/components/OrderTypesContext";
@@ -92,6 +94,9 @@ export function OrderCustomerPanel({
           phone={newClientPhone}
           onPick={(patch) => set(patch)}
           onPhone={onNewClientPhone}
+          // On a phone the link rides the "On file" line (v0.84, the owner's
+          // call) rather than a line of its own under it.
+          trailing={mobile && draft.clientId !== null ? <ClientCardLink clientId={draft.clientId} /> : null}
         />
 
         {/*
@@ -109,16 +114,10 @@ export function OrderCustomerPanel({
           headline and a link tucked into its baseline would be read as
           part of it.
         */}
-        {draft.clientId !== null && (
-          <a
-            href={`/clients?client=${draft.clientId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1.5 flex w-fit items-center gap-1 text-[11px] font-semibold text-accent hover:underline"
-          >
-            <ExternalLink size={11} />
-            Open client card
-          </a>
+        {draft.clientId !== null && !mobile && (
+          <div className="mt-1.5">
+            <ClientCardLink clientId={draft.clientId} />
+          </div>
         )}
 
         {/*
@@ -130,7 +129,30 @@ export function OrderCustomerPanel({
           one field here anybody types a sentence into. `basis-full` on the
           location is what breaks the line.
         */}
-        <div className="mt-2.5 flex items-center gap-2.5 max-md:flex-wrap max-md:gap-y-2">
+        {/*
+          **One line on a phone too** (v0.84, the owner's call): the date
+          is written short — "Sun 19/10", behind a calendar mark the way the
+          location sits behind its pin — with the real date field laid over
+          it invisibly, so a tap still opens the phone's own picker. The
+          browser's own date box was 165px of a 358px line for the same
+          fact, which is what forced the location onto a line of its own.
+        */}
+        <div className="mt-2.5 flex items-center gap-2.5 max-md:gap-1.5">
+          {mobile ? (
+            <label className="relative flex shrink-0 items-center gap-1.5 rounded-xl py-1.5 pr-2 pl-2.5 text-base active:bg-ink/[0.06]">
+              <CalendarDays size={15} aria-hidden className="text-ink-soft" />
+              <span className="tabular-nums">
+                {draft.date ? `${orderWeekday(draft.date)} ${formatOrderDate(draft.date)}` : "Date"}
+              </span>
+              <input
+                type="date"
+                value={draft.date}
+                onChange={(e) => set({ date: e.target.value })}
+                aria-label="Date"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </label>
+          ) : (
           <TextInput
             type="date"
             value={draft.date}
@@ -143,7 +165,8 @@ export function OrderCustomerPanel({
             // is sized to the date plus its picker button and no further.
             className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums max-md:w-[10.5rem]"
           />
-          <label className="relative flex min-w-0 flex-1 items-center max-md:basis-full">
+          )}
+          <label className="relative flex min-w-0 flex-1 items-center">
             <MapPin
               size={14}
               aria-hidden
@@ -260,5 +283,24 @@ export function OrderCustomerPanel({
         />
       </section>
     </div>
+  );
+}
+
+/**
+ * The way to the client's own card. Deliberately a new tab: the order
+ * popup is holding unsaved work, and a link that navigated away from it
+ * would trade an order for a lookup.
+ */
+function ClientCardLink({ clientId }: { clientId: number }) {
+  return (
+    <a
+      href={`/clients?client=${clientId}`}
+      target="_blank"
+      rel="noreferrer"
+      className="flex w-fit shrink-0 items-center gap-1 text-[11px] font-semibold text-accent hover:underline"
+    >
+      <ExternalLink size={11} />
+      Open client card
+    </a>
   );
 }

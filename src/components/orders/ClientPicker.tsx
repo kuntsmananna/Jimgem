@@ -33,6 +33,7 @@ export function ClientPicker({
   phone,
   onPick,
   onPhone,
+  trailing = null,
 }: {
   clients: Client[];
   name: string;
@@ -41,6 +42,8 @@ export function ClientPicker({
   phone: string;
   onPick: (patch: { customer: string; clientId: number | null }) => void;
   onPhone: (phone: string) => void;
+  /** Drawn at the end of the "On file" line — the phone's client-card link. */
+  trailing?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -103,6 +106,7 @@ export function ClientPicker({
               </span>
             )}
             {picked.sumitCustomerId && <span className="text-ink-soft">· linked to SUMIT</span>}
+            {trailing}
           </>
         )}
         {isNew && (
