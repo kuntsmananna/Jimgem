@@ -18,7 +18,7 @@ export interface Announcement {
   /** Who it is for — a release about money is admin-only, since a staff login never sees money. */
   audience: Role[];
   /** Which picture heads it — see `WhatsNew`. */
-  art: "paid-by" | "refresh";
+  art: "paid-by" | "refresh" | "orders-table";
   /** This release's page heading. The popup itself is always titled "What's new". */
   title: string;
   lede: string;
@@ -31,6 +31,35 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: Announcement[] = [
   /*
+   * v0.78, the admin half: the money columns and the tick boxes, neither of
+   * which a staff account has — so it is a page of its own rather than
+   * items on the shared one that would describe things they cannot see.
+   */
+  {
+    id: "v0.78-orders-money",
+    audience: ["admin"],
+    art: "paid-by",
+    title: "Still due, and paid by in the badge",
+    lede: "The money end of each order now says what still has to be collected, and how it was paid sits inside the payment badge.",
+    items: [
+      {
+        icon: "amount",
+        title: "Still due",
+        text: "Replaces the Deposit column: what is left to collect, in amber, or “Paid” in green once it’s settled.",
+      },
+      {
+        icon: "card",
+        title: "Paid by, inside the badge",
+        text: "The payment badge shows how it was paid as an icon. Click it to change the status or the method in one list.",
+      },
+      {
+        icon: "select",
+        title: "Select inside the row",
+        text: "The tick box is the first thing in each row, and every box stays showing once you’ve ticked one.",
+      },
+    ],
+  },
+  /*
    * v0.78: the Orders list reorganised, for everyone. Worded without money,
    * like v0.74's, because a staff login gets the same table less its money
    * columns — so it says nothing about Still due or the payment badge.
@@ -38,7 +67,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
   {
     id: "v0.78-orders-table",
     audience: ["admin", "staff"],
-    art: "refresh",
+    art: "orders-table",
     title: "The orders list, reorganised",
     lede: "Each order now reads left to right in the same order every time: when, the order, what to make — so one row is quicker to read and two are easier to compare.",
     items: [
@@ -56,11 +85,6 @@ export const ANNOUNCEMENTS: Announcement[] = [
         icon: "hover",
         title: "Every mark explains itself",
         text: "Point at any icon, figure or badge and a label says what it means, straight away.",
-      },
-      {
-        icon: "select",
-        title: "Select inside the row",
-        text: "The tick box is the first thing in each row, and every box stays showing once you’ve ticked one.",
       },
     ],
   },

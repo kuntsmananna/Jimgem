@@ -1790,7 +1790,10 @@ compares identity, and a panel builds a fresh draft before every call.
   and ignores a held Enter: a double-click on Next would otherwise close
   the popup on a page nobody read, and closing records it. Its `art` key
   picks the picture (`paid-by` for v0.71, `refresh` for v0.74's new look,
-  which went to staff logins too and so is worded without money), and its
+  which went to staff logins too and so is worded without money,
+  `orders-table` for v0.78's reorganised list, drawn from the table's own
+  new marks — shared with staff too, so its money half is a separate
+  admin-only page), and its
   `title` is that page's heading. The popup itself is always titled
   "What's new" — it shares the header with the close button and is cut off
   past ~14 characters on a phone. Never `autoFocus` its
@@ -2277,10 +2280,17 @@ header takes `bg-cream` for the same reason — it has to be opaque, and it
 is on the page now rather than on a card.
 
 **The table is `w-full`** (v0.76), so a list with room to spare spreads
-across the page — **until a column is dragged**. Pinned (`table-fixed`)
-it is as wide as its `<col>`s add up to, because a fixed table at 100%
-shares any width taken off one column back out across all of them, and a
-column dragged narrower barely moved while its neighbours grew. It was `w-auto` from v0.68 to v0.75, ending each box at
+across the page — **and still fills it once a column is dragged**
+(v0.78.1). Pinned (`table-fixed`) it is as wide as its `<col>`s add up
+to, because a fixed table at 100% shares any width taken off one column
+back out across all of them, and a column dragged narrower barely moved
+while its neighbours grew; so the table watches its scroller's width and
+draws **the room left over into the Customer column** (the stored widths
+are untouched — it is only what is drawn). Without that, a big screen
+showed a pinned table stopping well short of the page. The stored widths
+moved to a **versioned key** (`jimgem:orders-columns:v2`) with the v0.78
+columns, since widths dragged for the old set would size the new one
+wrongly — Extras at a 100px default spilled its slots into Total. It was `w-auto` from v0.68 to v0.75, ending each box at
 its last value, because a stretched box with a stroke round it read as an
 empty frame past its content; with no stroke at rest that objection went,
 and the owner wanted the width used. A busy list fills and wraps exactly

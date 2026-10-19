@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
+  BadgeCheck,
   Banknote,
   Boxes,
+  Briefcase,
+  Cake,
+  HandPlatter,
   CalendarDays,
   Columns3,
   CreditCard,
@@ -16,6 +20,8 @@ import {
   SquareCheck,
   TrendingUp,
   Truck,
+  UserRound,
+  type LucideIcon,
 } from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
@@ -240,7 +246,13 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
 function Page({ announcement }: { announcement: Announcement }) {
   return (
     <>
-      {announcement.art === "refresh" ? <RefreshIllustration /> : <Illustration />}
+      {announcement.art === "orders-table" ? (
+        <OrdersTableIllustration />
+      ) : announcement.art === "refresh" ? (
+        <RefreshIllustration />
+      ) : (
+        <Illustration />
+      )}
       <div className="flex flex-col gap-1.5">
         <h3 className="font-display text-lg leading-tight font-extrabold tracking-tight text-ink">
           {announcement.title}
@@ -410,6 +422,89 @@ function RefreshIllustration() {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * v0.78's picture: the reorganised Orders table in small, drawn from its
+ * own new parts — the day in the margin with Today in the accent, the
+ * tinted type mark beside a name, the four extras slots lit or faint with
+ * a count, and one of the dark labels every mark now opens on hover. No
+ * money in it: staff see this page too, and the money half of the change
+ * has an admin-only page of its own.
+ */
+function OrdersTableIllustration() {
+  const rows: {
+    day?: { wd: string; dt: string; today?: boolean };
+    type: { icon: LucideIcon; tint: string };
+    name: string;
+    guests: number;
+    extras: number[];
+    lifted?: boolean;
+  }[] = [
+    { day: { wd: "Today", dt: "19/10", today: true }, type: { icon: Cake, tint: "bg-tile-peach" }, name: "Noa", guests: 60, extras: [1, 0, 0, 1], lifted: true },
+    { type: { icon: Briefcase, tint: "bg-tile-lavender" }, name: "Studio Lev", guests: 120, extras: [0, 2, 1, 1] },
+    { day: { wd: "Tue", dt: "20/10" }, type: { icon: Briefcase, tint: "bg-tile-lavender" }, name: "Bilduts", guests: 40, extras: [0, 0, 0, 0] },
+  ];
+  const slots = [Sparkles, HandPlatter, BadgeCheck, Truck];
+  return (
+    <div aria-hidden className="relative overflow-hidden rounded-2xl bg-band px-4 pt-8 pb-5 text-[11px]">
+      {rows.map((row, i) => (
+        <div key={i} className={`flex items-center gap-2 ${row.day && i > 0 ? "mt-3" : i > 0 ? "mt-1.5" : ""}`}>
+          {/* The day column, written once per day. */}
+          <span className={`flex w-11 shrink-0 flex-col leading-[1.1] ${row.day?.today ? "text-accent" : ""}`}>
+            {row.day && (
+              <>
+                <span className={`text-[8px] font-extrabold tracking-[0.14em] uppercase ${row.day.today ? "" : "text-ink-soft"}`}>
+                  {row.day.wd}
+                </span>
+                <span className="font-display text-[13px] font-extrabold">{row.day.dt}</span>
+              </>
+            )}
+          </span>
+          <div
+            className={`flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl px-2.5 ${
+              row.lifted
+                ? "relative z-10 -translate-y-px bg-[#fffdfb] shadow-[0_0_0_1px_#f2e6de,0_12px_24px_-12px_rgb(150_95_65/0.45)]"
+                : "bg-card/60"
+            }`}
+          >
+            <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] ${row.type.tint}`}>
+              <row.type.icon size={11} />
+            </span>
+            <span className="min-w-0 flex-1 truncate font-bold">{row.name}</span>
+            <span className="flex shrink-0 items-center gap-0.5 text-ink-soft max-md:hidden">
+              <UserRound size={10} className="opacity-60" />
+              {row.guests}
+            </span>
+            <span className="flex shrink-0 gap-[3px]">
+              {slots.map((Icon, at) => (
+                <span
+                  key={at}
+                  className={`relative flex h-[18px] w-[18px] items-center justify-center rounded-[5px] ${
+                    row.extras[at] ? "bg-band" : "opacity-25"
+                  }`}
+                >
+                  <Icon size={11} />
+                  {/* One of the instant labels, hanging over the lifted
+                      row's delivery slot. */}
+                  {row.lifted && at === slots.length - 1 && (
+                    <span className="absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 rounded-md bg-black px-2 py-1 text-[10px] whitespace-nowrap text-cream shadow-lg">
+                      Delivery
+                    </span>
+                  )}
+                  {row.extras[at] > 1 && (
+                    <span className="absolute -top-1 -right-1 min-w-3 rounded-full bg-black px-[2px] text-center text-[7px] leading-3 font-extrabold text-cream">
+                      {row.extras[at]}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

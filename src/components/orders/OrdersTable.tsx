@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   formatOrderDate,
   orderWeekday,
@@ -181,7 +181,32 @@ export function OrdersTable({
   // Memoised because the hook holds it as a dependency of its own; a fresh
   // array every render would re-parse the stored widths on each pass.
   const visibleIds = useMemo(() => visible.map((column) => column.id), [visible]);
-  const { widths, headRef, startResize, reset } = useColumnWidths(visibleIds);
+  const { widths: pinned, headRef, startResize, reset } = useColumnWidths(visibleIds);
+  /*
+   * A table whose columns have been dragged is as wide as they add up to,
+   * which on a big screen stopped it well short of the page (v0.78.1). The
+   * room left over goes to the Customer column — the one with the most
+   * text to show — rather than being shared out across all of them, which
+   * is what made a column dragged narrower barely move. The stored widths
+   * are untouched; this is only what is drawn.
+   */
+  const scroller = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState(0);
+  useEffect(() => {
+    const box = scroller.current;
+    if (!box) return;
+    const watch = new ResizeObserver(() => setRoom(box.clientWidth));
+    watch.observe(box);
+    return () => watch.disconnect();
+  }, []);
+  const widths = useMemo(() => {
+    if (!pinned) return null;
+    const used = visibleIds.reduce((sum, id) => sum + (pinned[id] ?? 0), 0);
+    // `pr-6` on the table is the shadow's room, so it is not slack.
+    const slack = room - 24 - used;
+    const taker = visibleIds.includes("customer") ? "customer" : visibleIds[visibleIds.length - 1];
+    return slack > 0 && taker ? { ...pinned, [taker]: (pinned[taker] ?? 0) + slack } : pinned;
+  }, [pinned, room, visibleIds]);
   /*
     The labels over the header: one per run of neighbouring columns in the
     same group, spanning however many of them are on screen — so hiding
@@ -233,7 +258,7 @@ export function OrdersTable({
       scroller clips it; the right-hand room is on the table itself (see
       below). `quiet-scroll` keeps the bar thin and pale.
     */
-    <div className="quiet-scroll max-h-[70vh] overflow-auto pb-6">
+    <div ref={scroller} className="quiet-scroll max-h-[70vh] overflow-auto pb-6">
       {/*
         `border-separate` with a vertical gap is what makes each row a box
         rather than a band in a ledger — see the block in globals.css.

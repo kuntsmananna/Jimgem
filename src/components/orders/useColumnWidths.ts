@@ -52,7 +52,9 @@ function persisted(key: string) {
 }
 
 /** Per-viewer, per-browser: both of these are preferences, not data. */
-const widthStore = persisted("jimgem:orders-columns");
+// Versioned: v0.78 replaced most of the columns, so widths dragged for the
+// old set (and the fixed layout they switch on) would be wrong for the new.
+const widthStore = persisted("jimgem:orders-columns:v2");
 const hiddenStore = persisted("jimgem:orders-hidden-columns");
 
 /**
