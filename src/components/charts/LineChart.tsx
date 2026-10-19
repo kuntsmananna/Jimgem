@@ -3,6 +3,7 @@
 import { Fragment, useId, useState } from "react";
 import type { SeriesColor } from "@/lib/chartPalette";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
+import { currency } from "@/lib/money";
 
 export interface LineSeries {
   label: string;
@@ -79,12 +80,15 @@ function niceTicks(min: number, max: number): number[] {
   return ticks;
 }
 
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const compact = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 
-/** "₪20k" — the scale's labels, which have no room for a full figure. */
-export const shortShekels = (v: number) =>
-  `${v < 0 ? "-" : ""}₪${Math.abs(v) >= 1000 ? `${compact.format(Math.abs(v) / 1000)}k` : nf.format(Math.abs(v))}`;
+/**
+ * "₪20k" — the scale's labels, which have no room for a full figure. Below
+ * a thousand it is `currency` itself, so the sign sits where `withSign`
+ * puts it everywhere else.
+ */
+const shortShekels = (v: number) =>
+  Math.abs(v) >= 1000 ? `${v < 0 ? "-" : ""}₪${compact.format(Math.abs(v) / 1000)}k` : currency(v);
 
 /** Stroke weight in px. Non-scaling, so it stays constant however wide the chart renders. */
 const LINE_WIDTH = 3;
@@ -132,11 +136,6 @@ const TOOLTIP_FLIP_MARGIN = 0.25;
  * three): lines lit like the jelly cubes, a glow under each that fades
  * fast, a dashed grid with a real scale on the left, and a dark reading
  * card on hover.
- *
- * **Months still to come are not drawn.** The trailing months where every
- * series is zero are the rest of the year, not a crash: drawn, every chart
- * fell off a cliff in November. Their labels stay, dimmed, so the year
- * still reads as a year.
  */
 export function LineChart({
   series,
@@ -144,7 +143,7 @@ export function LineChart({
   height = 200,
   highlightIndex = null,
   normalizePerSeries = false,
-  valueFormat = (v: number) => `₪${nf.format(v)}`,
+  valueFormat = currency,
   axisFormat = shortShekels,
 }: {
   series: LineSeries[];
@@ -170,12 +169,7 @@ export function LineChart({
   const chartHeight = height - padTop - padBottom;
   const bottom = padTop + chartHeight;
 
-  // How many months have happened: everything up to the last one where
-  // any series has a value. All-zero throughout draws the whole flat line.
-  const lastWithData = xLabels.reduce((last, _, i) => (series.some((s) => (s.values[i] ?? 0) !== 0) ? i : last), -1);
-  const known = lastWithData >= 0 ? lastWithData + 1 : xLabels.length;
-
-  const all = series.flatMap((s) => s.values.slice(0, known));
+  const all = series.flatMap((s) => s.values);
   const ticks = niceTicks(Math.min(0, ...all), Math.max(1, ...all));
   const low = ticks[0];
   const high = ticks[ticks.length - 1];
@@ -192,15 +186,17 @@ export function LineChart({
   const stepX = xLabels.length > 1 ? width / (xLabels.length - 1) : 0;
   const pointsFor = (s: LineSeries): Point[] => {
     const y = yFor(s);
-    return s.values.slice(0, known).map((v, i) => ({ x: i * stepX, y: y(v) }));
+    return s.values.map((v, i) => ({ x: i * stepX, y: y(v) }));
   };
+  // Worked out once a render and shared by the fills, the lines and the
+  // hover markers.
+  const plotted = series.map(pointsFor);
 
   /** The line closed down to zero, so the glow beneath it has something to fill. */
   const areaPath = (points: Point[]) =>
     `${monotonePath(points)} L ${points[points.length - 1].x} ${zeroY} L ${points[0].x} ${zeroY} Z`;
 
-  const clamp = (i: number) => Math.min(i, known - 1);
-  const activeIndex = hoverIndex ?? (highlightIndex === null ? null : clamp(highlightIndex));
+  const activeIndex = hoverIndex ?? highlightIndex;
 
   // The tooltip is positioned in percentages against the plot rather than
   // drawn in the SVG: the SVG uses preserveAspectRatio="none", which would
@@ -323,7 +319,7 @@ export function LineChart({
               {/* Every fill first, then every stroke — otherwise a later
                   series' area washes over the line drawn before it. */}
               {series.map((s, i) => {
-                const points = pointsFor(s);
+                const points = plotted[i];
                 if (points.length < 2) return null;
                 return <path key={s.label} d={areaPath(points)} fill={`url(#${gradientId}-area-${i})`} stroke="none" />;
               })}
@@ -331,7 +327,7 @@ export function LineChart({
               {series.map((s, i) => (
                 <path
                   key={s.label}
-                  d={monotonePath(pointsFor(s))}
+                  d={monotonePath(plotted[i])}
                   fill="none"
                   stroke={`url(#${gradientId}-line-${i})`}
                   strokeWidth={LINE_WIDTH}
@@ -358,8 +354,7 @@ export function LineChart({
 
             {/*
               Invisible hit targets — one per x-index, spanning the full chart
-              height, for hover tooltips on every datapoint. A month still to
-              come reads as the last one that has happened.
+              height, for hover tooltips on every datapoint.
 
               `onClick` beside the hover, so a phone can read a month too:
               without it every value this chart carries is unreachable on
@@ -378,8 +373,8 @@ export function LineChart({
                 width={stepX || width}
                 height={height}
                 fill="transparent"
-                onMouseEnter={() => setHoverIndex(clamp(i))}
-                onClick={() => setHoverIndex(clamp(i))}
+                onMouseEnter={() => setHoverIndex(i)}
+                onClick={() => setHoverIndex(i)}
               />
             ))}
           </svg>
@@ -391,8 +386,8 @@ export function LineChart({
             any text. The marker is a small jelly cube, lit like the line.
           */}
           {activeIndex !== null &&
-            series.map((s) => {
-              const p = pointsFor(s)[activeIndex];
+            series.map((s, i) => {
+              const p = plotted[i][activeIndex];
               if (!p) return null;
               return (
                 <span
@@ -434,9 +429,7 @@ export function LineChart({
         {xLabels.map((label, i) => (
           <span
             key={label + i}
-            className={`absolute -translate-x-1/2 whitespace-nowrap ${i === activeIndex ? "font-bold text-ink" : ""} ${
-              i >= known ? "opacity-45" : ""
-            }`}
+            className={`absolute -translate-x-1/2 whitespace-nowrap ${i === activeIndex ? "font-bold text-ink" : ""}`}
             style={{ left: `${fractionOf(i) * 100}%` }}
           >
             {label}

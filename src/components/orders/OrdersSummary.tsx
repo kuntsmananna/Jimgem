@@ -23,8 +23,8 @@ import { count, currency } from "@/lib/money";
  *
  * A narrow column that folds to a rail (v0.76), after a spell as a strip
  * across the top (v0.73): the strip spent a row of height above the list
- * on four numbers, and the owner wanted that height for orders. It is only
- * as wide as its widest figure, and deliberately has **no shadow and no
+ * on four numbers, and the owner wanted that height for orders. It is a
+ * fixed 176px column, and deliberately has **no shadow and no
  * colour** — the figures summarise the list, and the list is what the
  * page is for.
  *

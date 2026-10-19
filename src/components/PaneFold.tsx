@@ -6,7 +6,7 @@ import { ChevronsLeft, ChevronsRight } from "lucide-react";
  * A side pane that folds away to a narrow rail and back — the Expenses
  * page's periods and charts, and the Orders page's figures. The choice is
  * kept in a cookie by each page, so the server paints it folded or open
- * from the start (see `expensePanes.ts`).
+ * from the start (see `paneFolds.ts`).
  */
 
 /** How wide a folded pane's rail is. */
@@ -40,6 +40,10 @@ export function PaneRail({
       onClick={onExpand}
       title={`Show ${label}`}
       aria-label={`Show ${label}`}
+      // Its own width, so a rail is the same on a page that lays it out in
+      // a grid track (Expenses) and one that does not (Orders' aside, where
+      // it would otherwise shrink to the width of its arrow).
+      style={{ width: RAIL_WIDTH }}
       className="flex min-w-0 flex-col items-center gap-3 rounded-card border border-line bg-card py-3 text-ink-soft transition hover:bg-black/5 hover:text-ink"
     >
       <Arrow size={15} />

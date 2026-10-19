@@ -14,7 +14,7 @@ import { currentRole } from "@/lib/auth";
 import { canSeeMoney } from "@/lib/roles";
 import { redactOrders, redactPresets, redactRates } from "@/lib/redact";
 import { cookies } from "next/headers";
-import { ORDERS_FIGURES_COOKIE } from "@/lib/orderScope";
+import { ORDERS_FIGURES_COOKIE, parseFiguresFolded } from "@/lib/paneFolds";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +66,7 @@ export default async function OrdersPage() {
       // The list itself is not money — the order's choice from it is, and
       // redactOrders has already taken that out.
       paymentMethods={paymentMethods}
-      figuresFolded={cookieStore.get(ORDERS_FIGURES_COOKIE)?.value === "1"}
+      figuresFolded={parseFiguresFolded(cookieStore.get(ORDERS_FIGURES_COOKIE)?.value)}
     />
   );
 }

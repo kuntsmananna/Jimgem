@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { orderNet, orderTotal, type Order, type OrderInput } from "@/lib/orderTypes";
 import { VAT_VIEW_COOKIE, VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
+import { writePrefCookie } from "@/lib/prefCookie";
 
 interface VatViewValue {
   view: VatView;
@@ -32,7 +33,7 @@ export function VatViewProvider({ view, children }: { view: VatView; children: R
 
   const setView = (next: VatView) => {
     // A year, path-wide: it is a display preference, not a session.
-    document.cookie = `${VAT_VIEW_COOKIE}=${next}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    writePrefCookie(VAT_VIEW_COOKIE, next);
     router.refresh();
   };
 

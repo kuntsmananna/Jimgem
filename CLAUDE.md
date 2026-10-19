@@ -79,12 +79,15 @@ something here isn't obvious.
   It has **a dashed grid and a real scale** in a 44px column on the left
   (`niceTicks`: round steps, so every label is a value the scale reaches;
   `axisFormat`, `₪20k` by default), and none under `normalizePerSeries`,
-  where there is no one scale to label. Two fixes rode in with it: the
-  curve is **monotone** (Fritsch–Carlson), because the Catmull-Rom it
-  replaced overshot — a ₪0 month after a busy one dipped the line below
-  zero, drawing a loss nobody made — and **months still to come are not
-  drawn**: the trailing months where every series is zero are the rest of
-  the year, not a crash to zero, so the lines stop and the labels dim.
+  where there is no one scale to label. The curve is **monotone**
+  (Fritsch–Carlson), because the Catmull-Rom it replaced overshot — a ₪0
+  month after a busy one dipped the line below zero, drawing a loss nobody
+  made. Months still to come need no handling: `getYearlyFinancials` and
+  the Clients page only produce months with activity, so a trailing zero is
+  a real month and is drawn as one (v0.77 briefly hid trailing zeros as
+  "future", which could only ever hide a real ₪0 month). The hover card and
+  the `₪20k` scale both format through `currency`, so a loss reads
+  `-₪6,300` there as everywhere else.
   **A part-of-whole chart is `BarBreakdown`**, where there was a donut:
   ranked largest first, each bar measured against the largest, figure and
   share written on every row and a total under them. Bars are compared
@@ -1686,7 +1689,10 @@ compares identity, and a panel builds a fresh draft before every call.
   on its side — a bare arrow says something is hidden without saying what,
   and the periods rail names the period on screen, which is what the pane
   was answering while it was open. The choice is a **cookie**
-  (`expensePanes.ts`), read by the server page and handed to the client as
+  (`paneFolds.ts`, which holds every fold cookie's name and encoding —
+  Orders' figures pane too), written through `writePrefCookie`
+  (`prefCookie.ts`, shared with the VAT switch so the attributes cannot
+  drift), read by the server page and handed to the client as
   its opening state, for the reason `vatView` is a cookie: read in the
   browser instead, the layout would paint wide and then snap. Toggling
   writes the cookie directly and never calls `router.refresh()` — nothing
@@ -1786,7 +1792,7 @@ compares identity, and a panel builds a fresh draft before every call.
   watched by `row_revisions` and every dismissal would land in the change
   log as an edit to somebody's account. Per login, not per browser, so a
   phone and a laptop are told once between them. The app layout asks
-  `getUnseenAnnouncements(role)`; an announcement carries an `audience`, and
+  `getSeenAnnouncements()` beside the role and filters with `unseenFor(role, seen)`; an announcement carries an `audience`, and
   the money ones are admin-only. **Without the table it never shows**,
   rather than coming back on every page load with nowhere to record the
   close. Any way of closing it counts as seeing **every page** in it,
@@ -2290,7 +2296,8 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   drop-shadow follows exactly what the cells paint. At rest the cells are
   72% white so the hovered one is the brightest thing in the list. Since
   v0.74 every other `.hover-line` lifts the same way. The hovered row is
-  **`position: relative; z-index: 15`** — above the day headings (z-10),
+  **`z-index: 15`** (on a row that is `position: relative` at rest, so the
+  hover changes only paint) — above the day headings (z-10),
   below the header (z-20) — because a day heading is sticky and opaque,
   and the next day's heading cut the shadow of a day's last order off flat.
   **Chromium clips that drop-shadow to the table's own box**, so room
@@ -2301,7 +2308,8 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   `.quiet-scroll`: a thin bar in the line colour, where the platform's
   default was a dark 15px slab, the darkest thing on the page.
 - **Rows are a box, and only the hovered one is drawn in full** (v0.76):
-  `py-2.5`, ~46px, centred. At rest a row is a weak fill (42% white) with
+  ~46px, centred, its cells' padding stated once on `.orders-rows > tr > td`
+  rather than on each `<td>`. At rest a row is a weak fill (42% white) with
   **no stroke** — the edge is there but transparent, so gaining its colour
   on hover never nudges the row — and the hovered one goes white, edged
   and lifted, the only box on the page drawn whole. They **arrive in a
@@ -2316,8 +2324,10 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   which spent a row of height above the list; the owner wanted that height
   for orders. It folds to the same rail Expenses' panes use (`PaneFold.tsx`
   — `PaneRail`, `FoldButton`, `RAIL_WIDTH`, moved out of `ExpensesClient`
-  to be shared), and the choice is the `ORDERS_FIGURES_COOKIE` cookie,
-  read by the server page for the reason the Expenses panes' is.
+  to be shared; `PaneRail` sets its own `RAIL_WIDTH`, since the Orders
+  aside has no grid track to size it), and the choice is the
+  `ORDERS_FIGURES_COOKIE` cookie in `paneFolds.ts`, read by the server page
+  for the reason the Expenses panes' is.
   `HoverCard`'s `placement` (`below-left` / `below-right`) came from the
   strip and stays for the next row of tiles that needs it.
 - **Sharp jelly cubes** are `.jelly-cube`, coloured through `--g/--b/--s`

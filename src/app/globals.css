@@ -527,8 +527,9 @@ body {
    * Above the day headings (z-10), below the table header (z-20). A day
    * heading is sticky and opaque cream, so the next day's heading painted
    * over the shadow of a day's last order and cut it off flat (v0.77).
+   * The row is `position: relative` at rest (below), so the hover changes
+   * only paint properties and never re-lays out the table.
    */
-  position: relative;
   z-index: 15;
 }
 
@@ -975,10 +976,14 @@ body {
      nudges the row by a pixel. */
   background-color: --alpha(var(--color-card) / 42%);
   border-block: 1px solid transparent;
+  /* Every cell's padding, stated once here rather than as the same two
+     utilities on sixteen <td>s — the day heading's `px-2` matches it. */
+  padding: 0.625rem 0.5rem;
   transition: background-color 140ms ease, border-color 140ms ease;
 }
 
 .orders-rows > tr:not(.day-row) {
+  position: relative;
   transition:
     filter 180ms ease,
     transform 180ms var(--ease-entrance);

@@ -23,11 +23,12 @@ import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 import { EmptyState } from "@/components/EmptyState";
 import { FoldButton, PaneRail, RAIL_WIDTH } from "@/components/PaneFold";
+import { writePrefCookie } from "@/lib/prefCookie";
 import {
   EXPENSE_PANES_COOKIE,
   serializeCollapsedPanes,
   type ExpensePane,
-} from "@/lib/expensePanes";
+} from "@/lib/paneFolds";
 
 /**
  * Amounts carry their agorot when they have any — ₪12,344.67 — and drop
@@ -53,7 +54,7 @@ export function ExpensesClient({
   vatRate: number;
   /** What the costs marked "repeats monthly" come to — see recurringExpenses.ts. */
   recurring: RecurringSummary;
-  /** Folded when the page loaded, read from the cookie — see expensePanes.ts. */
+  /** Folded when the page loaded, read from the cookie — see paneFolds.ts. */
   collapsedPanes: ExpensePane[];
 }) {
   const router = useRouter();
@@ -80,7 +81,7 @@ export function ExpensesClient({
     const next = new Set(collapsed);
     if (!next.delete(pane)) next.add(pane);
     setCollapsed(next);
-    document.cookie = `${EXPENSE_PANES_COOKIE}=${serializeCollapsedPanes(next)}; path=/; max-age=31536000; samesite=lax`;
+    writePrefCookie(EXPENSE_PANES_COOKIE, serializeCollapsedPanes(next));
   }
 
   const period = periods.find((p) => p.key === selectedKey) ?? periods[periods.length - 1];
@@ -260,8 +261,8 @@ export function ExpensesClient({
   );
 
   return (
-    // The breakdown pane gives up width to the list: a donut reads fine
-    // small, and the list is where every column had to fight for room.
+    // The breakdown pane gives up width to the list: its bars read fine
+    // narrow, and the list is where every column had to fight for room.
     // Either flank folds to a rail, and the middle takes what it leaves —
     // the template is computed rather than written as a class, because
     // Tailwind cannot generate one that changes at runtime.
@@ -481,7 +482,7 @@ export function ExpensesClient({
           </section>
 
           {/*
-            Where the money went, biggest first. A donut answers "which
+            Where the money went, biggest first. The breakdown answers "which
             category", this answers "which expense" — the one that is usually
             behind a month looking heavier than it should.
           */}
@@ -532,7 +533,6 @@ export function ExpensesClient({
   );
 }
 
-/** Wide enough for the fold arrow plus its target — see PaneRail. */
 /**
  * One expense, as columns rather than a run of text.
  *

@@ -2,7 +2,7 @@ import type { Role } from "./roles";
 
 /**
  * The releases being announced, each shown once to each person on their
- * next visit (see `WhatsNew` and `getUnseenAnnouncements`).
+ * next visit (see `WhatsNew` and `getSeenAnnouncements` and `unseenFor`).
  *
  * Client-safe: plain data, read by the server to decide what to show and
  * by the popup to draw it.
@@ -107,7 +107,7 @@ export function announcementsFor(role: Role): Announcement[] {
  */
 export function dismissalFor(role: Role, shown: string[]): string[] | null {
   const forRole = announcementsFor(role);
-  const positions = [...new Set(shown)].map((id) => forRole.findIndex((announcement) => announcement.id === id));
+  const positions = shown.map((id) => forRole.findIndex((announcement) => announcement.id === id));
   if (positions.length === 0 || positions.some((position) => position < 0)) return null;
   return forRole.slice(Math.min(...positions)).map((announcement) => announcement.id);
 }
@@ -118,3 +118,13 @@ export function dismissalFor(role: Role, shown: string[]): string[] | null {
  * changelog rather than news; the oldest fall off the end.
  */
 export const MAX_ANNOUNCEMENT_PAGES = 3;
+
+/**
+ * What the arrival popup shows `role`, given the ids already dismissed:
+ * the ones not seen yet, newest first and at most `MAX_ANNOUNCEMENT_PAGES`.
+ */
+export function unseenFor(role: Role, seen: Set<string>): Announcement[] {
+  return announcementsFor(role)
+    .filter((announcement) => !seen.has(announcement.id))
+    .slice(0, MAX_ANNOUNCEMENT_PAGES);
+}

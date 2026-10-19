@@ -3,7 +3,7 @@ import { getExpensePeriods } from "@/lib/expenses";
 import { getRecurringSummary } from "@/lib/recurringExpenses";
 import { getExpenseCategories, getPaymentMethods, getPrices, getStaff } from "@/lib/settings";
 import { ExpensesClient } from "@/components/expenses/ExpensesClient";
-import { EXPENSE_PANES_COOKIE, parseCollapsedPanes } from "@/lib/expensePanes";
+import { EXPENSE_PANES_COOKIE, parseCollapsedPanes } from "@/lib/paneFolds";
 import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default async function ExpensesPage() {
   ]);
 
   // Read here rather than in the browser: the layout would otherwise paint
-  // wide and then fold — see expensePanes.ts.
+  // wide and then fold — see paneFolds.ts.
   const collapsedPanes = parseCollapsedPanes(cookieStore.get(EXPENSE_PANES_COOKIE)?.value);
 
   return (

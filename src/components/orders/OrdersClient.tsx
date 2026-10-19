@@ -16,11 +16,13 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType, PaymentMethod } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
-import { ORDERS_FIGURES_COOKIE, SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
+import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
 import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
 import { PaneRail } from "@/components/PaneFold";
+import { ORDERS_FIGURES_COOKIE, serializeFiguresFolded } from "@/lib/paneFolds";
+import { writePrefCookie } from "@/lib/prefCookie";
 import { COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
 import { PaymentMethodsProvider } from "./PaymentMethodsContext";
 import { EmptyState } from "@/components/EmptyState";
@@ -134,7 +136,7 @@ export function OrdersClient({
   const toggleFigures = () => {
     const next = !figuresFolded;
     setFiguresFolded(next);
-    document.cookie = `${ORDERS_FIGURES_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
+    writePrefCookie(ORDERS_FIGURES_COOKIE, serializeFiguresFolded(next));
   };
   const searchParams = useSearchParams();
   const stages = useStages();

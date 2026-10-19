@@ -25,7 +25,7 @@ const ITEM_ICON = {
 /**
  * The "what's new" popup, shown once to each person on their next visit
  * after a release (the app layout decides what there is to show — see
- * `getUnseenAnnouncements`).
+ * `getSeenAnnouncements` and `unseenFor`).
  *
  * **Several releases are pages of one popup**, newest first, with Back and
  * Next and a dot per page. Somebody who missed one release and then came
@@ -133,19 +133,21 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
 
   // The arrow keys page from anywhere in the popup — clicking the picture
   // or the title band moves focus off the buttons, and the keys should not
-  // stop working because of it. On the document, like Escape is.
+  // stop working because of it. On the document, like Escape is, and
+  // subscribed once: the step is relative, so it needs no current page.
   useEffect(() => {
     if (count < 2) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (e.key === "ArrowRight") turnTo(page + 1);
-      else if (e.key === "ArrowLeft") turnTo(page - 1);
-      else return;
+      const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (delta === 0) return;
       e.preventDefault();
+      turnedAt.current = performance.now();
+      setPage((p) => Math.min(count - 1, Math.max(0, p + delta)));
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [count, page, turnTo]);
+  }, [count]);
 
   const pressPrimary = () => {
     if (!last) return turnTo(page + 1);
@@ -159,8 +161,6 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
         {announcements.map((announcement, i) => (
           <section
             key={announcement.id}
-            aria-hidden={i !== page}
-            inert={i !== page}
             className={`col-start-1 row-start-1 flex flex-col gap-5 ${i === page ? "motion-fade" : "invisible"}`}
           >
             <Page announcement={announcement} />

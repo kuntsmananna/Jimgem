@@ -1,6 +1,9 @@
 /**
- * Which of the Expenses page's side panes are folded away.
+ * Which side panes are folded away — the Expenses page's two and the
+ * Orders page's figures. One module for every fold cookie, so each page's
+ * server read and client write agree on the name and the encoding.
  *
+ * Expenses:
  * The list in the middle is the page — fifteen columns of it once an
  * expense names its business — and the periods rail and the charts column
  * together take a third of the width to answer questions asked far less
@@ -32,3 +35,13 @@ export function parseCollapsedPanes(value: string | undefined): ExpensePane[] {
 export function serializeCollapsedPanes(panes: Set<ExpensePane>): string {
   return PANES.filter((pane) => panes.has(pane)).join(",");
 }
+
+/**
+ * The Orders page's figures pane, folded when the cookie holds "1". A
+ * cookie of its own rather than a third name in the Expenses list, since
+ * the two pages are read by different server pages.
+ */
+export const ORDERS_FIGURES_COOKIE = "jimgem_orders_figures";
+
+export const parseFiguresFolded = (value: string | undefined) => value === "1";
+export const serializeFiguresFolded = (folded: boolean) => (folded ? "1" : "0");

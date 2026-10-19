@@ -467,7 +467,7 @@ export function OrdersTable({
                   left end instead.
                 */}
                 {show("select") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     {selectable && (
                       <input
                         type="checkbox"
@@ -488,7 +488,7 @@ export function OrdersTable({
                     so it reads as the row's state rather than as another
                     of its values. */}
                 {show("status") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     {/* What the stage means, a hover away — the select
                         itself still opens the list on a click. */}
                     <HoverCard
@@ -508,7 +508,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("date") && (
-                  <td className="px-2 py-2.5 whitespace-nowrap">
+                  <td className="whitespace-nowrap">
                     <EditableCell
                       type="date"
                       displayValue={formatOrderDate(order.date)}
@@ -518,7 +518,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("customer") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <div className="flex items-center gap-1.5">
                       {/*
                         The name is two things at once: the client it belongs
@@ -585,7 +585,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("type") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <EditableCell
                       displayValue={
                         order.customerType.trim() ? <EventTypeChip value={order.customerType} /> : "—"
@@ -600,7 +600,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("location") && (
-                  <td className="max-w-[130px] px-2 py-2.5">
+                  <td className="max-w-[130px]">
                     <EditableCell
                       displayValue={order.location || "—"}
                       editValue={order.location}
@@ -609,7 +609,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("guests") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <EditableCell
                       type="number"
                       displayValue={order.guests ?? "—"}
@@ -623,7 +623,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("units") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     {/* The count is the scannable number; the packages and
                         their flavours are a hover away. The dotted underline
                         is what says so — a row of bare numerals gives no
@@ -643,7 +643,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("mirrors") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     {/* Read-only here, unlike the counts either side of it:
                         an order can carry several display types at once, and
                         one number in a cell has nowhere to say which. The
@@ -652,7 +652,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("waitress") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <EditableCell
                       type="number"
                       displayValue={order.waitresses ?? "—"}
@@ -666,12 +666,12 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("kosher") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <YesNoCell value={order.kosher} onSave={(kosher) => saveField(order, { kosher })} />
                   </td>
                 )}
                 {show("delivery") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     {/* Whether there is delivery, not what it costs — the
                         price lives with the other extras on the order
                         sheet's money side. */}
@@ -682,7 +682,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("amount") && (
-                  <td className="px-2 py-2.5 font-semibold">
+                  <td className="font-semibold">
                     {/* The whole order — jelly, every extra, discount and
                         VAT — in the nav's VAT convention, the same figure
                         the Kanban card and the order form's Total show. It
@@ -705,7 +705,7 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("deposit") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <EditableCell
                       type="number"
                       displayValue={currency(order.deposit)}
@@ -715,12 +715,12 @@ export function OrdersTable({
                   </td>
                 )}
                 {show("payment") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     <PaymentStatusSelect order={order} onChanged={onChanged} onUndoable={onUndoable} />
                   </td>
                 )}
                 {show("method") && (
-                  <td className="px-2 py-2.5">
+                  <td>
                     {/* Edits as a dropdown over the owner's list, like the
                         Type cell: a typed value would match no row. Live
                         methods only, plus whichever this order already

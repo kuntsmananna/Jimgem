@@ -11,7 +11,8 @@ import { ProductionStagesProvider } from "@/components/ProductionStagesContext";
 import { VatViewProvider } from "@/components/VatViewContext";
 import { RoleProvider } from "@/components/RoleContext";
 import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
-import { getUnseenAnnouncements } from "@/lib/announcementViews";
+import { getSeenAnnouncements } from "@/lib/announcementViews";
+import { unseenFor } from "@/lib/announcement";
 import { WhatsNew } from "@/components/WhatsNew";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -22,7 +23,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
    * *offer* a type — the order form's pill and the table's Type cell —
    * filter the archived ones out themselves.
    */
-  const [session, role, orderTypes, stages, cookieStore] = await Promise.all([
+  const [session, role, orderTypes, stages, cookieStore, seenAnnouncements] = await Promise.all([
     getSession(),
     // Read from the database rather than from the cookie — see currentRole.
     // Null means no account we can resolve, and everything below it treats
@@ -31,13 +32,16 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     getOrderTypes(true),
     getProductionStages(true),
     cookies(),
+    // Beside the role rather than after it: what has been seen does not
+    // depend on who is asking, only what is shown does (`unseenFor`).
+    getSeenAnnouncements(),
   ]);
   // Read here, on the server, so the first paint is already in the right
   // convention — see VatViewProvider.
   const vatView = parseVatView(cookieStore.get(VAT_VIEW_COOKIE)?.value);
-  // After the role, because who an announcement is for is part of whether
-  // there is one to show — a staff login is never told about money.
-  const announcements = await getUnseenAnnouncements(role);
+  // Who an announcement is for is part of whether there is one to show —
+  // a staff login is never told about money.
+  const announcements = role && seenAnnouncements ? unseenFor(role, seenAnnouncements) : [];
 
   return (
     <RoleProvider role={role ?? "staff"}>

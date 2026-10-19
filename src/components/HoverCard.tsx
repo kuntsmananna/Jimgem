@@ -35,8 +35,8 @@ type Placement = "side" | "below-left" | "below-right";
 /**
  * Under the trigger, lined up with its left or right edge, and above it
  * instead when there is no room below. For a trigger in a row of similar
- * ones — a strip of figures — where a card to the side would sit on top of
- * the neighbour you might hover next.
+ * ones — the Orders table's status chips, the nav's icons — where a card to
+ * the side would sit on top of the neighbour you might hover next.
  */
 function positionBelow(
   rect: DOMRect,

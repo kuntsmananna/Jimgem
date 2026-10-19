@@ -113,11 +113,11 @@ export function Nav({ name, version }: { name: string; version: string }) {
       <HeaderSlotTarget className="ml-4 flex min-w-0 flex-1 items-center justify-end md:hidden" />
 
       <div className="flex items-center gap-3 max-md:hidden">
-        {/* The one control that governs what a shekel means, and so of no
-            use at all to an account that is shown none. */}
         {/* Every release again, on demand — for staff too, who are told
             about the ones that concern them. */}
         <WhatsNewButton />
+        {/* The one control that governs what a shekel means, and so of no
+            use at all to an account that is shown none. */}
         {admin && <VatViewToggle />}
         {/* On every page rather than just the Dashboard — it's how you tell
             which version you're looking at. */}

@@ -241,7 +241,7 @@ function Grid({
   columns: number;
   colorFor: (id: string | null) => string | null;
 }) {
-  const jiggle = useJiggle();
+  const jiggle = useJiggle(columns);
   return (
     <div
       onPointerMove={jiggle}
@@ -271,8 +271,8 @@ function Grid({
 const JIGGLE_EVERY_MS = 110;
 /** How long one wobble takes to settle. */
 const JIGGLE_MS = 700;
-/** Pointer speed, in px per event, past which a wobble is as big as it gets. */
-const JIGGLE_FULL_SPEED = 14;
+/** How far the pointer travels between two wobbles for one to be as big as it gets. */
+const JIGGLE_FULL_PX = 96;
 
 /**
  * Brushing the pointer across a tray wobbles the cubes like jelly, in the
@@ -288,11 +288,16 @@ const JIGGLE_FULL_SPEED = 14;
  * Web Animations rather than a CSS class, because the direction and size
  * differ every time and a keyframe cannot take them as arguments without
  * restarting the animation by removing and re-adding the class. A new
- * wobble simply replaces the old one on each cube. Off entirely under
- * `prefers-reduced-motion`, and it never moves anything but `transform`.
+ * wobble cancels the one before it on each cube rather than stacking on
+ * it. Each cube's centre is worked out from the grid's geometry, not
+ * measured: a rect read per cube between `animate()` calls forced a style
+ * flush per cube, and caught cubes still skewed by the last wobble. Off
+ * entirely under `prefers-reduced-motion`, and it never moves anything but
+ * `transform`.
  */
-function useJiggle() {
+function useJiggle(columns: number) {
   const last = useRef<{ x: number; y: number; at: number } | null>(null);
+  const running = useRef(new WeakMap<Element, Animation>());
   return (e: PointerEvent<HTMLDivElement>) => {
     const now = performance.now();
     const previous = last.current;
@@ -305,15 +310,19 @@ function useJiggle() {
     const dy = e.clientY - previous.y;
     const speed = Math.hypot(dx, dy);
     if (speed < 2) return;
-    const strength = Math.min(1, speed / (JIGGLE_FULL_SPEED * (JIGGLE_EVERY_MS / 16)));
+    const strength = Math.min(1, speed / JIGGLE_FULL_PX);
     const ux = dx / speed;
     const uy = dy / speed;
 
-    for (const cube of Array.from(e.currentTarget.children) as HTMLElement[]) {
-      const box = cube.getBoundingClientRect();
-      const distance = Math.hypot(box.left + box.width / 2 - e.clientX, box.top + box.height / 2 - e.clientY);
+    const grid = e.currentTarget.getBoundingClientRect();
+    const size = (grid.width - 2 * GRID_PADDING - (columns - 1) * CUBE_GAP) / columns;
+    const cubes = Array.from(e.currentTarget.children);
+    cubes.forEach((cube, i) => {
+      const cx = grid.left + GRID_PADDING + (i % columns) * (size + CUBE_GAP) + size / 2;
+      const cy = grid.top + GRID_PADDING + Math.floor(i / columns) * (size + CUBE_GAP) + size / 2;
+      const distance = Math.hypot(cx - e.clientX, cy - e.clientY);
       // Close cubes take the whole push; it fades over ~6 cubes' width.
-      const reach = Math.max(0.25, 1 - distance / (box.width * 6));
+      const reach = Math.max(0.25, 1 - distance / (size * 6));
       const lean = strength * reach;
       const pose = (k: number) => {
         const skew = -ux * 14 * lean * k;
@@ -322,7 +331,8 @@ function useJiggle() {
         const squash = 1 - uy * 0.12 * lean * k;
         return `translateX(${shift}px) skewX(${skew}deg) scale(${2 - squash}, ${squash})`;
       };
-      cube.animate(
+      running.current.get(cube)?.cancel();
+      const wobble = cube.animate(
         [
           { transform: "none" },
           { transform: pose(1), offset: 0.16 },
@@ -331,8 +341,9 @@ function useJiggle() {
           { transform: pose(-0.1), offset: 0.82 },
           { transform: "none" },
         ],
-        { duration: JIGGLE_MS, easing: "ease-out", delay: Math.min(120, distance * 0.35) },
+        { duration: JIGGLE_MS, easing: "ease-out", delay: Math.min(120, distance * 0.35), fill: "backwards" },
       );
-    }
+      running.current.set(cube, wobble);
+    });
   };
 }

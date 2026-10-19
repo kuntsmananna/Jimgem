@@ -145,10 +145,3 @@ export function deltaPercent(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return ((current - previous) / previous) * 100;
 }
-
-/**
- * Whether the Orders page's figures pane is folded away — a cookie holding
- * "1" when it is, read by the server page so the first paint is already
- * right (the reason `expensePanes.ts` gives for the Expenses page's two).
- */
-export const ORDERS_FIGURES_COOKIE = "jimgem_orders_figures";
