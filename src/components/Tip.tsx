@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { COARSE_POINTER, matchesNow } from "./useMediaQuery";
+import { useCloseOnScroll } from "./useOverlayDismiss";
 
 /**
  * A one-line label saying what a mark is, the moment the pointer arrives
@@ -23,25 +25,16 @@ export function Tip({ label, children, className = "" }: { label: string; childr
     null,
   );
 
-  // Placed at fixed coordinates, so a scroll — the table's own or the
-  // page's — would leave it over whichever row slid under it. Closed
-  // instead, as `PaymentStatusSelect` and `HoverCard` are.
-  useEffect(() => {
-    if (at === null) return;
-    const close = () => setAt(null);
-    window.addEventListener("scroll", close, true);
-    return () => window.removeEventListener("scroll", close, true);
-  }, [at]);
+  useCloseOnScroll(at !== null, () => setAt(null));
 
   return (
     <span
       className={className}
       onMouseEnter={(e) => {
-        // Asked here, once per hover, rather than through a media-query
-        // hook: the table mounts ten of these per row, and a subscription
-        // each was ~700 listeners on a long list for a question that only
-        // matters at the moment the pointer arrives.
-        if (window.matchMedia("(hover: none)").matches) return;
+        // Asked at the moment the pointer arrives rather than subscribed
+        // to: the table mounts ten of these per row, and the answer only
+        // matters here.
+        if (matchesNow(COARSE_POINTER)) return;
         const r = e.currentTarget.getBoundingClientRect();
         const x = r.left + r.width / 2;
         const below = r.top < 56;

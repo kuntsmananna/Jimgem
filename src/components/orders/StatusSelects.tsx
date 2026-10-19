@@ -13,6 +13,8 @@ import {
 } from "@/lib/orderTypes";
 import { JellyHop } from "@/components/JellyLoader";
 import { saveError } from "@/components/saveError";
+import { positionBelow } from "@/components/HoverCard";
+import { useCloseOnScroll } from "@/components/useOverlayDismiss";
 import { useStage, useStages } from "@/components/ProductionStagesContext";
 import { paymentMethodIconElement } from "@/lib/icons";
 import { usePaymentMethods } from "./PaymentMethodsContext";
@@ -72,33 +74,24 @@ export function PaymentStatusSelect({
       close();
       chip.current?.focus();
     };
-    // Fixed coordinates do not follow a scrolling page, so a scroll closes
-    // the list rather than leaving it hanging where the chip used to be.
-    const onScroll = () => close();
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey, true);
-    window.addEventListener("scroll", onScroll, true);
     menu.current?.querySelector<HTMLButtonElement>("[aria-selected='true']")?.focus();
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("scroll", onScroll, true);
     };
   }, [at, close]);
+  useCloseOnScroll(at !== null, close);
 
   function open() {
     const rect = chip.current?.getBoundingClientRect();
     if (!rect) return;
     const height = statuses.length * 34 + 12 + (methods.length ? (methods.length + 1) * 34 + 30 : 0);
-    const below = rect.bottom + 6 + height <= window.innerHeight - 8;
-    setAt({
-      left: Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8),
-      // Held on screen when it fits neither below nor above: with the Paid
-      // by half the list is ~400px, and on a short window a badge mid-page
-      // opened it with its statuses above the top edge. It overlaps the
-      // badge then, which is better than half a menu nobody can reach.
-      top: below ? rect.bottom + 6 : Math.max(8, rect.top - 6 - height),
-    });
+    // HoverCard's placement — below, else above, held on screen when it
+    // fits neither: with the Paid by half the list is ~400px, and on a
+    // short window it opened with its statuses above the top edge.
+    setAt(positionBelow(rect, MENU_WIDTH, height, "below-left"));
   }
 
   async function write(patch: { paymentStatus: PaymentStatus } | { paymentMethodId: number | null }): Promise<boolean> {
@@ -137,8 +130,8 @@ export function PaymentStatusSelect({
     setBusy(false);
     onChanged();
     if (ok) {
-      const name = allMethods.find((m) => m.id === id)?.name;
-      onUndoable?.(`${order.customer || "Order"} — ${name ? `paid by ${name}` : "paid by cleared"}`, async () => {
+      const name = allMethods.find((m) => m.id === id)?.name ?? "cleared";
+      onUndoable?.(`${order.customer || "Order"} — paid by ${name}`, async () => {
         await write({ paymentMethodId: before });
         onChanged();
       });

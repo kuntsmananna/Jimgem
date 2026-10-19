@@ -1,7 +1,7 @@
 import { getClientsWithStats } from "@/lib/clients";
 import { getOrders, orderMonth } from "@/lib/orders";
 import { getProductionStages } from "@/lib/settings";
-import { isBooked, orderBalance, stageMap } from "@/lib/orderTypes";
+import { isBooked, stageMap, stillDue } from "@/lib/orderTypes";
 import { MONTH_NAMES_EN } from "@/lib/financials";
 import { getSumitDocuments } from "@/lib/sumitSync";
 import { getVatView } from "@/lib/vatViewServer";
@@ -63,7 +63,7 @@ export default async function ClientsPage() {
       booked: isBooked(order, stageIndex),
       // What is still owed on it — the rail's Balance due, per order, so
       // the page can total what a client owes without a SUMIT round trip.
-      balance: isBooked(order, stageIndex) ? orderBalance(order) : 0,
+      balance: isBooked(order, stageIndex) ? stillDue(order) : 0,
     }));
 
   return (

@@ -7,7 +7,6 @@ import {
   hasDelivery,
   displayCount,
   isBooked,
-  stageMap,
   orderFlavorUnits,
   orderTotal,
   orderUnits,
@@ -22,7 +21,7 @@ import {
 import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import { BadgeCheck, HandPlatter, Info, Pencil, Sparkles, Truck, UserRound, type LucideIcon } from "lucide-react";
 import { useOrderType, useOrderTypes } from "@/components/OrderTypesContext";
-import { useStages } from "@/components/ProductionStagesContext";
+import { useStageMap } from "@/components/ProductionStagesContext";
 import { HoverCard } from "@/components/HoverCard";
 import { Tip } from "@/components/Tip";
 import { saveError } from "@/components/saveError";
@@ -147,7 +146,7 @@ export function OrdersTable({
   // A row is provisional when its stage says it is not income yet — the
   // owner's flag, not the word "offer", so a second quote-like stage gets
   // the same treatment without another special case here.
-  const stageIndex = stageMap(useStages());
+  const stageIndex = useStageMap();
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   const flavorById = new Map(flavors.map((flavor) => [String(flavor.id), flavor]));
   // Built once rather than per row: the list is the same for all 74 of
@@ -196,8 +195,8 @@ export function OrdersTable({
   const widths = useMemo(() => {
     if (!pinned) return null;
     const used = visibleIds.reduce((sum, id) => sum + (pinned[id] ?? 0), 0);
-    // `pr-6` on the table is the shadow's room, so it is not slack.
-    const slack = room - 24 - used;
+    // `pr-6 pl-5` on the table are the shadow's room, so not slack.
+    const slack = room - 44 - used;
     const taker = visibleIds.includes("customer") ? "customer" : visibleIds[visibleIds.length - 1];
     return slack > 0 && taker ? { ...pinned, [taker]: (pinned[taker] ?? 0) + slack } : pinned;
   }, [pinned, room, visibleIds]);
@@ -247,12 +246,9 @@ export function OrdersTable({
   }
 
   return (
-    /*
-      Padded at the bottom so a hovered row's shadow has room before the
-      scroller clips it; the right-hand room is on the table itself (see
-      below). `quiet-scroll` keeps the bar thin and pale.
-    */
-    <div ref={scroller} className="quiet-scroll max-h-[70vh] overflow-auto pb-6">
+    /* `quiet-scroll` keeps the bar thin and pale. The shadow's room is on
+       the table itself, not here — see below. */
+    <div ref={scroller} className="quiet-scroll -ml-5 max-h-[70vh] overflow-auto">
       {/*
         `border-separate` with a vertical gap is what makes each row a box
         rather than a band in a ledger — see the block in globals.css.
@@ -264,15 +260,20 @@ export function OrdersTable({
         any width taken off one column back out across all of them, so a
         column dragged narrower barely moved while its neighbours grew.
 
-        `pr-6` on the table, not the scroller: Chromium clips a hovered
-        row's drop-shadow to the *table's* box, so room outside the table
-        does nothing. The left has the day column inside it.
+        `pr-6 pb-10` on the table, not the scroller: Chromium clips a
+        hovered row's drop-shadow to the *table's* box, so room outside the
+        table does nothing. With the room on the scroller instead (v0.78.2)
+        the last order's shadow was cut off flat a few pixels under it. The
+        left has `pl-5`, pulled back out by the scroller's `-ml-5` so nothing
+        moves: the row's shadow also falls on the day label's text, and at
+        the table's edge that was cut off in a hard vertical line. The top
+        has a spacer row.
 
         `is-selecting` keeps every tick box showing once any is ticked — see
         `.pick-box` in globals.css.
       */}
       <table
-        className={`border-separate border-spacing-x-0 border-spacing-y-1.5 pr-6 text-left text-sm ${
+        className={`border-separate border-spacing-x-0 border-spacing-y-1.5 pr-6 pb-10 pl-5 text-left text-sm ${
           widths ? "table-fixed" : "w-full"
         } ${someSelected ? "is-selecting" : ""}`}
       >
@@ -371,14 +372,17 @@ export function OrdersTable({
             const isOpen = openKey === order.key;
             const firstOfDay = order.date !== orders[at - 1]?.date;
             const booked = isBooked(order, stageIndex);
-            const due = stillDue(order);
             const method = paymentMethods.find((m) => m.id === order.paymentMethodId);
 
             return (
               <Fragment key={order.key}>
-                {firstOfDay && at > 0 && (
+                {/* A little more room between days than between rows — and
+                    before the first day, where the opaque sticky header
+                    would otherwise cover the top of the first order's
+                    shadow. */}
+                {firstOfDay && (
                   <tr className="day-row" aria-hidden>
-                    <th colSpan={visible.length} className="h-1 p-0" />
+                    <th colSpan={visible.length} className={`p-0 ${at === 0 ? "h-2" : "h-1"}`} />
                   </tr>
                 )}
                 <tr
@@ -598,7 +602,7 @@ export function OrdersTable({
                   )}
                   {show("due") && (
                     <td className="text-right">
-                      <Due order={order} due={due} booked={booked} />
+                      <Due order={order} booked={booked} />
                     </td>
                   )}
                   {show("payment") && (
@@ -753,7 +757,8 @@ function Extras({ order }: { order: Order }) {
  * pane's Balance due: it is money a customer hands over. A quote owes
  * nothing yet, so its balance is drawn quiet.
  */
-function Due({ order, due, booked }: { order: Order; due: number; booked: boolean }) {
+function Due({ order, booked }: { order: Order; booked: boolean }) {
+  const due = stillDue(order);
   // Nothing priced yet is not "paid" — it is nothing to say.
   if (orderTotal(order) <= 0) return <span className="text-ink-soft/50">—</span>;
   if (due <= 0) {

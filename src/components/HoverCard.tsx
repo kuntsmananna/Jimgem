@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useCoarsePointer } from "./useMediaQuery";
-import { usePopoverDismiss } from "./useOverlayDismiss";
+import { useCloseOnScroll, usePopoverDismiss } from "./useOverlayDismiss";
 
 const GAP = 8;
 
@@ -38,7 +38,7 @@ type Placement = "side" | "below-left" | "below-right";
  * ones — the Orders table's status chips, the nav's icons — where a card to
  * the side would sit on top of the neighbour you might hover next.
  */
-function positionBelow(
+export function positionBelow(
   rect: DOMRect,
   width: number,
   height: number,
@@ -107,6 +107,8 @@ export function HoverCard({
   // The next tap anywhere else puts it away — the card itself is
   // `pointer-events-none`, so it cannot dismiss itself.
   usePopoverDismiss(coarse && at !== null, anchor, () => setAt(null));
+  // Placed once at fixed coordinates, so a scroll would strand it.
+  useCloseOnScroll(at !== null, () => setAt(null));
 
   return (
     <div

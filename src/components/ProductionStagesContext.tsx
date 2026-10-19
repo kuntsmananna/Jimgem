@@ -37,6 +37,15 @@ export function useStage(key: string): ProductionStage | undefined {
   return useContext(StageByKey).get(key);
 }
 
+/**
+ * Every stage by key — the provider's own memoised map, for `isBooked`.
+ * One map for the whole page rather than a `stageMap(useStages())` per
+ * caller, which in the phone list was one per card per render.
+ */
+export function useStageMap(): Map<string, ProductionStage> {
+  return useContext(StageByKey);
+}
+
 /** Every stage in board order, for the pickers and the Kanban's columns. */
 export function useStages(): ProductionStage[] {
   return useContext(StageList);

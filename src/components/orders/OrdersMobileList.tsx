@@ -8,7 +8,6 @@ import {
   orderTotal,
   orderUnits,
   orderWeekday,
-  stageMap,
   stillDue,
   todayIso,
   PAYMENT_STATUS_LABEL,
@@ -20,7 +19,7 @@ import { paymentMethodIconElement } from "@/lib/icons";
 import { count, currency } from "@/lib/money";
 import { useCanSeeMoney } from "@/components/RoleContext";
 import { useVatView } from "@/components/VatViewContext";
-import { useStage, useStages } from "@/components/ProductionStagesContext";
+import { useStage, useStageMap } from "@/components/ProductionStagesContext";
 import { Figure } from "@/components/Figure";
 import { usePaymentMethods } from "./PaymentMethodsContext";
 import { EventTypeChip } from "./EventTypeChip";
@@ -138,7 +137,7 @@ function OrderCard({
   const total = orderTotal(order);
   const due = stillDue(order);
   // The table's rule for a quote, not a second reading of the flag.
-  const booked = isBooked(order, stageMap(useStages()));
+  const booked = isBooked(order, useStageMap());
 
   return (
     <button

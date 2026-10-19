@@ -2218,11 +2218,13 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   v0.67-v0.77, and with them `useHeadHeight`, `liftIfClear` and the
   `.lifts-over` class: with nothing sticky inside the list there is
   nothing for a hovered row to cover, so its `z-index` is unconditional.
-  The label rides inside the row, so the lift would twitch it up a pixel
-  whenever any order of its day was hovered; its content is moved back
-  down by the same pixel. "Today" and the long weekday come from
-  `todayIso` and `orderWeekdayLong` in `orderTypes.ts`, shared with the
-  phone's headings so the two cannot disagree about which day it is.
+  The label rides inside the row, so **the lift is on the box's cells,
+  not the `<tr>`** — lifting the row twitched the label up a pixel whenever
+  any order of its day was hovered; the drop-shadow stays on the row,
+  since a filter follows whatever the cells paint. "Today" and the long
+  weekday come from `todayIso`/`isoDate` and `orderWeekdayLong` in
+  `orderTypes.ts`, shared with the phone's headings and the time scopes
+  so none of them can disagree about which day it is.
 - **Three quiet group labels over the header** — *The order*, *What to
   make*, *Money* — computed as runs of neighbouring columns sharing a
   `group`, so hiding a column narrows its label rather than leaving one
@@ -2243,7 +2245,11 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   gross like the figures pane's Balance due, which uses it too) in amber — `--color-due` —
   or "Paid" in the accent once it is nothing, and a dash on an order with
   no price yet, which is not "paid". **The payment status wins over the
-  arithmetic**: `stillDue` is zero for Paid in full and Free / comp,
+  arithmetic**: `stillDue` is zero for Paid in full and Free / comp — and
+  it is what the client card and the Clients list's balances use too, so
+  one order cannot read Paid on one page and owing on the next. The order
+  form, the money rail and the Total hover card keep the signed
+  `orderBalance`, because they show "Overpaid by". The status wins
   because the deposit is often never typed in — an imported order read as
   paid from its cell colour has deposit 0, and the bare balance showed its
   whole total owed beside a green "Paid in full" badge. Its hover says
@@ -2260,11 +2266,14 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   lighter sibling of `HoverCard` — no width to state, nothing rendered
   lazily — portalled the same way, flipping below its trigger near the
   top of the screen, and closed by a press so it never sits over the list
-  the press opened, and by any scroll, since it sits at fixed coordinates
-  and would otherwise hang over whichever row slid under it. **Mouse
-  only** — checked with `matchMedia` at the moment the pointer arrives,
-  not through a media-query hook, because the table mounts ten per row
-  and a subscription each was hundreds of listeners: on a touchscreen a tap opens the order,
+  the press opened, and by any scroll (`useCloseOnScroll` in
+  `useOverlayDismiss.ts`, shared with `HoverCard` and the payment badge's
+  list), since it sits at fixed coordinates and would otherwise hang over
+  whichever row slid under it. **Mouse
+  only** — checked (`matchesNow`) at the moment the pointer arrives rather
+  than subscribed to, since the table mounts ten per row.
+  `useMediaQuery` keeps **one `MediaQueryList` per query** for the page,
+  where every caller used to build its own: on a touchscreen a tap opens the order,
   and the phone card spells these things out in words instead. Units and
   Total keep their richer `HoverCard`s and carry no `Tip`, which would
   open on top of them.
@@ -2340,10 +2349,13 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   header (z-20) — because rows paint in order and the next row's cells
   otherwise drew over the hovered one's shadow and cut it off flat.
   **Chromium clips that drop-shadow to the table's own box**, so room
-  outside the table does nothing: the table carries `pr-6` (a
-  separated-borders table takes padding), the left has the day column,
-  and the wide shadow's blur is held to 20px to fit inside it.
-  The scroller keeps `pb-6` of room below, and wears
+  outside the table does nothing: the table carries `pr-6 pb-10 pl-5` (a
+  separated-borders table takes padding; the scroller's `-ml-5` pulls the
+  left back so nothing moves), and a spacer row before the first day keeps
+  the opaque sticky header off the first order's shadow. With the bottom
+  room on the scroller instead, the last order's shadow was cut off flat,
+  and without `pl-5` the shadow on the day label's text ended in a hard
+  vertical line at the table's edge. The scroller wears
   `.quiet-scroll`: a thin bar in the line colour, where the platform's
   default was a dark 15px slab, the darkest thing on the page.
 - **Rows are a box, and only the hovered one is drawn in full** (v0.76):

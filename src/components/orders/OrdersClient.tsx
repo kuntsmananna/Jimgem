@@ -6,7 +6,7 @@ import { CalendarDays, CalendarRange, Columns3, Copy, CreditCard, ListChecks, Pl
 import {
   PAYMENT_STATUS_LABEL,
   isBooked,
-  orderBalance,
+  stillDue,
   stageMap,
   unitsPerPackageMap,
   type Order,
@@ -388,7 +388,7 @@ export function OrdersClient({
           date: order.date,
           customer: order.customer,
           customerType: order.customerType,
-          balance: booked ? orderBalance(order) : 0,
+          balance: booked ? stillDue(order) : 0,
         };
       }),
     similar: clients.filter(

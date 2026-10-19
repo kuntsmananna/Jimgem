@@ -16,10 +16,31 @@ import { useCallback, useSyncExternalStore } from "react";
  * desktop tree for one frame, hidden by CSS in the meantime. The reverse
  * default would show phone chrome to every laptop before correcting.
  */
+/**
+ * One `MediaQueryList` per query for the whole page. Every caller used to
+ * build its own, and call `matchMedia` again on every snapshot — the Orders
+ * table mounts two `HoverCard`s per row, so that was hundreds of lists for
+ * the same one question.
+ */
+const lists = new Map<string, MediaQueryList>();
+function listFor(query: string): MediaQueryList {
+  let list = lists.get(query);
+  if (!list) {
+    list = window.matchMedia(query);
+    lists.set(query, list);
+  }
+  return list;
+}
+
+/** Whether `query` matches right now, outside React — off the shared list. */
+export function matchesNow(query: string): boolean {
+  return listFor(query).matches;
+}
+
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(
     (onChange: () => void) => {
-      const list = window.matchMedia(query);
+      const list = listFor(query);
       list.addEventListener("change", onChange);
       return () => list.removeEventListener("change", onChange);
     },
@@ -28,7 +49,7 @@ export function useMediaQuery(query: string): boolean {
 
   return useSyncExternalStore(
     subscribe,
-    () => window.matchMedia(query).matches,
+    () => listFor(query).matches,
     () => false,
   );
 }
@@ -41,8 +62,10 @@ export function useMediaQuery(query: string): boolean {
  * small screen": a tablet with a trackpad hovers, and a touch laptop is
  * better served by the pointer it is being driven with.
  */
+export const COARSE_POINTER = "(hover: none)";
+
 export function useCoarsePointer(): boolean {
-  return useMediaQuery("(hover: none)");
+  return useMediaQuery(COARSE_POINTER);
 }
 
 /**

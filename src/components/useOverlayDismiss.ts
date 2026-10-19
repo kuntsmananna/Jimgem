@@ -132,3 +132,26 @@ export function usePopoverDismiss(
     };
   }, [open, ref]);
 }
+
+/**
+ * Closes something drawn at fixed coordinates the moment anything scrolls.
+ *
+ * A portalled card or menu is placed against its trigger once, when it
+ * opens; a scroll — the page's, or a list's own scroller, hence the
+ * capture — moves the trigger and leaves the card hanging over whatever
+ * slid under it. Shared by `Tip`, `HoverCard` and the payment badge's
+ * list, which had grown copies of the same effect.
+ */
+export function useCloseOnScroll(open: boolean, onClose: () => void) {
+  const handler = useRef(onClose);
+  useEffect(() => {
+    handler.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => handler.current();
+    window.addEventListener("scroll", close, true);
+    return () => window.removeEventListener("scroll", close, true);
+  }, [open]);
+}

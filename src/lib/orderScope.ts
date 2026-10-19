@@ -11,6 +11,7 @@
 import {
   displayCount,
   isBooked,
+  isoDate as iso,
   orderTotal,
   orderUnits,
   type Order,
@@ -34,12 +35,6 @@ export const SCOPES: { id: ScopeId; label: string }[] = [
 export interface DateRange {
   from: string;
   to: string;
-}
-
-function iso(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function addDays(date: Date, days: number): Date {

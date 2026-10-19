@@ -1061,20 +1061,29 @@ export function formatOrderDate(isoDate: string): string {
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
 const WEEKDAY_LONG = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
 
+function weekdayWith(format: Intl.DateTimeFormat, isoDate: string): string {
+  const parsed = new Date(isoDate);
+  return Number.isNaN(parsed.getTime()) ? "" : format.format(parsed);
+}
+
 /** "Thursday" — `orderWeekday` in full, for the table's day label. */
 export function orderWeekdayLong(isoDate: string): string {
-  const parsed = new Date(isoDate);
-  return Number.isNaN(parsed.getTime()) ? "" : WEEKDAY_LONG.format(parsed);
+  return weekdayWith(WEEKDAY_LONG, isoDate);
 }
 
 /**
- * Today as the `YYYY-MM-DD` an order's date is stored in, in local time —
- * what the table's day column and the phone's headings compare against to
- * say "Today". One copy, so the two cannot disagree about which day it is.
+ * A date as the `YYYY-MM-DD` an order's date is stored in, in local time.
+ * One copy for the time scopes, the table's day column and the phone's
+ * headings, so none of them can disagree about which day it is.
  */
-export function todayIso(now: Date = new Date()): string {
+export function isoDate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Today, as `isoDate` writes it — what "Today" is compared against. */
+export function todayIso(): string {
+  return isoDate(new Date());
 }
 
 /**
@@ -1091,6 +1100,5 @@ export function todayIso(now: Date = new Date()): string {
  * it at all. Empty rather than wrong-looking if the date cannot be read.
  */
 export function orderWeekday(isoDate: string): string {
-  const parsed = new Date(isoDate);
-  return Number.isNaN(parsed.getTime()) ? "" : WEEKDAY.format(parsed);
+  return weekdayWith(WEEKDAY, isoDate);
 }
