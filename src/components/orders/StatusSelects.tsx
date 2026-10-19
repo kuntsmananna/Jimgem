@@ -93,7 +93,11 @@ export function PaymentStatusSelect({
     const below = rect.bottom + 6 + height <= window.innerHeight - 8;
     setAt({
       left: Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8),
-      top: below ? rect.bottom + 6 : rect.top - 6 - height,
+      // Held on screen when it fits neither below nor above: with the Paid
+      // by half the list is ~400px, and on a short window a badge mid-page
+      // opened it with its statuses above the top edge. It overlaps the
+      // badge then, which is better than half a menu nobody can reach.
+      top: below ? rect.bottom + 6 : Math.max(8, rect.top - 6 - height),
     });
   }
 
@@ -133,8 +137,8 @@ export function PaymentStatusSelect({
     setBusy(false);
     onChanged();
     if (ok) {
-      const name = allMethods.find((m) => m.id === id)?.name ?? "not paid yet";
-      onUndoable?.(`${order.customer || "Order"} — paid by ${name}`, async () => {
+      const name = allMethods.find((m) => m.id === id)?.name;
+      onUndoable?.(`${order.customer || "Order"} — ${name ? `paid by ${name}` : "paid by cleared"}`, async () => {
         await write({ paymentMethodId: before });
         onChanged();
       });

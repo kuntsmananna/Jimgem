@@ -5,7 +5,7 @@ import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { deltaPercent, type OrderTotals } from "@/lib/orderScope";
 import {
   isBooked,
-  orderBalance,
+  stillDue,
   orderFlavorUnits,
   orderUnits,
   type Order,
@@ -207,7 +207,7 @@ function Tile({
 function balances(orders: Order[], stages: Map<string, ProductionStage>) {
   const owing = orders
     .filter((order) => isBooked(order, stages))
-    .map((order) => ({ key: order.key, customer: order.customer, balance: orderBalance(order) }))
+    .map((order) => ({ key: order.key, customer: order.customer, balance: stillDue(order) }))
     .filter((entry) => entry.balance > 0)
     .sort((a, b) => b.balance - a.balance);
   return { owing, total: owing.reduce((sum, entry) => sum + entry.balance, 0) };

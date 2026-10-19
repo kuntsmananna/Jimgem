@@ -2218,6 +2218,11 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   v0.67-v0.77, and with them `useHeadHeight`, `liftIfClear` and the
   `.lifts-over` class: with nothing sticky inside the list there is
   nothing for a hovered row to cover, so its `z-index` is unconditional.
+  The label rides inside the row, so the lift would twitch it up a pixel
+  whenever any order of its day was hovered; its content is moved back
+  down by the same pixel. "Today" and the long weekday come from
+  `todayIso` and `orderWeekdayLong` in `orderTypes.ts`, shared with the
+  phone's headings so the two cannot disagree about which day it is.
 - **Three quiet group labels over the header** — *The order*, *What to
   make*, *Money* — computed as runs of neighbouring columns sharing a
   `group`, so hiding a column narrows its label rather than leaving one
@@ -2234,10 +2239,16 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   band colour when the order has it, faint at 25% when not, with a count
   badge where there is more than one. They were four columns of "Yes",
   "No" and "—". Read-only, as Display already was: a click opens the order.
-- **Money says what acts**: Total, then **Still due** (`orderBalance`,
-  gross like the figures pane's Balance due) in amber — `--color-due` —
+- **Money says what acts**: Total, then **Still due** (`stillDue`,
+  gross like the figures pane's Balance due, which uses it too) in amber — `--color-due` —
   or "Paid" in the accent once it is nothing, and a dash on an order with
-  no price yet, which is not "paid". A quote's balance is drawn quiet,
+  no price yet, which is not "paid". **The payment status wins over the
+  arithmetic**: `stillDue` is zero for Paid in full and Free / comp,
+  because the deposit is often never typed in — an imported order read as
+  paid from its cell colour has deposit 0, and the bare balance showed its
+  whole total owed beside a green "Paid in full" badge. Its hover says
+  "VAT included" rather than quoting a gross total that would disagree
+  with the Total column under the net switch. A quote's balance is drawn quiet,
   since a quote owes nothing. It replaced the Deposit column: the deposit
   is the past, what is still owed is the job. **Paid by moved into the
   payment badge** as its icon, and into the badge's own menu as a second
@@ -2249,7 +2260,11 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   lighter sibling of `HoverCard` — no width to state, nothing rendered
   lazily — portalled the same way, flipping below its trigger near the
   top of the screen, and closed by a press so it never sits over the list
-  the press opened. **Mouse only**: on a touchscreen a tap opens the order,
+  the press opened, and by any scroll, since it sits at fixed coordinates
+  and would otherwise hang over whichever row slid under it. **Mouse
+  only** — checked with `matchMedia` at the moment the pointer arrives,
+  not through a media-query hook, because the table mounts ten per row
+  and a subscription each was hundreds of listeners: on a touchscreen a tap opens the order,
   and the phone card spells these things out in words instead. Units and
   Total keep their richer `HoverCard`s and carry no `Tip`, which would
   open on top of them.

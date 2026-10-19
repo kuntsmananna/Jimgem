@@ -979,6 +979,20 @@ export function orderBalance(order: OrderInput | Order): number {
   return orderTotal(order) - order.deposit;
 }
 
+/**
+ * What is actually left to collect: the balance, unless the payment status
+ * already says nothing is — "Paid in full" or "Free / comp". The status
+ * wins because it is what someone set on purpose, while the deposit is
+ * often never typed in at all: a Sheet-imported order read as paid from
+ * its cell colour has deposit 0, and the bare balance called its whole
+ * total still owed right beside a green "Paid in full" badge (v0.78.2).
+ * Net+40 still owes — that is the point of the term.
+ */
+export function stillDue(order: OrderInput | Order): number {
+  if (order.paymentStatus === "paid" || order.paymentStatus === "comp") return 0;
+  return Math.max(0, orderBalance(order));
+}
+
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   deposit: "Deposit paid",
@@ -1045,6 +1059,23 @@ export function formatOrderDate(isoDate: string): string {
 }
 
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
+const WEEKDAY_LONG = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
+
+/** "Thursday" — `orderWeekday` in full, for the table's day label. */
+export function orderWeekdayLong(isoDate: string): string {
+  const parsed = new Date(isoDate);
+  return Number.isNaN(parsed.getTime()) ? "" : WEEKDAY_LONG.format(parsed);
+}
+
+/**
+ * Today as the `YYYY-MM-DD` an order's date is stored in, in local time —
+ * what the table's day column and the phone's headings compare against to
+ * say "Today". One copy, so the two cannot disagree about which day it is.
+ */
+export function todayIso(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
 
 /**
  * "Thu", for the day headings on the phone's order list.

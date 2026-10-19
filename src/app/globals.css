@@ -522,10 +522,21 @@ body {
  * Chromium against both.
  */
 .orders-rows > tr:not(.day-row):hover {
-  /* The wide shadow's blur is held to 20px so it fits the 32px tick-box
-     gutter on the left: the shadow cannot reach past the table's box. */
+  /* The wide shadow's blur is held to 20px so it fits the day column on
+     the left: the shadow cannot reach past the table's box. */
   filter: drop-shadow(0 3px 6px rgb(150 95 65 / 0.1)) drop-shadow(0 12px 20px rgb(150 95 65 / 0.2));
   transform: translateY(-1px);
+}
+
+/*
+ * The day label rides in the row's first cell, so the lift would take it
+ * up a pixel with every order of its day that is hovered — a margin that
+ * twitches under the pointer. It is moved back down by the same pixel, so
+ * only the box lifts. (The drop-shadow still reaches its text, but at that
+ * blur and opacity on 10px type there is nothing to see.)
+ */
+.orders-rows > tr:not(.day-row):hover > td:first-child > * {
+  transform: translateY(1px);
 }
 
 /*
@@ -1025,7 +1036,8 @@ thead .pick-box,
   .press:hover:not(:disabled),
   .press:active:not(:disabled),
   .hover-line:hover,
-  .orders-rows > tr:not(.day-row):hover {
+  .orders-rows > tr:not(.day-row):hover,
+  .orders-rows > tr:not(.day-row):hover > td:first-child > * {
     transform: none;
   }
 }

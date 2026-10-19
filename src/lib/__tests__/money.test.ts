@@ -9,6 +9,7 @@ import {
   orderUnits,
   orderVat,
   repriceOrder,
+  stillDue,
   unitTierFor,
   vatOn,
   ZERO_PRICES,
@@ -253,5 +254,21 @@ describe("repriceOrder", () => {
     const priced = repriceOrder(order, RATES, noneOverridden, 1000);
     expect(priced.kosherCost).toBe(500);
     expect(orderSubtotal(priced)).toBe(1000);
+  });
+});
+
+describe("stillDue", () => {
+  it("is the balance while something is owed", () => {
+    expect(stillDue(anOrder({ deposit: 300, paymentStatus: "deposit" }))).toBe(700);
+    expect(stillDue(anOrder({ paymentStatus: "net40" }))).toBe(1000);
+  });
+
+  it("is nothing once the status says paid or comp, deposit or not", () => {
+    expect(stillDue(anOrder({ paymentStatus: "paid" }))).toBe(0);
+    expect(stillDue(anOrder({ paymentStatus: "comp" }))).toBe(0);
+  });
+
+  it("never goes negative on an overpaid deposit", () => {
+    expect(stillDue(anOrder({ deposit: 1200, paymentStatus: "deposit" }))).toBe(0);
   });
 });

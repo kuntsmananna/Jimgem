@@ -4,10 +4,13 @@ import { Fragment } from "react";
 import { UserRound } from "lucide-react";
 import {
   formatOrderDate,
-  orderBalance,
+  isBooked,
   orderTotal,
   orderUnits,
   orderWeekday,
+  stageMap,
+  stillDue,
+  todayIso,
   PAYMENT_STATUS_LABEL,
   paymentBadgeClass,
   type Order,
@@ -17,7 +20,7 @@ import { paymentMethodIconElement } from "@/lib/icons";
 import { count, currency } from "@/lib/money";
 import { useCanSeeMoney } from "@/components/RoleContext";
 import { useVatView } from "@/components/VatViewContext";
-import { useStage } from "@/components/ProductionStagesContext";
+import { useStage, useStages } from "@/components/ProductionStagesContext";
 import { Figure } from "@/components/Figure";
 import { usePaymentMethods } from "./PaymentMethodsContext";
 import { EventTypeChip } from "./EventTypeChip";
@@ -54,9 +57,8 @@ export function OrdersMobileList({
   onOpen: (key: string) => void;
   emptyNote: string;
 }) {
-  // Local, like the table's day column: "today" is where a queue is read from.
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  // The table's own "today", so the two say Today on the same day.
+  const today = todayIso();
 
   if (orders.length === 0) {
     return (
@@ -134,7 +136,9 @@ function OrderCard({
   const extras = extraSlots(order).filter((slot) => slot.on > 0);
   const method = usePaymentMethods().find((m) => m.id === order.paymentMethodId);
   const total = orderTotal(order);
-  const balance = orderBalance(order);
+  const due = stillDue(order);
+  // The table's rule for a quote, not a second reading of the flag.
+  const booked = isBooked(order, stageMap(useStages()));
 
   return (
     <button
@@ -161,7 +165,7 @@ function OrderCard({
       */
       className={`w-full rounded-card border border-line px-4 py-3 text-left ${
         stage?.isFinal ? "bg-cream" : "bg-card"
-      } ${stage?.countsAsIncome === false ? "is-offer" : ""}`}
+      } ${booked ? "" : "is-offer"}`}
     >
       {/*
         The name leads and the chips sit at the end of its line, rather than
@@ -260,14 +264,14 @@ function OrderCard({
           all on an unpriced order, which is not "paid" but unpriced.
         */}
         {total > 0 &&
-          (balance > 0 ? (
+          (due > 0 ? (
             // A quote owes nothing yet, so its balance is drawn quiet.
             <span
               className={`shrink-0 font-bold tabular-nums ${
-                stage?.countsAsIncome === false ? "text-ink-soft/70" : "text-due"
+                booked ? "text-due" : "text-ink-soft/70"
               }`}
             >
-              {currency(balance)} due
+              {currency(due)} due
             </span>
           ) : (
             <span className="shrink-0 font-semibold text-accent">Paid</span>

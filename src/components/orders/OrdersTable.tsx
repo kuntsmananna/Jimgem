@@ -8,10 +8,12 @@ import {
   displayCount,
   isBooked,
   stageMap,
-  orderBalance,
   orderFlavorUnits,
   orderTotal,
   orderUnits,
+  orderWeekdayLong,
+  stillDue,
+  todayIso,
   unitsPerPackageMap,
   PAYMENT_STATUS_LABEL,
   type Order,
@@ -89,14 +91,6 @@ const NUMERIC = new Set(["guests", "units", "amount", "due"]);
  */
 export const MONEY_COLUMNS = ["amount", "due", "payment"] as const;
 
-/** Today as the `YYYY-MM-DD` an order's date is stored in, in local time. */
-function localIso(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-const FULL_WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
-
 export function OrdersTable({
   orders,
   flavors,
@@ -165,7 +159,7 @@ export function OrdersTable({
     .map((type) => ({ value: type.name, label: type.name }));
   const allSelected = orders.length > 0 && orders.every((o) => selectedKeys.has(o.key));
   const someSelected = selectedKeys.size > 0;
-  const today = localIso(new Date());
+  const today = todayIso();
   // Desktop-only by construction: the phone renders `OrdersMobileList`
   // instead and this table is never on screen there.
   /*
@@ -377,7 +371,7 @@ export function OrdersTable({
             const isOpen = openKey === order.key;
             const firstOfDay = order.date !== orders[at - 1]?.date;
             const booked = isBooked(order, stageIndex);
-            const balance = orderBalance(order);
+            const due = stillDue(order);
             const method = paymentMethods.find((m) => m.id === order.paymentMethodId);
 
             return (
@@ -604,7 +598,7 @@ export function OrdersTable({
                   )}
                   {show("due") && (
                     <td className="text-right">
-                      <Due order={order} balance={balance} booked={booked} />
+                      <Due order={order} due={due} booked={booked} />
                     </td>
                   )}
                   {show("payment") && (
@@ -647,11 +641,9 @@ export function OrdersTable({
  * See `orderWeekday` for why an old imported order's weekday can be wrong.
  */
 function DayLabel({ date, today }: { date: string; today: boolean }) {
-  const parsed = new Date(date);
-  const long = Number.isNaN(parsed.getTime()) ? "" : FULL_WEEKDAY.format(parsed);
   return (
     <Tip
-      label={`${long} ${formatOrderDate(date)}${today ? " — today" : ""}`}
+      label={`${orderWeekdayLong(date)} ${formatOrderDate(date)}${today ? " — today" : ""}`}
       className={`flex flex-col leading-[1.1] ${today ? "text-accent" : ""}`}
     >
       <span className={`text-[10px] font-extrabold tracking-[0.14em] uppercase ${today ? "" : "text-ink-soft"}`}>
@@ -756,16 +748,20 @@ function Extras({ order }: { order: Order }) {
  * past; what is still to collect is the job — so it is amber until it is
  * nothing, and then the word "Paid" in the accent.
  *
- * Gross, like the figures pane's Balance due: it is money a customer
- * hands over, which VAT is inside of whichever way the nav's switch reads
- * the totals. A quote owes nothing yet, so its balance is drawn quiet.
+ * `stillDue`, so a row whose badge says Paid in full or Free / comp says
+ * Paid here too even with no deposit typed in. Gross, like the figures
+ * pane's Balance due: it is money a customer hands over. A quote owes
+ * nothing yet, so its balance is drawn quiet.
  */
-function Due({ order, balance, booked }: { order: Order; balance: number; booked: boolean }) {
+function Due({ order, due, booked }: { order: Order; due: number; booked: boolean }) {
   // Nothing priced yet is not "paid" — it is nothing to say.
   if (orderTotal(order) <= 0) return <span className="text-ink-soft/50">—</span>;
-  if (balance <= 0) {
+  if (due <= 0) {
     return (
-      <Tip label="Paid in full" className="font-semibold text-accent">
+      <Tip
+        label={order.paymentStatus === "comp" ? "Free / comp — nothing to collect" : "Paid in full"}
+        className="font-semibold text-accent"
+      >
         Paid
       </Tip>
     );
@@ -773,13 +769,16 @@ function Due({ order, balance, booked }: { order: Order; balance: number; booked
   return (
     <Tip
       label={
+        // VAT included whichever way the nav's switch reads the Total
+        // beside it — it is money a customer hands over — so it says so
+        // rather than quoting a second total that disagrees with that one.
         booked
-          ? `Still to collect: ${currency(balance)} of ${currency(orderTotal(order))}`
+          ? `Still to collect, VAT included: ${currency(due)}`
           : "A quote — nothing is owed until it is booked"
       }
       className={`font-bold tabular-nums ${booked ? "text-due" : "text-ink-soft/70"}`}
     >
-      {currency(balance)}
+      {currency(due)}
     </Tip>
   );
 }
