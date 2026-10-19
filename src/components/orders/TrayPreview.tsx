@@ -259,6 +259,7 @@ function Grid({
         return (
           <span
             key={i}
+            data-jiggle
             className={`aspect-square origin-bottom rounded-[2px] ${background ? "" : "bg-line/60"}`}
             style={background ? { background } : undefined}
           />

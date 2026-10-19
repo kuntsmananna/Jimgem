@@ -1834,7 +1834,8 @@ compares identity, and a panel builds a fresh draft before every call.
   which has no More). It makes the **small pieces** of every page wobble,
   each its own body: jelly cubes, chips and badges (`.keeps-color`,
   `.chip-neutral`, which every chip already wears, so a new chip joins
-  without opting in), the extras marks (`data-jiggle`), every icon
+  without opting in), the extras marks, every tray preview's cubes and
+  the Settings flavour swatches (`data-jiggle`), every icon
   (`svg.lucide`), every shared button (`.press`, which the filter chips
   wear), the nav's pills and the logo (`data-jiggle-item`). **Never the
   boxes they sit in** (v0.79.3): rows, cards, tiles and panes stand still,
