@@ -691,7 +691,9 @@ function TypeMark({ value, onEdit }: { value: string; onEdit: () => void }) {
  * slots and the card's chips cannot disagree about what an order needs —
  * `hasDelivery` and `displayCount` are the predicates everything else uses.
  */
-export function extraSlots(order: Order): { icon: LucideIcon; on: number; label: string; short: string }[] {
+export function extraSlots(
+  order: Pick<Order, "displays" | "waitresses" | "kosher" | "deliveryCost">,
+): { icon: LucideIcon; on: number; label: string; short: string }[] {
   const displays = displayCount(order.displays);
   const waitresses = order.waitresses ?? 0;
   const delivery = hasDelivery(order);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronUp, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronUp, Ellipsis, Redo2, Trash2, Undo2 } from "lucide-react";
 import {
   type Order,
   type OrderInput,
@@ -29,6 +29,7 @@ import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { OrderCustomerPanel } from "./OrderCustomerPanel";
 import { OrderEventPanel } from "./OrderEventPanel";
 import { OrderMoneyRail } from "./OrderMoneyRail";
+import { OrderReview } from "./OrderReview";
 import { money } from "./OrderSheet";
 import { useCanSeeMoney } from "@/components/RoleContext";
 import {
@@ -56,6 +57,22 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+/**
+ * Adding an order on a phone is a sequence of steps, not three tabs
+ * (v0.83, the owner's pick from three shapes): who it is for, the event,
+ * what to make, then the whole order read back before it is saved. A
+ * booking taken standing up is a conversation in that order, and a single
+ * Next button carries it with one thumb — where tabs asked which of three
+ * screens to fill in next and left the last one to be found. Editing
+ * keeps the tabs: a correction is a jump to one field, not a walk.
+ */
+const STEPS = [
+  { tab: "customer", title: "Who it's for" },
+  { tab: "event", title: "The event" },
+  { tab: "content", title: "What to make" },
+  { tab: null, title: "Review and save" },
+] as const;
 
 /**
  * `vatRate` is passed in rather than read here: a new order takes today's
@@ -301,6 +318,35 @@ export function OrderForm({
    * fallback the slot was invented to replace.
    */
   const mobile = useIsMobile();
+  /** The step flow — a new order, on a phone. See `STEPS`. */
+  const wizard = mobile && !isEdit;
+  const [step, setStep] = useState(0);
+  const onReview = wizard && step === STEPS.length - 1;
+  /**
+   * Set when Next is pressed on the first step with no name: the step says
+   * why it did not move rather than refusing silently, and only once it
+   * has been tried — the rule `ExpenseFormModal` follows.
+   */
+  const [nameMissing, setNameMissing] = useState(false);
+  /** The phone's ⋯ sheet for an existing order: history, undo, delete. */
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const panels = useRef<HTMLDivElement>(null);
+
+  function goToStep(next: number) {
+    setStep(next);
+    const target = STEPS[next]?.tab;
+    if (target) setTab(target);
+    // Each step starts at its top, not wherever the last one was left.
+    panels.current?.scrollTo({ top: 0 });
+  }
+
+  function next() {
+    if (step === 0 && !draft.customer.trim()) {
+      setNameMissing(true);
+      return;
+    }
+    goToStep(step + 1);
+  }
 
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
   // Lines whose flavours don't add up to what they pack. Reported, not
@@ -448,7 +494,8 @@ export function OrderForm({
     manual,
     onManualChange: setManual,
     onOpenContent: () => {
-      setTab("content");
+      if (wizard) goToStep(2);
+      else setTab("content");
       setMoneyOpen(false);
     },
   };
@@ -475,7 +522,28 @@ export function OrderForm({
         /* On a phone the title row is a title and a close button and has
            no middle to lend, so the form falls back to the inline strip
            the slot was invented to replace. */
-        <div className="mb-4 max-md:mb-3 max-md:shrink-0">{tabs}</div>
+        <div className="mb-4 max-md:mb-3 max-md:shrink-0">
+          {wizard ? (
+            <StepHeader step={step} />
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">{tabs}</div>
+              {/* Everything about an order that is not the order — when it
+                  was last changed, undo, delete — behind one button, so the
+                  bottom of the screen is the total and Save and nothing else. */}
+              {mobile && isEdit && (
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen(true)}
+                  aria-label="More actions"
+                  className="press flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/[0.07] text-ink"
+                >
+                  <Ellipsis size={18} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/*
@@ -490,13 +558,13 @@ export function OrderForm({
         contents made the whole dialog jump and re-centre on each switch.
       */}
       <div className="flex h-[min(56vh,31rem)] gap-6 max-md:h-auto max-md:min-h-0 max-md:flex-1 max-md:flex-col max-md:gap-0">
-        <div className="min-w-0 flex-1 overflow-y-auto pr-1 max-md:min-h-0">
+        <div ref={panels} className="min-w-0 flex-1 overflow-y-auto pr-1 max-md:min-h-0">
           {/*
             Every panel stays mounted while hidden, not unmounted:
             switching tabs would otherwise throw away which package line
             was open and any half-typed number in it.
           */}
-          <div role="tabpanel" className={tab === "customer" ? "" : "hidden"}>
+          <div role="tabpanel" className={tab === "customer" && !onReview ? "" : "hidden"}>
             <OrderCustomerPanel
               draft={priced}
               onChange={setDraft}
@@ -506,11 +574,11 @@ export function OrderForm({
             />
           </div>
 
-          <div role="tabpanel" className={tab === "event" ? "" : "hidden"}>
+          <div role="tabpanel" className={tab === "event" && !onReview ? "" : "hidden"}>
             <OrderEventPanel draft={priced} onChange={setDraft} rates={rates} />
           </div>
 
-          <div role="tabpanel" className={tab === "content" ? "" : "hidden"}>
+          <div role="tabpanel" className={tab === "content" && !onReview ? "" : "hidden"}>
             <PackageLineEditor
               lines={lines}
               onChange={setLines}
@@ -519,6 +587,23 @@ export function OrderForm({
               presets={presets}
             />
           </div>
+
+          {onReview && (
+            <div className="motion-fade">
+              <OrderReview
+                draft={priced}
+                lines={toPackageLines(lines)}
+                flavors={flavors}
+                packageTypes={packageTypes}
+                unitsPerPackage={unitsPerPackage}
+                onEdit={goToStep}
+              />
+              {/* The money in full, last: the price is what is most often
+                  adjusted at the end, so it is open here rather than behind
+                  the total. */}
+              {showMoney && <div className="mt-3">{rail}</div>}
+            </div>
+          )}
         </div>
 
         {/* The rail is a column beside the panels on a laptop. On a phone
@@ -531,45 +616,6 @@ export function OrderForm({
         {showMoney && <div className="w-[20rem] shrink-0 overflow-y-auto max-md:hidden">{rail}</div>}
       </div>
 
-      {/*
-        The money bar: the rail's two figures, always on screen, opening
-        the rail itself.
-
-        The rail exists because a number you have to go and look at is a
-        number nobody looks at, and on a phone there is no second column
-        to keep it in. A strip above the buttons keeps the total and the
-        balance in view while the panels scroll, and a tap brings up
-        everything behind them — the amounts, the discount, the VAT mode
-        and the deposit — from the bottom edge, which is where this app
-        opens anything that is a set of controls rather than a record.
-
-        Drawn in the rail's own black, so what opens is visibly the thing
-        the strip is the front of.
-      */}
-      {showMoney && (
-      <button
-        type="button"
-        onClick={() => setMoneyOpen(true)}
-        className="money-rail mt-3 flex shrink-0 items-center gap-3 rounded-2xl px-4 py-2.5 text-left md:hidden"
-      >
-        <span className="flex flex-col">
-          <span className="text-[11px] font-bold tracking-[0.1em] text-cream/55 uppercase">Total</span>
-          <span className="font-display text-lg leading-tight font-extrabold tabular-nums text-cream">
-            {money(orderTotal(priced))}
-          </span>
-        </span>
-        <span className="flex flex-1 flex-col items-end">
-          <span className="text-[11px] font-bold tracking-[0.1em] text-cream/55 uppercase">
-            {orderBalance(priced) < 0 ? "Overpaid by" : "Balance due"}
-          </span>
-          <span className="font-display text-lg leading-tight font-extrabold tabular-nums text-cream">
-            {money(Math.abs(orderBalance(priced)))}
-          </span>
-        </span>
-        <ChevronUp size={18} className="shrink-0 text-cream/55" />
-      </button>
-      )}
-
       {showMoney && moneyOpen && (
         <Sheet title="The order" onClose={() => setMoneyOpen(false)}>
           {/* The sheet's title row is the rail's heading here, so the
@@ -579,9 +625,74 @@ export function OrderForm({
         </Sheet>
       )}
 
+      {mobile && (
+        <PhoneFooter
+          total={showMoney ? money(orderTotal(priced)) : null}
+          balance={orderBalance(priced)}
+          onOpenMoney={() => setMoneyOpen(true)}
+          showTotal={showMoney && !onReview}
+          message={
+            failed ??
+            (nameMissing && !draft.customer.trim() ? "Add who the order is for to continue." : null)
+          }
+          onBack={wizard && step > 0 ? () => goToStep(step - 1) : undefined}
+          primary={
+            wizard && !onReview
+              ? { label: "Next", icon: true, onClick: next }
+              : { label: isEdit ? "Save changes" : "Save order", onClick: submit, disabled: !canSave, busy }
+          }
+        />
+      )}
+
+      {mobile && actionsOpen && (
+        <Sheet title="This order" onClose={() => setActionsOpen(false)}>
+          <div className="flex flex-col gap-2 px-4 pb-5">
+            {isEdit && (
+              <div className="px-1 pb-1">
+                <LastEdited at={order!.updatedAt} by={order!.updatedBy} />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={form.undo}
+                disabled={!form.canUndo}
+                className="press flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-ink/[0.06] text-sm font-semibold disabled:opacity-35"
+              >
+                <Undo2 size={16} />
+                Undo
+              </button>
+              <button
+                type="button"
+                onClick={form.redo}
+                disabled={!form.canRedo}
+                className="press flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-ink/[0.06] text-sm font-semibold disabled:opacity-35"
+              >
+                <Redo2 size={16} />
+                Redo
+              </button>
+            </div>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActionsOpen(false);
+                  onDelete();
+                }}
+                className="press mt-2 flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-red-700/30 text-sm font-semibold text-red-700"
+              >
+                <Trash2 size={16} />
+                Delete this order
+              </button>
+            )}
+          </div>
+        </Sheet>
+      )}
+
       {/* Actions right, status left: the buttons sit where the eye ends up
           after reading the form, and every popup in the app puts them
           there. Save is last, nearest the corner. */}
+      {!mobile && (
       <div className="mt-6 flex items-center gap-2 max-md:mt-3 max-md:shrink-0 max-md:flex-wrap max-md:gap-y-2">
         {/* First in the row and so as far from Save as it goes — where the
             client card puts Archive and the expense form its own delete,
@@ -650,7 +761,127 @@ export function OrderForm({
           {busy ? <JellyHop label="Saving the order" /> : isEdit ? "Save changes" : "Save order"}
         </button>
       </div>
+      )}
 
     </>
+  );
+}
+
+/**
+ * Where a new order is, on a phone: the step's name, how far along, and a
+ * bar of four segments that fill as it goes. The name is the step's
+ * question rather than a tab label, since it is the heading the screen
+ * under it answers.
+ */
+function StepHeader({ step }: { step: number }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-xl font-extrabold">{STEPS[step]!.title}</h3>
+        <span className="shrink-0 text-xs font-semibold text-ink-soft tabular-nums">
+          {step + 1} of {STEPS.length}
+        </span>
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-1" aria-hidden>
+        {STEPS.map((_, at) => (
+          <span key={at} className="h-1 overflow-hidden rounded-full bg-ink/10">
+            <span
+              className={`block h-full rounded-full bg-black transition-transform duration-300 ease-[var(--ease-entrance)] origin-left ${
+                at <= step ? "scale-x-100" : "scale-x-0"
+              }`}
+            />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The bottom of the order form on a phone (v0.83): one bar, the total on
+ * the left and the one thing to do next on the right.
+ *
+ * It replaced three stacked rows — the money strip, a row of Delete, the
+ * edit caption and undo, and Cancel beside Save — about 170px of a 844px
+ * screen, under a keyboard that takes half of what is left. Cancel went
+ * because the close button in the header already is one (with the same
+ * unsaved-changes guard), and the rest moved behind the ⋯ in the tab row.
+ * The total stays, as a tap target that opens the money sheet: a price you
+ * cannot see while changing what it prices is the thing the rail exists to
+ * prevent.
+ */
+function PhoneFooter({
+  total,
+  balance,
+  onOpenMoney,
+  showTotal,
+  message,
+  onBack,
+  primary,
+}: {
+  total: string | null;
+  balance: number;
+  onOpenMoney: () => void;
+  showTotal: boolean;
+  message: string | null;
+  onBack?: () => void;
+  primary: { label: string; onClick: () => void; icon?: boolean; disabled?: boolean; busy?: boolean };
+}) {
+  return (
+    <div className="mt-3 shrink-0">
+      {message && (
+        <p className="mb-2 text-sm font-semibold text-red-700" role="alert">
+          {message}
+        </p>
+      )}
+      <div className="flex items-stretch gap-2">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="press flex w-12 shrink-0 items-center justify-center rounded-2xl bg-ink/[0.07] text-ink"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        {showTotal && total !== null ? (
+          <button
+            type="button"
+            onClick={onOpenMoney}
+            className="money-rail flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-4 py-2 text-left"
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate font-display text-lg leading-tight font-extrabold tabular-nums text-cream">
+                {total}
+              </span>
+              <span className="truncate text-[11px] font-semibold text-cream/60 tabular-nums">
+                {balance < 0 ? "overpaid " : ""}
+                {money(Math.abs(balance))} {balance < 0 ? "" : "due"}
+              </span>
+            </span>
+            <span className="flex-1" />
+            <ChevronUp size={18} className="shrink-0 text-cream/55" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={primary.onClick}
+          disabled={primary.disabled}
+          className={`press flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-black px-6 text-base font-semibold text-cream ${
+            showTotal && total !== null ? "shrink-0" : "flex-1"
+          } ${primary.busy ? "" : "disabled:opacity-40"}`}
+        >
+          {primary.busy ? (
+            <JellyHop label="Saving the order" />
+          ) : (
+            <>
+              {primary.label}
+              {primary.icon && <ArrowRight size={18} />}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
   );
 }

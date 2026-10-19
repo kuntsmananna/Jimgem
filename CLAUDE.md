@@ -224,7 +224,8 @@ nothing hidden — at the cost of a tap for a quick status change, which is
 the trade the owner chose.
 
 **Deleting is in the order form, phone only** (`OrderForm`'s optional
-`onDelete`, drawn `md:hidden` at the far left of the save row). On a
+`onDelete`; since v0.83 it is in the form's **⋯ sheet** beside the tabs,
+with the last-edited caption and Undo/Redo — see the phone footer below). On a
 laptop an order is deleted from the table's bulk bar, which is reached
 through a checkbox revealed on hover — an affordance a phone cannot
 perform, and the card deliberately carries no controls of its own, so
@@ -307,9 +308,35 @@ band is **re-hung** there (`max-md:-mx-4` against the dialog's `p-4`):
 it, and left alone it bled 8px past each edge of a screen-wide dialog and
 put a horizontal scrollbar on the form.
 
+**Adding an order on a phone is four steps, editing one is three tabs**
+(v0.83, the owner's pick from three shapes offered — steps, one long page,
+or the tabs slimmed). A new order walks `STEPS` in `OrderForm.tsx`: *Who
+it's for*, *The event*, *What to make*, *Review and save*, under a header
+naming the step with a four-segment progress bar (`StepHeader`), and one
+**Next** button carries it — a booking taken standing up is a conversation
+in that order, where tabs asked which of three screens to fill next and
+left the last to be found. The steps are the same three panels, still all
+mounted, so going Back loses nothing. Next on the first step with no name
+says why it did not move (only once pressed, the `ExpenseFormModal` rule).
+**Review** is `OrderReview.tsx`: the order written the way the Orders card
+writes it, a section per step with an **Edit** that jumps back to it, and
+the full money rail under it, open, since the price is what is most often
+adjusted last. An existing order keeps the tabs: a correction is a jump to
+one field, not a walk.
+
+**The phone's footer is one bar** (`PhoneFooter`): the total, with what is
+still due under it, as a tap target that opens the money sheet, and the
+one thing to do next — Next, Save order or Save changes — beside it, with
+a Back button on steps after the first. It replaced three stacked rows
+(the money strip, Delete with the caption and undo, and Cancel beside
+Save), about 170px of an 844px screen that a keyboard then halves. Cancel
+went because the header's close button is one, with the same
+unsaved-changes guard; the caption, Undo/Redo and Delete went behind the
+**⋯** in the tab row. The desktop save row is untouched and not rendered
+on a phone.
+
 **The money rail becomes a bar.** There is no second column at 390px, so
-the rail moves behind a black strip above the save row carrying the total
-and the balance, and a tap opens the rail itself — the whole component,
+the rail moves behind the footer's total, and a tap opens the rail itself — the whole component,
 amounts and discount and VAT and deposit — as a `Sheet`. The rail exists
 because a number you have to go and look at is a number nobody looks at,
 and folding it to the bottom of the scroll would have been exactly that.
@@ -319,9 +346,7 @@ sheet's copy passes `showHeading={false}`, its title row already being the
 words the rail's own caption would say. The **tabs come back inline**
 below the breakpoint (`useIsMobile()`), because a phone's title row is a
 title and a close button with no middle to lend — the fallback
-`useModalHeaderSlot` was written to have. And the save row's spacer
-becomes `max-md:basis-full`, a line break in a wrapping row, so Cancel and
-Save get a row of their own at half the screen each. `ChipSpread` and
+`useModalHeaderSlot` was written to have. `ChipSpread` and
 `Segmented` grow to 38px there; a 24px pill is a cursor's target.
 
 **And the whole form is re-scaled below the breakpoint**, after a session
