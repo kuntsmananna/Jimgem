@@ -261,7 +261,12 @@ sideways** (`.no-scrollbar`, bleeding into the gutter so a chip slides off
 the screen edge) rather than wrapping: with four chips they wrapped at
 every phone width, spending a second row of height on one chip. A
 scrolling row is safe only because each list opens as a `Sheet` — nothing
-pops out of the row to be clipped. `FilterDropdown`'s
+pops out of the row to be clipped. Since v0.81 the row is **pinned under the
+header while the list scrolls** (`sticky` at `--header-h`, which `Nav`
+measures with a `ResizeObserver` and writes on the root, because the header
+is taller on a page with a search box in it) — narrowing the list is done
+from the middle of it — and it sits **below the figures**, not above them:
+the figures are what the page is opened to read. `FilterDropdown`'s
 "3 selected" is **"3" below the breakpoint** — the word is `max-md:hidden`
 rather than rewritten, so the desktop summary is untouched — and without
 that 66px the common case did not fit at all.
@@ -270,7 +275,15 @@ The 140px summary rail becomes **three tiles in a row** — units, orders,
 income — in a low-contrast fill: one line of 11px text read as a caption
 rather than as the figures it is, while four tiles across a 390px screen
 truncate a five-figure income and two-by-two spent a second row of height
-on it.
+on it. Their values are **24px** (v0.81; 17px read as captions), so the
+tiles are not equal: `4fr 4fr 7fr`, the income tile taking the room a
+six-figure shekel amount needs.
+
+**The customer's name is as big as the card's first line allows** (v0.81):
+22px in the display face, wrapping to two lines rather than truncating.
+The type chip beside it gives back what it can — `EventTypeChip`'s `short`
+writes "Production company" as "Prod." (`SHORT_FIRST_WORDS`, matched on the
+first word, full name kept in the title).
 
 **The day heading carries its weekday** (`orderWeekday` in
 `orderTypes.ts`) — "is that a Saturday" is most of what a queue of dates
@@ -1232,7 +1245,7 @@ compares identity, and a panel builds a fresh draft before every call.
   the same `FilterDropdown`, admin-only like the column, with a **Not
   yet** option for orders with no method. It narrows the board too,
   unlike Status, since the board's columns are stages and not methods. On
-  a phone the toolbar is four chips now and wraps to two rows at 360-390px.
+  a phone the toolbar is four chips in one row that scrolls sideways.
 - **`clients.source` is where they came from**, free text like
   `orders.customer` and `expenses.business` — Instagram, a Google search, a
   friend, a wedding they ate at. Not a list of channels: the useful answer

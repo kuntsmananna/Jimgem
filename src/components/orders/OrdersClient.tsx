@@ -548,7 +548,7 @@ export function OrdersClient({
 
   return (
     <PaymentMethodsProvider value={paymentMethods}>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 max-md:gap-3">
         <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
 
         {/*
@@ -755,13 +755,35 @@ export function OrdersClient({
 
           The scope is not a tile. It is a control and the three beside it are
           figures, and a fill around it said they were the same kind of thing
-          while costing a whole row of height — which two-by-two tiles then
-          cost again. It is a bare chip under its own heading, and the three
-          figures share one row beneath it. Four across would not have worked:
-          at 390px a quarter-width tile is about 80px, which truncates a
-          five-figure income to "₪18,…". Three is ~120px, which fits one.
+          while costing a whole row of height. Four tiles across would not
+          have worked either: at 390px a quarter-width tile is about 80px,
+          which truncates a five-figure income to "₪18,…".
         */}
-        <div className="md:hidden">
+        {/*
+          The figures lead on a phone (v0.81, the owner's call), above the
+          filters rather than under them: they are what the page is opened
+          to read, and the filters are what you reach for after. The values
+          are 24px, where 17px read as a caption. The income tile takes the
+          most room, because a five-figure shekel amount is the one value
+          here that needs it — at three equal tiles it truncated.
+        */}
+        <div className={`grid gap-2 md:hidden ${money ? "grid-cols-[4fr_4fr_7fr]" : "grid-cols-2"}`}>
+          {/* Two tiles rather than three on a staff account, which is shown
+              no money: a third saying ₪0 would be worse than the gap. */}
+          <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
+          <Figure label="Orders" value={String(totals.orders)} />
+          {money && <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
+        </div>
+
+        {/*
+          The filters, **pinned under the header while the list scrolls**
+          (v0.81): narrowing the list is something you do from the middle of
+          it, and scrolling back to the top to reach a chip lost your place.
+          It sticks at `--header-h`, which `Nav` keeps equal to the header's
+          real height, and it wears the header's own frosted cream so the
+          cards slide under one surface rather than two.
+        */}
+        <div className="sticky top-[var(--header-h,72px)] z-20 -mx-4 -my-1 bg-cream/95 py-1 backdrop-blur md:hidden">
           {/*
             The desktop toolbar's left group, moved to the phone: the same
             three dropdowns wearing the same three icons. They were behind a
@@ -777,7 +799,7 @@ export function OrdersClient({
             sheet from the bottom edge — see `Dropdown` — which is what makes
             a scrolling row safe: nothing pops out of it to be clipped.
           */}
-          <div className="no-scrollbar -mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [&>*]:shrink-0">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 py-1.5 [&>*]:shrink-0">
             <SelectDropdown
               label="When"
               icon={<CalendarRange size={13} />}
@@ -814,13 +836,6 @@ export function OrdersClient({
               selected={stageFilter}
               onChange={setStageFilter}
             />
-          </div>
-          {/* Two tiles rather than three on a staff account, which is shown
-              no money: a third saying ₪0 would be worse than the gap. */}
-          <div className={`mt-2 grid gap-2 ${money ? "grid-cols-3" : "grid-cols-2"}`}>
-            <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
-            <Figure label="Orders" value={String(totals.orders)} />
-            {money && <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
           </div>
         </div>
 
@@ -1039,9 +1054,9 @@ function BatchSelect<T extends string>({
  */
 function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl bg-ink/[0.06] px-2.5 py-2">
-      <span className="text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase">{label}</span>
-      <span className="mt-0.5 truncate font-display text-[17px] leading-none font-extrabold tabular-nums">
+    <div className="flex min-w-0 flex-col justify-between rounded-2xl bg-ink/[0.06] px-3 py-2.5">
+      <span className="text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">{label}</span>
+      <span className="mt-1 truncate font-display text-2xl leading-none font-extrabold tabular-nums">
         {value}
       </span>
     </div>

@@ -173,12 +173,20 @@ function OrderCard({
         you are looking for down a list, and the stage is what qualifies it.
         `items-start` so a name that wraps to two lines keeps the chips on
         the first.
+
+        **The name is as big as the line allows** (v0.81, the owner's
+        call): 22px in the display face, where it was 17px body text — it
+        is what a thumb is scrolling for. It wraps to a second line rather
+        than truncating, since half a name is not a name, and the type chip
+        gives back what it can (`short`, "Production company" → "Prod.").
       */}
       <div className="flex items-start gap-2">
-        <p className="min-w-0 flex-1 truncate text-[17px] font-bold">{order.customer}</p>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[22px] leading-[1.15] font-extrabold break-words">
+          {order.customer}
+        </p>
+        <div className="mt-1 flex shrink-0 items-center gap-1.5">
           <StageChip stageKey={order.productionStatus} />
-          {order.customerType && <EventTypeChip value={order.customerType} />}
+          {order.customerType && <EventTypeChip value={order.customerType} short />}
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { GemsLogo } from "@/components/GemsLogo";
 import { HeaderSlotTarget } from "@/components/HeaderSlot";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { useVatView } from "@/components/VatViewContext";
@@ -72,6 +73,24 @@ const PHONE_TITLES: Record<string, string> = {
 export function Nav({ name, version }: { name: string; version: string }) {
   const activeHref = usePathname();
   const phoneTitle = PHONE_TITLES[activeHref];
+  const header = useRef<HTMLElement>(null);
+
+  /*
+   * The header's real height, as `--header-h` on the page (v0.81), for
+   * anything pinned under it — the Orders filters on a phone. Measured
+   * rather than stated, because it is not one number: a page that puts a
+   * search box in the slot makes it taller than one that does not.
+   */
+  useEffect(() => {
+    const el = header.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const write = () => root.style.setProperty("--header-h", `${el.offsetHeight}px`);
+    write();
+    const observer = new ResizeObserver(write);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const admin = useIsAdmin();
   const links = admin ? LINKS : STAFF_LINKS;
   return (
@@ -81,7 +100,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
        along the bottom and the sheet behind More. */
     /* A step slimmer on a phone (`max-md:py-3`): it is sticky, so every
        pixel of it is taken from the list under it for as long as you scroll. */
-    <header className="group/header sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4 max-md:py-3">
+    <header ref={header} className="group/header sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4 max-md:py-3">
       <div className="flex items-center gap-8">
         {/* The mark itself, and still the way back to the Dashboard.
             Sized by height, and 40px rather than the 32 that would match
