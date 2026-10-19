@@ -100,14 +100,14 @@ export function ClientModal({
   return (
     // The mark says which kind of popup this is — a client card can open
     // on top of an order form, and both are a band with a name on it.
-    <Modal title={client.name} icon={<UserRound size={17} />} onClose={onClose}>
+    <Modal title={client.name} privateTitle icon={<UserRound size={17} />} onClose={onClose}>
       <div className="flex flex-col gap-4">
         {/* Stacked on a phone: three of these inside a `max-w-lg` dialog
             is about 95px each at 390, which will not hold a phone number
             at the 16px every field is there. */}
         <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
           <Field label="Name">
-            <TextInput value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            <TextInput data-private value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>
           <Field label="Phone">
             <TextInput
@@ -174,7 +174,7 @@ export function ClientModal({
               <span className="w-16 shrink-0 text-xs text-ink-soft tabular-nums">
                 {formatOrderDate(line.date)}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm text-ink">{line.customer}</span>
+              <span data-private className="min-w-0 flex-1 truncate text-sm text-ink">{line.customer}</span>
               {line.customerType && <EventTypeChip value={line.customerType} />}
               {line.balance > 0 && (
                 <span className="shrink-0 text-xs font-semibold text-ink tabular-nums">

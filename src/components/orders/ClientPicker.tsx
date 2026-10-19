@@ -90,6 +90,7 @@ export function ClientPicker({
         onFocus={() => setOpen(true)}
         placeholder="Customer name"
         aria-label="Customer"
+        data-private
         // `keeps-size` opts out of the phone's 16px field floor (globals.css):
         // this is the one field already well above it, and the floor would
         // shrink the order's headline to the size of the boxes under it.
@@ -166,7 +167,7 @@ export function ClientPicker({
                 }}
                 className="hover-line flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink"
               >
-                <span className="truncate font-semibold">{client.name}</span>
+                <span data-private className="truncate font-semibold">{client.name}</span>
                 {client.phone && <span className="shrink-0 text-[11px] text-ink-soft">{client.phone}</span>}
                 {client.archivedAt && <span className="shrink-0 text-[11px] text-ink-soft">archived</span>}
               </button>

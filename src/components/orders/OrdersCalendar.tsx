@@ -276,7 +276,7 @@ export function OrdersCalendar({
                           onClick={() => onOpen(order.key)}
                           className="block w-full text-left"
                         >
-                          <p className="truncate font-semibold text-ink">
+                          <p data-private className="truncate font-semibold text-ink">
                             {order.customer || "(no name)"}
                           </p>
                           {order.location && <p className="truncate text-ink-soft">{order.location}</p>}
@@ -322,7 +322,7 @@ function CompactPill({
       className="hover-line cursor-pointer rounded-md bg-cream px-1.5 py-1"
     >
       <button type="button" onClick={() => onOpen(order.key)} className="block w-full text-left">
-        <p className="truncate text-[11px] font-semibold text-ink">{order.customer || "(no name)"}</p>
+        <p data-private className="truncate text-[11px] font-semibold text-ink">{order.customer || "(no name)"}</p>
         {units > 0 && <p className="text-[10px] text-ink-soft">{units}u</p>}
       </button>
     </OrderHoverCard>

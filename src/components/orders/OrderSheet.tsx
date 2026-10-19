@@ -326,6 +326,7 @@ export function MoneyInput({
     <TextInput
       type="text"
       inputMode="numeric"
+      data-money
       aria-label={label}
       // Zero shows as blank, not "₪0", so an amount nobody has filled in
       // keeps the empty-field outline that says it still wants a number.
@@ -383,6 +384,7 @@ export function DiscountInput({
       <TextInput
         type="number"
         min={0}
+        data-money
         // Percentages stop at 100; shekels are capped against the order
         // total in `orderDiscount` instead, where the total is known.
         max={isPercent ? 100 : undefined}

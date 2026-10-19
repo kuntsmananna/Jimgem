@@ -324,6 +324,16 @@ the full money rail under it, open, since the price is what is most often
 adjusted last. An existing order keeps the tabs: a correction is a jump to
 one field, not a walk.
 
+**Review wears the steps' own clothes** (v0.85): the customer in the same
+tinted hero box the first step leads with — name at 28px, date and place
+behind the calendar and pin marks, then the stage, type and payment chips —
+with a round pencil in its corner; every later part a ruled heading with
+its **Edit** at the right end of the rule; the event's chips from the
+right; each package a line with its units at the right and a ruled total
+under them; and the money rail under a ruled **The price** rather than a
+caption of its own. The review reads as the form folded shut, not as a
+summary of some other screen.
+
 **The Customer tab's when and where are one line on a phone** (v0.83.1):
 the date is written short ("Fri 23/10") behind a calendar mark, the way the
 location sits behind its pin, with the real date field laid over it at zero
@@ -2003,6 +2013,28 @@ compares identity, and a panel builds a fresh draft before every call.
   down over a couple of seconds and is let go, its inline `transform`
   cleared, so at rest it is exactly the element it was. One rAF loop runs
   only while something is moving.
+- **Hide mode** (v0.85, `src/components/HideMode.tsx`) blurs every money
+  figure and every client name — for a screen shown across a table or
+  opened in public. An eye beside Jelly mode's blob (and beside it again at
+  the top of the phone's More sheet). **Quantities stay sharp** — units,
+  guests and counts are not what anybody is hiding, the owner's call. It
+  is a **cookie** (`jimgem-hide`, `hideMode.ts`), unlike Jelly mode: the
+  root layout writes `data-hide` on `<html>` in the server's HTML, so a
+  page loaded with it on never paints a figure first, and `<html>` rather
+  than a wrapper because popups and sheets portal to `<body>`. **Money is
+  found, not listed**: a `MutationObserver` marks any element whose text
+  holds a ₪ *and* a digit (`data-money`) — the digit so "Amount ₪" and the
+  ₪ half of a ₪/% switch stay readable, and the element's whole text
+  because JSX's `₪{x}` is two text nodes. A new screen is covered the day
+  it is written. Money *inputs* hold their figure as a value, so those say
+  `data-money` themselves (`MoneyInput`, `DiscountInput`, the expense
+  amount, `RateList`), and names carry `data-private` where drawn —
+  `Modal`'s `privateTitle` for the client card's band. A focused field
+  unblurs, so it can be typed in. The first pass waits for the load event
+  and an idle moment: written before React hydrates a Suspense boundary,
+  the attribute is reported as a hydration mismatch. Until then
+  `html[data-hide]:not([data-hide-ready]) main` is invisible, so nothing
+  shows sharp in between.
 - **`HoverCard` measures on tap before it sets state.** Its tap-to-open
   read `e.currentTarget` inside a `setAt` updater, which React can run
   after the event's target has been cleared — every tap that opened a card

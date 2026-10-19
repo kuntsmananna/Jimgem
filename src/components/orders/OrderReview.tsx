@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, UserRound } from "lucide-react";
+import { CalendarDays, MapPin, Pencil, UserRound } from "lucide-react";
 import {
   type OrderInput,
   type OrderPackageLine,
@@ -56,14 +56,33 @@ export function OrderReview({
   const totalUnits = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
 
   return (
-    <div className="flex flex-col gap-3">
-      <Section title="Customer" onEdit={() => onEdit(0)}>
-        <p className="font-display text-[22px] leading-[1.15] font-extrabold break-words">{draft.customer}</p>
-        <p className="mt-1 text-sm text-ink-soft">
-          {orderWeekday(draft.date)} {formatOrderDate(draft.date)}
-          {draft.location && ` · ${draft.location}`}
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-col gap-5">
+      {/* The customer is the hero, in the tinted box every other step
+          leads with (v0.84.4): the name at the Customer step's own size, and
+          when and where behind the same two marks. */}
+      <section className="rounded-card border border-line/70 bg-cream/70 px-4 py-3">
+        <div className="flex items-start gap-2">
+          <p
+            data-private
+            className="min-w-0 flex-1 font-display text-[28px] leading-tight font-extrabold tracking-tight break-words"
+          >
+            {draft.customer}
+          </p>
+          <EditButton label="Edit who it's for" onClick={() => onEdit(0)} icon />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-base">
+          <span className="flex items-center gap-1.5 tabular-nums">
+            <CalendarDays size={15} aria-hidden className="text-ink-soft" />
+            {orderWeekday(draft.date)} {formatOrderDate(draft.date)}
+          </span>
+          {draft.location && (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <MapPin size={15} aria-hidden className="shrink-0 text-ink-soft" />
+              <span className="truncate">{draft.location}</span>
+            </span>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <StageChip stageKey={draft.productionStatus} />
           {draft.customerType && <EventTypeChip value={draft.customerType} />}
           <span
@@ -73,26 +92,32 @@ export function OrderReview({
             {method && <span className="font-normal opacity-70"> · {method.name}</span>}
           </span>
         </div>
-        {draft.notes && <p className="mt-2 text-sm whitespace-pre-line text-ink">{draft.notes}</p>}
-      </Section>
+      </section>
+
+      {draft.notes && (
+        <Section title="Notes" onEdit={() => onEdit(0)}>
+          <p className="text-base whitespace-pre-line text-ink">{draft.notes}</p>
+        </Section>
+      )}
 
       <Section title="Event" onEdit={() => onEdit(1)}>
         {draft.guests === null && extras.length === 0 ? (
           <p className="text-sm text-ink-soft">Nothing added for the event.</p>
         ) : (
-          <div className="flex flex-wrap items-center gap-1.5">
+          // From the right, like every chip spread on the form's steps.
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             {draft.guests !== null && (
-              <span className="flex items-center gap-1 rounded-full bg-band px-2 py-0.5 text-[11px] font-semibold text-ink">
-                <UserRound size={12} aria-hidden />
+              <span className="flex items-center gap-1 rounded-full bg-band px-2.5 py-1 text-xs font-semibold text-ink">
+                <UserRound size={13} aria-hidden />
                 {count(draft.guests)} guests
               </span>
             )}
             {extras.map(({ icon: Icon, short }) => (
               <span
                 key={short}
-                className="flex items-center gap-1 rounded-full bg-band px-2 py-0.5 text-[11px] font-semibold text-ink"
+                className="flex items-center gap-1 rounded-full bg-band px-2.5 py-1 text-xs font-semibold text-ink"
               >
-                <Icon size={12} aria-hidden />
+                <Icon size={13} aria-hidden />
                 {short}
               </span>
             ))}
@@ -100,30 +125,43 @@ export function OrderReview({
         )}
       </Section>
 
-      <Section title={`Content · ${count(totalUnits)} units`} onEdit={() => onEdit(2)}>
+      <Section title="Content" onEdit={() => onEdit(2)}>
         {lines.length === 0 ? (
           <p className="text-sm text-ink-soft">No packages yet — it can be booked now and mixed later.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {lines.map((line, at) => {
               const packed = linePackedUnits(line, unitsPerPackage);
               const open = packed - lineAssignedUnits(line);
               return (
-                <li key={at} className="text-sm">
-                  <span className="font-bold">
-                    {packageLineLabel(line, unitsPerPackage, packageName.get(String(line.packageTypeId)) ?? "")}
-                  </span>
-                  <span className="text-ink-soft">
-                    {" "}
-                    ·{" "}
+                <li key={at}>
+                  {/* A package a row: what it is on the left, its units on
+                      the right, as the Content step writes them. */}
+                  <div className="flex items-baseline gap-2">
+                    <span className="min-w-0 flex-1 text-base font-bold">
+                      {packageLineLabel(line, unitsPerPackage, packageName.get(String(line.packageTypeId)) ?? "")}
+                    </span>
+                    <span className="flex shrink-0 items-baseline gap-1">
+                      <span className="font-display text-base font-extrabold tabular-nums">{count(packed)}</span>
+                      <span className="text-xs text-ink-soft">units</span>
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-sm text-ink-soft">
                     {line.flavors.length === 0
-                      ? "no flavours yet"
-                      : line.flavors.map((f) => `${f.units} ${flavorName.get(f.flavorId) ?? "?"}`).join(", ")}
-                    {open > 0 && line.flavors.length > 0 && ` · ${open} unassigned`}
-                  </span>
+                      ? "No flavours yet"
+                      : line.flavors.map((f) => `${f.units} ${flavorName.get(f.flavorId) ?? "?"}`).join(" · ")}
+                    {open > 0 && line.flavors.length > 0 && (
+                      <span className="font-semibold text-amber-800"> · {open} unassigned</span>
+                    )}
+                  </p>
                 </li>
               );
             })}
+            <li className="flex items-baseline justify-end gap-1 border-t border-current/12 pt-2">
+              <span className="text-sm text-ink-soft">Total</span>
+              <span className="font-display text-lg font-extrabold tabular-nums">{count(totalUnits)}</span>
+              <span className="text-xs text-ink-soft">units</span>
+            </li>
           </ul>
         )}
       </Section>
@@ -131,21 +169,46 @@ export function OrderReview({
   );
 }
 
+/**
+ * A section after the hero: a ruled heading in the form's own caps, with
+ * its Edit at the right end of the rule — the same heading every step
+ * uses, so the review reads as the form folded shut rather than a summary
+ * of a different screen.
+ */
 function Section({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-line bg-card px-4 py-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-extrabold tracking-[0.14em] uppercase">{title}</h3>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="press -my-1 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-accent"
-        >
-          <Pencil size={12} />
-          Edit
-        </button>
+    <section>
+      <div className="mt-1.5 mb-2.5 flex items-center justify-between gap-2 border-b border-current/12 pb-1.5">
+        <h3 className="text-xs font-extrabold tracking-[0.14em] uppercase">{title}</h3>
+        <EditButton label={`Edit ${title.toLowerCase()}`} onClick={onEdit} />
       </div>
       {children}
     </section>
+  );
+}
+
+function EditButton({ label, onClick, icon = false }: { label: string; onClick: () => void; icon?: boolean }) {
+  if (icon) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className="press flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent"
+      >
+        <Pencil size={14} />
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="press -my-1 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-accent"
+    >
+      <Pencil size={12} />
+      Edit
+    </button>
   );
 }

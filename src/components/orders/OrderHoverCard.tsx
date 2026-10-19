@@ -62,7 +62,7 @@ export function OrderHoverCard({
         return (
         <>
             <div className="flex items-baseline justify-between gap-2">
-              <p className="truncate font-display text-sm font-bold text-ink">
+              <p data-private className="truncate font-display text-sm font-bold text-ink">
                 {order.customer || "(no name)"}
               </p>
               <p className="shrink-0 text-xs font-semibold text-ink-soft">{formatOrderDate(order.date)}</p>

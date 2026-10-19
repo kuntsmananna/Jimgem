@@ -97,7 +97,7 @@ export function OrdersSummary({
                 <p className="mb-1.5">Still owed on {count(owing.length)} order{owing.length > 1 ? "s" : ""}:</p>
                 {owing.slice(0, 6).map((entry) => (
                   <p key={entry.key} className="flex justify-between gap-3">
-                    <span className="truncate">{entry.customer || "(no name)"}</span>
+                    <span data-private className="truncate">{entry.customer || "(no name)"}</span>
                     <b className="shrink-0 text-cream tabular-nums">{currency(entry.balance)}</b>
                   </p>
                 ))}

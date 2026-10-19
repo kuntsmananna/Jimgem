@@ -20,6 +20,7 @@ import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
 import { WhatsNew, WhatsNewButton } from "@/components/WhatsNew";
 import { JellyBlob, JellyModeButton, useJellyMode } from "@/components/JellyMode";
+import { HideModeButton } from "@/components/HideMode";
 import { announcementsFor } from "@/lib/announcement";
 import { useIsAdmin } from "@/components/RoleContext";
 
@@ -284,6 +285,7 @@ function MoreSheet({
           <span className="min-w-0 flex-1 truncate text-base font-semibold">{name}</span>
           <WhatsNewButton variant="sheet" />
           <JellyModeButton variant="sheet" />
+          <HideModeButton variant="sheet" />
           <SheetClose onClose={onClose} />
         </div>
 

@@ -181,7 +181,10 @@ function OrderCard({
         gives back what it can (`short`, "Production company" → "Prod.").
       */}
       <div className="flex items-start gap-2">
-        <p className="line-clamp-2 min-w-0 flex-1 font-display text-[22px] leading-[1.15] font-extrabold break-words">
+        <p
+          data-private
+          className="line-clamp-2 min-w-0 flex-1 font-display text-[22px] leading-[1.15] font-extrabold break-words"
+        >
           {order.customer}
         </p>
         <div className="mt-1 flex shrink-0 items-center gap-1.5">

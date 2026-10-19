@@ -57,6 +57,7 @@ export function RateList({ rows }: { rows: Rate[] }) {
               autoFocus
               type="number"
               min={0}
+              data-money
               aria-label={`${row.label} price`}
               /* See the button below: these two have to agree on a phone. */
               className="w-16 shrink-0 rounded-lg border border-line px-1.5 py-0.5 text-right text-sm tabular-nums max-md:w-20 max-md:py-2"

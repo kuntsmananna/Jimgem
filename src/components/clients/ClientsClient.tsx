@@ -292,7 +292,7 @@ export function ClientsClient({
                 style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
                 className={`motion-row hover-line grid ${LIST_COLUMNS} items-center gap-3 rounded-lg px-2 py-2 text-left`}
               >
-                <span className="min-w-0 truncate text-sm font-semibold text-ink" title={COLUMN_HELP.name}>
+                <span data-private className="min-w-0 truncate text-sm font-semibold text-ink" title={COLUMN_HELP.name}>
                   {client.name}
                 </span>
                 <span className="truncate text-xs text-ink-soft tabular-nums" title={COLUMN_HELP.phone}>
@@ -389,7 +389,7 @@ export function ClientsClient({
                     onClick={() => setOpenId(client.id)}
                     className="hover-line flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left"
                   >
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{client.name}</span>
+                    <span data-private className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{client.name}</span>
                     <span className="shrink-0 text-xs text-ink-soft">{client.orderCount}×</span>
                     <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
                       {currency(client.totalSpent)}

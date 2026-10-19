@@ -1279,3 +1279,41 @@ button:hover .jelly-blob {
     animation: none;
   }
 }
+
+/*
+ * Hide mode (v0.85, `HideMode.tsx`): every money figure and client name
+ * blurred. `data-money` is set by an observer on anything whose text holds
+ * a ₪, and by the few money inputs themselves; `data-private` is on client
+ * names where they are drawn. A field being typed into clears — blurring
+ * the caret's own text helps nobody. Until the observer's first pass, `main`
+ * stays invisible, so a page loaded with the mode on shows nothing for a
+ * moment rather than every figure.
+ */
+html[data-hide] [data-money],
+html[data-hide] [data-private] {
+  filter: blur(7px);
+  transition: filter 150ms ease;
+}
+html[data-hide] input[data-money]:focus,
+html[data-hide] input[data-private]:focus {
+  filter: none;
+}
+html[data-hide]:not([data-hide-ready]) main {
+  visibility: hidden;
+}
+.hide-switch {
+  background: --alpha(var(--color-ink) / 6%);
+  color: var(--color-ink);
+}
+.hide-switch.is-on {
+  background: var(--color-ink);
+  color: var(--color-cream);
+}
+.on-ink .hide-switch {
+  background: rgb(255 255 255 / 0.1);
+  color: var(--color-cream);
+}
+.on-ink .hide-switch.is-on {
+  background: var(--color-cream);
+  color: var(--color-ink);
+}

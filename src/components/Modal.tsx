@@ -47,8 +47,11 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  privateTitle = false,
 }: {
   title: string;
+  /** The title is a client's name, which hide mode blurs. */
+  privateTitle?: boolean;
   /**
    * What kind of popup this is, as a mark before the title.
    *
@@ -130,7 +133,9 @@ export function Modal({
         <div className={`${BAND_CLASS} flex items-center gap-4 ${phoneBand}`}>
           <h2 className="flex flex-1 items-center gap-2 truncate font-display text-lg font-bold">
             {icon && <span className="shrink-0 opacity-70">{icon}</span>}
-            <span className="truncate">{title}</span>
+            <span data-private={privateTitle || undefined} className="truncate">
+              {title}
+            </span>
           </h2>
           <div ref={setSlot} className="flex shrink-0 items-center" />
           <div className="flex flex-1 justify-end">

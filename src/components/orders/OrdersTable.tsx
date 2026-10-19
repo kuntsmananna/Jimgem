@@ -484,14 +484,14 @@ export function OrdersTable({
                           renderIdle={(startEditing) => (
                             <span className="flex min-w-0 items-center gap-1">
                               {order.clientId === null ? (
-                                <span className="truncate font-bold">{order.customer || "(no name)"}</span>
+                                <span data-private className="truncate font-bold">{order.customer || "(no name)"}</span>
                               ) : (
                                 <Tip label="Customer — click to open their card" className="min-w-0">
                                   <button
                                     onClick={() => onOpenClient(order.clientId!)}
                                     className="block max-w-full truncate font-bold hover:underline"
                                   >
-                                    {order.customer || "(no name)"}
+                                    <span data-private>{order.customer || "(no name)"}</span>
                                   </button>
                                 </Tip>
                               )}

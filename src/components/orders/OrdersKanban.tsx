@@ -79,7 +79,7 @@ export function OrdersKanban({
                       onClick={() => onOpen(order.key)}
                       className="text-left text-sm font-semibold text-ink"
                     >
-                      {order.customer || "(no name)"}
+                      <span data-private>{order.customer || "(no name)"}</span>
                     </button>
                     <p className="text-xs text-ink-soft">{formatOrderDate(order.date)}</p>
                   </div>

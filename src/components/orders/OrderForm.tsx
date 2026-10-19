@@ -601,7 +601,16 @@ export function OrderForm({
               {/* The money in full, last: the price is what is most often
                   adjusted at the end, so it is open here rather than behind
                   the total. */}
-              {showMoney && <div className="mt-3">{rail}</div>}
+              {showMoney && (
+                <div className="mt-5">
+                  {/* Ruled like the review's other sections (v0.84.4), so the
+                      rail's own unruled caption gives way to it. */}
+                  <span className="mt-1.5 mb-2.5 block border-b border-current/12 pb-2 text-xs font-extrabold tracking-[0.14em] uppercase">
+                    The price
+                  </span>
+                  {railInSheet}
+                </div>
+              )}
             </div>
           )}
         </div>

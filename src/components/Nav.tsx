@@ -13,6 +13,7 @@ import { VAT_VIEW_LABEL, type VatView } from "@/lib/vatView";
 import { STAFF_HOME } from "@/lib/roles";
 import { WhatsNewButton } from "@/components/WhatsNew";
 import { JellyModeButton } from "@/components/JellyMode";
+import { HideModeButton } from "@/components/HideMode";
 
 /*
  * The desktop row. `/tasks` is deliberately **not** here: the same list is
@@ -163,6 +164,9 @@ export function Nav({ name, version }: { name: string; version: string }) {
         <WhatsNewButton />
         {/* Jelly mode — a toy, for everyone, off each new visit. */}
         <JellyModeButton />
+        {/* Hide mode — money and client names blurred, for a screen
+            somebody else can see. */}
+        <HideModeButton />
         {/* The one control that governs what a shekel means, and so of no
             use at all to an account that is shown none. */}
         {admin && <VatViewToggle />}

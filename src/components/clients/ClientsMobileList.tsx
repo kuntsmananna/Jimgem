@@ -66,7 +66,7 @@ export function ClientsMobileList({
           >
             <button onClick={() => onOpen(client.id)} className="min-w-0 flex-1 px-4 py-3 text-left">
             <div className="flex items-start gap-2">
-              <p className="min-w-0 flex-1 truncate text-[15px] font-bold">{client.name}</p>
+              <p data-private className="min-w-0 flex-1 truncate text-[15px] font-bold">{client.name}</p>
               {/*
                 What they owe is the one thing on this card that asks you
                 to do something, so it is the card's loudest figure. It

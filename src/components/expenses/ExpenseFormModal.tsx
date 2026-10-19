@@ -186,6 +186,7 @@ export function ExpenseFormModal({
         <Field label="Amount ₪" error={attempted && missingAmount ? "Enter what it cost" : undefined}>
           <TextInput
             type="number"
+            data-money
             value={draft.amount}
             className={attempted && missingAmount ? "border-red-600" : ""}
             onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}

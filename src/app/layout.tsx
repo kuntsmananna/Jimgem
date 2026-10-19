@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Bricolage_Grotesque } from "next/font/google";
+import { cookies } from "next/headers";
+import { HIDE_MODE_COOKIE, parseHideMode } from "@/lib/hideMode";
 import "./globals.css";
 
 /*
@@ -63,9 +65,16 @@ export const viewport: Viewport = {
   themeColor: "#F6EEEA",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Hide mode is stated in the server's own HTML, so a page loaded with it
+  // on never paints a figure first — see HideMode.tsx.
+  const hide = parseHideMode((await cookies()).get(HIDE_MODE_COOKIE)?.value);
   return (
-    <html lang="en" className={`${jakarta.variable} ${bricolageGrotesque.variable}`}>
+    <html
+      lang="en"
+      className={`${jakarta.variable} ${bricolageGrotesque.variable}`}
+      data-hide={hide ? "" : undefined}
+    >
       <body>{children}</body>
     </html>
   );
