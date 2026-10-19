@@ -36,12 +36,12 @@ export const ANNOUNCEMENTS: Announcement[] = [
     audience: ["admin", "staff"],
     art: "jelly-mode",
     title: "Jelly mode",
-    lede: "A little cube beside the sparkle switches on jelly mode: the app's cubes, chips and tiles wobble like the real thing.",
+    lede: "The little jelly blob beside the sparkle switches on jelly mode: the app's cubes, chips and tiles wobble like the real thing.",
     items: [
       {
         icon: "hover",
         title: "On a laptop",
-        text: "Move the mouse past them and they wobble, harder the faster you go.",
+        text: "Move the mouse past them and they wobble, harder and wider the faster you go — sweep it hard and the whole page shakes.",
       },
       {
         icon: "jelly",

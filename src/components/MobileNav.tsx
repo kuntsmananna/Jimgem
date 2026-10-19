@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Box,
   ClipboardList,
   Ellipsis,
   LayoutDashboard,
@@ -20,7 +19,7 @@ import { logout } from "@/app/login/actions";
 import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
 import { WhatsNew, WhatsNewButton } from "@/components/WhatsNew";
-import { JellyModeButton, useJellyMode } from "@/components/JellyMode";
+import { JellyBlob, JellyModeButton, useJellyMode } from "@/components/JellyMode";
 import { announcementsFor } from "@/lib/announcement";
 import { useIsAdmin } from "@/components/RoleContext";
 
@@ -67,6 +66,11 @@ const STAFF_BAR = [
   { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
 ];
+
+/** The staff bar's Jelly cell face: the blob, quivering while the mode is on. */
+function JellyBarIcon({ size }: { size?: number }) {
+  return <JellyBlob size={size} on={useJellyMode().on} />;
+}
 
 const isActive = (href: string, path: string) =>
   href === "/" ? path === "/" : path.startsWith(href);
@@ -127,7 +131,13 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
             )}
             {/* Jelly mode, which an admin finds in More — a staff account
                 has no More, so it takes a cell. */}
-            <BarItem label="Jelly" icon={Box} active={jelly.on} onClick={jelly.toggle} pressed />
+            <BarItem
+              label="Jelly"
+              icon={JellyBarIcon}
+              active={jelly.on}
+              onClick={jelly.toggle}
+              pressed
+            />
             <form action={logout} className="flex flex-1">
               <BarItem label="Sign out" icon={LogOut} active={false} type="submit" />
             </form>
@@ -161,7 +171,7 @@ function BarItem({
 }: {
   href?: string;
   label: string;
-  icon: typeof ClipboardList;
+  icon: typeof ClipboardList | ((props: { size?: number }) => React.ReactNode);
   active: boolean;
   onClick?: () => void;
   /** "submit" for the cell that is a form's button — staff's sign-out. */

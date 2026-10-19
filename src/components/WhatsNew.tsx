@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
+import { JellyBlob } from "@/components/JellyMode";
 import { HoverCard } from "@/components/HoverCard";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
@@ -514,7 +515,7 @@ function OrdersTableIllustration() {
 /**
  * v0.79's picture: a few of the app's chips and cubes caught mid-wobble —
  * skewed and squashed the way `wobble` poses them — with the switch's own
- * cube lit in its black pill. Drawn still; the picture says what moves.
+ * blob quivering in its black pill, as it does while the mode is on.
  */
 function JellyModeIllustration() {
   const pieces: { label?: string; tint?: string; cube?: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS]; pose: string }[] = [
@@ -543,7 +544,7 @@ function JellyModeIllustration() {
         )}
       </div>
       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black">
-        <span className="jelly-cube h-3.5 w-3.5" style={cubeColors(SERIES_COLORS.berry)} />
+        <JellyBlob size={20} on />
       </span>
     </div>
   );

@@ -33,8 +33,17 @@ const JellyModeContext = createContext<{ on: boolean; toggle: () => void }>({ on
  */
 const JIGGLY = ".jelly-cube, .keeps-color, .chip-neutral, [data-jiggle]";
 
-/** How far from the pointer a piece still feels it, in px. */
+/**
+ * What a big sweep or a hard shake moves as well: the page's panes and the
+ * Orders table's rows — the whole interface, briefly, and much more gently
+ * than the pieces (`wobble` scales its swing down with size).
+ */
+const WHOLE = "main section, main .rounded-card, .orders-rows > tr:not(.day-row)";
+
+/** How far from a slow pointer a piece still feels it, in px; a fast one reaches further. */
 const REACH = 150;
+/** Pointer travel between two ripples (px per ~90ms) that counts as a big sweep. */
+const SWEEP = 260;
 /** At most one ripple this often while the mouse keeps moving. */
 const EVERY_MS = 90;
 /** Pointer travel between two ripples for one to be as big as it gets. */
@@ -50,15 +59,35 @@ function holdingStill(): boolean {
   return active instanceof HTMLElement && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
 }
 
-/** Every jiggly piece currently on screen, with its centre. */
-function piecesOnScreen(): { el: Element; x: number; y: number }[] {
-  const out: { el: Element; x: number; y: number }[] = [];
-  for (const el of document.querySelectorAll(JIGGLY)) {
+type Piece = { el: Element; x: number; y: number; width: number; height: number };
+
+/** Everything matching `selector` that is on screen, with its centre and size. */
+function onScreen(selector: string): Piece[] {
+  const out: Piece[] = [];
+  for (const el of document.querySelectorAll(selector)) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.bottom < 0 || r.top > window.innerHeight) continue;
-    out.push({ el, x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    out.push({ el, x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height });
   }
   return out;
+}
+
+/**
+ * Everything on screen at once, rippling out from (`x`, `y`) — a big sweep
+ * of the mouse or a hard shake. The pieces take it at full strength and
+ * the panes and rows at a fraction, so the whole interface moves but only
+ * the jelly really wobbles.
+ */
+function shockwave(x: number, y: number, ux: number, uy: number, strength: number) {
+  for (const [selector, scale] of [
+    [WHOLE, 0.45],
+    [JIGGLY, 1],
+  ] as const) {
+    for (const piece of onScreen(selector)) {
+      const distance = Math.hypot(piece.x - x, piece.y - y);
+      wobble(piece.el, ux, uy, strength * scale, Math.min(320, distance * 0.35), piece);
+    }
+  }
 }
 
 export function JellyModeProvider({ children }: { children: ReactNode }) {
@@ -88,11 +117,17 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       const speed = Math.hypot(dx, dy);
       if (speed < 3) return;
       const strength = Math.min(1, speed / FULL_PX);
-      for (const piece of piecesOnScreen()) {
+      if (speed > SWEEP) {
+        shockwave(e.clientX, e.clientY, dx / speed, dy / speed, 1);
+        return;
+      }
+      // A faster pointer reaches further, up to three times as far.
+      const radius = REACH * Math.min(3, 1 + speed / 120);
+      for (const piece of onScreen(JIGGLY)) {
         const distance = Math.hypot(piece.x - e.clientX, piece.y - e.clientY);
-        const reach = 1 - distance / REACH;
+        const reach = 1 - distance / radius;
         if (reach <= 0) continue;
-        wobble(piece.el, dx / speed, dy / speed, strength * reach, Math.min(120, distance * 0.5));
+        wobble(piece.el, dx / speed, dy / speed, strength * reach, Math.min(160, distance * 0.4), piece);
       }
     };
     document.addEventListener("pointermove", onMove, { passive: true });
@@ -121,8 +156,13 @@ export function JellyModeProvider({ children }: { children: ReactNode }) {
       // Screen y runs down where the sensor's runs up.
       const len = Math.hypot(a.x, a.y) || 1;
       const strength = Math.min(1, force / (SHAKE * 2.5));
-      for (const piece of piecesOnScreen()) {
-        wobble(piece.el, a.x / len, -a.y / len, strength, Math.random() * 140);
+      // A hard shake moves the whole interface, like a big mouse sweep.
+      if (force > SHAKE * 2) {
+        shockwave(window.innerWidth / 2, window.innerHeight / 2, a.x / len, -a.y / len, strength);
+        return;
+      }
+      for (const piece of onScreen(JIGGLY)) {
+        wobble(piece.el, a.x / len, -a.y / len, strength, Math.random() * 140, piece);
       }
     };
     const onTilt = (e: DeviceOrientationEvent) => {
@@ -169,13 +209,17 @@ export function useJellyMode() {
   return useContext(JellyModeContext);
 }
 
-/** The switch's face: one small jelly cube, lit when the mode is on. */
-function Cube({ size }: { size: number }) {
+/**
+ * The switch's face: an irregular blob of jelly (`.jelly-blob` in
+ * globals.css) that quivers for as long as the mode is on. Exported for the
+ * staff bottom bar's cell, which takes an icon component.
+ */
+export function JellyBlob({ size = 16, on = false }: { size?: number; on?: boolean }) {
   return (
     <span
       aria-hidden
-      className="jelly-cube inline-block shrink-0"
-      style={{ ...cubeColors(SERIES_COLORS.berry), width: size, height: size }}
+      className={`jelly-blob ${on ? "is-quivering" : ""}`}
+      style={{ ...cubeColors(SERIES_COLORS.berry), width: size, height: size * 0.8 }}
     />
   );
 }
@@ -195,7 +239,7 @@ export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "row"
         aria-pressed={on}
         className={`flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm font-semibold ${on ? "" : "opacity-60"}`}
       >
-        <Cube size={15} />
+        <JellyBlob size={17} on={on} />
         <span className="flex-1">Jelly mode</span>
         <span className="text-xs font-medium opacity-70">{on ? "On — shake or tilt" : "Off"}</span>
       </button>
@@ -225,7 +269,7 @@ export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "row"
           on ? "bg-black" : "hover:bg-black/5"
         }`}
       >
-        <Cube size={12} />
+        <JellyBlob size={20} on={on} />
       </button>
     </HoverCard>
   );

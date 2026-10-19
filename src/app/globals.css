@@ -1114,3 +1114,58 @@ thead .pick-box,
 .jelly-tilt :is(.jelly-cube, .keeps-color, .chip-neutral, [data-jiggle]) {
   rotate: var(--jelly-tilt, 0deg);
 }
+
+/*
+ * Jelly mode's switch (v0.79): a blob of jelly, not a cube — an
+ * irregular dome lit from the top left like every cube, with a glossy
+ * highlight and a darker belly, so it reads as something soft before it
+ * is touched. At rest it is still and slightly off-round; hovered it
+ * wobbles once; **while the mode is on it never stops quivering**, the
+ * switch itself saying which state the app is in. Two of them — the
+ * nav's and the phone's row — share this one class.
+ */
+.jelly-blob {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  /* A dome on a flat base, leaning a little: tall rounded shoulders on
+     top, tight corners underneath, and no two corners alike. */
+  border-radius: 62% 46% 20% 26% / 78% 70% 30% 24%;
+  background:
+    radial-gradient(circle at 32% 28%, rgb(255 255 255 / 0.85) 0 9%, rgb(255 255 255 / 0) 22%),
+    radial-gradient(circle at 70% 82%, rgb(0 0 0 / 0.28) 0%, rgb(0 0 0 / 0) 48%),
+    radial-gradient(circle at 30% 25%, var(--g) 0%, var(--b) 52%, var(--s) 100%);
+  box-shadow:
+    inset 0 -1px 2px rgb(0 0 0 / 0.25),
+    0 2px 3px -1px rgb(80 20 70 / 0.35);
+  transform-origin: 50% 100%;
+}
+
+button:hover .jelly-blob {
+  animation: jelly-blob-once 650ms ease-out;
+}
+
+.jelly-blob.is-quivering {
+  animation: jelly-blob-quiver 1.6s ease-in-out infinite;
+}
+
+@keyframes jelly-blob-once {
+  0%, 100% { transform: none; }
+  25% { transform: scale(1.18, 0.82) skewX(-8deg); border-radius: 48% 64% 26% 18% / 70% 82% 24% 30%; }
+  50% { transform: scale(0.9, 1.1) skewX(4deg); }
+  75% { transform: scale(1.05, 0.96) skewX(-2deg); }
+}
+
+@keyframes jelly-blob-quiver {
+  0%, 100% { transform: none; border-radius: 62% 46% 20% 26% / 78% 70% 30% 24%; }
+  20% { transform: scale(1.14, 0.86) skewX(-7deg); border-radius: 48% 64% 26% 18% / 70% 82% 24% 30%; }
+  45% { transform: scale(0.9, 1.12) skewX(5deg); border-radius: 70% 40% 18% 30% / 84% 64% 34% 20%; }
+  70% { transform: scale(1.06, 0.95) skewX(-2deg); border-radius: 56% 52% 24% 22% / 74% 74% 28% 26%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:hover .jelly-blob,
+  .jelly-blob.is-quivering {
+    animation: none;
+  }
+}

@@ -324,7 +324,7 @@ function useJiggle(columns: number) {
       // event tray of a thousand cubes still animates a few dozen.
       const reach = 1 - distance / (size * 6);
       if (reach <= 0) return;
-      wobble(cube, ux, uy, strength * reach, Math.min(120, distance * 0.35));
+      wobble(cube, ux, uy, strength * reach, Math.min(120, distance * 0.35), { width: size, height: size });
     });
   };
 }

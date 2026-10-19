@@ -1825,7 +1825,9 @@ compares identity, and a panel builds a fresh draft before every call.
   the moment the pointer arrives — a bare sparkle explains nothing, and a
   `title` takes a second to appear.
 - **Jelly mode** (v0.79, `src/components/JellyMode.tsx`) is a toy the
-  owner asked for: a small jelly cube beside the What's new sparkle (a row
+  owner asked for: a small jelly blob beside the What's new sparkle
+  (`.jelly-blob` — a lopsided dome on a flat base, which quivers for as
+  long as the mode is on, so the switch itself says the state) (a row
   in the phone's More sheet; a **Jelly** cell in a staff account's bottom
   bar, which has no More) that makes the app's **decorative pieces only**
   wobble — jelly cubes, chips and badges (`.keeps-color`, `.chip-neutral`,
@@ -1833,7 +1835,10 @@ compares identity, and a panel builds a fresh draft before every call.
   and `data-jiggle` on the extras marks and the figure tiles. Rows, panes,
   fields and text never move, so the list can still be worked with it on.
   On a laptop the mouse ripples the pieces it passes, nearest first and
-  harder the faster it moves; on a phone a **shake** (`devicemotion`,
+  harder and further the faster it moves — and **a big sweep (`SWEEP`) is
+  a shockwave across the whole interface**: every piece, plus the panes
+  and the Orders rows (`WHOLE`) at a fraction of the strength, rippling
+  out from the pointer; on a phone a **shake** (`devicemotion`,
   gravity removed) bounces everything on screen and a **tilt**
   (`deviceorientation`'s gamma, eased) leans it through `--jelly-tilt` on
   the root — applied as `rotate`, not `transform`, so a shake's wobble
@@ -1845,7 +1850,13 @@ compares identity, and a panel builds a fresh draft before every call.
   and it is **off at the start of every visit** — plain state in the app
   layout's `JellyModeProvider`, no cookie, the owner's call. The motion
   itself is `wobble()` in `src/components/wobble.ts`, shared with the tray
-  preview's brush-to-jiggle so the two are the same jelly.
+  preview's brush-to-jiggle so the two are the same jelly: **a damped
+  spring sampled into keyframes, its parts on staggered phases** — the
+  shove leads, the lean lags, the volume-keeping squash lags further — and
+  small pieces soften their corners mid-wobble. The first version skewed
+  everything in lockstep and the owner found it read as a square being
+  distorted rather than as jelly. A hard shake (twice the threshold) is the
+  same shockwave as a big mouse sweep.
 - **`HoverCard` measures on tap before it sets state.** Its tap-to-open
   read `e.currentTarget` inside a `setAt` updater, which React can run
   after the event's target has been cleared — every tap that opened a card
