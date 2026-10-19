@@ -14,6 +14,7 @@ import { formatOrderDate } from "@/lib/orderTypes";
 import { currencyExact as currency } from "@/lib/money";
 import { EditableCell } from "@/components/orders/EditableCell";
 import { FilterDropdown, SelectDropdown } from "@/components/orders/Dropdown";
+import { FigureTile } from "@/components/FigureTile";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { ExpensesMobileList } from "./ExpensesMobileList";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
@@ -87,7 +88,7 @@ export function ExpensesClient({
   const period = periods.find((p) => p.key === selectedKey) ?? periods[periods.length - 1];
   // Per expense, not per total: a receipt from an unregistered supplier
   // carries no VAT, so a month holding both has no single divisor.
-  const { forExpense, label: vatLabel } = useVatView();
+  const { forExpense, label: vatLabel, view } = useVatView();
 
   /**
    * The rows on screen: this period, narrowed by the category filter and
@@ -307,45 +308,57 @@ export function ExpensesClient({
           card of cards is one border too many. */}
       <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:border-0 max-md:bg-transparent max-md:p-0">
         {/*
-          The phone's toolbar: which period, then which categories, as the
-          same two chips the Orders page puts on its surface — and the
-          period picker is where the folded-away rail went. Search is not
-          here at all; it is up in the header (see `PageSearch`).
+          The figures lead on a phone, above the filters (v0.82 — the same
+          order the Orders page took in v0.81): what the period came to is
+          what the page is opened for, and the chips are what you reach for
+          after. The total takes the wide tile, its VAT convention under it,
+          and the monthly repeats get a tile of their own only where there
+          are any.
         */}
-        <div className="flex flex-wrap items-center gap-2 md:hidden">
-          <SelectDropdown
-            label="Period"
-            icon={<CalendarDays size={13} />}
-            options={periods.map((p) => ({ id: p.key, label: p.label }))}
-            value={selectedKey}
-            onChange={setSelectedKey}
-          />
-          <FilterDropdown
-            label="Category"
-            icon={<Tags size={13} />}
-            options={categories
-              .filter((category) => countByCategory.has(category.name))
-              .map((category) => ({
-                value: category.name,
-                label: category.name,
-                count: countByCategory.get(category.name) ?? 0,
-              }))}
-            selected={categoryFilter}
-            onChange={setCategoryFilter}
-          />
+        <div
+          className={`grid gap-2 md:hidden ${recurring.series > 0 ? "grid-cols-[7fr_4fr_5fr]" : "grid-cols-[7fr_4fr]"}`}
+        >
+          <FigureTile label="Spent" value={currency(total)} note={vatLabel} />
+          <FigureTile label="Expenses" value={String(entries.length)} />
+          {recurring.series > 0 && (
+            <FigureTile
+              label="Monthly"
+              value={currency(view === "net" ? recurring.netTotal : recurring.total)}
+              note="repeats"
+            />
+          )}
         </div>
 
-        {/* What the period comes to, leading the list rather than sitting
-            beside a heading: the picker above already names the period, so
-            the figure is what the line is for. */}
-        <div className="mt-3 flex items-baseline gap-2 md:hidden">
-          <span className="font-display text-2xl leading-none font-extrabold text-ink tabular-nums">
-            {currency(total)}
-          </span>
-          <span className="text-xs font-semibold text-ink-soft">{vatLabel}</span>
-        </div>
-        <div className="md:hidden">
-          <RecurringNote recurring={recurring} />
+        {/*
+          The phone's toolbar: which period, then which categories, as the
+          same chips the Orders page puts on its surface — and the period
+          picker is where the folded-away rail went. Search is not here at
+          all; it is up in the header (see `PageSearch`). **Pinned under
+          the header while the list scrolls**, like Orders' (`--header-h`).
+        */}
+        <div className="sticky top-[var(--header-h,72px)] z-20 -mx-4 mt-2 bg-cream/95 backdrop-blur md:hidden">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 py-2 [&>*]:shrink-0">
+            <SelectDropdown
+              label="Period"
+              icon={<CalendarDays size={13} />}
+              options={periods.map((p) => ({ id: p.key, label: p.label }))}
+              value={selectedKey}
+              onChange={setSelectedKey}
+            />
+            <FilterDropdown
+              label="Category"
+              icon={<Tags size={13} />}
+              options={categories
+                .filter((category) => countByCategory.has(category.name))
+                .map((category) => ({
+                  value: category.name,
+                  label: category.name,
+                  count: countByCategory.get(category.name) ?? 0,
+                }))}
+              selected={categoryFilter}
+              onChange={setCategoryFilter}
+            />
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 max-md:hidden">

@@ -1,5 +1,6 @@
 "use client";
 
+import { shortLabel } from "@/components/shortLabel";
 import { eventType, orderTypeIconElement } from "@/lib/icons";
 import { useOrderType } from "@/components/OrderTypesContext";
 
@@ -12,22 +13,6 @@ import { useOrderType } from "@/components/OrderTypesContext";
  * Renders nothing for a blank type, so callers that need the row to keep
  * its shape should reserve the space themselves via `className`.
  */
-/**
- * Words a phone card writes shorter (v0.81). The card's first line is the
- * customer's name and two chips, and every pixel a chip gives back goes to
- * the name — "Production company" alone took a third of the line. Matched
- * by the label's first word, so a renamed type keeps its abbreviation, and
- * the full name stays in the chip's title.
- */
-const SHORT_FIRST_WORDS: Record<string, string> = {
-  production: "Prod.",
-};
-
-function shortLabel(label: string): string {
-  const first = label.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
-  return SHORT_FIRST_WORDS[first] ?? label;
-}
-
 export function EventTypeChip({
   value,
   className = "",

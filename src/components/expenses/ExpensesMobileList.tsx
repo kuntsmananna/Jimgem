@@ -5,6 +5,7 @@ import type { Expense } from "@/lib/expenses";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { currencyExact } from "@/lib/money";
+import { shortLabel } from "@/components/shortLabel";
 
 /**
  * The Expenses list on a phone: one card per expense.
@@ -53,8 +54,11 @@ export function ExpensesMobileList({
           style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
           className="motion-row tap w-full rounded-card border border-line bg-card px-4 py-3 text-left"
         >
+          {/* The subject as big as the line allows (v0.82, as the Orders
+              cards in v0.81): 22px in the display face, wrapping to a
+              second line rather than truncating. */}
           <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 truncate text-[15px] font-bold">
+            <p className="line-clamp-2 min-w-0 flex-1 font-display text-[22px] leading-[1.15] font-extrabold break-words">
               {entry.business || entry.note || (
                 <span className="font-semibold text-ink-soft/60">Untitled expense</span>
               )}
@@ -67,7 +71,7 @@ export function ExpensesMobileList({
             {entry.recurring && (
               <span
                 title="Repeats every month"
-                className="chip-neutral flex shrink-0 items-center rounded-full bg-black/5 p-1 text-ink-soft"
+                className="chip-neutral mt-1 flex shrink-0 items-center rounded-full bg-black/5 p-1 text-ink-soft"
               >
                 <Repeat size={11} />
               </span>
@@ -76,13 +80,18 @@ export function ExpensesMobileList({
                 belongs to rather than a value it holds — the same
                 reasoning the desktop row and the Orders type chip
                 follow. */}
-            <span className="chip-neutral flex shrink-0 items-center gap-1.5 rounded-full bg-black/5 px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+            <span
+              title={entry.categoryName}
+              className="chip-neutral mt-1 flex shrink-0 items-center gap-1.5 rounded-full bg-black/5 px-2 py-0.5 text-[11px] font-medium text-ink-soft"
+            >
               <span className="shrink-0">{expenseCategoryIconElement(entry.categoryName)}</span>
-              {entry.categoryName}
+              {/* "Preparing" is "Prep." here — every pixel the chip gives
+                  back goes to the name. */}
+              {shortLabel(entry.categoryName)}
             </span>
           </div>
 
-          <div className="mt-2 flex items-baseline gap-2 text-xs text-ink-soft">
+          <div className="mt-1.5 flex items-baseline gap-2 text-xs text-ink-soft">
             {/* No year: the period picker above says which one, and
                 repeating it on every card is noise down the list. */}
             <span className="shrink-0 tabular-nums">{formatOrderDate(entry.date)}</span>
@@ -92,7 +101,7 @@ export function ExpensesMobileList({
               <span className="min-w-0 flex-1 truncate">{entry.note}</span>
             )}
             <span className="flex-1" />
-            <span className="shrink-0 text-sm font-bold text-ink tabular-nums">
+            <span className="shrink-0 font-display text-lg leading-none font-extrabold text-ink tabular-nums">
               {currencyExact(amountOf(entry))}
             </span>
           </div>

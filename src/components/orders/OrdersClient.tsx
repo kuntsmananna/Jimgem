@@ -35,6 +35,7 @@ import { OrderFormModal } from "./OrderFormModal";
 import { FilterDropdown, SelectDropdown, type FilterOption } from "./Dropdown";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useIsMobile } from "@/components/useMediaQuery";
+import { FigureTile } from "@/components/FigureTile";
 import { OrdersMobileList } from "./OrdersMobileList";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ClientModal } from "@/components/clients/ClientModal";
@@ -770,9 +771,9 @@ export function OrdersClient({
         <div className={`grid gap-2 md:hidden ${money ? "grid-cols-[4fr_4fr_7fr]" : "grid-cols-2"}`}>
           {/* Two tiles rather than three on a staff account, which is shown
               no money: a third saying ₪0 would be worse than the gap. */}
-          <Figure label="Units" value={totals.units.toLocaleString("en-US")} />
-          <Figure label="Orders" value={String(totals.orders)} />
-          {money && <Figure label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
+          <FigureTile label="Units" value={totals.units.toLocaleString("en-US")} />
+          <FigureTile label="Orders" value={String(totals.orders)} />
+          {money && <FigureTile label="Income" value={`₪${totals.income.toLocaleString("en-US")}`} />}
         </div>
 
         {/*
@@ -1044,21 +1045,3 @@ function BatchSelect<T extends string>({
   );
 }
 
-/**
- * One figure in the phone's summary row.
- *
- * A low-contrast fill rather than a bordered card: four bordered boxes in a
- * row above a list of bordered cards is a lot of edges for a small screen,
- * and these are a summary of what is below rather than four more things to
- * read.
- */
-function Figure({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 flex-col justify-between rounded-2xl bg-ink/[0.06] px-3 py-2.5">
-      <span className="text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">{label}</span>
-      <span className="mt-1 truncate font-display text-2xl leading-none font-extrabold tabular-nums">
-        {value}
-      </span>
-    </div>
-  );
-}

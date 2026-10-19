@@ -282,8 +282,8 @@ six-figure shekel amount needs.
 **The customer's name is as big as the card's first line allows** (v0.81):
 22px in the display face, wrapping to two lines rather than truncating.
 The type chip beside it gives back what it can — `EventTypeChip`'s `short`
-writes "Production company" as "Prod." (`SHORT_FIRST_WORDS`, matched on the
-first word, full name kept in the title).
+writes "Production company" as "Prod." (`shortLabel`, matched on the first
+word, full name kept in the title).
 
 **The day heading carries its weekday** (`orderWeekday` in
 `orderTypes.ts`) — "is that a Saturday" is most of what a queue of dates
@@ -383,7 +383,15 @@ half the imported catalogue has none, and a literal reading put "No
 business yet" in bold at the top of card after card: an absence announced
 in the one position the card has for a subject, while the line saying what
 was actually bought sat quiet underneath it. The note is only repeated on
-the second line where the business is what led. The delete is why `ExpenseFormModal` takes an
+the second line where the business is what led. **Since v0.82 the page
+takes the Orders page's v0.81 shape**: the figures lead as `FigureTile`s
+(`src/components/FigureTile.tsx`, now shared by both pages) — what the
+period came to, how many expenses, and what repeats monthly where anything
+does — the period and category chips sit under them, pinned under the
+header while the list scrolls, and a card's subject is 22px in the display
+face with its amount at 18px. The category chip writes short words short
+through the same `shortLabel` (`src/components/shortLabel.ts`) the Orders
+type chip uses — "Preparing" is "Prep.". The delete is why `ExpenseFormModal` takes an
 `onDelete`, drawn `md:hidden` at the far left of the save row: the row's
 own trash is `reveals-on-hover`, and the card deliberately carries no
 20px destructive target. It closes the form before deleting, or the undo
