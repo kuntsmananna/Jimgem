@@ -51,7 +51,7 @@ export function ExpensesMobileList({
           key={entry.key}
           onClick={() => onOpen(entry.key)}
           style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
-          className="motion-row w-full rounded-card border border-line bg-card px-4 py-3 text-left"
+          className="motion-row tap w-full rounded-card border border-line bg-card px-4 py-3 text-left"
         >
           <div className="flex items-start gap-2">
             <p className="min-w-0 flex-1 truncate text-[15px] font-bold">

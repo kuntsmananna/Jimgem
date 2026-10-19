@@ -62,7 +62,7 @@ export function ClientsMobileList({
           <div
             key={client.id}
             style={{ "--i": Math.min(at, 12) } as React.CSSProperties}
-            className="motion-row flex items-stretch overflow-hidden rounded-card border border-line bg-card"
+            className="motion-row tap flex items-stretch overflow-hidden rounded-card border border-line bg-card"
           >
             <button onClick={() => onOpen(client.id)} className="min-w-0 flex-1 px-4 py-3 text-left">
             <div className="flex items-start gap-2">

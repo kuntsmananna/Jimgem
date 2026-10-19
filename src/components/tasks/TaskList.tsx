@@ -376,23 +376,20 @@ function TaskRow({
   return (
     <li
       /*
-        `flex-wrap` is doing one job, and only below the breakpoint: the
-        assignee and the trash drop to a line of their own. Measured at
-        360px, the row has 296px of content and the select alone took
-        ~200 of it — the phone rules size every `select` to 16px so iOS
-        does not zoom, and its width comes from its longest option — which
-        left the task itself four characters wide. The *task* is the row;
-        it gets the first line whole.
-
-        Nothing moves on a laptop: at that width every child fits and a
-        wrapping row that does not wrap is the row it was.
+        **One line on a phone too** (v0.80). The assignee and the trash
+        used to drop to a line of their own, because the native select
+        alone took ~200px at the 16px iOS needs to not zoom — which spent a
+        second line of every task on a name. The select is now invisible
+        over a compact chip of the name (`AssigneeSelect`), so it costs the
+        chip's width, and the task keeps the rest of the row and wraps in
+        it. Nothing moves on a laptop, where the chip is not drawn.
       */
       style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
       // A slight hover (v0.77): the edge darkens a step and a soft shadow
       // gathers under it — enough to say which line the pointer is on,
       // without the full lift a list row gets, since a task is ticked and
       // edited in place rather than opened.
-      className={`motion-row group flex flex-wrap items-center gap-2.5 rounded-xl border border-line px-3 py-2 transition-[border-color,box-shadow] duration-150 hover:border-ink/15 hover:shadow-[0_6px_14px_-8px_rgb(150_95_65/0.3)] ${
+      className={`motion-row group flex items-center gap-2.5 rounded-xl border border-line px-3 py-2 transition-[border-color,box-shadow] duration-150 hover:border-ink/15 hover:shadow-[0_6px_14px_-8px_rgb(150_95_65/0.3)] ${
         // A finished task takes the cream the page is already made of, the
         // same way a delivered order does on the phone's Orders list: the
         // list then separates at a glance into what is left and what is
@@ -460,21 +457,21 @@ function TaskRow({
         </button>
       )}
 
-      {/* The two together, so they wrap as one and land right-aligned
-          under the task rather than one per line. */}
-      <div className="flex items-center gap-2 max-md:basis-full max-md:justify-end">
+      {/* The two together, kept to the right of the task. */}
+      <div className="flex shrink-0 items-center gap-2 max-md:gap-0.5">
         <AssigneeSelect
           staff={staff}
           value={task.staffId}
           onChange={(staffId) => onSave({ staffId })}
           subdued={done}
+          compact
         />
 
         <button
           onClick={onDelete}
           title="Delete this task"
           aria-label={`Delete "${task.title}"`}
-          className="reveals-on-hover invisible shrink-0 rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:text-ink max-md:p-2"
+          className="reveals-on-hover invisible shrink-0 rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:text-ink max-md:-mr-1.5 max-md:p-2"
         >
           <Trash2 size={13} />
         </button>
@@ -517,24 +514,33 @@ function AssigneeSelect({
   value,
   onChange,
   subdued = false,
+  compact = false,
 }: {
   staff: StaffAccount[];
   value: number | null;
   onChange: (staffId: number | null) => void;
   subdued?: boolean;
+  /**
+   * On a phone, draw a small chip of the name and lay the select over it,
+   * invisible (v0.80). The select still opens the phone's own picker, and
+   * still states the 16px that stops iOS zooming — being invisible, its
+   * width no longer matters. Off in the add popup, where it is a field.
+   */
+  compact?: boolean;
 }) {
-  return (
+  const tone = value
+    ? `keeps-color border-transparent text-ink ${assigneeTint(value)}`
+    : // Nobody in particular reads as an absence: no fill, and the
+      // quiet outline every unfilled control in this app wears.
+      "border-line bg-transparent font-semibold text-ink-soft hover:border-ink";
+  const select = (
     <select
       value={value ?? ""}
       onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
       aria-label="Who it is for"
-      className={`shrink-0 cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-bold transition max-md:px-3 max-md:py-1.5 ${
-        value
-          ? `keeps-color border-transparent text-ink ${assigneeTint(value)}`
-          : // Nobody in particular reads as an absence: no fill, and the
-            // quiet outline every unfilled control in this app wears.
-            "border-line bg-transparent font-semibold text-ink-soft hover:border-ink"
-      } ${subdued ? "opacity-60" : ""}`}
+      className={`shrink-0 cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-bold transition max-md:px-3 max-md:py-1.5 ${tone} ${
+        compact ? "max-md:absolute max-md:inset-0 max-md:opacity-0" : subdued ? "opacity-60" : ""
+      }`}
     >
       <option value="">Anyone</option>
       {staff.map((person) => (
@@ -543,5 +549,17 @@ function AssigneeSelect({
         </option>
       ))}
     </select>
+  );
+  if (!compact) return select;
+  return (
+    <span className={`relative inline-flex shrink-0 ${subdued ? "opacity-60" : ""}`}>
+      <span
+        aria-hidden
+        className={`max-w-24 truncate rounded-full border px-2.5 py-1.5 text-xs font-bold md:hidden ${tone}`}
+      >
+        {staff.find((person) => person.id === value)?.name ?? "Anyone"}
+      </span>
+      {select}
+    </span>
   );
 }

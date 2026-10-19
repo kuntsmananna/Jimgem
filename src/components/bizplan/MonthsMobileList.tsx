@@ -57,12 +57,12 @@ export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
         const open = openMonth === m.month;
         const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
         return (
-          <div key={m.month} className="rounded-card border border-line bg-cream/40">
+          <div key={m.month} className="tap rounded-card border border-line bg-card">
             <button
               type="button"
               aria-expanded={open}
               onClick={() => setOpenMonth(open ? null : m.month)}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left"
+              className="flex min-h-13 w-full items-center gap-2 px-4 py-3 text-left"
             >
               <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">
                 {m.monthLabel}
@@ -89,15 +89,28 @@ export function MonthsMobileList({ months }: { months: MonthlyFinancials[] }) {
               />
             </button>
 
-            {open && (
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-line/60 px-4 py-3 text-xs">
-                <Figure label="Revenue" value={currency(m.revenue)} />
-                <Figure label="Expenses" value={currency(m.expenses)} />
-                <Figure label="Margin" value={`${margin.toFixed(0)}%`} />
-                <Figure label="Orders" value={count(m.orderCount)} />
-                <Figure label="Units sold" value={count(m.unitsSold)} />
-              </dl>
-            )}
+            {/* Always mounted, and opened by growing its row from nothing
+                (v0.80) — the card unfolds where it used to snap open, which
+                is what says the figures came *out of* it. `inert` while
+                shut, so the folded figures are not read or tabbed into. */}
+            <div
+              inert={!open}
+              className={`grid transition-[grid-template-rows,opacity] duration-250 ease-[var(--ease-entrance)] ${
+                open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              {/* The padding sits inside the clipped box: on the grid item
+                  itself it could not shrink to the closed row's zero. */}
+              <div className="min-h-0 overflow-hidden">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-line/60 px-4 py-3 text-xs">
+                  <Figure label="Revenue" value={currency(m.revenue)} />
+                  <Figure label="Expenses" value={currency(m.expenses)} />
+                  <Figure label="Margin" value={`${margin.toFixed(0)}%`} />
+                  <Figure label="Orders" value={count(m.orderCount)} />
+                  <Figure label="Units sold" value={count(m.unitsSold)} />
+                </dl>
+              </div>
+            </div>
           </div>
         );
       })}

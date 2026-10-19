@@ -185,12 +185,19 @@ function BarItem({
           what "selected" looks like everywhere else in the app, read the
           other way up. Unselected states its dimming as opacity so it
           follows the surface rather than naming a colour. */}
-      <span
-        className={`flex h-8 w-14 items-center justify-center rounded-full transition ${
-          active ? "bg-cream text-ink" : "opacity-55"
-        }`}
-      >
-        <Icon size={18} />
+      {/* The fill is a layer of its own that grows into place (v0.80), so
+          arriving on a page reads as the pill landing on it rather than a
+          colour switching — it is always there, scaled to nothing. */}
+      <span className="relative flex h-8 w-14 items-center justify-center">
+        <span
+          aria-hidden
+          className={`absolute inset-0 rounded-full bg-cream transition-[transform,opacity] duration-200 ease-[var(--ease-entrance)] ${
+            active ? "scale-100 opacity-100" : "scale-50 opacity-0"
+          }`}
+        />
+        <span className={`relative transition-colors duration-200 ${active ? "text-ink" : "opacity-55"}`}>
+          <Icon size={20} />
+        </span>
       </span>
       {/* 12px, not the 10px this was — at 10 the label read as a caption
           under the icon rather than as the name of the destination, which
@@ -205,7 +212,7 @@ function BarItem({
     </>
   );
 
-  const shape = "flex flex-1 flex-col items-center gap-0.5 py-2";
+  const shape = "tap flex flex-1 flex-col items-center gap-0.5 py-2";
   return href ? (
     <Link href={href} className={shape} aria-current={active ? "page" : undefined}>
       {body}
@@ -225,11 +232,36 @@ function BarItem({
 }
 
 /**
- * Everything the bar does not carry.
+ * Every page, as tiles — the ones in the bar too.
+ *
+ * The owner's call (v0.80): the sheet is where a phone goes to *find*
+ * something, so it lists the whole app rather than only what the bar
+ * leaves out, and lists it big — two columns of tiles with a 22px mark and
+ * a 17px name, where it was a column of 14px rows at 60% that read as
+ * fine print. The page you are on wears the cream fill, the bar's own
+ * "selected" read the other way up.
+ */
+const PAGES = [
+  { href: "/orders", label: "Orders", icon: ClipboardList },
+  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/tasks", label: "Tasks", icon: ListChecks },
+  { href: "/clients", label: "Clients", icon: Users },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/biz-plan", label: "Biz Plan", icon: TrendingUp },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+/**
+ * Everything the bar does not carry, and a way to every page.
  *
  * Its own first row rather than the `Sheet`'s title, because who is signed
  * in is the useful heading here — the sheet is reached from a button
  * labelled More, which has already said what it is.
+ *
+ * **No hairlines between its parts** (v0.80): each group is a different
+ * kind of thing — who, where to, how money reads, leaving — and the space
+ * between them says so on its own. Four rules on a black sheet read as a
+ * settings form rather than as a menu.
  */
 function MoreSheet({
   name,
@@ -245,50 +277,59 @@ function MoreSheet({
   return (
     <Sheet onClose={onClose} tone="ink">
       <>
-        <div className="flex items-center gap-3 px-5 py-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cream text-[11px] font-bold text-ink">
+        <div className="flex items-center gap-3 px-5 pt-1 pb-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-cream text-xs font-bold text-ink">
             {initials(name)}
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
+          <span className="min-w-0 flex-1 truncate text-base font-semibold">{name}</span>
           <WhatsNewButton variant="sheet" />
           <JellyModeButton variant="sheet" />
           <SheetClose onClose={onClose} />
         </div>
 
-        <div className="border-t border-cream/15">
-          {MORE.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={`flex items-center gap-3 px-5 py-3.5 text-sm font-semibold ${
-                isActive(href, path) ? "" : "opacity-60"
-              }`}
-            >
-              <Icon size={17} />
-              {label}
-            </Link>
-          ))}
-        </div>
+        {/* `motion-stagger` so the tiles arrive one after another as the
+            sheet comes up — the menu assembling rather than appearing. An
+            odd last tile takes the whole row, so seven pages end square. */}
+        <nav aria-label="All pages" className="motion-stagger grid grid-cols-2 gap-2 px-4 pt-1">
+          {PAGES.map(({ href, label, icon: Icon }) => {
+            const active = isActive(href, path);
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                aria-current={active ? "page" : undefined}
+                className={`tap flex min-h-16 items-center gap-3 rounded-2xl px-4 py-3.5 font-display text-[17px] font-bold transition-colors last:odd:col-span-2 ${
+                  active ? "bg-cream text-ink" : "bg-cream/[0.08] active:bg-cream/15"
+                }`}
+              >
+                <Icon size={22} className={active ? "" : "opacity-80"} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
 
         {/*
           The VAT switch has to have a home somewhere that is not a page:
           it governs figures on four screens, and a per-page copy would let
-          two of them disagree about what a shekel means.
+          two of them disagree about what a shekel means. Its words sit
+          beside it at the right (the owner's call), so the sentence and the
+          switch it describes are read as one thing.
         */}
-        <div className="flex items-center justify-between gap-3 border-t border-cream/15 px-5 py-3.5">
+        <div className="flex items-center justify-end gap-3 px-5 pt-5">
           <span className="text-sm font-semibold opacity-60">Money shown as</span>
           <VatViewToggle />
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-cream/15 px-5 py-3.5">
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-4">
           <span className="font-mono text-[11px] tabular-nums opacity-50">{version}</span>
           <form action={logout}>
             <button
               type="submit"
-              className="flex items-center gap-2 rounded-full border border-cream/30 px-4 py-2 text-xs font-semibold"
+              className="press flex items-center gap-2 rounded-full border border-cream/30 px-4 py-2.5 text-sm font-semibold"
             >
-              <LogOut size={14} />
+              <LogOut size={15} />
               Sign out
             </button>
           </form>

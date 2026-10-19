@@ -1,8 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useOverlayDismiss } from "./useOverlayDismiss";
+
+/** How far a sheet has to be pulled before letting go closes it, in px. */
+const DISMISS_PULL = 90;
 
 /**
  * A panel from the bottom edge of a phone.
@@ -37,6 +41,34 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   useOverlayDismiss(onClose);
+  /*
+   * Pulling a sheet down by its body closes it (v0.80), the way every
+   * sheet on a phone does — the grabber says so, and a sheet only an X
+   * could close was the one thing in the app a thumb could not throw away.
+   *
+   * Only from the top of its own scroll: a sheet longer than the screen
+   * scrolls first and pulls only once it is back at the top, or reading
+   * down a list and up again would close it. Written to the element rather
+   * than through state, since it moves on every touch event; a pull short
+   * of `DISMISS_PULL` springs back.
+   */
+  const panel = useRef<HTMLDivElement>(null);
+  const pull = useRef<{ from: number | null; by: number }>({ from: null, by: 0 });
+
+  function settle(close: boolean) {
+    const el = panel.current;
+    const by = pull.current.by;
+    pull.current = { from: null, by: 0 };
+    if (!el) return;
+    if (close && by > DISMISS_PULL) {
+      el.style.transition = "transform 180ms ease-in";
+      el.style.transform = "translateY(100%)";
+      setTimeout(onClose, 170);
+    } else {
+      el.style.transition = "transform 220ms var(--ease-entrance)";
+      el.style.transform = "";
+    }
+  }
 
   return createPortal(
     <div
@@ -46,13 +78,38 @@ export function Sheet({
       }}
     >
       <div
-        className={`motion-rise max-h-[85dvh] w-full overflow-y-auto rounded-t-card border-t pb-[env(safe-area-inset-bottom)] ${
+        ref={panel}
+        onTouchStart={(event) => {
+          pull.current = { from: (panel.current?.scrollTop ?? 1) <= 0 ? event.touches[0]!.clientY : null, by: 0 };
+        }}
+        onTouchMove={(event) => {
+          const el = panel.current;
+          const from = pull.current.from;
+          if (from === null || !el) return;
+          const dy = event.touches[0]!.clientY - from;
+          if (dy <= 0 || el.scrollTop > 0) {
+            pull.current.by = 0;
+            el.style.transform = "";
+            return;
+          }
+          pull.current.by = dy;
+          el.style.transition = "none";
+          // Resisting a little as it goes, like a sheet held by its top edge.
+          el.style.transform = `translateY(${dy * 0.85}px)`;
+        }}
+        onTouchEnd={() => settle(true)}
+        onTouchCancel={() => settle(false)}
+        className={`motion-sheet max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-card border-t pb-[env(safe-area-inset-bottom)] ${
           tone === "ink" ? "on-ink border-cream/15" : "border-line bg-card"
         }`}
       >
+        {/* The grabber: says the sheet can be pulled down, which it can. */}
+        <div aria-hidden className="flex justify-center pt-2 pb-1">
+          <span className="h-1 w-9 rounded-full bg-current opacity-20" />
+        </div>
         {title !== undefined && (
-          <div className="flex items-center gap-3 px-5 py-4">
-            <h2 className="flex-1 truncate font-display text-base font-bold">{title}</h2>
+          <div className="flex items-center gap-3 px-5 pt-1 pb-3">
+            <h2 className="flex-1 truncate font-display text-lg font-bold">{title}</h2>
             <SheetClose onClose={onClose} />
           </div>
         )}

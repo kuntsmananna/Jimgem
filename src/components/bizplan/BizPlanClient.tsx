@@ -39,7 +39,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
   const { label: vatLabel } = useVatView();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-md:gap-4">
       {/* Which convention the whole page is in. It moves with the nav's
           switch, and a report that doesn't say so invites the two readings
           to be compared with each other. */}
@@ -63,7 +63,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
         <KpiTile label="Avg order value" value={currency(avgOrderValue)} tile="peach" />
       </div>
 
-      <div className="grid grid-cols-2 gap-6 max-md:grid-cols-1">
+      <div className="grid grid-cols-2 gap-6 max-md:grid-cols-1 max-md:gap-4">
         <section className="rounded-card border border-line bg-card p-6 max-md:p-4">
           <h2 className="font-display text-base font-bold text-ink">Revenue, expenses & profit</h2>
           <div className="mt-4">
@@ -94,7 +94,10 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
         </section>
       </div>
 
-      <section className="rounded-card border border-line bg-card p-6 max-md:p-4">
+      {/* No pane on a phone (v0.80): the months are cards of their own
+          there, and a box of boxes spent 32px of every card's width on a
+          second edge. */}
+      <section className="rounded-card border border-line bg-card p-6 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0">
         {/* Wraps on a phone: the label is ~150px of 12px text beside a
             20px heading, which at 278px of content would crush "Year"
             rather than shortening itself. The checkbox is deliberately
@@ -117,7 +120,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
           </label>
         </div>
         {mobile ? (
-          <div className="mt-4">
+          <div className="mt-2">
             <MonthsMobileList months={tableRows} />
           </div>
         ) : (

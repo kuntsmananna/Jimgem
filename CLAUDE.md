@@ -256,8 +256,12 @@ narrowing anything, which is what a filter you cannot see needs; once the
 search moved to the header there was room to put them on the surface
 instead, and a control you can see needs no badge. Wrapping rather than
 three fixed columns because a payment summary is "All" on most days and
-"Deposit paid" on some: measured at 390px the three fit one row and at
-360px they wrap, which is the right failure. `FilterDropdown`'s
+"Deposit paid" on some. Since v0.80 they are **one row that scrolls
+sideways** (`.no-scrollbar`, bleeding into the gutter so a chip slides off
+the screen edge) rather than wrapping: with four chips they wrapped at
+every phone width, spending a second row of height on one chip. A
+scrolling row is safe only because each list opens as a `Sheet` — nothing
+pops out of the row to be clipped. `FilterDropdown`'s
 "3 selected" is **"3" below the breakpoint** — the word is `max-md:hidden`
 rather than rewritten, so the desktop summary is untouched — and without
 that 66px the common case did not fit at all.
@@ -424,15 +428,18 @@ at the start of the row. Below the breakpoint the box takes `order-first`
 with its `basis-full`, or a full-width field after the picker would strand
 the Add button on a third line.
 
-**On a phone the row wraps and the task takes the first line whole.**
-Measured at 360px the row has 296px of content and the assignee `<select>`
-alone took ~200 of it — the unlayered phone rules size every select to
+**On a phone a task is one row** (v0.80): tick, the title wrapping in
+the middle, the person and the trash at the right. The assignee `<select>`
+alone took ~200px there — the unlayered phone rules size every select to
 16px so iOS cannot zoom, and a select is as wide as its longest option —
-which left the task itself four characters wide. So the assignee and the
-trash drop to a line of their own, and the title *wraps* there instead of
-truncating: a task you cannot finish reading is not a task. Nothing moves
-on a laptop, where every child fits and a wrapping row that never wraps is
-the row it was.
+so until v0.80 the person and the trash dropped to a second line of every
+task. Now `AssigneeSelect`'s `compact` draws a small chip of the name and
+lays the select over it at zero opacity: it still opens the phone's own
+picker and still states 16px, and being invisible its width no longer
+matters. The title still *wraps* rather than truncating: a task you cannot
+finish reading is not a task. Nothing moves on a laptop, where the chip is
+not drawn. **The Dashboard draws no pane around the list on a phone** —
+each task is a box already, and a box of boxes cost 32px of every row.
 
 **Tasks took Clients' slot in the bottom bar** — Orders, Expenses, Tasks,
 More — and Clients moved into More. Ticking something off is a standing-up
@@ -637,9 +644,17 @@ which matters for the one piece of chrome that is always on screen. `.on-ink` in
 what re-tones them, by flipping the `--segmented-*` pair exactly the way
 `.money-rail` does — so `VatViewToggle`, restated in `currentColor` and
 those two properties, sits on either surface without its call site saying
-which. Four targets: Orders, Expenses, Clients — the three the phone
-is actually for — and **More**, a sheet from the bottom edge holding
-Dashboard, Biz Plan, Settings, the VAT toggle, the version and sign-out.
+which. Four targets: Orders, Expenses, Tasks and **More**, a sheet from the
+bottom edge. **The More sheet lists every page** (v0.80, the owner's
+call), the bar's three included, as two columns of big tiles — a 22px mark
+and a 17px name, the page you are on in the cream fill, an odd last tile
+across the whole row — because the sheet is where a phone goes to *find*
+something, and the 14px rows at 60% it had read as fine print. It carries
+**no hairlines**: who you are, where to go, how money reads and leaving
+are separated by space alone. "Money shown as" sits **at the right, beside
+its switch**, so the words and the control read as one thing; the version
+and Sign out close it. The bar's selected pill **grows into place**
+(a layer scaled from 50% and faded in) rather than switching colour.
 The desktop row is six pills plus four other things and needs ~1000px it
 cannot wrap; shrinking it was never the answer. Each bar cell is a quarter
 of the screen wide, because the app's icon buttons are 20-28px, which is a
@@ -732,6 +747,26 @@ icon and `appleWebApp` itself — and **both capable tags**:
 so `apple-mobile-web-app-capable` is stated beside it through
 `metadata.other`. Without one of the two, the home-screen icon opens a
 Safari tab rather than the app.
+
+**`Sheet` comes up from the edge and goes back down it** (v0.80):
+`.motion-sheet` slides the whole panel in from below (a 10px rise read as
+a popup that happened to sit low), a grabber at the top says it can be
+pulled, and pulling it down past `DISMISS_PULL` closes it — only from the
+top of its own scroll, so reading back up a long sheet never closes it.
+The pull is written to the element's style, not to state, since it moves
+on every touch event.
+
+**The v0.80 phone pass**, besides the above: the header is a step slimmer
+(`max-md:py-3`) and **names the page** where the page has put no search
+box in it (`PHONE_TITLES` in `Nav.tsx` — Dashboard, Biz Plan, Settings;
+hidden through `group-has-[.header-slot>*]` the moment a slot is filled);
+**a page fades in** on navigation (`main > *`, opacity only, because a
+transform on the page root would carry the fixed Add button with it);
+**cards press in under a thumb** (`.tap`, keyed on `hover: none` like the
+hover block — a touchscreen had no answer to a tap until the next screen
+came); Dashboard and Biz Plan close their gaps to 16px; the Biz Plan's
+months lose the pane around them and **unfold** (a `grid-template-rows`
+transition from `0fr`, `inert` while shut) rather than snapping open.
 
 **Corners are tighter on a phone.** `rounded-card` compiles to
 `border-radius: var(--radius-card)`, so one unlayered re-declaration of

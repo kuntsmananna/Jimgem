@@ -162,7 +162,9 @@ export function DashboardClient({
   const comparedTo = comparison ? `vs ${comparison.previous.monthLabel}` : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    /* A step tighter on a phone (`gap-4`), where 24px between every block
+       was most of a screen of cream by the bottom of the page. */
+    <div className="flex flex-col gap-6 max-md:gap-4">
       <div className="flex items-center gap-2 max-md:flex-wrap">
         {/* A row of pills is the right control for a period on a laptop and
             the wrong one on a phone: `financials` carries a month per month
@@ -214,7 +216,7 @@ export function DashboardClient({
           uses: there the tiles are a rail beside the list and the list is
           the subject, while here the figures *are* the page — which is what
           the owner asked for — so they get the second row of height. */}
-      <div className="motion-stagger grid grid-cols-4 gap-4 max-md:grid-cols-2">
+      <div className="motion-stagger grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-3">
         {KPI_TILES.map(({ metric, label, tile, Icon, format }) => (
           <KpiTile
             key={metric}
@@ -231,7 +233,7 @@ export function DashboardClient({
       {/* One column on a phone. Both halves of this are needed together:
           with the orders pane gone but the template intact, the charts
           would sit in the 65fr slot with a third of the page empty. */}
-      <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6 max-md:grid-cols-1">
+      <div className="grid min-w-0 grid-cols-[65fr_35fr] gap-6 max-md:grid-cols-1 max-md:gap-4">
         {/*
           The task list, where the period's orders used to be.
 
@@ -245,13 +247,17 @@ export function DashboardClient({
           Rendered on a phone as well as a laptop, unlike the pane before
           it: this one is worth working from a phone, and it is short. The
           bottom bar carries `/tasks` for exactly that.
+
+          **No pane around it on a phone** (v0.80): every task is a box of
+          its own already, and a box of boxes cost 32px of width from each
+          of them and drew two edges where one says it.
         */}
-        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6 max-md:p-4">
+        <section className="flex min-w-0 flex-col rounded-card border border-line bg-card p-6 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0">
           <TaskList tasks={tasks} staff={staff} />
         </section>
 
 
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6 max-md:gap-4">
           <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Revenue &amp; profit trend</h2>
             <div className="mt-4">

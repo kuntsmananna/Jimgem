@@ -834,6 +834,59 @@ thead .pick-box,
 }
 
 /*
+ * A bottom sheet comes up from the edge it belongs to (v0.80) — the whole
+ * of itself, not the 10px a centred dialog rises. A sheet that faded in a
+ * little above the bar read as a popup that happened to be low on the
+ * screen, rather than as the bar opening up.
+ */
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+}
+
+.motion-sheet {
+  animation: sheet-in 280ms var(--ease-entrance);
+}
+
+/*
+ * A page arriving on a phone (v0.80): the bottom bar swaps whole screens,
+ * and a cut from one to the next under a thumb read as a flicker. Opacity
+ * only — a transform on the page's root would make it the containing
+ * block of the fixed Add button for the length of the animation, and the
+ * button would ride up with the page. A new page root is a new element, so
+ * this runs on every navigation with no wrapper and no key.
+ */
+@media (max-width: 767px) {
+  main > * {
+    animation: fade-in 180ms var(--ease-entrance);
+  }
+}
+
+/* A row that scrolls sideways under a thumb and needs no bar to say so —
+   the chip cut off at the screen edge already does. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * A card or a target answering a thumb (v0.80). On a laptop the hover
+ * lift says what is under the pointer; a touchscreen has no hover, so a
+ * tap on a card gave nothing back until the next screen appeared. It
+ * presses in a little while held. Pointer-keyed rather than width-keyed,
+ * like the hover block: a tablet with a mouse keeps its hover instead.
+ */
+@media (hover: none) {
+  .tap {
+    transition: transform 140ms var(--ease-entrance);
+  }
+  .tap:active {
+    transform: scale(0.97);
+  }
+}
+
+/*
  * An inner scroller that does not shout (v0.77). The Orders list scrolls
  * inside its own box, and the platform's default bar beside it was a dark
  * 15px slab running the height of the page — the darkest thing on screen,
@@ -1020,6 +1073,8 @@ thead .pick-box,
   .motion-bar,
   .motion-row,
   .motion-stagger > *,
+  .motion-sheet,
+  main > *,
   .skeleton,
   .jelly-hop > span {
     animation: none;
@@ -1033,6 +1088,7 @@ thead .pick-box,
 
   .press:hover:not(:disabled),
   .press:active:not(:disabled),
+  .tap:active,
   .hover-line:hover,
   .orders-rows > tr:not(.day-row):hover > td:not(:first-child) {
     transform: none;

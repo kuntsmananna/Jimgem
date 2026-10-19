@@ -769,13 +769,15 @@ export function OrdersClient({
             search went up to the header in v0.46, and a filter on the
             surface needs no badge to say it is narrowing something.
 
-            `flex-wrap` because a payment summary is "All" on most days and
-            "Deposit paid" on some, and a row that wraps beats one that
-            overflows. Each list opens as a sheet from the bottom edge — see
-            `Dropdown`, which is also why the third chip's list cannot fall
-            off the right of the screen.
+            **One row that scrolls sideways** (v0.80), bleeding into the
+            page gutter so a chip slides off the screen edge — which is what
+            says there is another. It wrapped until then, and with four
+            chips at 390px that was always: a second row of height spent on
+            one chip, above the list the page is for. Each list opens as a
+            sheet from the bottom edge — see `Dropdown` — which is what makes
+            a scrolling row safe: nothing pops out of it to be clipped.
           */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="no-scrollbar -mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [&>*]:shrink-0">
             <SelectDropdown
               label="When"
               icon={<CalendarRange size={13} />}

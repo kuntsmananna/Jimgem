@@ -56,8 +56,22 @@ export function initials(name: string): string {
   return words.slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
 }
 
+/**
+ * What a phone's header calls the page, where the page has not put a
+ * search box there (v0.80). Below the breakpoint the pills are gone, so
+ * the Dashboard, Biz Plan and Settings opened under a bare wordmark with
+ * nothing saying where you were. Tasks is left out: its list heads itself
+ * with the same word and the count.
+ */
+const PHONE_TITLES: Record<string, string> = {
+  "/": "Dashboard",
+  "/biz-plan": "Biz Plan",
+  "/settings": "Settings",
+};
+
 export function Nav({ name, version }: { name: string; version: string }) {
   const activeHref = usePathname();
+  const phoneTitle = PHONE_TITLES[activeHref];
   const admin = useIsAdmin();
   const links = admin ? LINKS : STAFF_LINKS;
   return (
@@ -65,7 +79,9 @@ export function Nav({ name, version }: { name: string; version: string }) {
        pills, the VAT toggle, the version, the name and sign-out are ~1000px
        of content that cannot wrap, and they move to `MobileNav` — the bar
        along the bottom and the sheet behind More. */
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4">
+    /* A step slimmer on a phone (`max-md:py-3`): it is sticky, so every
+       pixel of it is taken from the list under it for as long as you scroll. */
+    <header className="group/header sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4 max-md:py-3">
       <div className="flex items-center gap-8">
         {/* The mark itself, and still the way back to the Dashboard.
             Sized by height, and 40px rather than the 32 that would match
@@ -112,7 +128,15 @@ export function Nav({ name, version }: { name: string; version: string }) {
         `md:hidden` on the mount point rather than on what goes in it, so a
         page portals into the slot without saying which width it is for.
       */}
-      <HeaderSlotTarget className="ml-4 flex min-w-0 flex-1 items-center justify-end md:hidden" />
+      <HeaderSlotTarget className="header-slot ml-4 flex min-w-0 flex-1 items-center justify-end empty:hidden md:hidden" />
+      {/* The page's name where the slot is empty — and only then, so a
+          search box arriving in it takes the space without the title
+          having to be told. */}
+      {phoneTitle && (
+        <h1 className="ml-4 min-w-0 flex-1 truncate text-right font-display text-xl font-extrabold text-ink md:hidden group-has-[.header-slot>*]/header:hidden">
+          {phoneTitle}
+        </h1>
+      )}
 
       <div className="flex items-center gap-3 max-md:hidden">
         {/* Every release again, on demand — for staff too, who are told
