@@ -14,16 +14,19 @@ import {
 import type { Flavor } from "@/lib/settings";
 import { useCanSeeMoney } from "@/components/RoleContext";
 import { HoverCard } from "@/components/HoverCard";
+import { FoldButton } from "@/components/PaneFold";
 import { count, currency } from "@/lib/money";
 
 /**
- * The strip above the table and the board: what the orders on screen add
- * up to, one slim tile per figure, with the detail a hover away.
+ * The pane on the right of the table and the board: what the orders on
+ * screen add up to, one tile per figure, with the detail a hover away.
  *
- * It was a 140px rail of stacked cards beside the table (v0.71 and
- * before). As a strip it costs one 44px row instead of a column of the
- * page's width, and it deliberately has **no shadow and no colour** — the
- * figures summarise the list, and the list is what the page is for.
+ * A narrow column that folds to a rail (v0.76), after a spell as a strip
+ * across the top (v0.73): the strip spent a row of height above the list
+ * on four numbers, and the owner wanted that height for orders. It is only
+ * as wide as its widest figure, and deliberately has **no shadow and no
+ * colour** — the figures summarise the list, and the list is what the
+ * page is for.
  *
  * Scoped, not global: it answers "what does this fortnight look like",
  * which is why it moves with the time scope and the filters rather than
@@ -38,6 +41,7 @@ export function OrdersSummary({
   stages,
   unitsPerPackage,
   flavors,
+  onFold,
 }: {
   /** Exactly the list on screen — the same array the table renders. */
   orders: Order[];
@@ -49,11 +53,16 @@ export function OrdersSummary({
   stages: Map<string, ProductionStage>;
   unitsPerPackage: Map<number, number>;
   flavors: Flavor[];
+  onFold: () => void;
 }) {
   const money = useCanSeeMoney();
 
   return (
-    <div className={`motion-fade grid gap-2.5 ${money ? "grid-cols-4" : "grid-cols-2"}`}>
+    <div className="motion-fade flex w-44 flex-col gap-2">
+      <div className="flex items-center justify-between pl-1">
+        <h2 className="text-[11px] font-bold tracking-[0.14em] text-ink-soft uppercase">Figures</h2>
+        <FoldButton side="right" title="Fold the figures away" onClick={onFold} />
+      </div>
       {money && (
         <Tile
           label="Income"
@@ -129,7 +138,6 @@ export function OrdersSummary({
         label="Units"
         value={count(totals.units)}
         aside={comparable ? <Delta current={totals.units} previous={previous.units} /> : null}
-        align="right"
         detail={() => {
           const rows = flavourUnits(orders, unitsPerPackage, flavors);
           return (
@@ -155,44 +163,40 @@ export function OrdersSummary({
 }
 
 /**
- * One figure: the label left, the number right, and whatever explains it
- * in a dark card on hover. The hover card is the shared `HoverCard`, which
- * portals to the page's top layer — a tile's detail can never be covered
- * by the table under it.
+ * One figure: the label, then the number under it with its change beside
+ * it, and whatever explains it in a dark card on hover. The hover card is
+ * the shared `HoverCard`, which portals to the page's top layer and opens
+ * to the left of a pane sitting against the right edge — a tile's detail
+ * can never be covered by the table beside it.
  */
 function Tile({
   label,
   value,
   aside = null,
   detail,
-  align = "left",
 }: {
   label: string;
   value: string;
   aside?: ReactNode;
   detail: () => ReactNode;
-  /** Which way the card leans — the last tile's opens leftward, off the edge. */
-  align?: "left" | "right";
 }) {
   return (
     <HoverCard
       width={250}
       height={220}
       tone="ink"
-      placement={align === "right" ? "below-right" : "below-left"}
-      className="min-w-0"
       render={() => <div className="flex flex-col gap-0.5 text-xs leading-relaxed text-cream/80">{detail()}</div>}
     >
       <div
         tabIndex={0}
-        className="flex h-11 cursor-help items-center justify-between gap-2 rounded-2xl bg-card/45 px-4 shadow-[inset_0_0_0_1px_var(--color-line)] transition-colors hover:bg-card/80"
+        className="flex cursor-help flex-col gap-1 rounded-2xl bg-card/45 px-4 py-3 shadow-[inset_0_0_0_1px_var(--color-line)] transition-colors hover:bg-card/80"
       >
         <span className="truncate text-xs font-semibold text-ink-soft">{label}</span>
-        <span className="flex min-w-0 items-baseline gap-2">
-          {aside}
+        <span className="flex items-baseline justify-between gap-2">
           <span className="font-display text-xl leading-none font-extrabold tracking-tight tabular-nums">
             {value}
           </span>
+          {aside}
         </span>
       </div>
     </HoverCard>

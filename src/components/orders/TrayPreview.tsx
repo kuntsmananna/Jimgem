@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef, type PointerEvent } from "react";
 import { evenSplit, type OrderLineFlavor } from "@/lib/orderTypes";
 import type { Flavor } from "@/lib/settings";
 import { flavorCubeGradient, isMixFlavor } from "@/lib/flavorStyle";
@@ -241,8 +241,10 @@ function Grid({
   columns: number;
   colorFor: (id: string | null) => string | null;
 }) {
+  const jiggle = useJiggle();
   return (
     <div
+      onPointerMove={jiggle}
       className="grid gap-[2px] rounded-lg bg-black/[0.07] p-2 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -256,11 +258,81 @@ function Grid({
         return (
           <span
             key={i}
-            className={`aspect-square rounded-[2px] ${background ? "" : "bg-line/60"}`}
+            className={`aspect-square origin-bottom rounded-[2px] ${background ? "" : "bg-line/60"}`}
             style={background ? { background } : undefined}
           />
         );
       })}
     </div>
   );
+}
+
+/** At most one new wobble this often while the pointer keeps moving. */
+const JIGGLE_EVERY_MS = 110;
+/** How long one wobble takes to settle. */
+const JIGGLE_MS = 700;
+/** Pointer speed, in px per event, past which a wobble is as big as it gets. */
+const JIGGLE_FULL_SPEED = 14;
+
+/**
+ * Brushing the pointer across a tray wobbles the cubes like jelly, in the
+ * direction the pointer went.
+ *
+ * Each cube leans that way from its base (`origin-bottom` — it sits on
+ * the tray), springs back past upright and settles in three shrinking
+ * swings, squashing as it leans. The cubes nearest the pointer go first
+ * and the far ones a beat later, so the wobble runs across the tray as a
+ * ripple rather than the whole grid twitching as one. How far they lean
+ * follows how fast the pointer moved, so a slow pass barely stirs them.
+ *
+ * Web Animations rather than a CSS class, because the direction and size
+ * differ every time and a keyframe cannot take them as arguments without
+ * restarting the animation by removing and re-adding the class. A new
+ * wobble simply replaces the old one on each cube. Off entirely under
+ * `prefers-reduced-motion`, and it never moves anything but `transform`.
+ */
+function useJiggle() {
+  const last = useRef<{ x: number; y: number; at: number } | null>(null);
+  return (e: PointerEvent<HTMLDivElement>) => {
+    const now = performance.now();
+    const previous = last.current;
+    if (previous && now - previous.at < JIGGLE_EVERY_MS) return;
+    last.current = { x: e.clientX, y: e.clientY, at: now };
+    if (!previous || now - previous.at > JIGGLE_MS) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const dx = e.clientX - previous.x;
+    const dy = e.clientY - previous.y;
+    const speed = Math.hypot(dx, dy);
+    if (speed < 2) return;
+    const strength = Math.min(1, speed / (JIGGLE_FULL_SPEED * (JIGGLE_EVERY_MS / 16)));
+    const ux = dx / speed;
+    const uy = dy / speed;
+
+    for (const cube of Array.from(e.currentTarget.children) as HTMLElement[]) {
+      const box = cube.getBoundingClientRect();
+      const distance = Math.hypot(box.left + box.width / 2 - e.clientX, box.top + box.height / 2 - e.clientY);
+      // Close cubes take the whole push; it fades over ~6 cubes' width.
+      const reach = Math.max(0.25, 1 - distance / (box.width * 6));
+      const lean = strength * reach;
+      const pose = (k: number) => {
+        const skew = -ux * 14 * lean * k;
+        const shift = ux * 2 * lean * k;
+        // Pushed down it squashes, pulled up it stretches.
+        const squash = 1 - uy * 0.12 * lean * k;
+        return `translateX(${shift}px) skewX(${skew}deg) scale(${2 - squash}, ${squash})`;
+      };
+      cube.animate(
+        [
+          { transform: "none" },
+          { transform: pose(1), offset: 0.16 },
+          { transform: pose(-0.55), offset: 0.4 },
+          { transform: pose(0.28), offset: 0.62 },
+          { transform: pose(-0.1), offset: 0.82 },
+          { transform: "none" },
+        ],
+        { duration: JIGGLE_MS, easing: "ease-out", delay: Math.min(120, distance * 0.35) },
+      );
+    }
+  };
 }

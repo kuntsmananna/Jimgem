@@ -8,7 +8,7 @@ import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/setting
 import { DonutChart, type DonutSlice } from "@/components/charts/DonutChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { EXPENSE_PALETTE, SERIES_COLORS } from "@/lib/chartPalette";
-import { CalendarDays, ChevronsLeft, ChevronsRight, CreditCard, Maximize2, Plus, Repeat, Tags, Trash2, UserRound } from "lucide-react";
+import { CalendarDays, CreditCard, Maximize2, Plus, Repeat, Tags, Trash2, UserRound } from "lucide-react";
 import { expenseCategoryIconElement } from "@/lib/icons";
 import { formatOrderDate } from "@/lib/orderTypes";
 import { currencyExact as currency } from "@/lib/money";
@@ -22,6 +22,7 @@ import { saveError } from "@/components/saveError";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 import { EmptyState } from "@/components/EmptyState";
+import { FoldButton, PaneRail, RAIL_WIDTH } from "@/components/PaneFold";
 import {
   EXPENSE_PANES_COOKIE,
   serializeCollapsedPanes,
@@ -532,71 +533,6 @@ export function ExpensesClient({
 }
 
 /** Wide enough for the fold arrow plus its target — see PaneRail. */
-const RAIL_WIDTH = "2.5rem";
-
-/**
- * A folded pane, still on the page.
- *
- * The whole rail is the button that brings it back, and it carries the
- * pane's name turned on its side: a bare arrow says something is hidden
- * without saying what, and the periods rail says which period is showing,
- * which is the one thing the pane was answering while it was open.
- *
- * The label reads bottom-to-top (`vertical-rl` turned 180°), the way a
- * book spine does.
- */
-function PaneRail({
-  label,
-  side,
-  onExpand,
-}: {
-  label: string;
-  /** Which flank it sits on — the arrow points back out toward the pane. */
-  side: "left" | "right";
-  onExpand: () => void;
-}) {
-  const Arrow = side === "left" ? ChevronsRight : ChevronsLeft;
-  return (
-    <button
-      onClick={onExpand}
-      title={`Show ${label}`}
-      aria-label={`Show ${label}`}
-      className="flex min-w-0 flex-col items-center gap-3 rounded-card border border-line bg-card py-3 text-ink-soft transition hover:bg-black/5 hover:text-ink"
-    >
-      <Arrow size={15} />
-      <span
-        className="truncate text-[11px] font-bold tracking-[0.14em] uppercase"
-        style={{ writingMode: "vertical-rl", rotate: "180deg" }}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
-/** The fold control inside an open pane, pointing at the edge it folds to. */
-function FoldButton({
-  side,
-  title,
-  onClick,
-}: {
-  side: "left" | "right";
-  title: string;
-  onClick: () => void;
-}) {
-  const Arrow = side === "left" ? ChevronsLeft : ChevronsRight;
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className="rounded-full p-1 text-ink-soft transition hover:bg-black/5 hover:text-ink"
-    >
-      <Arrow size={15} />
-    </button>
-  );
-}
-
 /**
  * One expense, as columns rather than a run of text.
  *

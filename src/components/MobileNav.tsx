@@ -17,6 +17,7 @@ import {
 import { logout } from "@/app/login/actions";
 import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
+import { WhatsNewButton } from "@/components/WhatsNew";
 import { useIsAdmin } from "@/components/RoleContext";
 
 /**
@@ -232,6 +233,10 @@ function MoreSheet({
               {label}
             </Link>
           ))}
+        </div>
+
+        <div className="border-t border-cream/15">
+          <WhatsNewButton variant="row" />
         </div>
 
         {/*

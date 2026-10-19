@@ -16,10 +16,11 @@ import {
 } from "@/lib/orderTypes";
 import type { ContentPreset, Flavor, PackageType, PaymentMethod } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
-import { SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
+import { ORDERS_FIGURES_COOKIE, SCOPES, inRange, previousRange, scopeRange, totalOf, type ScopeId } from "@/lib/orderScope";
 import { useStages } from "@/components/ProductionStagesContext";
 import { useVatView } from "@/components/VatViewContext";
 import { OrdersSummary } from "./OrdersSummary";
+import { PaneRail } from "@/components/PaneFold";
 import { COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
 import { PaymentMethodsProvider } from "./PaymentMethodsContext";
 import { EmptyState } from "@/components/EmptyState";
@@ -112,6 +113,7 @@ export function OrdersClient({
   clients,
   rates,
   paymentMethods,
+  figuresFolded: initiallyFolded,
 }: {
   orders: Order[];
   flavors: Flavor[];
@@ -122,8 +124,18 @@ export function OrdersClient({
   rates: Rates;
   /** Archived included, so an order paid by a retired method still names it. */
   paymentMethods: PaymentMethod[];
+  /** The figures pane was folded when the page loaded — read from its cookie. */
+  figuresFolded: boolean;
 }) {
   const router = useRouter();
+  const [figuresFolded, setFiguresFolded] = useState(initiallyFolded);
+  // Written straight to the cookie, never refreshed: nothing on the server
+  // depends on it beyond getting the first paint right.
+  const toggleFigures = () => {
+    const next = !figuresFolded;
+    setFiguresFolded(next);
+    document.cookie = `${ORDERS_FIGURES_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
+  };
   const searchParams = useSearchParams();
   const stages = useStages();
   const [view, setView] = useState<View>("table");
@@ -824,35 +836,14 @@ export function OrdersClient({
         )}
 
       {/*
-        The summary rides beside the table and the board, not the calendar,
-        which navigates by its own month and would otherwise carry two
-        different windows at once — and which wants every pixel of the page
-        for its grid.
+        The figures ride beside the table and the board in a pane of their
+        own on the right, which folds to a rail — not on the calendar, which
+        navigates by its own month and would otherwise carry two different
+        windows at once, and which wants every pixel of the page for its
+        grid. The phone has its own three tiles further up.
       */}
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {/*
-            The figures, as one slim strip above the list rather than a rail
-            beside it (v0.73): the rail took 140px of width from the table
-            for four numbers. Not on the calendar, which navigates by its
-            own month and would otherwise carry two windows at once. The
-            phone has its own three tiles further up.
-          */}
-          {view !== "calendar" && (
-            <div className="max-md:hidden">
-              <OrdersSummary
-                orders={inScope}
-                totals={totals}
-                previous={previousTotals}
-                scopeLabel={scopeLabel}
-                comparable={previous !== null}
-                stages={stageIndex}
-                unitsPerPackage={unitsPerPackage}
-                flavors={flavors}
-              />
-            </div>
-          )}
-
           {/*
             Both halves take the same `inScope` array — the mobile list is a
             renderer, not a second filtering path — and each is hidden at the
@@ -923,6 +914,26 @@ export function OrdersClient({
             />
           )}
         </div>
+
+        {view !== "calendar" && (
+          <aside className="shrink-0 max-md:hidden">
+            {figuresFolded ? (
+              <PaneRail label="Figures" side="right" onExpand={toggleFigures} />
+            ) : (
+              <OrdersSummary
+                orders={inScope}
+                totals={totals}
+                previous={previousTotals}
+                scopeLabel={scopeLabel}
+                comparable={previous !== null}
+                stages={stageIndex}
+                unitsPerPackage={unitsPerPackage}
+                flavors={flavors}
+                onFold={toggleFigures}
+              />
+            )}
+          </aside>
+        )}
 
         </div>
 

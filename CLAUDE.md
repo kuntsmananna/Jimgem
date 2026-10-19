@@ -98,7 +98,13 @@ something here isn't obvious.
   reads as one block. Shared by the order form's Content tab and Settings' `PresetsPanel`, so a preset
   previews as exactly the tray it produces. It replaced a draggable split
   bar (deleted): the bar showed proportions accurately but never showed
-  the product being handed to a customer.
+  the product being handed to a customer. **Brushing the pointer across it
+  wobbles the cubes like jelly** (`useJiggle`, v0.76): each leans the way
+  the pointer went from its base, swings back past upright and settles,
+  squashing as it leans, the nearest cubes first so it runs across the
+  tray as a ripple, and harder the faster the pointer moved. Web
+  Animations rather than a class, since the direction and size differ
+  every time; `transform` only, and off under `prefers-reduced-motion`.
 - **A flavour named `MIX` means "assorted"**, matched by name in
   `flavorStyle.ts`'s `isMixFlavor`. The preview expands it into an even
   spread of every other flavour and **shuffles that spread**, so a mix
@@ -1779,6 +1785,11 @@ compares identity, and a panel builds a fresh draft before every call.
   portals to `document.body`, which a server render does not have.
   `/api/announcements` is the one API resource a staff login may reach
   beyond orders and tasks, so a staff announcement could be dismissed too.
+  **Every release can be read again** from a sparkle icon beside the VAT
+  switch (`WhatsNewButton`, for staff too) and a row in the phone's More
+  sheet: the same popup with *all* the releases for that role rather than
+  the arrival popup's three, opened with `replay`, which records nothing
+  on close.
 - **The read path survives its own migration not having been run yet.**
   `getSeriesHeads` catches `isMissingColumn(error, "recurring")` and
   answers "nothing repeats", so the Expenses page and Settings stay up in
@@ -2220,17 +2231,12 @@ column of boxes is one edge too many, and the headings are meant to sit
 header takes `bg-cream` for the same reason — it has to be opaque, and it
 is on the page now rather than on a card.
 
-**The table is `w-auto`, so the boxes end where their content does.**
-Stretched to the page with `w-full`, the spare width was shared out among
-the columns and the last one came out wider than anything in it — the box
-running past its own content at the right end, the same complaint the
-gutter below answers at the left. `auto` is not "as wide as possible"
-here: CSS resolves an auto table to its max-content width *capped at the
-space available*, so a busy list still fills the column and wraps exactly
-as it did, and only a list with room to spare stops short. Checked against
-`w-full` at 1400/1130/1000/900/800 with both short and long values: the
-horizontal scrollbar appears at exactly the same widths under both, so
-nothing gained a scrollbar by stopping short.
+**The table is `w-full`** (v0.76), so a list with room to spare spreads
+across the page. It was `w-auto` from v0.68 to v0.75, ending each box at
+its last value, because a stretched box with a stroke round it read as an
+empty frame past its content; with no stroke at rest that objection went,
+and the owner wanted the width used. A busy list fills and wraps exactly
+as before either way.
 
 **The tick box sits in a gutter beside the box, not inside it.** That
 column holds a control which is invisible until the row is hovered and has
@@ -2270,16 +2276,26 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   drop-shadow follows exactly what the cells paint. At rest the cells are
   72% white so the hovered one is the brightest thing in the list. Since
   v0.74 every other `.hover-line` lifts the same way.
-- **Rows are compact** (`py-1.5`, ~38px, centred) and **arrive in a
+- **Rows are a box, and only the hovered one is drawn in full** (v0.76):
+  `py-2.5`, ~46px, centred. At rest a row is a weak fill (42% white) with
+  **no stroke** — the edge is there but transparent, so gaining its colour
+  on hover never nudges the row — and the hovered one goes white, edged
+  and lifted, the only box on the page drawn whole. They **arrive in a
   cascade** (`.motion-row`, 22ms apart, capped at 12 steps). The animation
   fills `backwards`, never `both`: a held end state pins `transform` and
   the hover lift could not move the row.
-- **The figures are a strip, not a rail** — `OrdersSummary` is four slim
-  tiles above the list (Income, Balance due, Orders, Units), no shadow and
-  no colour, each with its detail in a dark `HoverCard` under it: who owes
-  what, orders by status, units by flavour. It used to be a 140px column
-  beside the table. `HoverCard` gained `placement` for that (`below-left` /
-  `below-right`), since a card to the side of a tile sits on its neighbour.
+- **The figures are a pane on the right that folds** (v0.76) —
+  `OrdersSummary` is four tiles stacked in a 176px column (Income, Balance
+  due, Orders, Units), no shadow and no colour, each with its detail in a
+  dark `HoverCard` that opens to its left: who owes what, orders by
+  status, units by flavour. For v0.73-v0.75 it was a strip across the top,
+  which spent a row of height above the list; the owner wanted that height
+  for orders. It folds to the same rail Expenses' panes use (`PaneFold.tsx`
+  — `PaneRail`, `FoldButton`, `RAIL_WIDTH`, moved out of `ExpensesClient`
+  to be shared), and the choice is the `ORDERS_FIGURES_COOKIE` cookie,
+  read by the server page for the reason the Expenses panes' is.
+  `HoverCard`'s `placement` (`below-left` / `below-right`) came from the
+  strip and stays for the next row of tiles that needs it.
 - **Sharp jelly cubes** are `.jelly-cube`, coloured through `--g/--b/--s`
   (`cubeColors` in `JellyLoader.tsx`), so any flavour row or chart ramp can
   wear one. The Units cell leads with one per flavour, largest first; a
@@ -2527,13 +2543,12 @@ would drive the row and strand those charts at the top of a very long
 page; capped at a fixed height, it left a third of the pane empty. Each
 row shows `orderTotal`, matching the KPI tiles above it.
 
-`OrdersSummary` is the rail beside the table and the board — not the
+`OrdersSummary` is the pane beside the table and the board — not the
 calendar, which would then carry two different windows at once, and which
 takes the whole page for its grid. Nothing in the toolbar moves when it
-does, because the toolbar is not in that row. It is a
-fixed 140px rather than a share of the page — 15% spent 180px of a 13"
-laptop on four short numbers, taken from the table that needs them. It
-totals **exactly the list on screen** — units, orders, mirrors, income —
+does, because the toolbar is not in that row. It is a fixed 176px rather
+than a share of the page — a share spent 180px of a 13" laptop on four
+short numbers, taken from the table that needs them. It totals **exactly the list on screen** — units, orders, mirrors, income —
 and compares each against the same list one window back (the previous
 fortnight, last month, this month). No comparison exists for "all time",
 and a previous window of zero renders "—" rather than "+100%", which

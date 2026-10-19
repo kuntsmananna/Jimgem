@@ -6,7 +6,8 @@ import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
-import type { Announcement } from "@/lib/announcement";
+import { announcementsFor, type Announcement } from "@/lib/announcement";
+import { useRole } from "@/components/RoleContext";
 
 const noSubscription = () => () => {};
 
@@ -47,7 +48,20 @@ const ITEM_ICON = {
  * the server and true on the client in the same pass that hydrates, the
  * trick `useMediaQuery` uses, so nothing renders until there is a body.
  */
-export function WhatsNew({ announcements }: { announcements: Announcement[] }) {
+export function WhatsNew({
+  announcements,
+  replay = false,
+  onClose,
+}: {
+  announcements: Announcement[];
+  /**
+   * Opened on purpose from the nav's button (`WhatsNewButton`) to read the
+   * releases again, rather than on arrival: nothing is recorded on close,
+   * since every page was already seen to be offered there.
+   */
+  replay?: boolean;
+  onClose?: () => void;
+}) {
   const [open, setOpen] = useState(true);
   const inBrowser = useSyncExternalStore(
     noSubscription,
@@ -58,6 +72,8 @@ export function WhatsNew({ announcements }: { announcements: Announcement[] }) {
 
   const dismiss = () => {
     setOpen(false);
+    onClose?.();
+    if (replay) return;
     void fetch("/api/announcements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -384,5 +400,45 @@ function Cubes({ colors }: { colors: (typeof SERIES_COLORS)[keyof typeof SERIES_
         <span key={i} className="jelly-cube h-2.5 w-2.5" style={cubeColors(color)} />
       ))}
     </span>
+  );
+}
+
+/**
+ * Every release this account is meant to hear about, again — an icon
+ * beside the VAT switch (and a row in the phone's More sheet). The popup
+ * shows once on arrival and any way of closing it counts as read, so
+ * without this a page skimmed past on a busy morning was gone for good.
+ * All of them rather than the arrival popup's three, because this one is
+ * asked for.
+ */
+export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "row" }) {
+  const role = useRole();
+  const [open, setOpen] = useState(false);
+  const announcements = announcementsFor(role);
+  if (announcements.length === 0) return null;
+  return (
+    <>
+      {variant === "icon" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="What's new"
+          title="What's new"
+          className="press flex h-8 w-8 items-center justify-center rounded-full text-ink-soft transition hover:bg-black/5 hover:text-ink"
+        >
+          <Sparkles size={15} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm font-semibold opacity-60"
+        >
+          <Sparkles size={17} />
+          What&apos;s new
+        </button>
+      )}
+      {open && <WhatsNew announcements={announcements} replay onClose={() => setOpen(false)} />}
+    </>
   );
 }

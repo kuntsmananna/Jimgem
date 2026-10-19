@@ -13,11 +13,13 @@ import { OrdersClient } from "@/components/orders/OrdersClient";
 import { currentRole } from "@/lib/auth";
 import { canSeeMoney } from "@/lib/roles";
 import { redactOrders, redactPresets, redactRates } from "@/lib/redact";
+import { cookies } from "next/headers";
+import { ORDERS_FIGURES_COOKIE } from "@/lib/orderScope";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods] =
+  const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods, cookieStore] =
     await Promise.all([
     currentRole(),
     getOrders(),
@@ -37,6 +39,7 @@ export default async function OrdersPage() {
     // Archived included, like the lists above: an order paid by a method
     // since retired still names it, and the picker filters it out itself.
     getPaymentMethods(true),
+    cookies(),
   ]);
 
   /*
@@ -63,6 +66,7 @@ export default async function OrdersPage() {
       // The list itself is not money — the order's choice from it is, and
       // redactOrders has already taken that out.
       paymentMethods={paymentMethods}
+      figuresFolded={cookieStore.get(ORDERS_FIGURES_COOKIE)?.value === "1"}
     />
   );
 }

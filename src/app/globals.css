@@ -932,10 +932,12 @@ body {
  * win.
  */
 .orders-rows > tr > td {
-  /* A touch below white at rest, so the hovered row is the brightest
-     thing in the list rather than one white among many. */
-  background-color: --alpha(var(--color-card) / 72%);
-  border-block: 1px solid var(--color-line);
+  /* At rest a row is a weak fill and no stroke (v0.76), so the hovered
+     one — white, edged and lifted — is the only box drawn in full. The
+     edge is there but transparent, so gaining its colour on hover never
+     nudges the row by a pixel. */
+  background-color: --alpha(var(--color-card) / 42%);
+  border-block: 1px solid transparent;
   transition: background-color 140ms ease, border-color 140ms ease;
 }
 
@@ -958,13 +960,13 @@ body {
 }
 
 .orders-rows > tr > td:nth-child(2) {
-  border-left: 1px solid var(--color-line);
+  border-left: 1px solid transparent;
   border-start-start-radius: 0.75rem;
   border-end-start-radius: 0.75rem;
 }
 
 .orders-rows > tr > td:last-child {
-  border-right: 1px solid var(--color-line);
+  border-right: 1px solid transparent;
   border-start-end-radius: 0.75rem;
   border-end-end-radius: 0.75rem;
 }
