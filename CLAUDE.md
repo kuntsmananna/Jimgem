@@ -375,7 +375,9 @@ and would pull `@neondatabase/serverless` and `googleapis` into the browser
 — so reviving it means rendering it from the server page and handing the
 element to `DashboardClient`, which its header spells out.
 
-A done task **sinks to the bottom, struck through, on the cream the page
+A task line takes **a slight hover** — its edge darkens a step and a soft
+shadow gathers under it — rather than the full lift: it is ticked and
+edited in place, not opened. A done task **sinks to the bottom, struck through, on the cream the page
 is already made of** — the same "a finished row sinks into the page" move
 the phone's Orders list makes, and for the same reason: it costs no
 contrast, because no text colour changes. It stays rather than
@@ -2291,7 +2293,11 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   **`position: relative; z-index: 15`** — above the day headings (z-10),
   below the header (z-20) — because a day heading is sticky and opaque,
   and the next day's heading cut the shadow of a day's last order off flat.
-  The scroller keeps `pr-3 pb-6` of room for that shadow, and wears
+  **Chromium clips that drop-shadow to the table's own box**, so room
+  outside the table does nothing: the table carries `pr-6` (a
+  separated-borders table takes padding), the left has the tick-box
+  gutter, and the wide shadow's blur is held to 20px to fit inside it.
+  The scroller keeps `pb-6` of room below, and wears
   `.quiet-scroll`: a thin bar in the line colour, where the platform's
   default was a dark 15px slab, the darkest thing on the page.
 - **Rows are a box, and only the hovered one is drawn in full** (v0.76):

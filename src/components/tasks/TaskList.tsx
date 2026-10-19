@@ -388,7 +388,11 @@ function TaskRow({
         wrapping row that does not wrap is the row it was.
       */
       style={{ "--i": Math.min(index, 12) } as React.CSSProperties}
-      className={`motion-row group flex flex-wrap items-center gap-2.5 rounded-xl border border-line px-3 py-2 ${
+      // A slight hover (v0.77): the edge darkens a step and a soft shadow
+      // gathers under it — enough to say which line the pointer is on,
+      // without the full lift a list row gets, since a task is ticked and
+      // edited in place rather than opened.
+      className={`motion-row group flex flex-wrap items-center gap-2.5 rounded-xl border border-line px-3 py-2 transition-[border-color,box-shadow] duration-150 hover:border-ink/15 hover:shadow-[0_6px_14px_-8px_rgb(150_95_65/0.3)] ${
         // A finished task takes the cream the page is already made of, the
         // same way a delivered order does on the phone's Orders list: the
         // list then separates at a glance into what is left and what is

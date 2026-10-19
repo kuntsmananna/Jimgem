@@ -519,7 +519,9 @@ body {
  * Chromium against both.
  */
 .orders-rows > tr:not(.day-row):hover {
-  filter: drop-shadow(0 3px 6px rgb(150 95 65 / 0.1)) drop-shadow(0 16px 26px rgb(150 95 65 / 0.2));
+  /* The wide shadow's blur is held to 20px so it fits the 32px tick-box
+     gutter on the left: the shadow cannot reach past the table's box. */
+  filter: drop-shadow(0 3px 6px rgb(150 95 65 / 0.1)) drop-shadow(0 12px 20px rgb(150 95 65 / 0.2));
   transform: translateY(-1px);
   /*
    * Above the day headings (z-10), below the table header (z-20). A day

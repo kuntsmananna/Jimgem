@@ -247,11 +247,11 @@ export function OrdersTable({
       they cannot do inside a white card.
     */
     /*
-      Padded on the right and the bottom so a hovered row's shadow has room
-      before the scroller clips it — the left has the tick-box gutter
-      already. `quiet-scroll` keeps the bar thin and pale.
+      Padded at the bottom so a hovered row's shadow has room before the
+      scroller clips it; the right-hand room is on the table itself (see
+      below). `quiet-scroll` keeps the bar thin and pale.
     */
-    <div className="quiet-scroll max-h-[70vh] overflow-auto pr-3 pb-6">
+    <div className="quiet-scroll max-h-[70vh] overflow-auto pb-6">
       {/*
         **No `min-width` floor.** There was a 1100px one, set when all
         fifteen columns showed, and it is what put a horizontal scrollbar
@@ -282,7 +282,14 @@ export function OrdersTable({
         globals.css), so a wide box no longer reads as an empty frame.
       */}
       <table
-        className={`w-full border-separate border-spacing-x-0 border-spacing-y-1.5 text-left text-sm ${
+        /*
+          `pr-6` on the table, not the scroller: Chromium clips a hovered
+          row's drop-shadow to the *table's* box, so room outside the table
+          does nothing — the shadow came out with hard vertical edges at
+          the table's sides. A separated-borders table takes padding, and
+          the left already has the tick-box gutter inside it.
+        */
+        className={`w-full border-separate border-spacing-x-0 border-spacing-y-1.5 pr-6 text-left text-sm ${
           widths ? "table-fixed" : ""
         }`}
       >
