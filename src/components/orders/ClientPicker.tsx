@@ -96,7 +96,7 @@ export function ClientPicker({
         className="keeps-size w-full rounded-xl px-2.5 py-1 font-display text-[28px] leading-tight font-extrabold tracking-tight placeholder:text-ink-soft/35"
       />
 
-      <div className="mt-1 flex min-h-[1.25rem] items-center gap-2 text-[11px] max-md:pl-1.5">
+      <div className="mt-1 flex min-h-[1.25rem] items-center gap-2 text-[11px] max-md:min-h-0 max-md:pl-1.5 max-md:empty:hidden">
         {picked && (
           <>
             {leading}
@@ -125,13 +125,26 @@ export function ClientPicker({
             {/* Asked for here because it is the match key from now on:
                 SUMIT customers carry no phone today, so this is what makes
                 a client findable there rather than by name. */}
-            <input
-              value={phone}
-              onChange={(e) => onPhone(e.target.value)}
-              placeholder="Phone"
-              aria-label="Client phone"
-              className="w-32 rounded-full border border-line bg-transparent px-2 py-0.5 text-[11px] text-ink outline-none focus:border-accent"
-            />
+            {/* On a phone it is set like the Location field under it — a
+                mark inside a filled box — and asks for the phone keypad
+                (v0.84.2). */}
+            <label className="relative flex items-center">
+              <Phone
+                size={14}
+                aria-hidden
+                className="pointer-events-none absolute left-2.5 hidden text-ink-soft max-md:block"
+              />
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => onPhone(e.target.value)}
+                placeholder="Phone"
+                aria-label="Client phone"
+                className="w-32 rounded-full border border-line bg-transparent px-2 py-0.5 text-[11px] text-ink outline-none focus:border-accent max-md:w-44 max-md:rounded-xl max-md:border-transparent max-md:bg-ink/[0.05] max-md:py-1.5 max-md:pr-2.5 max-md:pl-8 max-md:focus:border-accent max-md:focus:bg-card"
+              />
+            </label>
             {nearby.length > 0 && (
               <span className="text-ink-soft">
                 similar: {nearby.map((client) => client.name).join(", ")}

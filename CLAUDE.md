@@ -338,7 +338,10 @@ owner's call): the name, the "On file" line — led by the client-card mark
 (`ClientPicker`'s `leading`) — and the date and location sit in one
 cream-tinted, edged box above the chip groups, the part that says which
 order this is set apart from the parts that classify it. A plain column on
-a laptop.
+a laptop. The same box heads the first step of adding an order, since it is
+the same panel; there the "On file" line is not drawn until a name gives it
+something to say, and a new client's phone is a filled box with a mark like
+Location's, asking for the phone keypad (v0.84.2).
 
 **On a phone every heading in the form is ruled and every chip spread
 answers from the right** (v0.84, the owner's call): `ChipSpread`'s caption
