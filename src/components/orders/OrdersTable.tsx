@@ -37,6 +37,30 @@ import { useIsAdmin } from "@/components/RoleContext";
 
 
 /**
+ * Lets a hovered row paint above the day headings (`.lifts-over`, z-15 in
+ * globals.css) — but only when it is clear of the headings pinned at the
+ * top. Below them it has to be above the *next* day's opaque heading, or
+ * that heading cuts its shadow off flat; partly under a pinned one it has
+ * to stay beneath, or the row covers the very label naming its day.
+ * Measured on entry rather than kept up to date, so a scroll drops every
+ * lift (`dropLifts`) instead of tracking it.
+ */
+function liftIfClear(row: HTMLTableRowElement, head: HTMLTableRowElement | null) {
+  const top = row.getBoundingClientRect().top;
+  const headBottom = head?.getBoundingClientRect().bottom ?? 0;
+  let pinnedBottom = headBottom;
+  for (const heading of row.closest("table")?.querySelectorAll(".day-row > th:last-child") ?? []) {
+    const box = heading.getBoundingClientRect();
+    if (box.top <= headBottom + 1) pinnedBottom = Math.max(pinnedBottom, box.bottom);
+  }
+  row.classList.toggle("lifts-over", top >= pinnedBottom);
+}
+
+function dropLifts(e: React.UIEvent<HTMLElement>) {
+  for (const row of e.currentTarget.querySelectorAll(".lifts-over")) row.classList.remove("lifts-over");
+}
+
+/**
  * The header row's height, watched.
  *
  * The day headings stick directly under it, and the header is not a fixed
@@ -251,7 +275,7 @@ export function OrdersTable({
       scroller clips it; the right-hand room is on the table itself (see
       below). `quiet-scroll` keeps the bar thin and pale.
     */
-    <div className="quiet-scroll max-h-[70vh] overflow-auto pb-6">
+    <div className="quiet-scroll max-h-[70vh] overflow-auto pb-6" onScroll={dropLifts}>
       {/*
         **No `min-width` floor.** There was a 1100px one, set when all
         fifteen columns showed, and it is what put a horizontal scrollbar
@@ -275,11 +299,14 @@ export function OrdersTable({
         rather than a band in a ledger — see the block in globals.css. The
         gap is vertical only, so nothing about the column widths changes.
 
-        **`w-full`** (v0.76): a list with room to spare spreads across the
-        page rather than stopping where its content does. It was `w-auto`
-        for a while, so the box ended at its last value; the owner wanted
-        the width used, and at rest a row has no stroke now (see
-        globals.css), so a wide box no longer reads as an empty frame.
+        **`w-full` until a column is dragged** (v0.76): a list with room to
+        spare spreads across the page rather than stopping where its content
+        does. Once the columns are pinned (`table-fixed`) the table is as
+        wide as its `<col>`s add up to instead: at 100% a fixed table shares
+        any width taken off one column back out across all of them, so a
+        column dragged narrower barely moved while its neighbours grew. The
+        first drag freezes the columns at the widths they show, which add up
+        to the full width, so nothing jumps when the switch happens.
       */}
       <table
         /*
@@ -289,8 +316,8 @@ export function OrdersTable({
           the table's sides. A separated-borders table takes padding, and
           the left already has the tick-box gutter inside it.
         */
-        className={`w-full border-separate border-spacing-x-0 border-spacing-y-1.5 pr-6 text-left text-sm ${
-          widths ? "table-fixed" : ""
+        className={`border-separate border-spacing-x-0 border-spacing-y-1.5 pr-6 text-left text-sm ${
+          widths ? "table-fixed" : "w-full"
         }`}
       >
         {widths && (
@@ -439,6 +466,8 @@ export function OrdersTable({
               <tr
                 key={order.key}
                 onClick={(e) => handleRowClick(e, order.key)}
+                onMouseEnter={(e) => liftIfClear(e.currentTarget, headRef.current)}
+                onMouseLeave={(e) => e.currentTarget.classList.remove("lifts-over")}
                 // `is-offer` marks a quote rather than a booking — see
                 // globals.css for the dashed edge that says so, which has
                 // to survive the row turning black on hover.

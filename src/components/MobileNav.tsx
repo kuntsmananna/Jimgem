@@ -11,13 +11,15 @@ import {
   LogOut,
   Receipt,
   Settings,
+  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { Sheet, SheetClose } from "@/components/Sheet";
 import { initials, VatViewToggle } from "@/components/Nav";
-import { WhatsNewButton } from "@/components/WhatsNew";
+import { WhatsNew, WhatsNewButton } from "@/components/WhatsNew";
+import { announcementsFor } from "@/lib/announcement";
 import { useIsAdmin } from "@/components/RoleContext";
 
 /**
@@ -51,12 +53,13 @@ const MORE = [
 /**
  * The bar a staff account gets: the two pages it has, and no More.
  *
- * Two cells rather than four, so each is half the screen — the bar sizes
- * itself from what is in it (`flex items-stretch`, every cell `flex-1`),
- * which is what makes this a list rather than a layout. Expenses goes
- * because it is money; More goes because everything behind it is one or
- * the other, and a fourth target opening an empty sheet is worse than no
- * fourth target.
+ * Two pages rather than four, so the bar sizes itself from what is in it
+ * (`flex items-stretch`, every cell `flex-1`), which is what makes this a
+ * list rather than a layout. Expenses goes because it is money; More goes
+ * because everything behind it is one or the other, and a target opening
+ * an empty sheet is worse than no target. What's new and Sign out — the
+ * two things behind More a staff account still needs — take cells of
+ * their own instead.
  */
 const STAFF_BAR = [
   { href: "/orders", label: "Orders", icon: ClipboardList },
@@ -82,6 +85,8 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
   const path = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const admin = useIsAdmin();
+  const [newsOpen, setNewsOpen] = useState(false);
+  const staffNews = admin ? [] : announcementsFor("staff");
 
   return (
     <>
@@ -111,11 +116,20 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
             onClick={() => setMoreOpen(true)}
           />
         ) : (
-          <form action={logout} className="flex flex-1">
-            <BarItem label="Sign out" icon={LogOut} active={false} type="submit" />
-          </form>
+          <>
+            {/* Every release again — the arrival popup is the only other
+                way a staff account on a phone would ever see one. */}
+            {staffNews.length > 0 && (
+              <BarItem label="What's new" icon={Sparkles} active={newsOpen} onClick={() => setNewsOpen(true)} />
+            )}
+            <form action={logout} className="flex flex-1">
+              <BarItem label="Sign out" icon={LogOut} active={false} type="submit" />
+            </form>
+          </>
         )}
       </nav>
+
+      {newsOpen && <WhatsNew announcements={staffNews} replay onClose={() => setNewsOpen(false)} />}
 
       {moreOpen && <MoreSheet name={name} version={version} path={path} onClose={() => setMoreOpen(false)} />}
     </>

@@ -77,7 +77,8 @@ something here isn't obvious.
   equal-weight fills blend into a colour nobody plotted), and marks a
   hovered month with a small lit cube per series and a dark reading card.
   It has **a dashed grid and a real scale** in a 44px column on the left
-  (`niceTicks`: round steps, so every label is a value the scale reaches;
+  (`niceTicks`: round steps of at least 1, so every label is a value the
+  scale reaches and a count axis never labels the same whole number twice;
   `axisFormat`, `₪20k` by default), and none under `normalizePerSeries`,
   where there is no one scale to label. The curve is **monotone**
   (Fritsch–Carlson), because the Catmull-Rom it replaced overshot — a ₪0
@@ -90,7 +91,10 @@ something here isn't obvious.
   `-₪6,300` there as everywhere else.
   **A part-of-whole chart is `BarBreakdown`**, where there was a donut:
   ranked largest first, each bar measured against the largest, figure and
-  share written on every row and a total under them. Bars are compared
+  share written on every row and a total under them. A category that nets
+  negative (a refund) has no bar but is listed under the bars and counted in
+  the total, so the total agrees with the period's own; shares are of the
+  positive spend, so they add to 100%. Bars are compared
   against a straight edge where a ring's slices are guessed by angle, and
   nothing hides behind a hover the way the donut's centre readout did.
 - `src/components/orders/TrayPreview.tsx` draws a package as its actual
@@ -121,7 +125,10 @@ something here isn't obvious.
   wobbles the cubes like jelly** (`useJiggle`, v0.76): each leans the way
   the pointer went from its base, swings back past upright and settles,
   squashing as it leans, the nearest cubes first so it runs across the
-  tray as a ripple, and harder the faster the pointer moved. Web
+  tray as a ripple, and harder the faster the pointer moved. Cubes more
+  than ~6 cube-widths away are left alone, so the work follows the ripple
+  rather than the tray — a thousand-unit event tray still animates a few
+  dozen. Web
   Animations rather than a class, since the direction and size differ
   every time; `transform` only, and off under `prefers-reduced-motion`.
 - **A flavour named `MIX` means "assorted"**, matched by name in
@@ -1805,7 +1812,9 @@ compares identity, and a panel builds a fresh draft before every call.
   beyond orders and tasks, so a staff announcement could be dismissed too.
   **Every release can be read again** from a sparkle icon beside the VAT
   switch (`WhatsNewButton`, for staff too) and a row in the phone's More
-  sheet: the same popup with *all* the releases for that role rather than
+  sheet — and, for a staff account on a phone, which has no More, a
+  **What's new** cell in the bottom bar beside Sign out: the same popup
+  with *all* the releases for that role rather than
   the arrival popup's three, opened with `replay`, which records nothing
   on close. The icon carries a `HoverCard` saying what it is, which opens
   the moment the pointer arrives — a bare sparkle explains nothing, and a
@@ -2078,9 +2087,9 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 - **A staff account's nav is two pills, and `/tasks` earns one.** For an
   admin the same list is a pane on the Dashboard, which a staff account
   cannot reach, so without it the page would exist with no way in on a
-  laptop. On the phone the bottom bar is Orders, Tasks and **Sign out** —
-  everything behind More is money or a page they have not got, and a
-  fourth target opening an empty sheet is worse than no fourth target.
+  laptop. On the phone the bottom bar is Orders, Tasks, **What's new** and
+  **Sign out** — everything else behind More is money or a page they have
+  not got, and a target opening an empty sheet is worse than no target.
 - **The table keeps its tick-box column and draws nothing in it.** Every
   bulk action is an admin's, so the boxes would lead only to a 403 — but
   the column itself stays, because `.orders-rows > tr > td:first-child` is
@@ -2252,7 +2261,10 @@ header takes `bg-cream` for the same reason — it has to be opaque, and it
 is on the page now rather than on a card.
 
 **The table is `w-full`** (v0.76), so a list with room to spare spreads
-across the page. It was `w-auto` from v0.68 to v0.75, ending each box at
+across the page — **until a column is dragged**. Pinned (`table-fixed`)
+it is as wide as its `<col>`s add up to, because a fixed table at 100%
+shares any width taken off one column back out across all of them, and a
+column dragged narrower barely moved while its neighbours grew. It was `w-auto` from v0.68 to v0.75, ending each box at
 its last value, because a stretched box with a stroke round it read as an
 empty frame past its content; with no stroke at rest that objection went,
 and the owner wanted the width used. A busy list fills and wraps exactly
@@ -2300,6 +2312,10 @@ corners and B4's sharp jelly cubes. What it changed on Orders:
   hover changes only paint) — above the day headings (z-10),
   below the header (z-20) — because a day heading is sticky and opaque,
   and the next day's heading cut the shadow of a day's last order off flat.
+  **Only when the row is clear of the headings pinned at the top**:
+  `liftIfClear` measures on mouse-enter and sets `.lifts-over`, and any
+  scroll drops it (`dropLifts`) — a row scrolling under a pinned heading
+  lifted over it would cover the label naming its day.
   **Chromium clips that drop-shadow to the table's own box**, so room
   outside the table does nothing: the table carries `pr-6` (a
   separated-borders table takes padding), the left has the tick-box

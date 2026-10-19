@@ -523,13 +523,18 @@ body {
      gutter on the left: the shadow cannot reach past the table's box. */
   filter: drop-shadow(0 3px 6px rgb(150 95 65 / 0.1)) drop-shadow(0 12px 20px rgb(150 95 65 / 0.2));
   transform: translateY(-1px);
-  /*
-   * Above the day headings (z-10), below the table header (z-20). A day
-   * heading is sticky and opaque cream, so the next day's heading painted
-   * over the shadow of a day's last order and cut it off flat (v0.77).
-   * The row is `position: relative` at rest (below), so the hover changes
-   * only paint properties and never re-lays out the table.
-   */
+}
+
+/*
+ * Above the day headings (z-10), below the table header (z-20). A day
+ * heading is sticky and opaque cream, so the next day's heading painted
+ * over the shadow of a day's last order and cut it off flat (v0.77). Only
+ * when the row is clear of the headings pinned at the top, though —
+ * `liftIfClear` in OrdersTable decides — or a row scrolling under a pinned
+ * heading would be drawn over the label naming its day. The row is
+ * `position: relative` at rest (below), so this changes paint only.
+ */
+.orders-rows > tr.lifts-over:hover {
   z-index: 15;
 }
 

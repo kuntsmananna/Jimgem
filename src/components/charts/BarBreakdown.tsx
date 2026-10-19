@@ -34,19 +34,27 @@ export function BarBreakdown({
   valueFormat?: (value: number) => string;
 }) {
   const ranked = slices.filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
-  const total = ranked.reduce((sum, s) => sum + s.value, 0);
-  if (total === 0) return <p className="text-sm text-ink-soft">No data for this period.</p>;
-  const largest = ranked[0].value;
+  // A category can net negative — a refund booked as a negative expense.
+  // It has no bar to draw, but it is in the total, or the total here would
+  // disagree with the period's own total on the same screen.
+  const credits = slices.filter((s) => s.value < 0).sort((a, b) => a.value - b.value);
+  const gross = ranked.reduce((sum, s) => sum + s.value, 0);
+  const total = gross + credits.reduce((sum, s) => sum + s.value, 0);
+  if (gross === 0 && credits.length === 0) return <p className="text-sm text-ink-soft">No data for this period.</p>;
+  const largest = ranked[0]?.value ?? 1;
 
   return (
     <div className="flex flex-col gap-3 tabular-nums">
       <ul className="motion-stagger flex flex-col gap-3">
-        {ranked.map((slice) => (
-          <li key={slice.label} className="flex flex-col gap-1.5">
+        {/* Keyed by position as well as label: two slices can share a
+            label — every flavour that no longer resolves reads "Unknown". */}
+        {ranked.map((slice, i) => (
+          <li key={`${slice.label}:${i}`} className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3 text-[13px]">
               <span className="truncate text-ink">{slice.label}</span>
               <span className="shrink-0 text-ink-soft">
-                <b className="font-bold text-ink">{valueFormat(slice.value)}</b> · {Math.round((slice.value / total) * 100)}%
+                {/* Shares are of what was spent, so they add up to 100%. */}
+                <b className="font-bold text-ink">{valueFormat(slice.value)}</b> · {Math.round((slice.value / gross) * 100)}%
               </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-cream">
@@ -55,6 +63,12 @@ export function BarBreakdown({
                 style={{ width: `${(slice.value / largest) * 100}%`, background: slice.color }}
               />
             </div>
+          </li>
+        ))}
+        {credits.map((slice, i) => (
+          <li key={`credit:${slice.label}:${i}`} className="flex items-baseline justify-between gap-3 text-[13px]">
+            <span className="truncate text-ink">{slice.label}</span>
+            <b className="shrink-0 font-bold text-ink">{valueFormat(slice.value)}</b>
           </li>
         ))}
       </ul>

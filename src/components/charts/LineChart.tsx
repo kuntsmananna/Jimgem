@@ -72,7 +72,9 @@ function monotonePath(points: Point[]): string {
 function niceTicks(min: number, max: number): number[] {
   const rough = (max - min || 1) / 4;
   const magnitude = 10 ** Math.floor(Math.log10(rough));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= rough) ?? rough;
+  // Never below 1: every series here counts shekels, orders or units, so a
+  // half-step would label the same whole number twice once formatted.
+  const step = Math.max(1, [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= rough) ?? rough);
   const low = Math.floor(min / step) * step;
   const high = Math.ceil(max / step) * step;
   const ticks: number[] = [];
@@ -196,7 +198,11 @@ export function LineChart({
   const areaPath = (points: Point[]) =>
     `${monotonePath(points)} L ${points[points.length - 1].x} ${zeroY} L ${points[0].x} ${zeroY} Z`;
 
-  const activeIndex = hoverIndex ?? highlightIndex;
+  // A month read on a tap stays pinned, so it can outlive the data it was
+  // read from — switch the Expenses period to a shorter one and index 20
+  // names nothing. Anything past the labels reads as no month at all.
+  const wanted = hoverIndex ?? highlightIndex;
+  const activeIndex = wanted !== null && wanted < xLabels.length ? wanted : null;
 
   // The tooltip is positioned in percentages against the plot rather than
   // drawn in the SVG: the SVG uses preserveAspectRatio="none", which would

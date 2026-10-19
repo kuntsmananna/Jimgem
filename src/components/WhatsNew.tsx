@@ -113,11 +113,13 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
   const count = announcements.length;
   const last = page === count - 1;
 
-  const turnTo = useCallback(
-    (next: number) => {
-      if (next < 0 || next >= count) return;
+  // Every page turn — Next, Back, a dot, an arrow key — goes through
+  // here, so the grace window and the scroll-to-top cannot differ between
+  // them. Relative, so the keyboard listener needs no current page.
+  const turnBy = useCallback(
+    (delta: number) => {
       turnedAt.current = performance.now();
-      setPage(next);
+      setPage((p) => Math.min(count - 1, Math.max(0, p + delta)));
     },
     [count],
   );
@@ -142,15 +144,14 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
       const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
       if (delta === 0) return;
       e.preventDefault();
-      turnedAt.current = performance.now();
-      setPage((p) => Math.min(count - 1, Math.max(0, p + delta)));
+      turnBy(delta);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [count]);
+  }, [count, turnBy]);
 
   const pressPrimary = () => {
-    if (!last) return turnTo(page + 1);
+    if (!last) return turnBy(1);
     if (turnedAt.current !== null && performance.now() - turnedAt.current < TURN_GRACE_MS) return;
     onDone();
   };
@@ -176,7 +177,7 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
                 type="button"
                 aria-label={`Page ${i + 1} of ${count}`}
                 aria-current={i === page ? "step" : undefined}
-                onClick={() => turnTo(i)}
+                onClick={() => turnBy(i - page)}
                 className="group flex h-8 items-center px-1"
               >
                 <span
@@ -192,7 +193,7 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
         {page > 0 && (
           <button
             type="button"
-            onClick={() => turnTo(page - 1)}
+            onClick={() => turnBy(-1)}
             className="press rounded-full px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-ink/[0.06] hover:text-ink max-md:py-3"
           >
             Back

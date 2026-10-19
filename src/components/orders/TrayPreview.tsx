@@ -321,8 +321,11 @@ function useJiggle(columns: number) {
       const cx = grid.left + GRID_PADDING + (i % columns) * (size + CUBE_GAP) + size / 2;
       const cy = grid.top + GRID_PADDING + Math.floor(i / columns) * (size + CUBE_GAP) + size / 2;
       const distance = Math.hypot(cx - e.clientX, cy - e.clientY);
-      // Close cubes take the whole push; it fades over ~6 cubes' width.
-      const reach = Math.max(0.25, 1 - distance / (size * 6));
+      // Close cubes take the whole push and it fades to nothing over ~6
+      // cubes' width — so the work follows the ripple, not the tray: an
+      // event tray of a thousand cubes still animates a few dozen.
+      const reach = 1 - distance / (size * 6);
+      if (reach <= 0) return;
       const lean = strength * reach;
       const pose = (k: number) => {
         const skew = -ux * 14 * lean * k;

@@ -154,7 +154,7 @@ export function DashboardClient({
     }
     return Array.from(byFlavor.entries()).map(([flavorId, units]) => {
       const flavor = flavors.find((f) => String(f.id) === flavorId);
-      return { label: flavor?.name ?? "Unknown", value: units, color: flavor?.colorBase ?? "#726A5E" };
+      return { label: flavor?.name ?? "Unknown", value: units, color: flavor?.colorBase ?? CHART_COLORS.slate.colorBase };
     });
   }, [flavorLines, flavors, selectedMonth]);
 
