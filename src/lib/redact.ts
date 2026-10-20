@@ -142,19 +142,20 @@ export function movesPricedLines(input: OrderInput, stored: StoredMoney): boolea
 }
 
 /**
- * The client list as a staff account is sent it: who, and nothing else.
+ * The client list as a staff account is sent it: who, and how to reach
+ * them by phone, and nothing else.
  *
  * Not money, but the same rule — the Orders page hands the whole list to
- * the order form's picker, so every client's phone, email and notes would
+ * the order form's picker, so every client's email and notes would
  * otherwise sit in the kitchen's page payload whether or not anything drew
- * them. The picker needs a name to match against and an id to link.
+ * them. The phone stays (the owner's call): whoever delivers an order is
+ * the one who has to ring from the gate.
  * Editing a client is an admin's anyway (`/api/clients` refuses anyone
  * else), so the blanks can never be written back.
  */
 export const redactClients = (clients: Client[]): Client[] =>
   clients.map((client) => ({
     ...client,
-    phone: "",
     email: "",
     notes: "",
     source: "",

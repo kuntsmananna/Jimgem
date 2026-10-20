@@ -2369,7 +2369,8 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   layout's redirect for an ended session is not re-run on a client-side
   navigation, which fetches only the page, so Orders and Tasks would still
   have been served to one. A staff viewer is also sent the client list as
-  names only (`redactClients`) and the team without usernames or roles
+  names and phones only (`redactClients` — the phone because whoever
+  delivers has to ring, v0.87.2) and the team without usernames or roles
   (`redactStaff`) — not money, but the same "what is not sent cannot be
   found" rule. **A session can be
   ended early**: `staff.session_version`
