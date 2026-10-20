@@ -85,7 +85,7 @@ export function OrdersSummary({
       )}
       {money && (
         <Tile
-          label="Balance due"
+          label="Still due"
           value={currency(balances(orders, stages).total)}
           detail={() => {
             const { owing } = balances(orders, stages);

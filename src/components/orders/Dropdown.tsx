@@ -30,10 +30,10 @@ function Dropdown({
 }: {
   label: string;
   /**
-   * Shown in place of the written label, which then survives as the
-   * button's title and its accessible name. Three toolbar pills each
-   * spelling out what they filter cost more width than the values they
-   * were showing.
+   * A mark before the written label. It used to stand *in place of* the
+   * label, which left Payment and Paid by as two different icons both
+   * reading "All" — a new user could not tell them apart, and a phone has
+   * no hover to ask. Since v0.87 the pill says both: "Paid by: All".
    */
   icon?: ReactNode;
   /**
@@ -70,15 +70,16 @@ function Dropdown({
       <button
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        title={label}
-        aria-label={label}
         className={`press flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap max-md:px-3.5 max-md:py-2 max-md:text-sm ${
           active ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
         }`}
       >
-        <span className={active ? "text-cream/70" : ""} aria-hidden={!!icon}>
-          {icon ?? `${label}:`}
-        </span>
+        {icon && (
+          <span className={active ? "text-cream/70" : ""} aria-hidden>
+            {icon}
+          </span>
+        )}
+        <span className={active ? "text-cream/70" : ""}>{label}:</span>
         <span>{summary}</span>
         <ChevronDown size={13} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>

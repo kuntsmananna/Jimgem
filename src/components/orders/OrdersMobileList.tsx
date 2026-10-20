@@ -272,7 +272,7 @@ function OrderCard({
         {/*
           What is still owed, in the table's amber, before the total —
           "Paid" in the accent once it is nothing. Gross, like the figures
-          pane's Balance due: it is money a customer hands over. Nothing at
+          pane's Still due: it is money a customer hands over. Nothing at
           all on an unpriced order, which is not "paid" but unpriced.
         */}
         {total > 0 &&

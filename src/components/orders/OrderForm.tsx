@@ -865,7 +865,7 @@ function PhoneFooter({
               </span>
               <span className="truncate text-[11px] font-semibold text-cream/60 tabular-nums">
                 {balance < 0 ? "overpaid " : ""}
-                {money(Math.abs(balance))} {balance < 0 ? "" : "due"}
+                {money(Math.abs(balance))} {balance < 0 ? "" : "still due"}
               </span>
             </span>
             <span className="flex-1" />

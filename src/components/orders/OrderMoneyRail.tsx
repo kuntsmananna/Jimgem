@@ -263,7 +263,7 @@ export function OrderMoneyRail({
             </div>
           )}
 
-          <SheetRow label={balance < 0 ? "Overpaid by" : "Balance due"} total>
+          <SheetRow label={balance < 0 ? "Overpaid by" : "Still due"} total>
             <span className="font-display text-[21px] leading-none font-extrabold tabular-nums text-cream max-md:text-2xl">
               {money(Math.abs(balance))}
             </span>

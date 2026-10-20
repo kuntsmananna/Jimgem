@@ -281,7 +281,7 @@ export function ClientsClient({
             <span title={COLUMN_HELP.orders}>Orders</span>
             <span title={COLUMN_HELP.spent}>Spent</span>
             <span title={COLUMN_HELP.last}>Last order</span>
-            <span title={COLUMN_HELP.due}>Due</span>
+            <span title={COLUMN_HELP.due}>Still due</span>
           </div>
           {shown.map((client, at) => {
             const balance = balanceOf(client);
@@ -351,7 +351,7 @@ export function ClientsClient({
             tile="lavender"
           />
           <Tile
-            label="Outstanding"
+            label="Still due"
             value={currency(owed)}
             note="booked, not yet paid"
             help="What is still owed across every booked order — the total less any deposit. Quotes are not counted."

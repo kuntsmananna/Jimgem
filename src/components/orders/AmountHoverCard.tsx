@@ -80,7 +80,7 @@ export function AmountHoverCard({ order, children }: { order: Order; children: R
               <>
                 <Rule />
                 <Row label="Deposit" value={-order.deposit} />
-                <Row label={balance < 0 ? "Overpaid by" : "Balance due"} value={Math.abs(balance)} strong />
+                <Row label={balance < 0 ? "Overpaid by" : "Still due"} value={Math.abs(balance)} strong />
               </>
             )}
           </div>

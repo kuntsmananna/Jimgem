@@ -237,6 +237,15 @@ export function OrdersClient({
    * money or the dates, which have columns and a scope of their own.
    */
   const needle = query.trim();
+  /*
+   * A search looks through **every order**, whatever the window and the
+   * filters say (v0.87, the owner's pick). Somebody typing a name is asking
+   * "where is Maya's order", and the answer was being hidden by a 14-day
+   * window and a status filter they had not touched — two dead ends before
+   * a delivered order from March appeared. The filters are paused, not
+   * cleared: empty the box and the list is narrowed exactly as before.
+   */
+  const searching = needle !== "";
   const bySearch = useMemo(
     () =>
       orders.filter((o) => matchesSearch(query, [o.customer, o.customerType, o.location, o.notes])),
@@ -244,18 +253,19 @@ export function OrdersClient({
   );
 
   const byPayment = useMemo(
-    () => bySearch.filter((o) => paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus)),
-    [bySearch, paymentFilter],
+    () => bySearch.filter((o) => searching || paymentFilter.size === 0 || paymentFilter.has(o.paymentStatus)),
+    [bySearch, paymentFilter, searching],
   );
 
   const byMethod = useMemo(
     () =>
       byPayment.filter(
         (o) =>
+          searching ||
           methodFilter.size === 0 ||
           methodFilter.has(o.paymentMethodId === null ? NO_METHOD : String(o.paymentMethodId)),
       ),
-    [byPayment, methodFilter],
+    [byPayment, methodFilter, searching],
   );
 
   /**
@@ -265,8 +275,8 @@ export function OrdersClient({
    * is meant to be tracking.
    */
   const filtered = useMemo(
-    () => byMethod.filter((o) => stageFilter.size === 0 || stageFilter.has(o.productionStatus)),
-    [byMethod, stageFilter],
+    () => byMethod.filter((o) => searching || stageFilter.size === 0 || stageFilter.has(o.productionStatus)),
+    [byMethod, stageFilter, searching],
   );
 
   /*
@@ -285,7 +295,7 @@ export function OrdersClient({
    * the four places that used to repeat the ternary.
    */
   const source = view === "kanban" ? byMethod : filtered;
-  const inScope = source.filter((o) => inRange(o.date, range));
+  const inScope = searching ? source : source.filter((o) => inRange(o.date, range));
 
   // The summary describes exactly the list on screen, against the same
   // list one window back, in whichever VAT convention the nav is set to.
@@ -303,7 +313,7 @@ export function OrdersClient({
   const stageIndex = stageMap(stages);
   const totals = totalOf(inScope, unitsPerPackage, stageIndex, forOrder);
   const previousTotals = totalOf(
-    previous === null ? [] : source.filter((o) => inRange(o.date, previous)),
+    previous === null || searching ? [] : source.filter((o) => inRange(o.date, previous)),
     unitsPerPackage,
     stageIndex,
     forOrder,
@@ -326,7 +336,7 @@ export function OrdersClient({
     needle && bySearch.length === 0 ? (
       <EmptyState
         title={`Nothing matches “${needle}”`}
-        hint="Search looks through the customer, the type of event, the location and the notes."
+        hint="Search looks through every order — the customer, the type of event, the location and the notes."
         actions={
           <button onClick={() => setQuery("")} className={`${emptyButton} bg-card text-ink shadow-[inset_0_0_0_1px_var(--color-line)]`}>
             Clear search
@@ -883,6 +893,14 @@ export function OrdersClient({
             other's width as well as gated on the hook, so neither can flash
             before hydration has an opinion.
           */}
+          {/* Said out loud, because the chips above still show their
+              choices: a list wider than they describe would otherwise look
+              like the filters had stopped working. */}
+          {searching && inScope.length > 0 && view !== "calendar" && (
+            <p className="text-xs font-semibold text-ink-soft" role="status">
+              Searching every order — the date window and filters are paused until the search is cleared.
+            </p>
+          )}
           {view === "table" && inScope.length === 0 && emptyState}
           {view === "table" && mobile && inScope.length > 0 && (
             <div className="md:hidden">
