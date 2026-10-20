@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProductionStage } from "@/lib/orderTypes";
 import { ArchiveButton } from "./ArchiveButton";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { writeOrNotify } from "@/components/saveError";
 
 interface StageDraft {
   label: string;
@@ -36,12 +37,9 @@ export function StagesPanel({ items }: { items: ProductionStage[] }) {
   async function send(url: string, method: string) {
     if (!draft.label.trim()) return;
     setBusy(true);
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    });
+    const ok = await writeOrNotify("status", url, method, draft);
     setBusy(false);
+    if (!ok) return;
     setEditing(null);
     router.refresh();
   }

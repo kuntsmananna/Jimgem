@@ -11,6 +11,7 @@ import { Field, TextInput } from "@/components/Field";
 import { EmptyState } from "@/components/EmptyState";
 import { JellyHop } from "@/components/JellyLoader";
 import { sendWrite } from "@/components/saveError";
+import { notify } from "@/components/Notices";
 
 /**
  * The shared to-do list — the Dashboard's pane and the whole of `/tasks`.
@@ -72,7 +73,7 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
     });
     if (error) {
       setRows((current) => current.map((row) => (row.key === task.key ? task : row)));
-      alert(error);
+      notify(error);
     }
     router.refresh();
   }
@@ -99,12 +100,20 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
   }
 
   async function remove(task: Task) {
+    const at = rows.findIndex((row) => row.key === task.key);
     setRows((current) => current.filter((row) => row.key !== task.key));
     const { error } = await sendWrite("task", `/api/tasks/${task.key}`, { method: "DELETE" });
     if (error) {
       // Back where it was, and no Undo for a delete that did not happen.
-      setRows(rows);
-      alert(error);
+      // Put back into the list as it is *now*, not the one this press
+      // started from — a tick or an edit made while the delete was in
+      // flight would otherwise be thrown away with it.
+      setRows((current) =>
+        current.some((row) => row.key === task.key)
+          ? current
+          : [...current.slice(0, at), task, ...current.slice(at)],
+      );
+      notify(error);
       return;
     }
     router.refresh();
@@ -116,7 +125,7 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ restore: true }),
       });
-      if (undoError) alert(undoError);
+      if (undoError) notify(undoError);
       router.refresh();
     });
   }
@@ -218,7 +227,7 @@ function Composer({ staff, onAdded }: { staff: StaffAccount[]; onAdded: () => vo
     // The typed text stays where it is, so a failed add costs a retry
     // rather than the sentence.
     if (error) {
-      alert(error);
+      notify(error);
       return;
     }
     // The text clears and the assignee does not: adding three things for
@@ -315,7 +324,7 @@ function AddTaskModal({
     // The typed text stays where it is, so a failed add costs a retry
     // rather than the sentence.
     if (error) {
-      alert(error);
+      notify(error);
       return;
     }
     onAdded();

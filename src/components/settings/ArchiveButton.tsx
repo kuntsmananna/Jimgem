@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive } from "lucide-react";
+import { writeOrNotify } from "@/components/saveError";
 
 /**
  * Retires one entry from an owner-managed list.
@@ -43,13 +44,9 @@ export function ArchiveButton({
       return;
     }
     setBusy(true);
-    await fetch(`/api/settings/${resource}/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ archive: true }),
-    });
+    const ok = await writeOrNotify("change", `/api/settings/${resource}/${id}`, "PATCH", { archive: true });
     setBusy(false);
-    router.refresh();
+    if (ok) router.refresh();
   }
 
   return (

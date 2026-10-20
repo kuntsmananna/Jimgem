@@ -32,8 +32,12 @@ export function ArchivedPanel({ items }: { items: ArchivedItem[] }) {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resource: item.resource, id: item.id }),
-    });
+    }).catch(() => null);
     setBusy(null);
+    if (!response) {
+      setNote("Couldn't reach the server, so nothing changed. Check the connection and try again.");
+      return;
+    }
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       setNote(body.error ?? "That didn't work.");

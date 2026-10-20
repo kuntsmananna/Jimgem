@@ -18,6 +18,7 @@ import { useCloseOnScroll } from "@/components/useOverlayDismiss";
 import { useStage, useStages } from "@/components/ProductionStagesContext";
 import { paymentMethodIconElement } from "@/lib/icons";
 import { usePaymentMethods } from "./PaymentMethodsContext";
+import { notify } from "@/components/Notices";
 
 /**
  * The payment status, as the badge it is everywhere else — and a click on
@@ -100,7 +101,7 @@ export function PaymentStatusSelect({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "patch", ...patch }),
     });
-    if (failure) alert(failure);
+    if (failure) notify(failure);
     return !failure;
   }
 
@@ -266,7 +267,7 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
       body: JSON.stringify({ mode: "patch", productionStatus: status }),
     });
     setBusy(false);
-    if (error) alert(error);
+    if (error) notify(error);
     onChanged();
   }
 

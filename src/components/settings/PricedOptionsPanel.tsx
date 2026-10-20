@@ -6,6 +6,7 @@ import type { PricedOption } from "@/lib/orderTypes";
 import { ArchiveButton } from "./ArchiveButton";
 import { RateList, patchRate } from "./RateList";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { writeOrNotify } from "@/components/saveError";
 
 /**
  * A list of named things with a price each — displays, and delivery
@@ -39,11 +40,8 @@ export function PricedOptionsPanel({
   async function submitNew() {
     if (!draft.name.trim()) return;
     setBusy(true);
-    await fetch(`/api/settings/${resource}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    });
+    const ok = await writeOrNotify("option", `/api/settings/${resource}`, "POST", draft);
+    if (!ok) return setBusy(false);
     setDraft({ name: "", price: "" });
     setAdding(false);
     setBusy(false);

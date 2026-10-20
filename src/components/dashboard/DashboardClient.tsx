@@ -187,6 +187,7 @@ export function DashboardClient({
         <div className="flex items-center gap-2 max-md:hidden">
           <button
             onClick={() => setSelectedMonth("all")}
+            aria-pressed={selectedMonth === "all"}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
               selectedMonth === "all" ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
             }`}
@@ -197,6 +198,7 @@ export function DashboardClient({
             <button
               key={m.month}
               onClick={() => setSelectedMonth(m.month)}
+              aria-pressed={selectedMonth === m.month}
               className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                 selectedMonth === m.month ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
               }`}

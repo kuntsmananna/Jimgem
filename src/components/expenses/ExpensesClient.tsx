@@ -30,6 +30,7 @@ import {
   serializeCollapsedPanes,
   type ExpensePane,
 } from "@/lib/paneFolds";
+import { notify } from "@/components/Notices";
 
 /**
  * Amounts carry their agorot when they have any — ₪12,344.67 — and drop
@@ -175,7 +176,7 @@ export function ExpensesClient({
     refresh();
     // No Undo offered for a delete that did not happen.
     if (error) {
-      alert(error);
+      notify(error);
       return;
     }
     undoToast.show("Expense deleted", async () => {
@@ -184,7 +185,7 @@ export function ExpensesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ restore: true }),
       });
-      if (undoError) alert(undoError);
+      if (undoError) notify(undoError);
       refresh();
     });
   }
@@ -221,7 +222,7 @@ export function ExpensesClient({
         ...change,
       }),
     });
-    if (failure) alert(failure);
+    if (failure) notify(failure);
     refresh();
   }
 

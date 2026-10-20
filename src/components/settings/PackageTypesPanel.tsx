@@ -6,6 +6,7 @@ import type { PackageType } from "@/lib/settings";
 import { packageTypeIconElement } from "@/lib/icons";
 import { ArchiveButton } from "./ArchiveButton";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { writeOrNotify } from "@/components/saveError";
 
 export function PackageTypesPanel({ items }: { items: PackageType[] }) {
   const router = useRouter();
@@ -18,11 +19,8 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
   async function submitNew() {
     if (!draft.name.trim() || !draft.unitsPerPackage) return;
     setBusy(true);
-    await fetch("/api/settings/package-types", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    });
+    const ok = await writeOrNotify("package type", "/api/settings/package-types", "POST", draft);
+    if (!ok) return setBusy(false);
     setDraft({ name: "", unitsPerPackage: "" });
     setAdding(false);
     setBusy(false);
@@ -31,11 +29,8 @@ export function PackageTypesPanel({ items }: { items: PackageType[] }) {
 
   async function submitEdit(id: number) {
     setBusy(true);
-    await fetch(`/api/settings/package-types/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editDraft),
-    });
+    const ok = await writeOrNotify("package type", `/api/settings/package-types/${id}`, "PATCH", editDraft);
+    if (!ok) return setBusy(false);
     setEditing(null);
     setBusy(false);
     router.refresh();

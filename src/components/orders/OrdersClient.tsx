@@ -41,6 +41,7 @@ import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ClientModal } from "@/components/clients/ClientModal";
 import { looksLikeSameClient } from "@/lib/clientName";
 import { sendWrite } from "@/components/saveError";
+import { notify } from "@/components/Notices";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -246,10 +247,21 @@ export function OrdersClient({
    * cleared: empty the box and the list is narrowed exactly as before.
    */
   const searching = needle !== "";
+  // The client's phone too, as the Clients page's search already does: a
+  // number is often all somebody has when they ring about an order.
+  const phoneOf = useMemo(() => new Map(clients.map((client) => [client.id, client.phone])), [clients]);
   const bySearch = useMemo(
     () =>
-      orders.filter((o) => matchesSearch(query, [o.customer, o.customerType, o.location, o.notes])),
-    [orders, query],
+      orders.filter((o) =>
+        matchesSearch(query, [
+          o.customer,
+          o.customerType,
+          o.location,
+          o.notes,
+          o.clientId === null ? "" : (phoneOf.get(o.clientId) ?? ""),
+        ]),
+      ),
+    [orders, query, phoneOf],
   );
 
   const byPayment = useMemo(
@@ -552,7 +564,7 @@ export function OrdersClient({
     });
     refresh();
     if (error) {
-      alert(error);
+      notify(error);
       return;
     }
     undoToast.show("Order deleted", () => restoreOrders([id]));
@@ -565,7 +577,7 @@ export function OrdersClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "restore", ids }),
     });
-    if (error) alert(error);
+    if (error) notify(error);
     refresh();
   }
 
@@ -975,8 +987,11 @@ export function OrdersClient({
                 orders={inScope}
                 totals={totals}
                 previous={previousTotals}
-                scopeLabel={scopeLabel}
-                comparable={previous !== null}
+                // A search reaches past the window, so the figures are of
+                // the matches and say so, rather than naming a window they
+                // no longer describe.
+                scopeLabel={searching ? "Matching orders" : scopeLabel}
+                comparable={previous !== null && !searching}
                 stages={stageIndex}
                 unitsPerPackage={unitsPerPackage}
                 flavors={flavors}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { expenseCategoryIconElement, paymentMethodIconElement } from "@/lib/icons";
 import { ArchiveButton } from "./ArchiveButton";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { writeOrNotify } from "@/components/saveError";
 
 type Resource = "payment-methods" | "expense-categories";
 
@@ -51,11 +52,8 @@ export function NameListPanel({
   async function submitNew() {
     if (!draft.trim()) return;
     setBusy(true);
-    await fetch(`/api/settings/${resource}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: draft }),
-    });
+    const ok = await writeOrNotify("entry", `/api/settings/${resource}`, "POST", { name: draft });
+    if (!ok) return setBusy(false);
     setDraft("");
     setAdding(false);
     setBusy(false);
@@ -65,11 +63,8 @@ export function NameListPanel({
   async function submitEdit(id: number) {
     if (!editDraft.trim()) return;
     setBusy(true);
-    await fetch(`/api/settings/${resource}/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editDraft }),
-    });
+    const ok = await writeOrNotify("entry", `/api/settings/${resource}/${id}`, "PATCH", { name: editDraft });
+    if (!ok) return setBusy(false);
     setEditing(null);
     setBusy(false);
     router.refresh();

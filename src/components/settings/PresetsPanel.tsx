@@ -15,6 +15,7 @@ import { packageTypeIconElement } from "@/lib/icons";
 import { FlavorRow } from "@/components/orders/PackageLineEditor";
 import { TrayPreview } from "@/components/orders/TrayPreview";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { writeOrNotify } from "@/components/saveError";
 
 /**
  * A preset being edited, held in **units of one package** rather than in
@@ -97,10 +98,7 @@ export function PresetsPanel({
     if (!draft?.name.trim() || !draft.packageTypeId) return;
     const packed = packageFor(draft.packageTypeId, packageTypes)?.unitsPerPackage ?? 0;
     setBusy(true);
-    await fetch(editing === "new" ? "/api/settings/presets" : `/api/settings/presets/${editing}`, {
-      method: editing === "new" ? "POST" : "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const ok = await writeOrNotify("preset", editing === "new" ? "/api/settings/presets" : `/api/settings/presets/${editing}`, editing === "new" ? "POST" : "PATCH", {
         name: draft.name.trim(),
         packageTypeId: Number(draft.packageTypeId),
         price: draft.price,
@@ -109,21 +107,18 @@ export function PresetsPanel({
         flavors: draft.flavors
           .filter((f) => f.units > 0)
           .map((f) => ({ flavorId: Number(f.flavorId), share: packed > 0 ? (f.units / packed) * 100 : 0 })),
-      }),
     });
     setBusy(false);
+    if (!ok) return;
     cancel();
     router.refresh();
   }
 
   async function archive(id: number) {
     setBusy(true);
-    await fetch(`/api/settings/presets/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ archive: true }),
-    });
+    const ok = await writeOrNotify("preset", `/api/settings/presets/${id}`, "PATCH", { archive: true });
     setBusy(false);
+    if (!ok) return;
     cancel();
     router.refresh();
   }

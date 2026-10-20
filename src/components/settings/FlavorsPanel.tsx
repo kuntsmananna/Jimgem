@@ -7,6 +7,7 @@ import type { Flavor } from "@/lib/settings";
 import { flavorGradient } from "@/lib/flavorStyle";
 import { Modal } from "@/components/Modal";
 import { ScrollStrip } from "@/components/ScrollStrip";
+import { writeOrNotify } from "@/components/saveError";
 
 interface Draft {
   name: string;
@@ -38,21 +39,11 @@ function FlavorFormModal({
   async function submit() {
     if (!draft.name.trim()) return;
     setBusy(true);
-    if (isEdit) {
-      await fetch(`/api/settings/flavors/${flavor.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-    } else {
-      await fetch("/api/settings/flavors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-    }
+    const ok = isEdit
+      ? await writeOrNotify("flavor", `/api/settings/flavors/${flavor.id}`, "PATCH", draft)
+      : await writeOrNotify("flavor", "/api/settings/flavors", "POST", draft);
     setBusy(false);
-    onSaved();
+    if (ok) onSaved();
   }
 
   return (
@@ -122,13 +113,9 @@ export function FlavorsPanel({ flavors }: { flavors: Flavor[] }) {
 
   async function archive(id: number) {
     setBusyId(id);
-    await fetch(`/api/settings/flavors/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ archive: true }),
-    });
+    const ok = await writeOrNotify("flavor", `/api/settings/flavors/${id}`, "PATCH", { archive: true });
     setBusyId(null);
-    refresh();
+    if (ok) refresh();
   }
 
   return (

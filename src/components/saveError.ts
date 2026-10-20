@@ -1,5 +1,7 @@
 "use client";
 
+import { notify } from "./Notices";
+
 /**
  * The message behind a refused save, or null if the save went through.
  *
@@ -56,4 +58,24 @@ export async function sendWrite(
     };
   }
   return { response, error: await saveError(response, what) };
+}
+
+/**
+ * A JSON write that says so on screen when it fails, and answers whether
+ * it went through.
+ *
+ * The Settings panes' one shape of write: send, and on success close the
+ * edit and refresh. They used to `await fetch` and close regardless, so a
+ * dropped connection or a refusal read exactly like a save — the row
+ * snapped back on the next refresh with nothing said. A caller now leaves
+ * its edit open on `false`, so what was typed is still there to retry.
+ */
+export async function writeOrNotify(what: string, url: string, method: string, body?: unknown): Promise<boolean> {
+  const { error } = await sendWrite(what, url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (error) notify(error);
+  return error === null;
 }

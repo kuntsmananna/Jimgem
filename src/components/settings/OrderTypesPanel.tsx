@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { OrderType } from "@/lib/settings";
 import { ORDER_TYPE_ICON_KEYS, orderTypeIconElement } from "@/lib/icons";
 import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
+import { writeOrNotify } from "@/components/saveError";
 
 const DEFAULT_COLOR = "#f6d9a8";
 
@@ -32,8 +33,9 @@ export function OrderTypesPanel({ items }: { items: OrderType[] }) {
 
   async function send(url: string, method: string, body: unknown) {
     setBusy(true);
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const ok = await writeOrNotify("order type", url, method, body);
     setBusy(false);
+    if (!ok) return;
     setEditing(null);
     router.refresh();
   }

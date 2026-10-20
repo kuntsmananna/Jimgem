@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { writeOrNotify } from "@/components/saveError";
 
 export interface Rate {
   /** Unique within one list — which row is being edited. */
@@ -100,11 +101,11 @@ export function RateList({ rows }: { rows: Rate[] }) {
   );
 }
 
-/** Sends one amount to a settings resource. Shared by both price panes. */
+/**
+ * Sends one amount to a settings resource. Shared by both price panes. A
+ * failure says so (`writeOrNotify`); the refresh after it then puts the
+ * stored amount back on screen, which is the truth.
+ */
 export async function patchRate(url: string, body: Record<string, unknown>): Promise<void> {
-  await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  await writeOrNotify("price", url, "PATCH", body);
 }

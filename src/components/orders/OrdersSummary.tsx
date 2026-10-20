@@ -63,6 +63,10 @@ export function OrdersSummary({
         <h2 className="text-[11px] font-bold tracking-[0.14em] text-ink-soft uppercase">Figures</h2>
         <FoldButton side="right" title="Fold the figures away" onClick={onFold} />
       </div>
+      {/* What the figures are of, on the surface rather than a hover away —
+          a search reaches past the window, and the tiles changing what they
+          counted without a word was a review finding. */}
+      <p className="-mt-1 pl-1 text-xs font-semibold text-ink-soft">{scopeLabel}</p>
       {money && (
         <Tile
           label="Income"
@@ -71,7 +75,7 @@ export function OrdersSummary({
           detail={() => (
             <>
               <p>
-                Booked orders in this window ({scopeLabel.toLowerCase()})
+                Booked orders here ({scopeLabel.toLowerCase()})
                 {totals.offers > 0 && <>, leaving out {count(totals.offers)} offer{totals.offers > 1 ? "s" : ""}</>}.
               </p>
               {comparable && (

@@ -36,6 +36,7 @@ import { cubeColors } from "@/components/JellyLoader";
 import { useColumnWidths } from "./useColumnWidths";
 import { count, currency } from "@/lib/money";
 import { useIsAdmin } from "@/components/RoleContext";
+import { notify } from "@/components/Notices";
 
 /** Anything the row click must not hijack, because it does its own job. */
 const INTERACTIVE = "button, input, select, textarea, a, label";
@@ -229,7 +230,7 @@ export function OrdersTable({
     // already shown the new value, so saying nothing would leave a number
     // on screen that isn't in the database. `onChanged` re-reads the row
     // and puts the real one back.
-    if (failure) alert(failure);
+    if (failure) notify(failure);
     onChanged();
   }
 

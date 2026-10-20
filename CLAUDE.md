@@ -1199,6 +1199,49 @@ From a UX review, with the owner's picks where there was a choice:
   `?tab=lists` / `?tab=flavors` (`SettingsTabs`' `initialId`). It draws nothing once all three are, so a
   dashboard in use never sees it.
 
+### The v0.88 review round
+
+The rest of the second review's list, none of it needing a migration:
+
+- **A failure says so in the app's own voice** (`notify` + `Notices` in
+  `src/components/Notices.tsx`, mounted once in the app layout). It
+  replaced thirteen `alert()`s, which froze the page behind a grey browser
+  box for what is usually a dropped connection. A module-level store, not
+  a context: the callers are event handlers in a dozen components. It sits
+  at the top centre because the Undo bar owns the bottom edge and the two
+  can be up together when an undo itself fails. Centred by a full-width
+  row, not `-translate-x-1/2`, since its entrance animates `transform`.
+- **The Settings panes no longer close an edit that did not save.**
+  `writeOrNotify` beside `sendWrite` in `saveError.ts` sends the JSON,
+  shows the notice on any failure and answers whether it went through;
+  each pane leaves its edit open on `false`, so what was typed is still
+  there. The panes with their own inline error line (Team, Data's
+  imports, syncs, backups, Archived) kept it, Archived now also catching
+  a request that never arrived.
+- **A task whose delete fails is put back into the list as it is now**,
+  at its old position, not by restoring the list the press started from
+  — which threw away a tick or an edit made while the delete was in flight.
+- **Orders search reads the client's phone** (through the client list's
+  id → phone), as the Clients page's always did. While a search is on,
+  the figures pane names what it counts ("Matching orders", under its
+  heading, where it names the window otherwise) and draws no comparison,
+  since there is no previous window of a search.
+- The customer-name placeholder is full `text-ink-soft` at semibold — the
+  last field still faded below contrast; the Dashboard's month pills carry
+  `aria-pressed`.
+- **A page that fails to draw says so** (`ErrorScreen`): `(app)/error.tsx`
+  inside the nav for a page, `src/app/error.tsx` for the app layout
+  itself (which reads the database before any page draws), each with Try
+  again (`retry`, which re-fetches) and the `digest` that matches the
+  server log. No `global-error.tsx`: the root layout reads nothing that
+  can fail.
+- **Security headers** in `next.config.ts`: no framing, no MIME sniffing,
+  a trimmed referrer, and powerful features off except the motion
+  sensors Jelly mode reads. **Not a full CSP** — `script-src` would need
+  a per-request nonce for Next's inline scripts, which means rendering
+  every page dynamically; that is its own release. No HSTS, which Vercel
+  already sends.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
@@ -1799,8 +1842,8 @@ From a UX review, with the owner's picks where there was a choice:
   expense, client and task write goes through it — the client card now
   stays open on a failed save, a failed task add keeps its text, a tick
   that did not save is put back, and no Undo is offered for a delete that
-  did not happen. The Settings panes still call `fetch` directly; they are
-  desk work on a laptop and were left for a later pass.
+  did not happen. The Settings panes followed in v0.88
+  (`writeOrNotify`).
   In `updateOrder` it is repeated on every CTE
   (`EXISTS (SELECT 1 FROM updated_order)`), not just the UPDATE: the
   deletes and inserts that follow have no data dependency on it, so left

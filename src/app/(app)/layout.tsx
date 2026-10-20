@@ -17,6 +17,7 @@ import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
 import { getSeenAnnouncements } from "@/lib/announcementViews";
 import { unseenFor } from "@/lib/announcement";
 import { WhatsNew } from "@/components/WhatsNew";
+import { Notices } from "@/components/Notices";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -78,6 +79,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <main className="px-6 py-8 max-md:px-4 max-md:pt-4 max-md:pb-28">{children}</main>
         {/* Once per person per release — see lib/announcement.ts. */}
         {announcements.length > 0 && <WhatsNew announcements={announcements} />}
+        {/* "That didn't save", for every page — see Notices.tsx. */}
+        <Notices />
       </div>
       </HideModeProvider>
       </JellyModeProvider>
