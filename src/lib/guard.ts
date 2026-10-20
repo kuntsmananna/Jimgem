@@ -47,6 +47,21 @@ export async function requireAdminPage(): Promise<void> {
 }
 
 /**
+ * The page-side twin of `refuseSignedOut`, for the two pages a staff
+ * account may open (Orders, Tasks).
+ *
+ * The app layout already sends an ended session to `/login`, but a layout
+ * is not re-rendered on a client-side navigation — moving from one page to
+ * another fetches only the page — so a session ended while the app was open
+ * could still be served these pages' data. Each page asks for itself.
+ */
+export async function requireSignedInPage() {
+  const role = await currentRole();
+  if (role === null) redirect("/login");
+  return role;
+}
+
+/**
  * The lock on the routes a staff account may use too (orders, tasks): any
  * current sign-in passes, and a session that has been ended — its account
  * deleted, or its password or role changed since it was issued, see

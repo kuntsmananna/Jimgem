@@ -357,8 +357,8 @@ interface SetupState {
 function SetupChecklist({ setup }: { setup: SetupState }) {
   if (setup.prices && setup.flavors && setup.orders) return null;
   const steps = [
-    { done: setup.prices, text: "Set your prices", hint: "Settings → Lists & prices", href: "/settings" },
-    { done: setup.flavors, text: "Add your flavours", hint: "Settings → Flavors", href: "/settings" },
+    { done: setup.prices, text: "Set your prices", hint: "Settings → Lists & prices", href: "/settings?tab=lists" },
+    { done: setup.flavors, text: "Add your flavours", hint: "Settings → Flavors", href: "/settings?tab=flavors" },
     { done: setup.orders, text: "Take the first order", hint: "Orders → Add order", href: "/orders" },
   ];
   return (

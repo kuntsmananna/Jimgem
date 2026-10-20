@@ -1,5 +1,6 @@
 import type { Order, OrderInput, Rates, StoredMoney } from "./orderTypes";
-import type { ContentPreset } from "./settings";
+import type { ContentPreset, StaffAccount } from "./settings";
+import type { Client } from "./clients";
 
 /**
  * Taking the money out of what a staff account is sent.
@@ -121,6 +122,48 @@ export function withStoredMoney(input: OrderInput, stored: StoredMoney): OrderIn
     }),
   };
 }
+
+/**
+ * Whether a staff save adds or removes a package line on an order whose
+ * lines carry preset prices.
+ *
+ * Lines have no stored id, so `withStoredMoney` can only match a line to
+ * its price by position — which is right while the lines stay put, and
+ * wrong the moment one is removed: the next line slides into its place and
+ * inherits a price it never had. So that one case is refused outright, with
+ * a sentence, rather than guessed at. An order with no preset prices has
+ * nothing to misplace, and staff may add and remove lines on it freely.
+ */
+export function movesPricedLines(input: OrderInput, stored: StoredMoney): boolean {
+  return (
+    input.packageLines.length !== stored.packageLines.length &&
+    stored.packageLines.some((line) => line.packagePrice !== null)
+  );
+}
+
+/**
+ * The client list as a staff account is sent it: who, and nothing else.
+ *
+ * Not money, but the same rule — the Orders page hands the whole list to
+ * the order form's picker, so every client's phone, email and notes would
+ * otherwise sit in the kitchen's page payload whether or not anything drew
+ * them. The picker needs a name to match against and an id to link.
+ * Editing a client is an admin's anyway (`/api/clients` refuses anyone
+ * else), so the blanks can never be written back.
+ */
+export const redactClients = (clients: Client[]): Client[] =>
+  clients.map((client) => ({
+    ...client,
+    phone: "",
+    email: "",
+    notes: "",
+    source: "",
+    sumitCustomerId: null,
+  }));
+
+/** The team as a staff account is sent it, for the task list's names: no logins, no roles. */
+export const redactStaff = (staff: StaffAccount[]): StaffAccount[] =>
+  staff.map((person) => ({ ...person, username: "", role: "staff" }));
 
 /** The money fields an inline table edit must never name on a staff account. */
 export const MONEY_FIELDS = [

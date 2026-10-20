@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { StaleWriteError, updateOrder, updateOrderFields, getOrderMoney, type OrderInput, type EditableField } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
 import { callerIsAdmin, refuseSignedOut } from "@/lib/guard";
-import { MONEY_FIELDS, withStoredMoney } from "@/lib/redact";
+import { MONEY_FIELDS, movesPricedLines, withStoredMoney } from "@/lib/redact";
 
 export const runtime = "nodejs";
 
@@ -56,6 +56,12 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders
       if (!admin) {
         const stored = await getOrderMoney(Number(id));
         if (!stored) return NextResponse.json({ error: "No such order." }, { status: 404 });
+        if (movesPricedLines(body, stored)) {
+          return NextResponse.json(
+            { error: "This order's packages carry agreed prices, so only an admin can add or remove one." },
+            { status: 403 },
+          );
+        }
         input = withStoredMoney(body, stored);
       }
       return NextResponse.json(await updateOrder(Number(id), input, body.expectedUpdatedAt, editor));

@@ -112,10 +112,12 @@ export async function updateOrderFields(
   // caller having to fake a timestamp to get through.
   const guard = expectedUpdatedAt ? ` AND updated_at = ${bind(values, expectedUpdatedAt)}` : "";
   const { rows } = await db.query(
-    `UPDATE orders SET ${assignments.join(", ")}, updated_at = now(), updated_by = ${editorAt} WHERE id = $1${guard} RETURNING id`,
+    `UPDATE orders SET ${assignments.join(", ")}, updated_at = now(), updated_by = ${editorAt} WHERE id = $1 AND deleted_at IS NULL${guard} RETURNING id`,
     values,
   );
-  if (rows.length === 0 && expectedUpdatedAt) throw new StaleWriteError("order");
+  // No row matched: either it moved on (the guard) or it has been
+  // deleted, and either way the edit was made against a copy that is gone.
+  if (rows.length === 0) throw new StaleWriteError("order");
 }
 
 interface DbOrderRow {
@@ -362,7 +364,7 @@ export function setPaymentStatusMany(
   editor?: string,
 ): Promise<number> {
   return affectedRows(
-    "UPDATE orders SET payment_status = $1, updated_at = now(), updated_by = $3 WHERE id = ANY($2) RETURNING id",
+    "UPDATE orders SET payment_status = $1, updated_at = now(), updated_by = $3 WHERE id = ANY($2) AND deleted_at IS NULL RETURNING id",
     [status, ids, editor ?? null],
   );
 }
@@ -373,7 +375,7 @@ export function setProductionStatusMany(
   editor?: string,
 ): Promise<number> {
   return affectedRows(
-    "UPDATE orders SET production_status = $1, updated_at = now(), updated_by = $3 WHERE id = ANY($2) RETURNING id",
+    "UPDATE orders SET production_status = $1, updated_at = now(), updated_by = $3 WHERE id = ANY($2) AND deleted_at IS NULL RETURNING id",
     [status, ids, editor ?? null],
   );
 }
@@ -599,12 +601,14 @@ export async function updateOrder(
    * the UPDATE having matched, so a stale save is a no-op in full.
    */
   const fresh = expectedUpdatedAt ? ` AND updated_at = ${bind(values, expectedUpdatedAt)}` : "";
-  const applied = expectedUpdatedAt ? " AND EXISTS (SELECT 1 FROM updated_order)" : "";
+  // Unconditional: a deleted order matches nothing either, guard or no
+  // guard, and its lines must not be rewritten behind it.
+  const applied = " AND EXISTS (SELECT 1 FROM updated_order)";
 
   const { rows } = await db.query<DbOrderRow>(
     `WITH updated_order AS (
        UPDATE orders SET ${ORDER_ASSIGNMENTS}, updated_at = now(), updated_by = ${editorAt}
-       WHERE id = ${orderId}${fresh}
+       WHERE id = ${orderId} AND deleted_at IS NULL${fresh}
        RETURNING *
      ), deleted_lines AS (
        -- Flavour rows go with them, via ON DELETE CASCADE.

@@ -33,8 +33,9 @@ export interface SettingsTab {
  * Only the active tab is mounted, so an open edit row in one section
  * doesn't linger invisibly in another.
  */
-export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
-  const [activeId, setActiveId] = useState(tabs[0].id);
+export function SettingsTabs({ tabs, initialId }: { tabs: SettingsTab[]; initialId?: string }) {
+  // An unknown `?tab=` falls through to the first tab, like no tab at all.
+  const [activeId, setActiveId] = useState(initialId ?? tabs[0].id);
   const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
 
   return (

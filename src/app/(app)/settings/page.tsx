@@ -41,7 +41,7 @@ import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   // Money lives on this page — see requireAdminPage.
   await requireAdminPage();
   const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring] =
@@ -66,9 +66,13 @@ export default async function SettingsPage() {
       getRecurringSummary(),
     ]);
   const sumitDocumentCount = sumitDocuments.length;
+  // `?tab=lists` opens on that tab — the Dashboard's setup checklist links
+  // straight to where each step is done.
+  const { tab } = await searchParams;
 
   return (
     <SettingsTabs
+      initialId={tab}
       tabs={[
         {
           // Flavours and presets are one job: a preset is a package plus a

@@ -1195,7 +1195,8 @@ From a UX review, with the owner's picks where there was a choice:
   `released` date.**
 - **An empty Dashboard shows a setup checklist** (`SetupChecklist`): set
   prices, add flavours, take the first order, each ticked once true and
-  linked to where it is done. It draws nothing once all three are, so a
+  linked to where it is done — Settings opens on the right tab through
+  `?tab=lists` / `?tab=flavors` (`SettingsTabs`' `initialId`). It draws nothing once all three are, so a
   dashboard in use never sees it.
 
 ## Data-fetching conventions
@@ -1691,6 +1692,12 @@ From a UX review, with the owner's picks where there was a choice:
     open endpoint that copies the whole database on request is worse than a
     backup that hasn't started. Settings → Data shows both: the backups
     with what each holds, and the last changes with who made them.
+- **A deleted row cannot be edited** (v0.87.1): `updateOrder`,
+  `updateOrderFields`, the batch status actions and `updateTask` all match
+  `deleted_at IS NULL`, so a form left open on an order somebody deleted
+  answers 409 rather than quietly editing a row nobody can see.
+  `updateOrder`'s line CTEs now depend on the UPDATE having matched even
+  without a version guard, or they would rewrite a deleted order's lines.
 - **Deleting puts a row aside** (`orders.deleted_at`, `expenses.deleted_at`
   — `scripts/migrate-024-soft-delete.sql`). The row keeps its id, so
   restoring one brings back *the same* order — its package lines, its
@@ -2357,7 +2364,14 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   them — trusting the cookie's role for its two-week life). Admin-only
   routes open with `refuseNonAdmin()`, the orders and tasks routes a staff
   login may use with `refuseSignedOut()` (both in `guard.ts`); the gate in
-  `proxy.ts` is still the first lock, not the only one. **A session can be
+  `proxy.ts` is still the first lock, not the only one. **The two pages a
+  staff login may open ask too** (`requireSignedInPage`, v0.87.1): the app
+  layout's redirect for an ended session is not re-run on a client-side
+  navigation, which fetches only the page, so Orders and Tasks would still
+  have been served to one. A staff viewer is also sent the client list as
+  names only (`redactClients`) and the team without usernames or roles
+  (`redactStaff`) — not money, but the same "what is not sent cannot be
+  found" rule. **A session can be
   ended early**: `staff.session_version`
   (`scripts/migrate-033-session-version.sql`) is copied into the cookie at
   sign-in, `currentRole` reads a cookie whose copy no longer matches as no
@@ -2393,7 +2407,11 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   keeps the price stored at its position while it is still the same
   package, and one staff added or changed has none. Taking the body's null
   had wiped every preset price on an order the first time the kitchen
-  marked it delivered. `getOrderMoney` reads the lines' prices in the same
+  marked it delivered. Lines have no stored id, so the match is by
+  position — and a staff save that **adds or removes a line on an order
+  whose lines carry preset prices is refused** (`movesPricedLines`), since
+  deleting one would slide the next into its place and its price.
+  `getOrderMoney` reads the lines' prices in the same
   round trip (`StoredMoney`). An inline `patch` is refused outright if it names a money field —
   there is no correct merge for "set the deposit", only a request that
   should not have been made. Creating, deleting and every batch action are

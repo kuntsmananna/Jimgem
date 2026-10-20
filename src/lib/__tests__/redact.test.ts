@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactOrder, redactPresets, redactRates, withStoredMoney } from "../redact";
+import { movesPricedLines, redactOrder, redactPresets, redactRates, withStoredMoney } from "../redact";
 import { hasDelivery, orderTotal, ZERO_PRICES, type Order, type OrderInput, type Rates } from "../orderTypes";
 
 /*
@@ -200,5 +200,30 @@ describe("withStoredMoney", () => {
       packageLines: [{ ...sent.packageLines[0], packageTypeId: "2" }],
     };
     expect(withStoredMoney(swapped, ORDER).packageLines[0].packagePrice).toBeNull();
+  });
+});
+
+describe("movesPricedLines", () => {
+  const sent: OrderInput = redactOrder(ORDER);
+  const line = (packageTypeId: string, packagePrice: number | null) => ({ packageTypeId, quantity: 1, flavors: [], packagePrice });
+
+  it("lets a save that keeps the lines through", () => {
+    expect(movesPricedLines(sent, ORDER)).toBe(false);
+  });
+
+  it("refuses removing a line when the lines carry prices", () => {
+    // Two trays of one size, the first priced: delete it and the second
+    // would slide into its place and take a price it never had.
+    const stored = { ...ORDER, packageLines: [line("1", 320), line("1", null)] };
+    expect(movesPricedLines({ ...sent, packageLines: [line("1", null)] }, stored)).toBe(true);
+  });
+
+  it("refuses adding a line when the lines carry prices", () => {
+    expect(movesPricedLines({ ...sent, packageLines: [...sent.packageLines, line("1", null)] }, ORDER)).toBe(true);
+  });
+
+  it("lets lines come and go on an order with no preset prices", () => {
+    const stored = { ...ORDER, packageLines: [line("1", null), line("2", null)] };
+    expect(movesPricedLines({ ...sent, packageLines: [line("1", null)] }, stored)).toBe(false);
   });
 });

@@ -10,9 +10,9 @@ import {
   getPrices,
 } from "@/lib/settings";
 import { OrdersClient } from "@/components/orders/OrdersClient";
-import { currentRole } from "@/lib/auth";
+import { requireSignedInPage } from "@/lib/guard";
 import { canSeeMoney } from "@/lib/roles";
-import { redactOrders, redactPresets, redactRates } from "@/lib/redact";
+import { redactClients, redactOrders, redactPresets, redactRates } from "@/lib/redact";
 import { cookies } from "next/headers";
 import { ORDERS_FIGURES_COOKIE, parseFiguresFolded } from "@/lib/paneFolds";
 
@@ -21,7 +21,9 @@ export const dynamic = "force-dynamic";
 export default async function OrdersPage() {
   const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods, cookieStore] =
     await Promise.all([
-    currentRole(),
+    // Asked here and not only in the app layout, which a client-side
+    // navigation does not re-render — see requireSignedInPage.
+    requireSignedInPage(),
     getOrders(),
     getFlavors(true),
     // Archived included so an existing line still resolves its size.
@@ -61,7 +63,7 @@ export default async function OrdersPage() {
       flavors={flavors}
       packageTypes={packageTypes}
       presets={money ? presets : redactPresets(presets)}
-      clients={clients}
+      clients={money ? clients : redactClients(clients)}
       rates={money ? rates : redactRates(rates)}
       // The list itself is not money — the order's choice from it is, and
       // redactOrders has already taken that out.

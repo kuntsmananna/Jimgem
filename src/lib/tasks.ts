@@ -146,7 +146,7 @@ export async function updateTask(id: number, input: TaskInput, editor?: string):
               END,
               updated_at = now(),
               updated_by = $4
-        WHERE id = $5
+        WHERE id = $5 AND deleted_at IS NULL
         RETURNING *`,
       [input.title.trim(), input.staffId, input.done, editor ?? null, id],
     ),

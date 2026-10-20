@@ -1,6 +1,9 @@
 import { getTasks } from "@/lib/tasks";
 import { getStaff } from "@/lib/settings";
 import { TaskList } from "@/components/tasks/TaskList";
+import { requireSignedInPage } from "@/lib/guard";
+import { isAdmin } from "@/lib/roles";
+import { redactStaff } from "@/lib/redact";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +16,13 @@ export const dynamic = "force-dynamic";
  * is the same list with more room, which costs nothing to offer.
  */
 export default async function TasksPage() {
-  const [tasks, staff] = await Promise.all([getTasks(), getStaff()]);
+  // Asked here and not only in the app layout, which a client-side
+  // navigation does not re-render — see requireSignedInPage.
+  const [role, tasks, staff] = await Promise.all([requireSignedInPage(), getTasks(), getStaff()]);
 
   return (
     <div className="mx-auto max-w-3xl">
-      <TaskList tasks={tasks} staff={staff} />
+      <TaskList tasks={tasks} staff={isAdmin(role) ? staff : redactStaff(staff)} />
     </div>
   );
 }
