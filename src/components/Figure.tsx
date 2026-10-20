@@ -26,14 +26,9 @@ export function Figure({
   isPrivate?: boolean;
 }) {
   return (
-    <div
-      className={`flex items-baseline justify-between gap-2 ${wide ? "col-span-2" : ""}`}
-    >
+    <div className={`flex items-baseline justify-between gap-2 ${wide ? "col-span-2" : ""}`}>
       <dt className="shrink-0 text-ink-soft">{label}</dt>
-      <dd
-        data-private={isPrivate || undefined}
-        className="min-w-0 truncate font-semibold text-ink tabular-nums"
-      >
+      <dd data-private={isPrivate || undefined} className="min-w-0 truncate font-semibold text-ink tabular-nums">
         {value}
       </dd>
     </div>

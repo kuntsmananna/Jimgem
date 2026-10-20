@@ -30,7 +30,7 @@ import { OrderCustomerPanel } from "./OrderCustomerPanel";
 import { OrderEventPanel } from "./OrderEventPanel";
 import { OrderMoneyRail } from "./OrderMoneyRail";
 import { OrderReview } from "./OrderReview";
-import { money } from "./OrderSheet";
+import { GroupLabel, money } from "./OrderSheet";
 import { useCanSeeMoney } from "@/components/RoleContext";
 import {
   PackageLineEditor,
@@ -605,9 +605,9 @@ export function OrderForm({
                 <div className="mt-5">
                   {/* Ruled like the review's other sections (v0.84.4), so the
                       rail's own unruled caption gives way to it. */}
-                  <span className="mt-1.5 mb-2.5 block border-b border-current/12 pb-2 text-xs font-extrabold tracking-[0.14em] uppercase">
+                  <GroupLabel>
                     The price
-                  </span>
+                  </GroupLabel>
                   {railInSheet}
                 </div>
               )}

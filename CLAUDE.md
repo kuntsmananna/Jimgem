@@ -2019,24 +2019,29 @@ compares identity, and a panel builds a fresh draft before every call.
   opened in public. An eye beside Jelly mode's blob (and beside it again at
   the top of the phone's More sheet). **Quantities stay sharp** — units,
   guests and counts are not what anybody is hiding, the owner's call. It
-  is a **cookie** (`jimgem-hide`, `hideMode.ts`), unlike Jelly mode: the
+  is a **cookie** (`jimgem_hide`, `hideMode.ts`), unlike Jelly mode: the
   root layout writes `data-hide` on `<html>` in the server's HTML, so a
   page loaded with it on never paints a figure first, and `<html>` rather
   than a wrapper because popups and sheets portal to `<body>`. **Money is
-  found, not listed**: a `MutationObserver` marks any element whose text
-  holds a ₪ *and* a digit (`data-money`) — the digit so "Amount ₪" and the
-  ₪ half of a ₪/% switch stay readable, and the element's whole text
-  because JSX's `₪{x}` is two text nodes. A new screen is covered the day
+  found, not listed**: a `MutationObserver` marks any element whose own
+  text holds a ₪ *and* a digit (`data-money`) — the digit so "Amount ₪"
+  and the ₪ half of a ₪/% switch stay readable, and its own text nodes
+  joined because JSX's `₪{x}` is two of them. It **runs only while the
+  mode is on** — nothing is walked or watched otherwise. A new screen is covered the day
   it is written. Money *inputs* hold their figure as a value, so those say
   `data-money` themselves (`MoneyInput`, `DiscountInput`, the expense
   amount, `RateList`), and names, phones and locations carry `data-private` where drawn (`Figure`'s
   `isPrivate` for the phone card's location) —
   `Modal`'s `privateTitle` for the client card's band. A focused field
-  unblurs, so it can be typed in. The first pass waits for the load event
-  and an idle moment: written before React hydrates a Suspense boundary,
-  the attribute is reported as a hydration mismatch. Until then
-  `html[data-hide]:not([data-hide-ready]) main` is invisible, so nothing
-  shows sharp in between.
+  unblurs, so it can be typed in. The first pass is a layout effect, so
+  switching on marks the page before the next paint; on a page *loaded*
+  with it on that runs during hydration, and a dev build reports the
+  attributes it writes into a not-yet-hydrated Suspense boundary as a
+  mismatch — expected, and production does not compare attributes. Until
+  that pass `html[data-hide]:not([data-hide-ready]) main` is invisible, so
+  nothing shows sharp in between. The switch's hover card is
+  `SwitchExplainer` (`HoverCard.tsx`), shared with Jelly mode's and What's
+  new's so the three side by side cannot drift.
 - **`HoverCard` measures on tap before it sets state.** Its tap-to-open
   read `e.currentTarget` inside a `setAt` updater, which React can run
   after the event's target has been cleared — every tap that opened a card

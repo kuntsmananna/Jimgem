@@ -88,6 +88,7 @@ export function PricedOptionsPanel({
           <input
             type="number"
             min={0}
+            data-money
             placeholder="₪"
             className="w-16 rounded-lg border border-line px-2 py-1 text-right text-sm"
             value={draft.price}

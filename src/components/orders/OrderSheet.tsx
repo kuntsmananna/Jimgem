@@ -35,6 +35,7 @@ export function GroupLabel({
   children,
   rule = true,
   icon,
+  action,
 }: {
   children: React.ReactNode;
   /**
@@ -50,6 +51,8 @@ export function GroupLabel({
    * baseline grid whatever the heading is.
    */
   icon?: React.ReactNode;
+  /** A control at the right end of the rule — the review step's Edit. */
+  action?: React.ReactNode;
 }) {
   /*
    * Full strength, where the rows under it are dimmed. It had this the
@@ -60,15 +63,26 @@ export function GroupLabel({
    * the whole distinction; the rule is only a boundary and draws as a
    * hairline, not as a second announcement.
    */
+  const ruled = rule ? "mt-1.5 mb-2.5 block border-b border-current/12 pb-2" : "";
+  /* 12px on a phone. 10.5px letterspaced caps is a caption at arm's
+     length on a laptop and unreadable held in one hand — and these are
+     the titles down the left of the Event tab. */
+  const text = `text-[10.5px] font-extrabold tracking-[0.14em] uppercase max-md:text-xs ${
+    icon ? "inline-flex items-center gap-1.5" : ""
+  }`;
+  if (action) {
+    return (
+      <div className={`flex items-center justify-between gap-2 ${ruled}`}>
+        <span className={text}>
+          {icon}
+          {children}
+        </span>
+        {action}
+      </div>
+    );
+  }
   return (
-    <span
-      /* 12px on a phone. 10.5px letterspaced caps is a caption at arm's
-         length on a laptop and unreadable held in one hand — and these
-         are the titles down the left of the Event tab. */
-      className={`text-[10.5px] font-extrabold tracking-[0.14em] uppercase max-md:text-xs ${
-        icon ? "inline-flex items-center gap-1.5" : ""
-      } ${rule ? "mt-1.5 mb-2.5 block border-b border-current/12 pb-2" : ""}`}
-    >
+    <span className={`${text} ${ruled}`}>
       {icon}
       {children}
     </span>

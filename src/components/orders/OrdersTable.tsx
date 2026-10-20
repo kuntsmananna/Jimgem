@@ -525,7 +525,14 @@ export function OrdersTable({
                       <EditableCell
                         displayValue={
                           order.location ? (
-                            <Tip label={`Where the event is: ${order.location}`} className="block truncate text-ink-soft">
+                            <Tip
+                              label={
+                                <>
+                                  Where the event is: <span data-private>{order.location}</span>
+                                </>
+                              }
+                              className="block truncate text-ink-soft"
+                            >
                               <span data-private>{order.location}</span>
                             </Tip>
                           ) : (

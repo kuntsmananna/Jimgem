@@ -26,7 +26,7 @@ import {
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
 import { JellyBlob, WiggleLines } from "@/components/JellyMode";
-import { HoverCard } from "@/components/HoverCard";
+import { SwitchExplainer } from "@/components/HoverCard";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import { announcementsFor, type Announcement } from "@/lib/announcement";
@@ -640,18 +640,7 @@ export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "sheet
         // Says what it is the moment the pointer arrives — a bare sparkle
         // is not self-explanatory, and the browser's own `title` tooltip
         // takes a second to appear and is gone by the time it is read.
-        <HoverCard
-          width={210}
-          height={70}
-          tone="ink"
-          placement="below-right"
-          render={() => (
-            <div className="text-xs leading-snug">
-              <p className="font-bold">What&apos;s new</p>
-              <p className="mt-0.5 opacity-75">See every release again, with what changed in each.</p>
-            </div>
-          )}
-        >
+        <SwitchExplainer title="What's new" body="See every release again, with what changed in each.">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -660,7 +649,7 @@ export function WhatsNewButton({ variant = "icon" }: { variant?: "icon" | "sheet
           >
             <Sparkles size={15} />
           </button>
-        </HoverCard>
+        </SwitchExplainer>
       )}
       {open && <WhatsNew announcements={announcements} replay onClose={() => setOpen(false)} />}
     </>

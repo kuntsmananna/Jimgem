@@ -3,6 +3,6 @@
  * the root layout reads it on the server and the switch writes it in the
  * browser, and the two must agree on one name.
  */
-export const HIDE_MODE_COOKIE = "jimgem-hide";
+export const HIDE_MODE_COOKIE = "jimgem_hide";
 
 export const parseHideMode = (value: string | undefined): boolean => value === "1";

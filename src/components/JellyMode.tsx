@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { HoverCard } from "@/components/HoverCard";
+import { SwitchExplainer } from "@/components/HoverCard";
 import { cubeColors } from "@/components/JellyLoader";
 import { SERIES_COLORS } from "@/lib/chartPalette";
 import { overlayOpen } from "./useOverlayDismiss";
@@ -307,19 +307,9 @@ export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "shee
     );
   }
   return (
-    <HoverCard
-      width={220}
-      height={80}
-      tone="ink"
-      placement="below-right"
-      render={() => (
-        <div className="text-xs leading-snug">
-          <p className="font-bold">Jelly mode {on ? "is on" : ""}</p>
-          <p className="mt-0.5 opacity-75">
-            Just for fun: cubes, chips and tiles wobble as your mouse moves past. Off again next visit.
-          </p>
-        </div>
-      )}
+    <SwitchExplainer
+      title={`Jelly mode ${on ? "is on" : ""}`}
+      body="Just for fun: cubes, chips and tiles wobble as your mouse moves past. Off again next visit."
     >
       <button
         type="button"
@@ -331,6 +321,6 @@ export function JellyModeButton({ variant = "icon" }: { variant?: "icon" | "shee
         <WiggleLines />
         <JellyBlob size={18} on={on} />
       </button>
-    </HoverCard>
+    </SwitchExplainer>
   );
 }

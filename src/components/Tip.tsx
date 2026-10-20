@@ -20,7 +20,7 @@ import { useCloseOnScroll } from "./useOverlayDismiss";
  * Mouse only. On a touchscreen a tap on a row opens the order, and the
  * phone's cards spell these things out in words instead.
  */
-export function Tip({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
+export function Tip({ label, children, className = "" }: { label: ReactNode; children: ReactNode; className?: string }) {
   const [at, setAt] = useState<{ x: number; y: number; below: boolean; lean: "left" | "center" | "right" } | null>(
     null,
   );

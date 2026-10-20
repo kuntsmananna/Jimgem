@@ -1030,7 +1030,7 @@ function LineNote({ remaining, packed }: { remaining: number; packed: number }) 
  * next to. Same phrase as the rail so the two read as the same fact at
  * two scales.
  */
-function PackedUnits({ packed }: { packed: number }) {
+export function PackedUnits({ packed }: { packed: number }) {
   return (
     <span className="flex shrink-0 items-center gap-1.5">
       <UnitsIcon size={14} className="text-ink-soft" />

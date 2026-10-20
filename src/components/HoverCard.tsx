@@ -148,3 +148,27 @@ export function HoverCard({
     </div>
   );
 }
+
+/**
+ * The header switches' explainer — What's new, Jelly mode, Hide mode: a
+ * bold name and one dimmed line, opening under the icon. One shape so the
+ * three sitting side by side cannot drift apart in size or wording style.
+ */
+export function SwitchExplainer({ title, body, children }: { title: string; body: string; children: ReactNode }) {
+  return (
+    <HoverCard
+      width={220}
+      height={80}
+      tone="ink"
+      placement="below-right"
+      render={() => (
+        <div className="text-xs leading-snug">
+          <p className="font-bold">{title}</p>
+          <p className="mt-0.5 opacity-75">{body}</p>
+        </div>
+      )}
+    >
+      {children}
+    </HoverCard>
+  );
+}

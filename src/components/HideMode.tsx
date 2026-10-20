@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { HoverCard } from "@/components/HoverCard";
+import { SwitchExplainer } from "@/components/HoverCard";
 import { writePrefCookie } from "@/lib/prefCookie";
 import { HIDE_MODE_COOKIE } from "@/lib/hideMode";
 
@@ -37,68 +37,48 @@ export function useHideMode() {
 }
 
 /**
- * Marks the element holding a text node with a shekel sign in it — when the
- * element's text also has a digit, so a caption like "Amount ₪" or the ₪
- * half of a ₪/% switch stays readable. The whole element's text is what is
- * checked, because JSX's `₪{amount}` renders the sign and the figure as two
- * text nodes side by side.
+ * Marks an element whose own text has a shekel sign *and* a digit, so a
+ * caption like "Amount ₪" or the ₪ half of a ₪/% switch stays readable.
+ * Its own text nodes are joined because JSX's `₪{amount}` renders the
+ * sign and the figure as two of them side by side; nothing deeper is read.
  */
-function markText(node: Node) {
-  const parent = node.parentElement;
-  if (!parent || parent.hasAttribute("data-money") || !node.nodeValue?.includes("₪")) return;
-  if (/\d/.test(parent.textContent ?? "")) parent.setAttribute("data-money", "");
+function markElement(el: Element | null) {
+  if (!el || el.hasAttribute("data-money")) return;
+  let text = "";
+  for (const child of el.childNodes) if (child.nodeType === Node.TEXT_NODE) text += child.nodeValue;
+  if (text.includes("₪") && /\d/.test(text)) el.setAttribute("data-money", "");
 }
 
 function markMoney(root: Node) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) markText(node);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) markElement(node.parentElement);
 }
 
 export function HideModeProvider({ initial, children }: { initial: boolean; children: ReactNode }) {
   const [on, setOn] = useState(initial);
 
-  useEffect(() => {
+  // Nothing is marked or watched while the mode is off, which is most of
+  // the time. A layout effect, so turning it on marks the page before the
+  // next paint and no figure shows sharp for a frame. On a page loaded with
+  // it on, this runs as React hydrates — an attribute it writes into a
+  // Suspense boundary not yet reached is reported as a mismatch in a dev
+  // build; production does not compare attributes and leaves it in place.
+  useLayoutEffect(() => {
+    if (!on) return;
+    markMoney(document.body);
+    document.documentElement.setAttribute("data-hide-ready", "");
     const observer = new MutationObserver((records) => {
       for (const record of records) {
-        if (record.type === "characterData") {
-          // A figure changing beside a ₪ that was already there.
-          const parent = record.target.parentElement;
-          if (parent) markMoney(parent);
-        } else {
-          record.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-              if (node.parentElement) markMoney(node.parentElement);
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-              markMoney(node);
-            }
-          });
-        }
+        if (record.type === "characterData") markElement(record.target.parentElement);
+        else
+          record.addedNodes.forEach((node) =>
+            node.nodeType === Node.TEXT_NODE ? markElement(node.parentElement) : markMoney(node),
+          );
       }
     });
-    function start() {
-      markMoney(document.body);
-      document.documentElement.setAttribute("data-hide-ready", "");
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    }
-    // Not before the page has hydrated: React compares server markup with
-    // its own, and an attribute written into a Suspense boundary it has not
-    // reached yet is reported as a mismatch. By the load event and the next
-    // idle moment it has; `main` stays hidden until then if hide is on.
-    let idle = 0;
-    const schedule = () => {
-      idle = window.requestIdleCallback
-        ? window.requestIdleCallback(start, { timeout: 300 })
-        : window.setTimeout(start, 50);
-    };
-    if (document.readyState === "complete") schedule();
-    else window.addEventListener("load", schedule, { once: true });
-    return () => {
-      window.removeEventListener("load", schedule);
-      if (window.cancelIdleCallback) window.cancelIdleCallback(idle);
-      else window.clearTimeout(idle);
-      observer.disconnect();
-    };
-  }, []);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [on]);
 
   function toggle() {
     const next = !on;
@@ -133,21 +113,11 @@ export function HideModeButton({ variant = "icon" }: { variant?: "icon" | "sheet
   );
   if (variant === "sheet") return button;
   return (
-    <HoverCard
-      width={220}
-      height={80}
-      tone="ink"
-      placement="below-right"
-      render={() => (
-        <div className="text-xs leading-snug">
-          <p className="font-bold">Hide mode {on ? "is on" : ""}</p>
-          <p className="mt-0.5 opacity-75">
-            Blurs every amount and client name — for a screen someone else can see. Tap again to show them.
-          </p>
-        </div>
-      )}
+    <SwitchExplainer
+      title={`Hide mode ${on ? "is on" : ""}`}
+      body="Blurs every amount, client name, phone and location — for a screen someone else can see. Tap again to show them."
     >
       {button}
-    </HoverCard>
+    </SwitchExplainer>
   );
 }

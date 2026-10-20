@@ -18,6 +18,8 @@ import { count } from "@/lib/money";
 import { EventTypeChip } from "./EventTypeChip";
 import { StageChip } from "./StageChip";
 import { extraSlots } from "./OrdersTable";
+import { GroupLabel } from "./OrderSheet";
+import { PackedUnits } from "./PackageLineEditor";
 import { usePaymentMethods } from "./PaymentMethodsContext";
 
 /**
@@ -50,7 +52,11 @@ export function OrderReview({
   onEdit: (step: number) => void;
 }) {
   const method = usePaymentMethods().find((m) => m.id === draft.paymentMethodId);
-  const extras = extraSlots(draft).filter((slot) => slot.on > 0);
+  // Guests lead the event's chips, then whatever extras the order has.
+  const eventChips = [
+    ...(draft.guests !== null ? [{ icon: UserRound, short: `${count(draft.guests)} guests` }] : []),
+    ...extraSlots(draft).filter((slot) => slot.on > 0),
+  ];
   const flavorName = new Map(flavors.map((f) => [String(f.id), f.name]));
   const packageName = new Map(packageTypes.map((p) => [String(p.id), p.name]));
   const totalUnits = lines.reduce((sum, line) => sum + linePackedUnits(line, unitsPerPackage), 0);
@@ -68,7 +74,14 @@ export function OrderReview({
           >
             {draft.customer}
           </p>
-          <EditButton label="Edit who it's for" onClick={() => onEdit(0)} icon />
+          <button
+            type="button"
+            onClick={() => onEdit(0)}
+            aria-label="Edit who it's for"
+            className="press flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent"
+          >
+            <Pencil size={14} />
+          </button>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-base">
           <span className="flex items-center gap-1.5 tabular-nums">
@@ -101,18 +114,12 @@ export function OrderReview({
       )}
 
       <Section title="Event" onEdit={() => onEdit(1)}>
-        {draft.guests === null && extras.length === 0 ? (
+        {eventChips.length === 0 ? (
           <p className="text-sm text-ink-soft">Nothing added for the event.</p>
         ) : (
           // From the right, like every chip spread on the form's steps.
           <div className="flex flex-wrap items-center justify-end gap-1.5">
-            {draft.guests !== null && (
-              <span className="flex items-center gap-1 rounded-full bg-band px-2.5 py-1 text-xs font-semibold text-ink">
-                <UserRound size={13} aria-hidden />
-                {count(draft.guests)} guests
-              </span>
-            )}
-            {extras.map(({ icon: Icon, short }) => (
+            {eventChips.map(({ icon: Icon, short }) => (
               <span
                 key={short}
                 className="flex items-center gap-1 rounded-full bg-band px-2.5 py-1 text-xs font-semibold text-ink"
@@ -141,10 +148,7 @@ export function OrderReview({
                     <span className="min-w-0 flex-1 text-base font-bold">
                       {packageLineLabel(line, unitsPerPackage, packageName.get(String(line.packageTypeId)) ?? "")}
                     </span>
-                    <span className="flex shrink-0 items-baseline gap-1">
-                      <span className="font-display text-base font-extrabold tabular-nums">{count(packed)}</span>
-                      <span className="text-xs text-ink-soft">units</span>
-                    </span>
+                    <PackedUnits packed={packed} />
                   </div>
                   <p className="mt-0.5 text-sm text-ink-soft">
                     {line.flavors.length === 0
@@ -157,10 +161,9 @@ export function OrderReview({
                 </li>
               );
             })}
-            <li className="flex items-baseline justify-end gap-1 border-t border-current/12 pt-2">
+            <li className="flex items-center justify-end gap-2 border-t border-current/12 pt-2">
               <span className="text-sm text-ink-soft">Total</span>
-              <span className="font-display text-lg font-extrabold tabular-nums">{count(totalUnits)}</span>
-              <span className="text-xs text-ink-soft">units</span>
+              <PackedUnits packed={totalUnits} />
             </li>
           </ul>
         )}
@@ -170,45 +173,29 @@ export function OrderReview({
 }
 
 /**
- * A section after the hero: a ruled heading in the form's own caps, with
- * its Edit at the right end of the rule — the same heading every step
- * uses, so the review reads as the form folded shut rather than a summary
- * of a different screen.
+ * A section after the hero: the form's own ruled heading (`GroupLabel`),
+ * with its Edit at the right end of the rule, so the review reads as the
+ * form folded shut rather than a summary of a different screen.
  */
 function Section({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
   return (
     <section>
-      <div className="mt-1.5 mb-2.5 flex items-center justify-between gap-2 border-b border-current/12 pb-1.5">
-        <h3 className="text-xs font-extrabold tracking-[0.14em] uppercase">{title}</h3>
-        <EditButton label={`Edit ${title.toLowerCase()}`} onClick={onEdit} />
-      </div>
+      <GroupLabel
+        action={
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit ${title.toLowerCase()}`}
+            className="press -my-1.5 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-accent"
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
+        }
+      >
+        {title}
+      </GroupLabel>
       {children}
     </section>
-  );
-}
-
-function EditButton({ label, onClick, icon = false }: { label: string; onClick: () => void; icon?: boolean }) {
-  if (icon) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        className="press flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent"
-      >
-        <Pencil size={14} />
-      </button>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="press -my-1 flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-accent"
-    >
-      <Pencil size={12} />
-      Edit
-    </button>
   );
 }
