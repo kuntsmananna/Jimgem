@@ -1276,6 +1276,24 @@ The rest of the second review's list, none of it needing a migration:
   type check on every push to any branch. It needs no secrets — nothing in
   it reaches the database — and catches what Vercel's build lets through.
 
+### v0.90
+
+- **Settings → Data → Migrations says which hand-run migrations this
+  database has had** (`src/lib/migrations.ts`, `MigrationsPanel`). Nothing
+  records a paste into the Neon console, and a log written from now on
+  would know nothing of the thirty already run — so each migration names
+  what it **leaves behind** (a table, column, index, function or trigger,
+  the last thing it creates) and the pane checks the catalogue for it.
+  Presence is a sound test because every migration is idempotent and
+  `IF NOT EXISTS`. A data-only one (021) is listed as having nothing to
+  check. What is missing leads, with the file to paste; the full list is
+  folded. **A new migration gets an entry in `MIGRATIONS`.** Every marker
+  was checked against a real Postgres built from `schema.sql` plus every
+  `.sql` migration. That check also showed that **a database rebuilt from
+  `schema.sql` alone has no change-log triggers** — `schema.sql` declares
+  `row_revisions` but only migration 026 attaches the triggers — so after
+  a restore the pane reads 026 as not run, which is the truth: paste it.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

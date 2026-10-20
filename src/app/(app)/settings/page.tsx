@@ -37,6 +37,8 @@ import { HistoryPanel } from "@/components/settings/HistoryPanel";
 import { listSnapshots } from "@/lib/backup";
 import { getHistory } from "@/lib/history";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
+import { MigrationsPanel } from "@/components/settings/MigrationsPanel";
+import { getMigrationStatus } from "@/lib/migrations";
 import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +46,7 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   // Money lives on this page — see requireAdminPage.
   await requireAdminPage();
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring, migrations] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -64,6 +66,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       listSnapshots(),
       getHistory(),
       getRecurringSummary(),
+      getMigrationStatus(),
     ]);
   const sumitDocumentCount = sumitDocuments.length;
   // `?tab=lists` opens on that tab — the Dashboard's setup checklist links
@@ -164,6 +167,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <BackupPanel {...snapshots} />
               <HistoryPanel history={history} />
               <ArchivedPanel items={archived} />
+              <MigrationsPanel migrations={migrations} />
             </div>
           ),
         },
