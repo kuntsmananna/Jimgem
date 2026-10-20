@@ -60,7 +60,7 @@ export function ExpensesMobileList({
           <div className="flex items-start gap-2">
             <p className="line-clamp-2 min-w-0 flex-1 font-display text-[22px] leading-[1.15] font-extrabold break-words">
               {entry.business || entry.note || (
-                <span className="font-semibold text-ink-soft/60">Untitled expense</span>
+                <span className="font-semibold text-ink-soft">Untitled expense</span>
               )}
             </p>
             {/* That it comes back every month, as a mark rather than the

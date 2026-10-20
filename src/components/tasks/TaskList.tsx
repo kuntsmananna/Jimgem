@@ -501,7 +501,7 @@ function TaskRow({
           onClick={onDelete}
           title="Delete this task"
           aria-label={`Delete "${task.title}"`}
-          className="reveals-on-hover invisible shrink-0 rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:text-ink max-md:-mr-1.5 max-md:p-2"
+          className="reveals-on-hover opacity-0 shrink-0 rounded-full p-1.5 text-ink-soft transition group-hover:opacity-100 focus-visible:opacity-100 hover:text-ink max-md:-mr-1.5 max-md:p-2"
         >
           <Trash2 size={13} />
         </button>

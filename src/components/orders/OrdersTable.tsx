@@ -290,7 +290,7 @@ export function OrdersTable({
             {groups.map((group, at) => (
               <th key={at} colSpan={group.span} className="bg-cream px-2 pt-1">
                 {group.label && (
-                  <span className="block border-b border-line pb-1 text-[9.5px] font-bold tracking-[0.16em] text-ink-soft/70 uppercase">
+                  <span className="block border-b border-line pb-1 text-[9.5px] font-bold tracking-[0.16em] text-ink-soft uppercase">
                     {group.label}
                   </span>
                 )}
@@ -386,9 +386,19 @@ export function OrdersTable({
                 )}
                 <tr
                   onClick={(e) => handleRowClick(e, order.key)}
+                  // Reachable from the keyboard too (v0.87): Tab lands on
+                  // the row and Enter opens it, as a click does. Only when
+                  // the row itself has focus — a key pressed inside one of
+                  // its cells belongs to that cell.
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                    e.preventDefault();
+                    onOpen(order.key);
+                  }}
                   // `is-offer` marks a quote rather than a booking — see
                   // globals.css for the dashed edge that says so.
-                  className={`motion-row group cursor-pointer align-middle ${isOpen ? "is-open" : ""} ${
+                  className={`motion-row group cursor-pointer align-middle outline-none focus-visible:[&>td:not(:first-child)]:ring-2 focus-visible:[&>td:not(:first-child)]:ring-accent/50 ${isOpen ? "is-open" : ""} ${
                     booked ? "" : "is-offer"
                   }`}
                   // The arrival cascade's place in line, capped so a long
@@ -498,7 +508,7 @@ export function OrdersTable({
                                 onClick={startEditing}
                                 title="Rename the customer on this order"
                                 aria-label="Edit the customer name"
-                                className="reveals-on-hover invisible shrink-0 rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
+                                className="reveals-on-hover opacity-0 shrink-0 rounded-full p-1 text-ink-soft transition group-hover:opacity-100 focus-visible:opacity-100 hover:bg-ink/10 hover:text-ink"
                               >
                                 <Pencil size={11} />
                               </button>
@@ -535,7 +545,7 @@ export function OrdersTable({
                               <span data-private>{order.location}</span>
                             </Tip>
                           ) : (
-                            <span className="text-ink-soft/50">—</span>
+                            <span className="text-ink-soft">—</span>
                           )
                         }
                         editValue={order.location}
@@ -549,7 +559,7 @@ export function OrdersTable({
                         type="number"
                         displayValue={
                           order.guests === null ? (
-                            <span className="block text-right text-ink-soft/50">—</span>
+                            <span className="block text-right text-ink-soft">—</span>
                           ) : (
                             <Tip
                               label={`${count(order.guests)} guests`}
@@ -769,7 +779,7 @@ function Extras({ order }: { order: Order }) {
 function Due({ order, booked }: { order: Order; booked: boolean }) {
   const due = stillDue(order);
   // Nothing priced yet is not "paid" — it is nothing to say.
-  if (orderTotal(order) <= 0) return <span className="text-ink-soft/50">—</span>;
+  if (orderTotal(order) <= 0) return <span className="text-ink-soft">—</span>;
   if (due <= 0) {
     return (
       <Tip
@@ -790,7 +800,7 @@ function Due({ order, booked }: { order: Order; booked: boolean }) {
           ? `Still to collect, VAT included: ${currency(due)}`
           : "A quote — nothing is owed until it is booked"
       }
-      className={`font-bold tabular-nums ${booked ? "text-due" : "text-ink-soft/70"}`}
+      className={`font-bold tabular-nums ${booked ? "text-due" : "text-ink-soft"}`}
     >
       {currency(due)}
     </Tip>
@@ -824,7 +834,7 @@ function NoteHint({ note }: { note: string }) {
  * would open on top of the very card it was pointing at.
  */
 function UnitsCell({ units, cubes }: { units: number; cubes: Flavor[] }) {
-  if (units <= 0) return <span className="text-ink-soft/50">—</span>;
+  if (units <= 0) return <span className="text-ink-soft">—</span>;
   return (
     <span className="flex w-fit cursor-help items-center gap-[3px] font-bold tabular-nums">
       {/* Largest share first, so a glance says what is in it before the

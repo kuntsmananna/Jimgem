@@ -595,7 +595,7 @@ export function OrdersClient({
         {batchNote && (
           <p className="text-xs font-semibold text-ink-soft">
             {batchNote}{" "}
-            <button onClick={() => setBatchNote(null)} className="text-ink-soft/70 underline">
+            <button onClick={() => setBatchNote(null)} className="text-ink-soft underline">
               dismiss
             </button>
           </p>

@@ -75,7 +75,7 @@ export function OrderDetailsPane({
               <span>{formatOrderDate(order.date)}</span>
               <EventTypeChip value={order.customerType} />
               <span>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</span>
-              {order.source === "sheet" && <span className="text-ink-soft/70">imported from sheet</span>}
+              {order.source === "sheet" && <span className="text-ink-soft">imported from sheet</span>}
             </div>
             {/*
               No `details` echo here: migration 004 folded it into notes,

@@ -274,7 +274,7 @@ export function ClientsClient({
           {/* Titles, at the quietest weight the app has: they name the
               columns without competing with the rows they head. */}
           <div
-            className={`grid ${LIST_COLUMNS} items-center gap-3 border-b border-line px-2 pb-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-soft/70 uppercase`}
+            className={`grid ${LIST_COLUMNS} items-center gap-3 border-b border-line px-2 pb-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-soft uppercase`}
           >
             <span title={COLUMN_HELP.name}>Client</span>
             <span title={COLUMN_HELP.phone}>Phone</span>

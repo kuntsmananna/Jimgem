@@ -230,7 +230,12 @@ export function LineChart({
           </div>
         )}
         <div className="relative min-w-0 flex-1">
+          {/* What the picture says, in words, for a screen reader (v0.87):
+              the values were otherwise only reachable by hovering or
+              tapping a month, which a screen reader cannot do. */}
+          <p className="sr-only">{describe(series, xLabels, valueFormat)}</p>
           <svg
+            aria-hidden
             viewBox={`0 0 ${width} ${height}`}
             width="100%"
             height={height}
@@ -454,4 +459,17 @@ export function LineChart({
       </div>
     </div>
   );
+}
+
+/** One sentence per line: its highest and lowest month, and the latest. */
+function describe(series: LineSeries[], xLabels: string[], format: (value: number) => string): string {
+  return series
+    .map((s) => {
+      if (s.values.length === 0) return `${s.label}: no data.`;
+      const max = s.values.indexOf(Math.max(...s.values));
+      const min = s.values.indexOf(Math.min(...s.values));
+      const last = s.values.length - 1;
+      return `${s.label}: highest ${format(s.values[max])} in ${xLabels[max]}, lowest ${format(s.values[min])} in ${xLabels[min]}, latest ${format(s.values[last])} in ${xLabels[last]}.`;
+    })
+    .join(" ");
 }

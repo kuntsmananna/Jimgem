@@ -169,12 +169,20 @@ export function Nav({ name, version }: { name: string; version: string }) {
         <HideModeButton />
         {/* The one control that governs what a shekel means, and so of no
             use at all to an account that is shown none. */}
-        {admin && <VatViewToggle />}
+        {/* Named on a laptop too (v0.87), as the phone's More sheet already
+            names it: the switch changes every figure in the app, and two
+            bare pills reading "incl. VAT / excl. VAT" did not say so. */}
+        {admin && (
+          <span className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-ink-soft">Money:</span>
+            <VatViewToggle />
+          </span>
+        )}
         {/* On every page rather than just the Dashboard — it's how you tell
             which version you're looking at. */}
         <span
           title="App version"
-          className="font-mono text-[11px] text-ink-soft/70 tabular-nums"
+          className="font-mono text-[11px] text-ink-soft tabular-nums"
         >
           {version}
         </span>

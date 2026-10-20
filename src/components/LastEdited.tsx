@@ -34,7 +34,7 @@ export function LastEdited({ at, by }: { at: string; by: string }) {
       caption rather than of any one row, and the next form to grow a
       button would otherwise hit it again.
     */
-    <p className="shrink-0 text-[11px] whitespace-nowrap text-ink-soft/60">
+    <p className="shrink-0 text-[11px] whitespace-nowrap text-ink-soft">
       Last edited {when}
       {by ? ` by ${by}` : ""}
     </p>

@@ -634,7 +634,7 @@ function ExpenseRow({
         <EditableCell
           displayValue={
             <span className="block truncate font-semibold text-ink">
-              {entry.business || <span className="font-normal text-ink-soft/60">Add a business</span>}
+              {entry.business || <span className="font-normal text-ink-soft">Add a business</span>}
             </span>
           }
           editValue={entry.business}
@@ -649,7 +649,7 @@ function ExpenseRow({
         <EditableCell
           displayValue={
             <span className="block truncate text-ink-soft">
-              {entry.note || <span className="text-ink-soft/60">Add a description</span>}
+              {entry.note || <span className="text-ink-soft">Add a description</span>}
             </span>
           }
           editValue={entry.note}
@@ -711,7 +711,7 @@ function ExpenseRow({
           onClick={onDelete}
           title="Delete this expense"
           aria-label="Delete this expense"
-          className="reveals-on-hover invisible rounded-full p-1.5 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
+          className="reveals-on-hover opacity-0 rounded-full p-1.5 text-ink-soft transition group-hover:opacity-100 focus-visible:opacity-100 hover:bg-ink/10 hover:text-ink"
         >
           <Trash2 size={13} />
         </button>
@@ -748,7 +748,7 @@ function DateCell({
           onClick={() => input.current?.showPicker()}
           title="Change the date"
           aria-label="Change the date"
-          className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
+          className="reveals-on-hover opacity-0 rounded-full p-1 text-ink-soft transition group-hover:opacity-100 focus-visible:opacity-100 hover:bg-ink/10 hover:text-ink"
         >
           <CalendarDays size={13} />
         </button>
@@ -773,7 +773,7 @@ function DateCell({
         onClick={onOpen}
         title="Open this expense"
         aria-label="Open this expense"
-        className="reveals-on-hover invisible rounded-full p-1 text-ink-soft transition group-hover:visible hover:bg-ink/10 hover:text-ink"
+        className="reveals-on-hover opacity-0 rounded-full p-1 text-ink-soft transition group-hover:opacity-100 focus-visible:opacity-100 hover:bg-ink/10 hover:text-ink"
       >
         <Maximize2 size={13} />
       </button>
@@ -834,7 +834,7 @@ function AttributeChip({ icon, label }: { icon: React.ReactNode; label: string }
  */
 function AddChip({ label }: { label: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-dashed border-current px-1.5 py-0.5 text-[10px] font-semibold text-ink-soft/60">
+    <span className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border border-dashed border-current px-1.5 py-0.5 text-[10px] font-semibold text-ink-soft">
       + {label}
     </span>
   );

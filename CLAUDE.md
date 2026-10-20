@@ -1149,6 +1149,55 @@ compares identity, and a panel builds a fresh draft before every call.
   `circle at -15% -15%`) meant to read as glowing translucent jelly —
   stored in the `flavors` table, not hardcoded per component.
 
+### The v0.87 UX round
+
+From a UX review, with the owner's picks where there was a choice:
+
+- **What a customer still owes is "Still due" everywhere** — the table,
+  the money rail, the Total hover card, the figures pane, the Clients list
+  and tile, the phone footer. It had five names on five screens.
+- **The expense form leads with the amount** (`ExpenseFormModal`), blank
+  rather than "0" and focused on open, then category, business,
+  description, date, VAT, repeats, payment method and **Spent by** (was
+  "Staff"). VAT and Repeats are `Segmented` tracks, so a phone gets the
+  38px targets every other toggle has; they sit in `Field`'s new `group`
+  mode, a `div role="group"` rather than a `<label>` — a label hands a tap
+  on its caption to the first control inside it, so tapping "Repeats"
+  chose "One-off". The save row is **pinned to the card's bottom on a
+  phone**, pulled out by the card's 24px so it spans edge to edge.
+- **Keyboard and screen readers.** `Modal` and `Sheet` are
+  `role="dialog"` with `aria-modal` and a name, and share
+  `useDialogFocus`: focus moves in on open (unless an `autoFocus` field
+  already took it), Tab is trapped inside, and focus returns to what
+  opened it. The trap only acts on a Tab whose target is inside its own
+  box — a `Sheet` opened inside a `Modal` portals out of it, but React
+  still bubbles its key events up through the Modal. An Orders table row
+  takes focus and opens on Enter or Space (only when the row itself has
+  focus). The controls that were `invisible group-hover:visible` are
+  `opacity-0 group-hover:opacity-100 focus-visible:opacity-100`, the
+  pattern `ArchiveButton` already used — `invisible` cannot take focus.
+- **No text below readable contrast for decoration's sake.**
+  `text-ink-soft/50`–`/70` and `text-ink/50` measured 2.1–2.9:1 on cream,
+  against 4.5; they are plain `text-ink-soft` (5.4:1) now. Quiet is done
+  with size and weight, not by fading the ink.
+- **`LineChart` says its figures in words** to a screen reader (an
+  `sr-only` sentence per line: highest, lowest and latest month); the
+  drawing is `aria-hidden`. `BarBreakdown` was already text.
+- **"Money:" before the VAT switch** on a laptop, as the phone's More sheet
+  already said — it changes every figure in the app.
+- **Settings → "Lists & prices"**, since the jelly tiers, add-ons, VAT and
+  delivery fees live there.
+- **A new login is not shown the old release notes.** Each announcement
+  carries a `released` day, and `getSeenAnnouncements` counts every one
+  released before the account's `created_at` as already seen — a "what
+  changed" tour is a changelog to somebody who never saw the before. The
+  sparkle still replays them all. **Give a new announcement its
+  `released` date.**
+- **An empty Dashboard shows a setup checklist** (`SetupChecklist`): set
+  prices, add flavours, take the first order, each ticked once true and
+  linked to where it is done. It draws nothing once all three are, so a
+  dashboard in use never sees it.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
@@ -1687,7 +1736,7 @@ compares identity, and a panel builds a fresh draft before every call.
   or "last edited by" would quietly skip everything done from the toolbar.
   `LastEdited` draws it at the **left end of each popup's save row** — a
   caption should not make a popup taller, and that row already reserves
-  the height — at half strength: it answers "did you touch this?" without
+  the height — in the quiet `text-ink-soft` (half strength until v0.87, which measured 2.4:1 and failed): it answers "did you touch this?" without
   ever being what the popup is for. It shows nothing at all for a row
   saved before this was recorded, which is every row until its next save. Same-day edits read as "today at 14:32",
   because that is what a person means.
@@ -1763,9 +1812,13 @@ compares identity, and a panel builds a fresh draft before every call.
   The needle is split on whitespace and every term has to appear
   somewhere in the row's joined fields, so "anna 054" finds the same row
   as "054 anna" — a name and a phone are two facts about one client, not
-  a phrase. On Orders it runs **before every other filter**, so it
-  narrows the board and the calendar too rather than being a table
-  control; on Expenses it narrows the charts and the period total with
+  a phrase. On Orders **a search looks through every order** (v0.87, the
+  owner's pick): while the box holds anything the time window and the
+  payment, paid-by and status filters are *paused* — not cleared, so
+  emptying the box puts the list back exactly as it was — and a line above
+  the list says so. Before, a delivered order from March sat behind the
+  14-day window and the status filter, two dead ends for "where is Maya's
+  order". It still narrows the board and the calendar too; on Expenses it narrows the charts and the period total with
   the list, because those figures describe the list. A search box carries
   `fields-lit`: it is a control rather than a value on a sheet, and the
   app's default (a filled field drops to bare text) would leave a live
@@ -2746,11 +2799,13 @@ across — a little, but visibly, and differently on the calendar.
 Its left group is **which orders**, as three matching dropdowns: the time
 scope (`src/lib/orderScope.ts` — 14 days / this month / next month / all
 time) picks what is in play at all, then Payment and Status narrow it.
-Each wears **an icon in place of its written name** (`Dropdown`'s
-optional `icon`) — the value is what changes and what gets read, while
-"Payment:" and "Status:" were fixed text costing more width than the
-values beside them. The word stays as the pill's `title` and its
-accessible name, so nothing is lost to a screen reader or a hover. The
+Each pill says **its name and its value** — "Paid by: All" (v0.87, the
+owner's pick after a UX review). They wore an icon *in place of* the name
+until then, which left Payment and Paid by as two different marks both
+reading "All", undecipherable to a new user and on a phone with no hover
+to ask. The icon is now the phone's only (`md:hidden`): on a laptop the
+four pills with words *and* marks did not fit, and the word says what the
+mark did. Below ~1400px of window the four still take two rows. The
 scope was four segmented pills, which spent most of the toolbar on a
 control changed a few times a day and left nothing to centre the view
 switcher in; `Dropdown.tsx` now holds the shared pill-and-popover shell,

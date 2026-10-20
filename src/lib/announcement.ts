@@ -15,6 +15,12 @@ import type { Role } from "./roles";
  */
 export interface Announcement {
   id: string;
+  /**
+   * The day it went out, as YYYY-MM-DD. A login created after this day was
+   * never shown the old way, so it is not told what changed — see
+   * `getSeenAnnouncements`.
+   */
+  released: string;
   /** Who it is for — a release about money is admin-only, since a staff login never sees money. */
   audience: Role[];
   /** Which picture heads it — see `WhatsNew`. */
@@ -36,6 +42,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
   // renamed rather than duplicated, so a replay lists it once.
   {
     id: "v0.79.7-jelly-mode",
+    released: "2026-10-19",
     audience: ["admin", "staff"],
     art: "jelly-mode",
     title: "Jelly mode",
@@ -65,6 +72,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
    */
   {
     id: "v0.78-orders-money",
+    released: "2026-10-19",
     audience: ["admin"],
     art: "paid-by",
     title: "Still due, and paid by in the badge",
@@ -94,6 +102,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
    */
   {
     id: "v0.78-orders-table",
+    released: "2026-10-19",
     audience: ["admin", "staff"],
     art: "orders-table",
     title: "The orders list, reorganised",
@@ -123,6 +132,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
    */
   {
     id: "v0.74-refresh",
+    released: "2026-10-18",
     audience: ["admin", "staff"],
     art: "refresh",
     title: "A new look",
@@ -153,6 +163,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
   // v0.71: the money one, so admins only.
   {
     id: "v0.71-paid-by",
+    released: "2026-10-18",
     audience: ["admin"],
     art: "paid-by",
     title: "Paid by, and the whole amount",

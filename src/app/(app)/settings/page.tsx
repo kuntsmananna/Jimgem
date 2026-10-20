@@ -86,7 +86,9 @@ export default async function SettingsPage() {
         },
         {
           id: "lists",
-          label: "Lists",
+          // "          label: "Lists", prices": the jelly tiers, add-ons, VAT and delivery fees all
+          // live here, and a tab called Lists was where nobody looked for them.
+          label: "Lists & prices",
           icon: <ListChecks size={14} />,
           // Everything the owner keeps a list of, three panes across.
           //

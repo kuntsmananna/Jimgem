@@ -16,7 +16,7 @@ import { usePaymentMethods } from "./PaymentMethodsContext";
  */
 export function PaymentMethodChip({ methodId }: { methodId: number | null }) {
   const methods = usePaymentMethods();
-  if (methodId === null) return <span className="text-ink-soft/50">–</span>;
+  if (methodId === null) return <span className="text-ink-soft">–</span>;
   const name = methods.find((method) => method.id === methodId)?.name ?? "Unknown method";
   return (
     <span

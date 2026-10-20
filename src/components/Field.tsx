@@ -66,10 +66,18 @@ export function TextArea({
 
 export function Field({
   label,
+  group = false,
   error,
   children,
 }: {
   label: string;
+  /**
+   * The field is a row of buttons rather than one input. A `<label>` hands
+   * every tap on its caption to the first control inside it, which for a
+   * row of chips meant tapping "Repeats" chose "One-off". A group is a
+   * `<div role="group">` named by its caption instead.
+   */
+  group?: boolean;
   /**
    * What is wrong with this field, said next to the field itself.
    *
@@ -85,7 +93,7 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-0.5">
+    <Wrapper group={group} label={label}>
       <span className={`text-xs font-semibold ${error ? "text-red-700" : "text-ink-soft"}`}>
         {label}
       </span>
@@ -95,6 +103,16 @@ export function Field({
           {error}
         </span>
       )}
-    </label>
+    </Wrapper>
+  );
+}
+
+function Wrapper({ group, label, children }: { group: boolean; label: string; children: React.ReactNode }) {
+  return group ? (
+    <div role="group" aria-label={label} className="flex flex-col gap-0.5">
+      {children}
+    </div>
+  ) : (
+    <label className="flex flex-col gap-0.5">{children}</label>
   );
 }

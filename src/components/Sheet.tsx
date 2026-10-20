@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useOverlayDismiss } from "./useOverlayDismiss";
+import { useDialogFocus } from "./useDialogFocus";
 
 /** How far a sheet has to be pulled before letting go closes it, in px. */
 const DISMISS_PULL = 90;
@@ -53,6 +54,15 @@ export function Sheet({
    * of `DISMISS_PULL` springs back.
    */
   const panel = useRef<HTMLDivElement>(null);
+  // State as well as the ref: the focus hook needs to know when the panel
+  // exists, which a ref does not announce.
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+  const trapTab = useDialogFocus(box);
+  // Stable, so React does not detach and re-attach it on every render.
+  const attach = useCallback((el: HTMLDivElement | null) => {
+    panel.current = el;
+    setBox(el);
+  }, []);
   const pull = useRef<{ from: number | null; by: number }>({ from: null, by: 0 });
 
   function settle(close: boolean) {
@@ -78,7 +88,12 @@ export function Sheet({
       }}
     >
       <div
-        ref={panel}
+        ref={attach}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        onKeyDown={trapTab}
         onTouchStart={(event) => {
           pull.current = { from: (panel.current?.scrollTop ?? 1) <= 0 ? event.touches[0]!.clientY : null, by: 0 };
         }}
@@ -99,7 +114,7 @@ export function Sheet({
         }}
         onTouchEnd={() => settle(true)}
         onTouchCancel={() => settle(false)}
-        className={`motion-sheet max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-card border-t pb-[env(safe-area-inset-bottom)] ${
+        className={`motion-sheet max-h-[85dvh] outline-none w-full overflow-y-auto overscroll-contain rounded-t-card border-t pb-[env(safe-area-inset-bottom)] ${
           tone === "ink" ? "on-ink border-cream/15" : "border-line bg-card"
         }`}
       >

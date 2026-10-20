@@ -1,7 +1,7 @@
 import { getYearlyFinancials, yearOf } from "@/lib/financials";
 import { getOrders, orderMonth, orderFlavorUnits } from "@/lib/orders";
 import { isBooked, stageMap } from "@/lib/orderTypes";
-import { getFlavors, getProductionStages, getStaff } from "@/lib/settings";
+import { getFlavors, getPrices, getProductionStages, getStaff } from "@/lib/settings";
 import { getVatView } from "@/lib/vatViewServer";
 import { DashboardClient, type FlavorLine } from "@/components/dashboard/DashboardClient";
 import { getTasks } from "@/lib/tasks";
@@ -14,7 +14,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   await requireAdminPage();
   const vatView = await getVatView();
   const asked = Number((await searchParams).year);
-  const [{ year, years, months: financials }, orders, flavors, stages, tasks, staff] = await Promise.all([
+  const [{ year, years, months: financials }, orders, flavors, stages, tasks, staff, prices] = await Promise.all([
     getYearlyFinancials(vatView, Number.isInteger(asked) && asked > 2000 ? asked : undefined),
     getOrders(),
     // Archived included: this resolves what stored orders packed, not
@@ -26,6 +26,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
     // parked whole in case that is wanted back.
     getTasks(),
     getStaff(),
+    getPrices(),
   ]);
 
   const stageIndex = stageMap(stages);
@@ -51,6 +52,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       financials={financials}
       year={year}
       years={years}
+      setup={{
+        prices: Object.values(prices).some((amount) => amount > 0),
+        flavors: flavors.some((flavor) => !flavor.archivedAt),
+        orders: orders.length > 0,
+      }}
       flavors={flavors.map((f) => ({
         id: f.id,
         name: f.name,

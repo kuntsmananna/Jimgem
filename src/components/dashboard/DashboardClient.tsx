@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Banknote, CalendarRange, Receipt, TrendingUp, type LucideIcon } from "lucide-react";
+import { Banknote, Check, CalendarRange, Receipt, TrendingUp, type LucideIcon } from "lucide-react";
 import { UnitsIcon } from "@/lib/icons";
 import type { MonthlyFinancials } from "@/lib/financials";
 import type { Task } from "@/lib/tasks";
@@ -14,6 +14,7 @@ import { TaskList } from "@/components/tasks/TaskList";
 import { SelectDropdown } from "@/components/orders/Dropdown";
 import { count, currency } from "@/lib/money";
 import { YearSwitch } from "@/components/YearSwitch";
+import Link from "next/link";
 
 export interface FlavorLine {
   month: number;
@@ -58,6 +59,7 @@ export function DashboardClient({
   financials,
   year,
   years,
+  setup,
   flavors,
   flavorLines,
   tasks,
@@ -67,6 +69,8 @@ export function DashboardClient({
   /** The year `financials` is in, and the years there is anything for — see `YearSwitch`. */
   year: number;
   years: number[];
+  /** Which of the three first steps are done — see `SetupChecklist`. */
+  setup: SetupState;
   flavors: FlavorMeta[];
   flavorLines: FlavorLine[];
   /** The shared to-do list, in the slot the period's orders used to fill. */
@@ -171,6 +175,7 @@ export function DashboardClient({
     /* A step tighter on a phone (`gap-4`), where 24px between every block
        was most of a screen of cream by the bottom of the page. */
     <div className="flex flex-col gap-6 max-md:gap-4">
+      <SetupChecklist setup={setup} />
       <div className="flex items-center gap-2 max-md:flex-wrap">
         <YearSwitch year={year} years={years} path="/" />
         {/* A row of pills is the right control for a period on a laptop and
@@ -330,8 +335,57 @@ function KpiTile({
       <p className="mt-1 font-display text-2xl font-extrabold text-ink">{value}</p>
       <p className="mt-1 text-[11px] font-semibold" title={comparedTo ?? "No earlier month to compare against"}>
         <span className={deltaColor}>{deltaText}</span>{" "}
-        <span className="font-medium text-ink/50">{comparedTo ?? "no prior month"}</span>
+        <span className="font-medium text-ink-soft">{comparedTo ?? "no prior month"}</span>
       </p>
     </div>
+  );
+}
+
+interface SetupState {
+  prices: boolean;
+  flavors: boolean;
+  orders: boolean;
+}
+
+/**
+ * What a brand-new dashboard says instead of a page of empty charts
+ * (v0.87): the three things that have to exist before any figure here can
+ * mean anything, each ticked once it does and linked to where it is done.
+ * Gone for good once all three are — so on a dashboard already in use it
+ * never draws at all.
+ */
+function SetupChecklist({ setup }: { setup: SetupState }) {
+  if (setup.prices && setup.flavors && setup.orders) return null;
+  const steps = [
+    { done: setup.prices, text: "Set your prices", hint: "Settings → Lists & prices", href: "/settings" },
+    { done: setup.flavors, text: "Add your flavours", hint: "Settings → Flavors", href: "/settings" },
+    { done: setup.orders, text: "Take the first order", hint: "Orders → Add order", href: "/orders" },
+  ];
+  return (
+    <section className="rounded-card border border-line bg-card p-5">
+      <h2 className="font-display text-lg font-bold text-ink">Getting set up</h2>
+      <p className="mt-0.5 text-sm text-ink-soft">The figures on this page fill in once these three are done.</p>
+      <ol className="mt-3 flex flex-col gap-2">
+        {steps.map((step) => (
+          <li key={step.text}>
+            <Link href={step.href} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-ink/5">
+              <span
+                aria-hidden
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
+                  step.done ? "border-accent bg-accent text-cream" : "border-line"
+                }`}
+              >
+                {step.done && <Check size={14} />}
+              </span>
+              <span className={`text-sm font-semibold ${step.done ? "text-ink-soft line-through" : "text-ink"}`}>
+                {step.text}
+                <span className="sr-only">{step.done ? " (done)" : ""}</span>
+              </span>
+              <span className="ml-auto text-xs text-ink-soft">{step.hint}</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

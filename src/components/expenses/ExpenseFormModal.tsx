@@ -12,6 +12,7 @@ import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
 import { VAT_MODES, vatOn } from "@/lib/orderTypes";
 import { JellyHop } from "@/components/JellyLoader";
+import { Segmented } from "@/components/orders/OrderSheet";
 
 const emptyDraft = (vatRate: number): ExpenseInput => ({
   date: new Date().toISOString().slice(0, 10),
@@ -159,11 +160,20 @@ export function ExpenseFormModal({
   return (
     <Modal title={isEdit ? "Edit expense" : "Add expense"} icon={<Receipt size={17} />} onClose={onClose}>
       <div className="fields-lit flex flex-col gap-3">
-        <Field label="Date">
+        {/* Amount first (v0.87): at the till it is the one thing on the
+            receipt in front of you, and everything else can be decided
+            after it. */}
+        <Field label="Amount ₪" error={attempted && missingAmount ? "Enter what it cost" : undefined}>
           <TextInput
-            type="date"
-            value={draft.date}
-            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            type="number"
+            data-money
+            inputMode="decimal"
+            // Blank rather than "0", like every other money field: a 0 has
+            // to be deleted before the real figure can be typed.
+            value={draft.amount || ""}
+            autoFocus={!isEdit}
+            className={attempted && missingAmount ? "border-red-600" : ""}
+            onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) || 0 })}
           />
         </Field>
         <Field label="Category" error={attempted && missingCategory ? "Pick a category" : undefined}>
@@ -182,39 +192,69 @@ export function ExpenseFormModal({
             ))}
           </SelectInput>
         </Field>
-        <Field label="Amount ₪" error={attempted && missingAmount ? "Enter what it cost" : undefined}>
+        {/* Who took the money, and what it bought — two questions, so two
+            fields. The description used to answer both, which left the
+            supplier buried mid-sentence and unsearchable. */}
+        <Field label="Business">
           <TextInput
-            type="number"
-            data-money
-            value={draft.amount}
-            className={attempted && missingAmount ? "border-red-600" : ""}
-            onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
+            value={draft.business}
+            onChange={(e) => setDraft({ ...draft, business: e.target.value })}
+          />
+        </Field>
+        <Field label="Description">
+          <TextInput value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+        </Field>
+        <Field label="Date">
+          <TextInput
+            type="date"
+            value={draft.date}
+            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
           />
         </Field>
         {/* What the amount above already contains. A receipt from an
             unregistered supplier carries no VAT, and nothing about the
             number says so — which is why the report cannot strip VAT from
             a period without being told row by row. */}
-        <Field label="VAT">
+        <Field label="VAT" group>
           <div className="flex flex-wrap items-center gap-1.5">
-            {VAT_MODES.map((mode) => (
-              <button
-                key={mode.id}
-                type="button"
-                title={mode.hint}
-                onClick={() => setDraft({ ...draft, vatMode: mode.id })}
-                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                  draft.vatMode === mode.id
-                    ? "border-black bg-black text-cream"
-                    : "border-line text-ink-soft hover:border-ink"
-                }`}
-              >
-                {mode.label}
-              </button>
-            ))}
+            <Segmented
+              label="VAT"
+              value={draft.vatMode}
+              options={VAT_MODES.map((mode) => ({ value: mode.id, text: mode.label }))}
+              onChange={(vatMode) => setDraft({ ...draft, vatMode })}
+            />
             {draft.amount > 0 && draft.vatMode !== "exempt" && (
               <span className="text-[11px] text-ink-soft">
                 ₪{vatOn(draft.amount, draft.vatMode, draft.vatRate).net.toLocaleString()} before VAT
+              </span>
+            )}
+          </div>
+        </Field>
+        {/*
+          Whether this cost comes back every month.
+
+          Two chips rather than a checkbox, and worded as what the expense
+          *is* rather than as a setting being switched on: "One-off" is the
+          answer for almost every row, and a lone unticked box reads as
+          something left undone. It wears the VAT row's treatment because
+          it is the same kind of statement — a fact about the expense that
+          the amount cannot tell you.
+
+          Changing it is safe in both directions: ticking it starts the
+          series from this row, and unticking the newest row of a series
+          ends it without touching the months already booked.
+        */}
+        <Field label="Repeats" group>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Segmented
+              label="Repeats"
+              value={draft.recurring}
+              options={RECURRENCE.map((option) => ({ value: option.recurring, text: option.label }))}
+              onChange={(recurring) => setDraft({ ...draft, recurring })}
+            />
+            {draft.recurring && (
+              <span className="text-[11px] text-ink-soft">
+                Booked again on the {ordinal(draft.date)} of every month
               </span>
             )}
           </div>
@@ -237,7 +277,7 @@ export function ExpenseFormModal({
             ))}
           </SelectInput>
         </Field>
-        <Field label="Staff">
+        <Field label="Spent by">
           <SelectInput
             value={draft.staffId ?? ""}
             onChange={(e) =>
@@ -255,55 +295,6 @@ export function ExpenseFormModal({
             ))}
           </SelectInput>
         </Field>
-        {/*
-          Whether this cost comes back every month.
-
-          Two chips rather than a checkbox, and worded as what the expense
-          *is* rather than as a setting being switched on: "One-off" is the
-          answer for almost every row, and a lone unticked box reads as
-          something left undone. It wears the VAT row's treatment because
-          it is the same kind of statement — a fact about the expense that
-          the amount cannot tell you.
-
-          Changing it is safe in both directions: ticking it starts the
-          series from this row, and unticking the newest row of a series
-          ends it without touching the months already booked.
-        */}
-        <Field label="Repeats">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {RECURRENCE.map((option) => (
-              <button
-                key={String(option.recurring)}
-                type="button"
-                onClick={() => setDraft({ ...draft, recurring: option.recurring })}
-                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                  draft.recurring === option.recurring
-                    ? "border-black bg-black text-cream"
-                    : "border-line text-ink-soft hover:border-ink"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-            {draft.recurring && (
-              <span className="text-[11px] text-ink-soft">
-                Booked again on the {ordinal(draft.date)} of every month
-              </span>
-            )}
-          </div>
-        </Field>
-        {/* Who took the money, and what it bought — two questions, so two
-            fields. The description used to answer both, which left the
-            supplier buried mid-sentence and unsearchable. */}
-        <Field label="Business">
-          <TextInput
-            value={draft.business}
-            onChange={(e) => setDraft({ ...draft, business: e.target.value })}
-          />
-        </Field>
-        <Field label="Description">
-          <TextInput value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
-        </Field>
         {/* The same row as the order form's: the caption at the left where
             it costs no height, the undo pair and anything the form has to
             say beside it, then Save last in the corner every popup uses.
@@ -315,7 +306,11 @@ export function ExpenseFormModal({
           and the caption — a `<p>`, so it shrinks to its longest word —
           was squeezed into five lines.
         */}
-        <div className="mt-2 flex items-center gap-2 max-md:flex-wrap max-md:gap-y-2">
+        {/* Pinned to the bottom of the card on a phone (v0.87): the form
+            is taller than a phone screen with the keyboard up, and Save
+            sat below the fold. Pulled out by the card's own 24px so it
+            spans the card edge to edge. */}
+        <div className="mt-2 flex items-center gap-2 max-md:sticky max-md:-bottom-6 max-md:z-10 max-md:-mx-6 max-md:flex-wrap max-md:gap-y-2 max-md:border-t max-md:border-line max-md:bg-card max-md:px-6 max-md:py-3">
           {/* First in the row and so as far from Save as it goes — where
               the client card puts Archive, for the same reason. */}
           {isEdit && onDelete && (

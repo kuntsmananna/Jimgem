@@ -280,7 +280,7 @@ function OrderCard({
             // A quote owes nothing yet, so its balance is drawn quiet.
             <span
               className={`shrink-0 font-bold tabular-nums ${
-                booked ? "text-due" : "text-ink-soft/70"
+                booked ? "text-due" : "text-ink-soft"
               }`}
             >
               {currency(due)} due

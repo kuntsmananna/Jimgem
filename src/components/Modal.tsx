@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayDismiss } from "./useOverlayDismiss";
 import { BAND_CLASS } from "./Pane";
+import { useDialogFocus } from "./useDialogFocus";
 
 /**
  * The empty middle of the modal's title row, offered to whatever is
@@ -67,6 +68,8 @@ export function Modal({
   useOverlayDismiss(onClose);
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
   const [box, setBox] = useState<HTMLDivElement | null>(null);
+  const trapTab = useDialogFocus(box);
+  const titleId = useId();
 
   /*
     Below the breakpoint a wide dialog stops being a dialog and becomes
@@ -101,6 +104,11 @@ export function Modal({
     >
       <div
         ref={setBox}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={trapTab}
         /*
           A wide dialog takes 80% of the viewport, capped at 1400px. The
           order form outgrew a fixed 64rem the moment it carried three
@@ -113,7 +121,7 @@ export function Modal({
         /* `dvh` in `phoneBox` rather than `vh`: iOS counts its toolbars in
            one and not the other, and a `vh` dialog is one whose last row
            sits under the address bar. */
-        className={`motion-rise max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl ${phoneBox}`}
+        className={`motion-rise max-h-[90vh] w-full ${wide ? "max-w-[min(80vw,87.5rem)]" : "max-w-lg"} overflow-y-auto rounded-card border border-line bg-card p-6 shadow-xl outline-none ${phoneBox}`}
       >
         {/*
           The title row wears the same lid every pane does — `BAND_CLASS`,
@@ -131,7 +139,7 @@ export function Modal({
             is re-hung to match — left as it was it would bleed 8px past
             each edge and put a horizontal scrollbar on the form. */}
         <div className={`${BAND_CLASS} flex items-center gap-4 ${phoneBand}`}>
-          <h2 className="flex flex-1 items-center gap-2 truncate font-display text-lg font-bold">
+          <h2 id={titleId} className="flex flex-1 items-center gap-2 truncate font-display text-lg font-bold">
             {icon && <span className="shrink-0 opacity-70">{icon}</span>}
             <span data-private={privateTitle || undefined} className="truncate">
               {title}

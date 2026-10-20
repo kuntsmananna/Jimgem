@@ -74,8 +74,11 @@ function Dropdown({
           active ? "bg-black text-cream" : "bg-card text-ink-soft hover:text-ink"
         }`}
       >
+        {/* The mark is the phone's only: on a laptop the four pills with
+            their words and their marks did not fit one row at 1300px, and
+            the word now says what the mark used to. */}
         {icon && (
-          <span className={active ? "text-cream/70" : ""} aria-hidden>
+          <span className={`md:hidden ${active ? "text-cream/70" : ""}`} aria-hidden>
             {icon}
           </span>
         )}
