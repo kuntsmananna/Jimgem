@@ -49,9 +49,23 @@ function roleOf(row: StaffAuthRow): Role {
   return row.role === undefined ? "admin" : row.role === "admin" ? "admin" : "staff";
 }
 
+/**
+ * A bcrypt hash of a random string nobody knows, at the same cost as the
+ * real ones, compared against when the username matches nobody.
+ *
+ * Returning before bcrypt for an unknown name answered in a millisecond
+ * where a known name with a wrong password took ~80 — a stopwatch that
+ * tells anyone which usernames exist. Comparing against this costs the
+ * same time either way and can never match.
+ */
+const NO_SUCH_USER_HASH = "$2b$10$sT1EyUf.HsS/UXFs41fzC.gcmuUtC..Vzberh2zJTGfoomdKZELl2";
+
 export async function verifyCredentials(username: string, password: string): Promise<StaffAccount | null> {
   const row = await readStaff("username", username);
-  if (!row) return null;
+  if (!row) {
+    await bcrypt.compare(password, NO_SUCH_USER_HASH);
+    return null;
+  }
 
   const matches = await bcrypt.compare(password, row.password_hash);
   if (!matches) return null;

@@ -1242,6 +1242,21 @@ The rest of the second review's list, none of it needing a migration:
   every page dynamically; that is its own release. No HSTS, which Vercel
   already sends.
 
+### v0.89
+
+- **A client can be added from the Clients page** (Add client in the
+  list's band, the floating + on a phone, and the empty list's button) —
+  somebody who rang about a date before anything was booked. It is
+  `ClientModal` with `client={null}`: the same fields, so adding and
+  editing cannot drift, and none of the history (counts, orders, SUMIT,
+  Archive, last edited) until there is some. An **exact** name match
+  against a live client is refused, since a second row with the same name
+  is one SUMIT's exact-name link could never tell apart; a near one is
+  pointed out and allowed, the order form's picker's two answers.
+- **`.github/workflows/checks.yml`** runs lint, the tests, a build and the
+  type check on every push to any branch. It needs no secrets — nothing in
+  it reaches the database — and catches what Vercel's build lets through.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
@@ -2362,10 +2377,11 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   removed, that protection goes with it, and the replacement is a
   `login_attempts` table rather than nothing.
 - **Nothing that leaves the database carries a password hash** — see the
-  backup and change-log notes in the Database section. `verifyCredentials`
-  also returns before reaching bcrypt for an unknown username, which is a
-  small timing oracle for enumerating the two names; comparing against a
-  dummy hash would close it.
+  backup and change-log notes in the Database section. An unknown username
+  is compared against a dummy hash (`NO_SUCH_USER_HASH` in `auth.ts`,
+  v0.89) rather than answered at once, so a wrong name and a wrong
+  password take the same time and the login cannot be used to find out
+  which usernames exist.
 
 ### Roles
 
@@ -2533,7 +2549,8 @@ the business, not about the code, so don't reach for it on your own.
 
 ## Commands
 
-`npm run dev` / `build` / `start` / `lint` / `test`
+`npm run dev` / `build` / `start` / `lint` / `test` — the last three
+also run on every push (`.github/workflows/checks.yml`)
 
 `npm test` runs Vitest over the money math — `vatOn`, `orderSubtotal`,
 `orderDiscount`, `orderTotal`/`orderNet`, the unit tiers, `jellyTotal`

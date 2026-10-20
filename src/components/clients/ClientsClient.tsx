@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock, Coins, ArrowDownAZ } from "lucide-react";
+import { Clock, Coins, ArrowDownAZ, Plus } from "lucide-react";
 import { Segmented } from "@/components/orders/OrderSheet";
 import type { ClientWithStats } from "@/lib/clients";
 import { looksLikeSameClient } from "@/lib/clientName";
 import { CHART_COLORS } from "@/lib/chartPalette";
 import { LineChart } from "@/components/charts/LineChart";
 import { ClientModal } from "./ClientModal";
-import { PaneHeader } from "@/components/Pane";
+import { PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { useVatView } from "@/components/VatViewContext";
 import { formatOrderDate } from "@/lib/orderTypes";
@@ -123,6 +123,9 @@ export function ClientsClient({
     return Number.isInteger(wanted) && wanted > 0 ? wanted : null;
   });
   const [sort, setSort] = useState<"recent" | "spend" | "name">("recent");
+  // Adding a client by hand — someone who rang about a date before
+  // anything was booked. Until v0.89 a client could only arrive with an order.
+  const [adding, setAdding] = useState(false);
 
   const live = useMemo(() => clients.filter((client) => !client.archivedAt), [clients]);
 
@@ -200,7 +203,16 @@ export function ClientsClient({
       }
     />
   ) : (
-    <EmptyState bare title="No clients yet" hint="A client appears here the first time an order is booked for them." />
+    <EmptyState
+      bare
+      title="No clients yet"
+      hint="A client appears here the first time an order is booked for them — or add one yourself."
+      actions={
+        <button onClick={() => setAdding(true)} className="press rounded-xl bg-black px-4 py-2 text-sm font-semibold text-cream">
+          + Add client
+        </button>
+      }
+    />
   );
 
   return (
@@ -256,6 +268,10 @@ export function ClientsClient({
                 className="w-48"
               />
               <Segmented label="Sort clients" value={sort} options={SORTS} onChange={setSort} size="md" />
+              <button onClick={() => setAdding(true)} className={`${PANE_ACTION_CLASS} flex items-center gap-1.5`}>
+                <Plus size={13} />
+                Add client
+              </button>
             </div>
           }
         />
@@ -319,6 +335,15 @@ export function ClientsClient({
           {shown.length === 0 && emptyState}
         </div>
         )}
+        {/* Add client on a phone: the same floating button Orders and
+            Expenses carry, above the bottom bar and the home indicator. */}
+        <button
+          onClick={() => setAdding(true)}
+          aria-label="Add client"
+          className="press fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-xl md:hidden"
+        >
+          <Plus size={22} />
+        </button>
       </section>
 
       {/* Everything that describes the list rather than being it. The
@@ -401,6 +426,20 @@ export function ClientsClient({
           </ul>
         </section>
       </div>
+      )}
+
+      {adding && (
+        <ClientModal
+          client={null}
+          orders={[]}
+          similar={[]}
+          others={live}
+          onClose={() => setAdding(false)}
+          onSaved={() => {
+            setAdding(false);
+            router.refresh();
+          }}
+        />
       )}
 
       {open && (

@@ -1,0 +1,36 @@
+# The checks every push is meant to pass before the owner previews it:
+# lint, the money-math tests, a production build, and the type check
+# (after the build, which writes the route types tsc reads). Vercel's own
+# build catches a broken build, but not a lint error, a failing test or a
+# type error that the build tolerates — this does, on the branch, before
+# "ship it".
+#
+# No secrets: nothing here talks to the database, the Sheet or SUMIT.
+name: Checks
+
+on:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx tsc --noEmit

@@ -12,6 +12,7 @@ import { formatOrderDate } from "@/lib/orderTypes";
 import type { ClientDocumentLine, ClientOrderLine } from "./ClientsClient";
 import { JellyHop } from "@/components/JellyLoader";
 import { sendWrite } from "@/components/saveError";
+import { looksLikeSameClient, sameClientName } from "@/lib/clientName";
 
 
 
@@ -28,10 +29,18 @@ export function ClientModal({
   orders,
   documents,
   similar,
+  others = [],
   onClose,
   onSaved,
 }: {
-  client: Client;
+  /**
+   * Null for a client being added from the Clients page rather than one on
+   * file. The same card, so the fields cannot drift between adding and
+   * editing; everything that describes a client's history — the counts,
+   * their orders, SUMIT, Archive, the last-edited caption — is drawn only
+   * once there is a history to describe.
+   */
+  client: Client | null;
   /**
    * Only what the card draws. Narrower than `ClientOrderLine` on purpose:
    * the Orders page builds these from the orders already on screen, and a
@@ -46,27 +55,42 @@ export function ClientModal({
   documents?: ClientDocumentLine[];
   /** Clients whose names look like longer or shorter forms of this one. */
   similar: Client[];
+  /**
+   * Everyone already on file, for a new client only: an exact name match
+   * is refused (it would be a second row SUMIT could never tell from the
+   * first — see clientName.ts) and a near one is pointed out, the same two
+   * answers the order form's picker gives.
+   */
+  others?: Client[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [draft, setDraft] = useState({
-    name: client.name,
-    phone: client.phone,
-    email: client.email,
-    source: client.source,
-    notes: client.notes,
+    name: client?.name ?? "",
+    phone: client?.phone ?? "",
+    email: client?.email ?? "",
+    source: client?.source ?? "",
+    notes: client?.notes ?? "",
   });
   const [busy, setBusy] = useState(false);
   // Why the last save or archive did not go through. The card stays open
   // holding the edit — closing it as if saved was the bug.
   const [failed, setFailed] = useState<string | null>(null);
 
+  const existing = client === null ? others.find((other) => sameClientName(other.name, draft.name)) : undefined;
+  const nearby =
+    client === null && draft.name.trim() && !existing
+      ? others.filter((other) => looksLikeSameClient(other.name, draft.name))
+      : [];
+
   async function save() {
-    if (!draft.name.trim()) return;
+    // An exact match is already said above the buttons, and Add is
+    // disabled while it stands — saying it a second time here was noise.
+    if (!draft.name.trim() || existing) return;
     setBusy(true);
     setFailed(null);
-    const { error } = await sendWrite("client", `/api/clients/${client.id}`, {
-      method: "PATCH",
+    const { error } = await sendWrite("client", client ? `/api/clients/${client.id}` : "/api/clients", {
+      method: client ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft),
     });
@@ -87,6 +111,7 @@ export function ClientModal({
    * Archived is where they come back from.
    */
   async function archive() {
+    if (!client) return;
     if (
       !confirm(
         `Archive "${client.name}"?\n\nThey leave the client list and the order form's picker. Their orders keep them exactly as recorded, and Settings → Data → Archived is where they come back from.`,
@@ -114,14 +139,24 @@ export function ClientModal({
   return (
     // The mark says which kind of popup this is — a client card can open
     // on top of an order form, and both are a band with a name on it.
-    <Modal title={client.name} privateTitle icon={<UserRound size={17} />} onClose={onClose}>
+    <Modal
+      title={client ? client.name : "New client"}
+      privateTitle={client !== null}
+      icon={<UserRound size={17} />}
+      onClose={onClose}
+    >
       <div className="flex flex-col gap-4">
         {/* Stacked on a phone: three of these inside a `max-w-lg` dialog
             is about 95px each at 390, which will not hold a phone number
             at the 16px every field is there. */}
         <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
           <Field label="Name">
-            <TextInput data-private value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            <TextInput
+              data-private
+              autoFocus={client === null}
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            />
           </Field>
           <Field label="Phone">
             <TextInput
@@ -153,6 +188,16 @@ export function ClientModal({
           <TextInput value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
         </Field>
 
+        {client === null && (existing || nearby.length > 0) && (
+          <p className="rounded-lg bg-tile-peach px-3 py-2 text-xs font-medium text-ink">
+            {existing
+              ? `${existing.name} is already on the list — open them from the list instead.`
+              : `Possibly the same client as ${nearby.map((other) => other.name).join(", ")} — check before adding.`}
+          </p>
+        )}
+
+        {client && (
+        <>
         <div className="flex flex-wrap items-center gap-3 text-xs text-ink-soft">
           <span className="flex items-center gap-1">
             <Users size={12} />
@@ -264,6 +309,8 @@ export function ClientModal({
           </div>
         </div>
         )}
+        </>
+        )}
 
         {/*
           The same row every popup uses: the caption at the left where it
@@ -281,15 +328,19 @@ export function ClientModal({
             compressing — so without somewhere to wrap to, it would push
             the buttons off the edge instead. */}
         <div className="flex items-center gap-2 max-md:flex-wrap max-md:gap-y-2">
-          <LastEdited at={client.updatedAt} by={client.updatedBy} />
-          <button
-            onClick={archive}
-            disabled={busy}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-black/[0.06] hover:text-ink disabled:opacity-60"
-          >
-            <Archive size={13} />
-            Archive
-          </button>
+          {client && (
+            <>
+              <LastEdited at={client.updatedAt} by={client.updatedBy} />
+              <button
+                onClick={archive}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:bg-black/[0.06] hover:text-ink disabled:opacity-60"
+              >
+                <Archive size={13} />
+                Archive
+              </button>
+            </>
+          )}
           {failed && (
             <span className="text-xs font-semibold text-red-700" role="alert">
               {failed}
@@ -304,12 +355,12 @@ export function ClientModal({
           </button>
           <button
             onClick={save}
-            disabled={busy || !draft.name.trim()}
-            className={`press inline-flex min-w-[5rem] items-center justify-center rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream max-md:flex-1 max-md:py-2.5 max-md:text-sm ${
+            disabled={busy || !draft.name.trim() || existing !== undefined}
+            className={`press inline-flex min-w-[5rem] items-center whitespace-nowrap justify-center rounded-full bg-black px-4 py-1.5 text-xs font-semibold text-cream max-md:flex-1 max-md:py-2.5 max-md:text-sm ${
               busy ? "" : "disabled:opacity-60"
             }`}
           >
-            {busy ? <JellyHop label="Saving the client" /> : "Save"}
+            {busy ? <JellyHop label="Saving the client" /> : client ? "Save" : "Add client"}
           </button>
         </div>
       </div>
