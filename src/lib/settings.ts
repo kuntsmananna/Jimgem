@@ -573,6 +573,27 @@ export async function resetStaffPassword(id: number, password: string): Promise<
   await db.query("UPDATE staff SET password_hash = $1 WHERE id = $2", [passwordHash, id]);
 }
 
+/**
+ * Ends every session this account has open, by moving `session_version`
+ * on (migration 033) — see `currentRole`. Called after a role change and a
+ * password reset, which is what "they have left" looks like here. Returns
+ * the new version, or null before the migration has run, when there is
+ * nothing to move and no session can be ended early.
+ */
+export async function endSessions(id: number): Promise<number | null> {
+  const db = getDb();
+  try {
+    const { rows } = await db.query<{ session_version: number }>(
+      "UPDATE staff SET session_version = session_version + 1 WHERE id = $1 RETURNING session_version",
+      [id],
+    );
+    return rows[0]?.session_version ?? null;
+  } catch (error) {
+    if (!isMissingColumn(error, "session_version")) throw error;
+    return null;
+  }
+}
+
 export async function updateStaffName(id: number, name: string): Promise<StaffAccount> {
   const db = getDb();
   const { rows } = await db.query<StaffRow>(

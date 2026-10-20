@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { StaleWriteError, updateOrder, updateOrderFields, getOrderMoney, type OrderInput, type EditableField } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
-import { callerIsAdmin } from "@/lib/guard";
+import { callerIsAdmin, refuseSignedOut } from "@/lib/guard";
 import { MONEY_FIELDS, withStoredMoney } from "@/lib/redact";
 
 export const runtime = "nodejs";
@@ -44,6 +44,8 @@ type UpdateBody = { expectedUpdatedAt?: string } & (
  * request that should not have been made.
  */
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
+  const refused = await refuseSignedOut();
+  if (refused) return refused;
   const { id } = await ctx.params;
   const body = (await request.json()) as UpdateBody;
   const editor = await currentEditor();

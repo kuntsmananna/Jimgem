@@ -8,39 +8,49 @@ export interface StaffAccount {
   name: string;
   username: string;
   role: Role;
+  /** `staff.session_version` — see `SessionData.version`. */
+  sessionVersion: number;
 }
 
-export async function verifyCredentials(
-  username: string,
-  password: string,
-): Promise<StaffAccount | null> {
-  const db = getDb();
-  const result = await db.query<{
-    id: number;
-    name: string;
-    username: string;
-    password_hash: string;
-    role?: string | null;
-  }>(
-    // `role` is selected through a fallback rather than assumed, for the
-    // minutes between this deploying and migration 030 being pasted in:
-    // signing in must not be the thing that breaks while a column is on
-    // its way. Everyone is an admin there, which is what they were the
-    // moment before.
-    "SELECT id, name, username, password_hash, role FROM staff WHERE username = $1",
-    [username],
-  ).catch(async (error) => {
-    if (!isMissingColumn(error, "role")) throw error;
-    return db.query<{
-      id: number;
-      name: string;
-      username: string;
-      password_hash: string;
-      role?: string | null;
-    }>("SELECT id, name, username, password_hash FROM staff WHERE username = $1", [username]);
-  });
+interface StaffAuthRow {
+  id: number;
+  name: string;
+  username: string;
+  password_hash: string;
+  role?: string | null;
+  session_version?: number | null;
+}
 
-  const row = result.rows[0];
+/**
+ * Reads one staff row, dropping the columns a migration may not have
+ * added yet rather than failing: `role` (030) and `session_version` (033).
+ * Signing in must not be the thing that breaks in the minutes between a
+ * deploy and the paste into the database console. Without `role` everyone
+ * is an admin, which is what they were the moment before; without
+ * `session_version` no session can be ended early, which is how it was.
+ */
+async function readStaff(where: "username" | "id", value: string | number): Promise<StaffAuthRow | undefined> {
+  const db = getDb();
+  for (const extra of ["role, session_version", "role", ""]) {
+    const columns = ["id", "name", "username", "password_hash", extra].filter(Boolean).join(", ");
+    try {
+      const { rows } = await db.query<StaffAuthRow>(`SELECT ${columns} FROM staff WHERE ${where} = $1`, [value]);
+      return rows[0];
+    } catch (error) {
+      if (!isMissingColumn(error, "session_version") && !isMissingColumn(error, "role")) throw error;
+    }
+  }
+  return undefined;
+}
+
+function roleOf(row: StaffAuthRow): Role {
+  // Undefined only before migration 030; anything else unrecognised is
+  // the least privileged of the two.
+  return row.role === undefined ? "admin" : row.role === "admin" ? "admin" : "staff";
+}
+
+export async function verifyCredentials(username: string, password: string): Promise<StaffAccount | null> {
+  const row = await readStaff("username", username);
   if (!row) return null;
 
   const matches = await bcrypt.compare(password, row.password_hash);
@@ -50,9 +60,8 @@ export async function verifyCredentials(
     id: row.id,
     name: row.name,
     username: row.username,
-    // Undefined only in the pre-migration window above; anything else
-    // unrecognised is the least privileged of the two.
-    role: row.role === undefined ? "admin" : row.role === "admin" ? "admin" : "staff",
+    role: roleOf(row),
+    sessionVersion: row.session_version ?? 0,
   };
 }
 
@@ -67,22 +76,21 @@ export async function verifyCredentials(
  * somebody then takes effect on their next page load rather than at their
  * next login, which is what anyone changing a permission expects.
  *
- * No session, or an account since deleted, is `null` — and every caller
- * treats that as "not an admin", so the failure is closed.
+ * **A session issued before the account's role or password last changed
+ * is no session at all** (`session_version`, migration 033): it reads as
+ * `null`, so a demoted admin or somebody who has left is refused by every
+ * route and page that asks this — not only the five pages that check for
+ * an admin. No session, or an account since deleted, is `null` too, and
+ * every caller treats that as "not an admin", so the failure is closed.
  */
 export async function currentRole(): Promise<Role | null> {
   try {
     const session = await getSession();
     if (!session.userId) return null;
-    const db = getDb();
-    const { rows } = await db
-      .query<{ role?: string | null }>("SELECT role FROM staff WHERE id = $1", [session.userId])
-      .catch(async (error) => {
-        if (!isMissingColumn(error, "role")) throw error;
-        return { rows: [{ role: "admin" }] };
-      });
-    if (rows.length === 0) return null;
-    return rows[0].role === "admin" ? "admin" : "staff";
+    const row = await readStaff("id", session.userId);
+    if (!row) return null;
+    if (row.session_version != null && row.session_version !== (session.version ?? 0)) return null;
+    return roleOf(row);
   } catch (error) {
     console.error("Couldn't read the signed-in role:", error);
     return null;

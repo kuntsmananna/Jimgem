@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { importFromSheet } from "@/lib/sheetImport";
+import { refuseNonAdmin } from "@/lib/guard";
 
 /**
  * Pulls Sheet rows the DB hasn't seen yet. Triggered from Settings, never
  * automatically — pages read Postgres alone (see sheetImport.ts).
  */
 export async function POST() {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   if (!spreadsheetId) {
     return NextResponse.json({ error: "GOOGLE_SHEETS_SPREADSHEET_ID is not set." }, { status: 500 });

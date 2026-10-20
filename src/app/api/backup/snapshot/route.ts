@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { captureSnapshot } from "@/lib/backup";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const maxDuration = 60;
 
@@ -9,6 +10,8 @@ export const maxDuration = 60;
  * every other route here.
  */
 export async function POST() {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   try {
     return NextResponse.json(await captureSnapshot("manual"));
   } catch (error) {

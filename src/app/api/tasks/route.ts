@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTask, type TaskInput } from "@/lib/tasks";
 import { currentEditor } from "@/lib/editor";
+import { refuseSignedOut } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseSignedOut();
+  if (refused) return refused;
   const body = (await request.json()) as TaskInput;
   // A blank task is a stray Enter, not a record. Refused here as well as
   // in the composer, since the composer is not the only possible caller.

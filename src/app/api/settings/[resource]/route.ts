@@ -11,6 +11,7 @@ import {
   createDeliveryOption,
   type ContentPresetInput,
 } from "@/lib/settings";
+import { refuseNonAdmin } from "@/lib/guard";
 
 /** Coerces the JSON body's loosely-typed recipe into numbers. */
 function presetInput(body: {
@@ -35,6 +36,8 @@ function presetInput(body: {
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest, ctx: RouteContext<"/api/settings/[resource]">) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const { resource } = await ctx.params;
   const body = await request.json();
 

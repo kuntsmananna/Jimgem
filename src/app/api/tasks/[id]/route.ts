@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteTask, restoreTask, updateTask, type TaskInput } from "@/lib/tasks";
 import { currentEditor } from "@/lib/editor";
+import { refuseSignedOut } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/tasks/[id]">) {
+  const refused = await refuseSignedOut();
+  if (refused) return refused;
   const { id } = await ctx.params;
   const body = (await request.json()) as TaskInput & { restore?: boolean };
   try {
@@ -23,6 +26,8 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/tasks/
 }
 
 export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/tasks/[id]">) {
+  const refused = await refuseSignedOut();
+  if (refused) return refused;
   const { id } = await ctx.params;
   try {
     await deleteTask(Number(id));

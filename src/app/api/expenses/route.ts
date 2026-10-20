@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createExpense, type ExpenseInput } from "@/lib/expenses";
 import { currentEditor } from "@/lib/editor";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const body = (await request.json()) as ExpenseInput;
   try {
     const expense = await createExpense(body, await currentEditor());

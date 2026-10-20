@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateExpense, deleteExpense, restoreExpense, type ExpenseInput } from "@/lib/expenses";
 import { StaleWriteError } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const { id } = await ctx.params;
   const body = (await request.json()) as ExpenseInput & {
     expectedUpdatedAt?: string;
@@ -34,6 +37,8 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expens
 }
 
 export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const { id } = await ctx.params;
   try {
     await deleteExpense(Number(id));

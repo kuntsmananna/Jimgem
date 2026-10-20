@@ -6,7 +6,7 @@ import type { ExpenseCategory, PaymentMethod, StaffAccount } from "@/lib/setting
 import { Receipt, Trash2 } from "lucide-react";
 import { LastEdited } from "@/components/LastEdited";
 import { UndoRedo } from "@/components/UndoRedo";
-import { saveError } from "@/components/saveError";
+import { sendWrite } from "@/components/saveError";
 import { Modal } from "@/components/Modal";
 import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { Field, TextInput, SelectInput } from "@/components/Field";
@@ -140,7 +140,7 @@ export function ExpenseFormModal({
     // Editing sends the version this form was opened on, so a save built
     // on values someone else has since changed is refused rather than
     // written over theirs — see StaleWriteError in orders.ts.
-    const response = await fetch(isEdit ? `/api/expenses/${expense.key}` : "/api/expenses", {
+    const { error: failure } = await sendWrite("expense", isEdit ? `/api/expenses/${expense.key}` : "/api/expenses", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(isEdit ? { ...draft, expectedUpdatedAt: expense.updatedAt } : draft),
@@ -148,8 +148,7 @@ export function ExpenseFormModal({
     setBusy(false);
     // The popup stays open holding the draft: it is the only copy of
     // this work until it is written somewhere — on a refused save and on
-    // a failed one alike.
-    const failure = await saveError(response, "expense");
+    // a failed one alike, and on one that never arrived.
     if (failure) {
       setFailed(failure);
       return;

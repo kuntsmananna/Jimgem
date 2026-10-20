@@ -1,4 +1,4 @@
-import { getYearlyFinancials } from "@/lib/financials";
+import { getYearlyFinancials, yearOf } from "@/lib/financials";
 import { getOrders, orderMonth, orderFlavorUnits } from "@/lib/orders";
 import { isBooked, stageMap } from "@/lib/orderTypes";
 import { getFlavors, getProductionStages, getStaff } from "@/lib/settings";
@@ -9,12 +9,13 @@ import { requireAdminPage } from "@/lib/guard";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   // Money lives on this page — see requireAdminPage.
   await requireAdminPage();
   const vatView = await getVatView();
-  const [financials, orders, flavors, stages, tasks, staff] = await Promise.all([
-    getYearlyFinancials(vatView),
+  const asked = Number((await searchParams).year);
+  const [{ year, years, months: financials }, orders, flavors, stages, tasks, staff] = await Promise.all([
+    getYearlyFinancials(vatView, Number.isInteger(asked) && asked > 2000 ? asked : undefined),
     getOrders(),
     // Archived included: this resolves what stored orders packed, not
     // what a new one may pick.
@@ -35,7 +36,8 @@ export default async function DashboardPage() {
   // make the two disagree about the same number.
   const flavorLines: FlavorLine[] = orders.flatMap((order) => {
     const month = orderMonth(order);
-    if (month === null || !isBooked(order, stageIndex)) return [];
+    // The same year as the figures beside it — see getYearlyFinancials.
+    if (month === null || yearOf(order.date) !== year || !isBooked(order, stageIndex)) return [];
     return orderFlavorUnits(order.packageLines).map((line) => ({
       month,
       ...line,
@@ -45,7 +47,10 @@ export default async function DashboardPage() {
   // No version footer here any more — it sits in the nav, on every page.
   return (
     <DashboardClient
+      key={year}
       financials={financials}
+      year={year}
+      years={years}
       flavors={flavors.map((f) => ({
         id: f.id,
         name: f.name,

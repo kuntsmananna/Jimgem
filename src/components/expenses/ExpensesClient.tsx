@@ -19,7 +19,7 @@ import { useIsMobile } from "@/components/useMediaQuery";
 import { ExpensesMobileList } from "./ExpensesMobileList";
 import { PageSearch, matchesSearch } from "@/components/SearchInput";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
-import { saveError } from "@/components/saveError";
+import { sendWrite } from "@/components/saveError";
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useVatView } from "@/components/VatViewContext";
 import { EmptyState } from "@/components/EmptyState";
@@ -171,14 +171,20 @@ export function ExpensesClient({
    * than a dialog in front of every delete.
    */
   async function deleteEntry(key: string) {
-    await fetch(`/api/expenses/${key}`, { method: "DELETE" });
+    const { error } = await sendWrite("expense", `/api/expenses/${key}`, { method: "DELETE" });
     refresh();
+    // No Undo offered for a delete that did not happen.
+    if (error) {
+      alert(error);
+      return;
+    }
     undoToast.show("Expense deleted", async () => {
-      await fetch(`/api/expenses/${key}`, {
+      const { error: undoError } = await sendWrite("expense", `/api/expenses/${key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ restore: true }),
       });
+      if (undoError) alert(undoError);
       refresh();
     });
   }
@@ -191,7 +197,7 @@ export function ExpensesClient({
    * needing a partial-update path of its own.
    */
   async function patch(entry: Expense, change: Partial<Record<string, unknown>>) {
-    const response = await fetch(`/api/expenses/${entry.key}`, {
+    const { error: failure } = await sendWrite("expense", `/api/expenses/${entry.key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -215,7 +221,6 @@ export function ExpensesClient({
         ...change,
       }),
     });
-    const failure = await saveError(response, "expense");
     if (failure) alert(failure);
     refresh();
   }

@@ -1,5 +1,5 @@
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
-import { isBooked, orderNet, orderTotal, stageMap, vatOn, type VatMode } from "./orderTypes";
+import { isBooked, orderNet, orderTotal, stageMap, todayIso, vatOn, type VatMode } from "./orderTypes";
 import type { VatView } from "./vatView";
 import { getDb } from "./db";
 import { getPackageTypes, getExpenseCategories, getProductionStages } from "./settings";
@@ -175,6 +175,7 @@ export async function getMonthlyRevenue(
 }
 
 interface DbExpenseForRollup {
+  year: number;
   month: number;
   categoryName: string;
   /** What was paid, VAT included where the receipt carried it. */
@@ -201,13 +202,13 @@ async function getDbExpensesForRollup(): Promise<DbExpenseForRollup[]> {
 
   return rows
     .map((row) => {
-      const match = row.date.trim().match(/^\d{4}-(\d{2})-\d{2}$/);
-      const month = match ? Number(match[1]) : null;
+      const match = row.date.trim().match(/^(\d{4})-(\d{2})-\d{2}$/);
       const categoryName = categoryNameById.get(row.category_id);
-      if (month === null || !categoryName) return null;
+      if (!match || !categoryName) return null;
       const amount = Number(row.amount);
       return {
-        month,
+        year: Number(match[1]),
+        month: Number(match[2]),
         categoryName,
         amount,
         // Taken out per row, because a receipt from an unregistered
@@ -241,7 +242,34 @@ export interface MonthlyFinancials {
  * month's total: these months straddle the date the business registered,
  * so one divisor would be wrong for every exempt row in them.
  */
-export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<MonthlyFinancials[]> {
+export interface YearlyFinancials {
+  /** The year these months are in. */
+  year: number;
+  /** Every year with an order or an expense in it, and this one, newest first. */
+  years: number[];
+  months: MonthlyFinancials[];
+}
+
+/** The calendar year an ISO date ("2026-08-14") falls in, or null. */
+export function yearOf(date: string): number | null {
+  const match = date.trim().match(/^(\d{4})-\d{2}-\d{2}$/);
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * Net profit per month for one calendar year.
+ *
+ * **One year, never all of them.** A month is bucketed by its number, so
+ * reading two years at once would add January 2027 into January 2026 —
+ * and the nightly roll-forward of monthly expenses books into the next
+ * year on its own, whether or not an order has been taken there yet.
+ * `year` defaults to the current one; `years` is what the page's switch
+ * offers.
+ */
+export async function getYearlyFinancials(
+  vatView: VatView = "gross",
+  year: number = Number(todayIso().slice(0, 4)),
+): Promise<YearlyFinancials> {
   const net = vatView === "net";
   const [orders, dbExpenses, packageTypes] = await Promise.all([
     getOrders(),
@@ -254,10 +282,21 @@ export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<M
     getPackageTypes(true),
   ]);
   const packageUnitsById = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
-  const revenue = await getMonthlyRevenue(orders, packageUnitsById);
+  const years = [
+    ...new Set([
+      year,
+      ...orders.map((o) => yearOf(o.date)).filter((y): y is number => y !== null),
+      ...dbExpenses.map((e) => e.year),
+    ]),
+  ].sort((a, b) => b - a);
+  const revenue = await getMonthlyRevenue(
+    orders.filter((o) => yearOf(o.date) === year),
+    packageUnitsById,
+  );
 
   const expensesByMonth = new Map<number, { total: number; byCategory: Record<string, number> }>();
   for (const dbExpense of dbExpenses) {
+    if (dbExpense.year !== year) continue;
     const existing = expensesByMonth.get(dbExpense.month) ?? {
       total: 0,
       byCategory: {},
@@ -271,7 +310,7 @@ export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<M
 
   const months = new Set<number>([...revenue.map((r) => r.month), ...expensesByMonth.keys()]);
 
-  return Array.from(months)
+  const rows = Array.from(months)
     .sort((a, b) => a - b)
     .map((month) => {
       const rev = revenue.find((r) => r.month === month);
@@ -289,4 +328,5 @@ export async function getYearlyFinancials(vatView: VatView = "gross"): Promise<M
         unitsSold: rev?.unitsSold ?? 0,
       };
     });
+  return { year, years, months: rows };
 }

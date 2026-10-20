@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updatePrice } from "@/lib/settings";
 import { ZERO_PRICES, type PriceKey } from "@/lib/orderTypes";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ const KEYS = new Set<string>(Object.keys(ZERO_PRICES));
  * one and no `[id]` to address.
  */
 export async function PATCH(request: NextRequest) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const body = await request.json();
 
   if (!KEYS.has(body.key)) {

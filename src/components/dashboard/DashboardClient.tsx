@@ -13,6 +13,7 @@ import { CHART_COLORS, EXPENSE_PALETTE } from "@/lib/chartPalette";
 import { TaskList } from "@/components/tasks/TaskList";
 import { SelectDropdown } from "@/components/orders/Dropdown";
 import { count, currency } from "@/lib/money";
+import { YearSwitch } from "@/components/YearSwitch";
 
 export interface FlavorLine {
   month: number;
@@ -55,12 +56,17 @@ function percentChange(current: number, previous: number): number | null {
 
 export function DashboardClient({
   financials,
+  year,
+  years,
   flavors,
   flavorLines,
   tasks,
   staff,
 }: {
   financials: MonthlyFinancials[];
+  /** The year `financials` is in, and the years there is anything for — see `YearSwitch`. */
+  year: number;
+  years: number[];
   flavors: FlavorMeta[];
   flavorLines: FlavorLine[];
   /** The shared to-do list, in the slot the period's orders used to fill. */
@@ -166,6 +172,7 @@ export function DashboardClient({
        was most of a screen of cream by the bottom of the page. */
     <div className="flex flex-col gap-6 max-md:gap-4">
       <div className="flex items-center gap-2 max-md:flex-wrap">
+        <YearSwitch year={year} years={years} path="/" />
         {/* A row of pills is the right control for a period on a laptop and
             the wrong one on a phone: `financials` carries a month per month
             with activity, so this is up to twelve of them plus All, in a row

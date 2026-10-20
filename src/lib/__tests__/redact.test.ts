@@ -172,11 +172,33 @@ describe("withStoredMoney", () => {
     expect(merged.productionStatus).toBe("delivered");
   });
 
+  it("keeps a line's copied preset price, though the form sent it as null", () => {
+    // What the kitchen's form sends back for an order it was shown redacted.
+    expect(sent.packageLines[0].packagePrice).toBeNull();
+    expect(merged.packageLines[0].packagePrice).toBe(320);
+  });
+
+  it("never takes a line price from the body", () => {
+    const priced: OrderInput = {
+      ...sent,
+      packageLines: [{ ...sent.packageLines[0], packagePrice: 1 }],
+    };
+    expect(withStoredMoney(priced, ORDER).packageLines[0].packagePrice).toBe(320);
+  });
+
   it("leaves a new line priced from the tiers rather than at zero", () => {
     const withNewLine: OrderInput = {
       ...sent,
-      packageLines: [{ packageTypeId: "1", quantity: 1, flavors: [], packagePrice: null }],
+      packageLines: [...sent.packageLines, { packageTypeId: "1", quantity: 1, flavors: [], packagePrice: 99 }],
     };
-    expect(withStoredMoney(withNewLine, ORDER).packageLines[0].packagePrice).toBeNull();
+    expect(withStoredMoney(withNewLine, ORDER).packageLines[1].packagePrice).toBeNull();
+  });
+
+  it("drops the price when a line is changed to another package", () => {
+    const swapped: OrderInput = {
+      ...sent,
+      packageLines: [{ ...sent.packageLines[0], packageTypeId: "2" }],
+    };
+    expect(withStoredMoney(swapped, ORDER).packageLines[0].packagePrice).toBeNull();
   });
 });

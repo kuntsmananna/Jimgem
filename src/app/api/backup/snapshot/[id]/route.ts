@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSnapshotDocument } from "@/lib/backup";
+import { refuseNonAdmin } from "@/lib/guard";
 
 /**
  * One snapshot, as a file to keep somewhere else.
@@ -9,6 +10,8 @@ import { getSnapshotDocument } from "@/lib/backup";
  * `scripts/restore-snapshot.mjs` takes exactly this file back.
  */
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const { id } = await context.params;
   const document = await getSnapshotDocument(Number(id));
   if (document === null) {

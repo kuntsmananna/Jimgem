@@ -45,3 +45,14 @@ export async function callerIsAdmin(): Promise<boolean> {
 export async function requireAdminPage(): Promise<void> {
   if (!isAdmin(await currentRole())) redirect(STAFF_HOME);
 }
+
+/**
+ * The lock on the routes a staff account may use too (orders, tasks): any
+ * current sign-in passes, and a session that has been ended — its account
+ * deleted, or its password or role changed since it was issued, see
+ * `currentRole` — is refused rather than read as a staff login.
+ */
+export async function refuseSignedOut(): Promise<NextResponse | null> {
+  if ((await currentRole()) !== null) return null;
+  return NextResponse.json({ error: "Your sign-in has ended. Sign in again." }, { status: 401 });
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { archiveClient, updateClient } from "@/lib/clients";
 import { currentEditor } from "@/lib/editor";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
  * cascade and take real history with it.
  */
 export async function PATCH(request: NextRequest, context: RouteContext<"/api/clients/[id]">) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const id = Number((await context.params).id);
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: "Unknown client." }, { status: 400 });

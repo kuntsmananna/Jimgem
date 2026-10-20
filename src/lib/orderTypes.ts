@@ -449,6 +449,15 @@ export type OrderMoney = Pick<
   | "paymentMethodId"
 >;
 
+/**
+ * `OrderMoney` plus each stored package line's copied preset price, in line
+ * order — the price is money too, and a staff save has to carry it over
+ * rather than take it from the body (see `withStoredMoney`).
+ */
+export type StoredMoney = OrderMoney & {
+  packageLines: Pick<OrderPackageLine, "packageTypeId" | "packagePrice">[];
+};
+
 export interface OrderInput {
   date: string;
   customer: string;

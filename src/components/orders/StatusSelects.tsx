@@ -12,7 +12,7 @@ import {
   type ProductionStatus,
 } from "@/lib/orderTypes";
 import { JellyHop } from "@/components/JellyLoader";
-import { saveError } from "@/components/saveError";
+import { sendWrite } from "@/components/saveError";
 import { positionBelow } from "@/components/HoverCard";
 import { useCloseOnScroll } from "@/components/useOverlayDismiss";
 import { useStage, useStages } from "@/components/ProductionStagesContext";
@@ -95,12 +95,11 @@ export function PaymentStatusSelect({
   }
 
   async function write(patch: { paymentStatus: PaymentStatus } | { paymentMethodId: number | null }): Promise<boolean> {
-    const response = await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
+    const { error: failure } = await sendWrite("order", `/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "patch", ...patch }),
     });
-    const failure = await saveError(response, "order");
     if (failure) alert(failure);
     return !failure;
   }
@@ -261,12 +260,13 @@ export function ProductionStatusSelect({ order, onChanged }: { order: Order; onC
 
   async function handleChange(status: ProductionStatus) {
     setBusy(true);
-    await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
+    const { error } = await sendWrite("order", `/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "patch", productionStatus: status }),
     });
     setBusy(false);
+    if (error) alert(error);
     onChanged();
   }
 

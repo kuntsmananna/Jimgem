@@ -19,6 +19,7 @@ import {
   updateDeliveryOption,
   archiveDeliveryOption,
 } from "@/lib/settings";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,8 @@ export async function PATCH(
   request: NextRequest,
   ctx: RouteContext<"/api/settings/[resource]/[id]">,
 ) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const { resource, id } = await ctx.params;
   const numericId = Number(id);
   const body = await request.json();

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runSumitProbe } from "@/lib/sumitProbe";
+import { refuseNonAdmin } from "@/lib/guard";
 
 /**
  * Read-only SUMIT reconnaissance, triggered from Settings → Data. Writes
@@ -11,6 +12,8 @@ import { runSumitProbe } from "@/lib/sumitProbe";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
     return NextResponse.json(
       { error: "SUMIT_COMPANY_ID and SUMIT_API_KEY are not set on the server." },

@@ -21,6 +21,7 @@ export async function login(formData: FormData) {
   // The cheap copy of the role, for the edge gate. The database is what
   // decides what data leaves the server -- see `currentRole` in auth.ts.
   session.role = account.role;
+  session.version = account.sessionVersion;
   await session.save();
 
   // Staff have no Dashboard to land on, and being bounced off "/" on the

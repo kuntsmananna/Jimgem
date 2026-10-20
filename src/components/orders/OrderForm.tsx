@@ -21,7 +21,7 @@ import type { ContentPreset, Flavor, PackageType } from "@/lib/settings";
 import type { Client } from "@/lib/clients";
 import { LastEdited } from "@/components/LastEdited";
 import { UndoRedo } from "@/components/UndoRedo";
-import { saveError } from "@/components/saveError";
+import { sendWrite } from "@/components/saveError";
 import { useModalHeaderSlot } from "@/components/Modal";
 import { Sheet } from "@/components/Sheet";
 import { useIsMobile } from "@/components/useMediaQuery";
@@ -455,7 +455,7 @@ export function OrderForm({
     // `expectedUpdatedAt` is the version this form was opened on, so the
     // save is refused rather than applied if someone else has since
     // changed the order — see StaleWriteError in orders.ts.
-    const response = await fetch(isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
+    const { error: failure } = await sendWrite("order", isEdit ? `/api/orders/${order!.key}` : "/api/orders", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -469,8 +469,7 @@ export function OrderForm({
     setBusy(false);
     // The form stays open holding the draft: it is the only copy of this
     // work now, and closing it would be the loss the guard exists to
-    // prevent — on a refused save and on a failed one alike.
-    const failure = await saveError(response, "order");
+    // prevent — on a refused save, a failed one and one that never arrived.
     if (failure) {
       setFailed(failure);
       return;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncSumitDocuments } from "@/lib/sumitSync";
+import { refuseNonAdmin } from "@/lib/guard";
 
 // A full-history pull fetches details per revenue document, which is well
 // past the default serverless timeout.
@@ -12,6 +13,8 @@ export const maxDuration = 60;
  * Read-only against SUMIT: this writes to Postgres only.
  */
 export async function POST(request: NextRequest) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
     return NextResponse.json({ error: "SUMIT_COMPANY_ID and SUMIT_API_KEY are not set." }, { status: 500 });
   }

@@ -40,6 +40,7 @@ import { OrdersMobileList } from "./OrdersMobileList";
 import { UndoToast, useUndoToast } from "@/components/UndoToast";
 import { ClientModal } from "@/components/clients/ClientModal";
 import { looksLikeSameClient } from "@/lib/clientName";
+import { sendWrite } from "@/components/saveError";
 
 type View = "table" | "kanban" | "calendar";
 
@@ -465,10 +466,10 @@ export function OrdersClient({
     );
   }
 
-  async function runBatch(body: Record<string, unknown>, verb: string) {
+  async function runBatch(body: Record<string, unknown>, verb: string): Promise<boolean> {
     setBatchBusy(true);
     setBatchNote(null);
-    const response = await fetch("/api/orders/batch", {
+    const { response, error } = await sendWrite("change", "/api/orders/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -476,8 +477,14 @@ export function OrdersClient({
         ids: Array.from(selectedKeys).map(Number),
       }),
     });
-    const result = await response.json();
     setBatchBusy(false);
+    // Refused or never arrived: say so, and keep the selection so the
+    // same action can simply be tried again.
+    if (error || !response) {
+      setBatchNote(error);
+      return false;
+    }
+    const result = await response.json();
     // Report partial success rather than silently dropping the failures.
     setBatchNote(
       result.failed > 0
@@ -486,6 +493,7 @@ export function OrdersClient({
     );
     setSelectedKeys(new Set());
     refresh();
+    return true;
   }
 
   /**
@@ -502,15 +510,11 @@ export function OrdersClient({
   async function batchDelete() {
     const ids = Array.from(selectedKeys).map(Number);
     const count = ids.length;
-    await runBatch({ action: "delete" }, "deleted");
+    // No Undo offered for a delete that did not happen.
+    if (!(await runBatch({ action: "delete" }, "deleted"))) return;
     undoToast.show(`${count} ${count === 1 ? "order" : "orders"} deleted`, async () => {
-      await fetch("/api/orders/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "restore", ids }),
-      });
+      await restoreOrders(ids);
       setBatchNote(null);
-      refresh();
     });
   }
 
@@ -531,20 +535,28 @@ export function OrdersClient({
   async function deleteOne(order: Order) {
     const id = Number(order.key);
     closePane();
-    await fetch("/api/orders/batch", {
+    const { error } = await sendWrite("order", "/api/orders/batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", ids: [id] }),
     });
     refresh();
-    undoToast.show("Order deleted", async () => {
-      await fetch("/api/orders/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "restore", ids: [id] }),
-      });
-      refresh();
+    if (error) {
+      alert(error);
+      return;
+    }
+    undoToast.show("Order deleted", () => restoreOrders([id]));
+  }
+
+  /** Undo for a delete — said out loud if it does not go through. */
+  async function restoreOrders(ids: number[]) {
+    const { error } = await sendWrite("order", "/api/orders/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "restore", ids }),
     });
+    if (error) alert(error);
+    refresh();
   }
 
   return (

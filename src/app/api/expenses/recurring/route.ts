@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rollForwardRecurring } from "@/lib/recurringExpenses";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,8 @@ export const runtime = "nodejs";
  * row, not this route.
  */
 export async function POST() {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   try {
     return NextResponse.json(await rollForwardRecurring());
   } catch (error) {

@@ -1545,7 +1545,7 @@ compares identity, and a panel builds a fresh draft before every call.
   four screens, and a per-page control would let the Dashboard and the Biz
   Plan disagree about what a shekel means. Each of those screens states its
   convention beside the numbers.
-  `getYearlyFinancials(vatView)` returns both sides of profit in the same
+  `getYearlyFinancials(vatView, year)` returns both sides of profit in the same
   convention; client components take `forOrder` / `forExpense` from
   `useVatView()`.
 - `prices` gained a `vat_rate` key, edited in Settings → Lists → **VAT**.
@@ -1736,6 +1736,15 @@ compares identity, and a panel builds a fresh draft before every call.
   not only a 409 — closing on a 500 would throw the draft away with
   nothing written anywhere. The guard is optional per call, because the
   batch actions write rows nobody opened.
+  **A request that never arrived is a failure too** (`sendWrite` beside
+  `saveError`, v0.86): `fetch` throws rather than answering when the
+  connection drops, which on a phone at a venue is ordinary, and a caller
+  that only read the answer left Save spinning for good. Every order,
+  expense, client and task write goes through it — the client card now
+  stays open on a failed save, a failed task add keeps its text, a tick
+  that did not save is put back, and no Undo is offered for a delete that
+  did not happen. The Settings panes still call `fetch` directly; they are
+  desk work on a laptop and were left for a later pass.
   In `updateOrder` it is repeated on every CTE
   (`EXISTS (SELECT 1 FROM updated_order)`), not just the UPDATE: the
   deletes and inserts that follow have no data dependency on it, so left
@@ -2212,6 +2221,21 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 - Nothing is ever written back to the Sheet. Don't try to "fix" the
   one-way flow by adding writes.
 
+- **The Dashboard and the Biz Plan read one calendar year** (v0.86).
+  Their figures are a month per month, bucketed by the month's number, so
+  reading every order at once would have added January 2027 into January
+  2026 — and the nightly roll-forward of monthly expenses books into the
+  next year on its own. `getYearlyFinancials` takes the year (the current
+  one by default) and returns the months, the year, and every year with an
+  order or an expense in it; the pages read it from `?year=`, and
+  `YearSwitch` offers the others **only once there is more than one**. The
+  Dashboard's flavour split is filtered to the same year. Sheet-imported
+  orders carry the year they were imported in (see the Google Sheets
+  section), which is this season's, so they land in 2026.
+- **`/api/sheets` is gone**: a leftover scaffold nothing called, which read
+  any range of any spreadsheet the service account could see, from the
+  query string. The import is the only thing that reads the Sheet.
+
 ## Authentication
 
 - Real per-user accounts (not a shared password): `staff.username` +
@@ -2275,6 +2299,23 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   login. A session issued before roles existed carries none and reads as
   an admin — every one of those belongs to Anna or Aviv, and the
   alternative was signing both out of their own dashboard on deploy.
+- **Every API route asks the database, not only the five money pages**
+  (v0.86, after a security review found 17 routes — backup download among
+  them — trusting the cookie's role for its two-week life). Admin-only
+  routes open with `refuseNonAdmin()`, the orders and tasks routes a staff
+  login may use with `refuseSignedOut()` (both in `guard.ts`); the gate in
+  `proxy.ts` is still the first lock, not the only one. **A session can be
+  ended early**: `staff.session_version`
+  (`scripts/migrate-033-session-version.sql`) is copied into the cookie at
+  sign-in, `currentRole` reads a cookie whose copy no longer matches as no
+  session at all, and changing an account's role or password moves it on
+  (`endSessions` in `settings.ts`) — so "demote them and change their
+  password" now signs them out everywhere at their next request. Changing
+  your *own* password moves your cookie with it rather than signing you out
+  (`signOutElsewhere` in the staff route). A page whose session has been
+  ended goes back to `/login` from the app layout. Before migration 033 is
+  run, nothing can be ended early and nothing breaks — `readStaff` drops
+  the column it cannot find.
 - **The money is taken out on the server, not hidden in the browser**
   (`src/lib/redact.ts`). `redactOrder`, `redactRates` and `redactPresets`
   run in `orders/page.tsx` before the data reaches the tree. Two details
@@ -2295,7 +2336,12 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   from a tree that was never shown the amounts would write the redaction's
   zeros over the real figures: `withStoredMoney` puts every money column
   back from the stored row, and nothing the caller sends in them is read at
-  all. An inline `patch` is refused outright if it names a money field —
+  all — **a package line's copied preset price included** (v0.86): a line
+  keeps the price stored at its position while it is still the same
+  package, and one staff added or changed has none. Taking the body's null
+  had wiped every preset price on an order the first time the kitchen
+  marked it delivered. `getOrderMoney` reads the lines' prices in the same
+  round trip (`StoredMoney`). An inline `patch` is refused outright if it names a money field —
   there is no correct merge for "set the deposit", only a request that
   should not have been made. Creating, deleting and every batch action are
   an admin's.
@@ -2334,7 +2380,6 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 |---|---|---|
 | `GOOGLE_SERVICE_ACCOUNT_KEY_BASE64` | Base64-encoded service-account JSON key | yes |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | Spreadsheet ID for the business sheet | yes |
-| `GOOGLE_SHEETS_DEFAULT_RANGE` | Default A1 range for `/api/sheets` | no |
 | `DATABASE_URL` | Postgres connection string | yes |
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
 | `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |

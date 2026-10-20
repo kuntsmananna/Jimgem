@@ -11,6 +11,7 @@ import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { formatOrderDate } from "@/lib/orderTypes";
 import type { ClientDocumentLine, ClientOrderLine } from "./ClientsClient";
 import { JellyHop } from "@/components/JellyLoader";
+import { sendWrite } from "@/components/saveError";
 
 
 
@@ -56,16 +57,24 @@ export function ClientModal({
     notes: client.notes,
   });
   const [busy, setBusy] = useState(false);
+  // Why the last save or archive did not go through. The card stays open
+  // holding the edit — closing it as if saved was the bug.
+  const [failed, setFailed] = useState<string | null>(null);
 
   async function save() {
     if (!draft.name.trim()) return;
     setBusy(true);
-    await fetch(`/api/clients/${client.id}`, {
+    setFailed(null);
+    const { error } = await sendWrite("client", `/api/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft),
     });
     setBusy(false);
+    if (error) {
+      setFailed(error);
+      return;
+    }
     onSaved();
   }
 
@@ -86,7 +95,8 @@ export function ClientModal({
       return;
     }
     setBusy(true);
-    await fetch(`/api/clients/${client.id}`, {
+    setFailed(null);
+    const { error } = await sendWrite("client", `/api/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       // `archive`, the key the settings routes already use for the other
@@ -94,6 +104,10 @@ export function ClientModal({
       body: JSON.stringify({ archive: true }),
     });
     setBusy(false);
+    if (error) {
+      setFailed(error);
+      return;
+    }
     onSaved();
   }
 
@@ -276,6 +290,11 @@ export function ClientModal({
             <Archive size={13} />
             Archive
           </button>
+          {failed && (
+            <span className="text-xs font-semibold text-red-700" role="alert">
+              {failed}
+            </span>
+          )}
           <span className="flex-1 max-md:basis-full" />
           <button
             onClick={onClose}

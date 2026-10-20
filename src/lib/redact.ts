@@ -1,4 +1,4 @@
-import type { Order, OrderInput, OrderMoney, Rates } from "./orderTypes";
+import type { Order, OrderInput, Rates, StoredMoney } from "./orderTypes";
 import type { ContentPreset } from "./settings";
 
 /**
@@ -90,7 +90,7 @@ export const redactPresets = (presets: ContentPreset[]): ContentPreset[] =>
  * is also the enforcement: nothing the client sends in these fields is
  * read at all, so there is no payload that reprices an order.
  */
-export function withStoredMoney(input: OrderInput, stored: OrderMoney): OrderInput {
+export function withStoredMoney(input: OrderInput, stored: StoredMoney): OrderInput {
   return {
     ...input,
     totalAmount: stored.totalAmount,
@@ -107,11 +107,18 @@ export function withStoredMoney(input: OrderInput, stored: OrderMoney): OrderInp
     deposit: stored.deposit,
     paymentStatus: stored.paymentStatus,
     paymentMethodId: stored.paymentMethodId,
-    // A package line's price is copied from a preset when it is applied,
-    // and a staff account has no preset prices to copy — so a line it adds
-    // carries none and falls back to the tiers, which is the correct
-    // answer rather than a zero that would price the jelly at nothing.
-    packageLines: input.packageLines.map((line) => ({ ...line, packagePrice: line.packagePrice ?? null })),
+    // A package line's price is copied from a preset when it is applied.
+    // The staff form was sent every one as null, so the body's value is
+    // never read: a line keeps the price stored at its position while it is
+    // still the same package, and a line staff added — or changed to
+    // another package — has none and falls back to the tiers, which is the
+    // correct answer rather than a zero that would price the jelly at
+    // nothing. Taking the body's null instead wiped every preset price on
+    // the order the first time the kitchen marked it delivered.
+    packageLines: input.packageLines.map((line, at) => {
+      const was = stored.packageLines[at];
+      return { ...line, packagePrice: was && was.packageTypeId === line.packageTypeId ? was.packagePrice : null };
+    }),
   };
 }
 

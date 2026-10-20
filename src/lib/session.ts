@@ -21,6 +21,14 @@ export interface SessionData {
    * once both have signed in again.
    */
   role?: Role;
+  /**
+   * `staff.session_version` as it stood at sign-in. Changing the account's
+   * role or password moves the row on, and `currentRole` refuses a cookie
+   * whose copy no longer matches — which is what ends a session early.
+   * Absent on a cookie issued before it existed, and read as 0, the
+   * column's starting value, so nobody was signed out by its arrival.
+   */
+  version?: number;
 }
 
 const SESSION_COOKIE_NAME = "jimgem_session";

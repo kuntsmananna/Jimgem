@@ -31,3 +31,29 @@ async function errorFromBody(response: Response): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * A write, with its refusal read the way `saveError` reads every one —
+ * and a request that never arrived counted as a refusal too.
+ *
+ * `fetch` throws rather than answering when the connection drops — offline,
+ * or the weak signal a phone gets at a venue — and a caller that only reads
+ * the answer is left with Save spinning for good and a value on screen that
+ * was never written. `response` is null exactly then.
+ */
+export async function sendWrite(
+  what: string,
+  url: string,
+  init: RequestInit,
+): Promise<{ response: Response | null; error: string | null }> {
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch {
+    return {
+      response: null,
+      error: `Couldn't reach the server, so this ${what} wasn't saved. Check the connection and try again.`,
+    };
+  }
+  return { response, error: await saveError(response, what) };
+}

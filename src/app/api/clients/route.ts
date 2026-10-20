@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, getClients } from "@/lib/clients";
 import { currentEditor } from "@/lib/editor";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   return NextResponse.json(await getClients(true));
 }
 
@@ -14,6 +17,8 @@ export async function GET() {
  * half-filled order doesn't leave a client behind.
  */
 export async function POST(request: NextRequest) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const body = await request.json();
   const name = String(body.name ?? "").trim();
   if (!name) {

@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS staff (
   -- which back-fills the two existing rows as admins and then sets this
   -- same default.
   role TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
+  -- Copied into the login cookie at sign-in. Changing the role or the
+  -- password adds one, which ends every session issued before it -- see
+  -- scripts/migrate-033-session-version.sql.
+  session_version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteArchived, restoreArchived } from "@/lib/settings";
+import { refuseNonAdmin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 
 /** Puts an archived row back on its list. */
 export async function PATCH(request: NextRequest) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const body = await request.json();
   try {
     await restoreArchived(body.resource, Number(body.id));
@@ -23,6 +26,8 @@ export async function PATCH(request: NextRequest) {
  * sentence the owner can act on rather than a 500.
  */
 export async function DELETE(request: NextRequest) {
+  const refused = await refuseNonAdmin();
+  if (refused) return refused;
   const body = await request.json();
   try {
     await deleteArchived(body.resource, Number(body.id));

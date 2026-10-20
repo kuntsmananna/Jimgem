@@ -24,7 +24,7 @@ import { useOrderType, useOrderTypes } from "@/components/OrderTypesContext";
 import { useStageMap } from "@/components/ProductionStagesContext";
 import { HoverCard } from "@/components/HoverCard";
 import { Tip } from "@/components/Tip";
-import { saveError } from "@/components/saveError";
+import { sendWrite } from "@/components/saveError";
 import { eventType, orderTypeIconElement } from "@/lib/icons";
 import { AmountHoverCard } from "./AmountHoverCard";
 import { ContentHoverCard } from "./ContentHoverCard";
@@ -220,7 +220,7 @@ export function OrdersTable({
     // patch is all the API needs — no full-row replace, no override path.
     // `expectedUpdatedAt` is the version this row was rendered from: an
     // inline edit is quick, but the page it sits on can be an hour old.
-    const response = await fetch(`/api/orders/${encodeURIComponent(order.key)}`, {
+    const { error: failure } = await sendWrite("order", `/api/orders/${encodeURIComponent(order.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "patch", ...patch, expectedUpdatedAt: order.updatedAt }),
@@ -229,7 +229,6 @@ export function OrdersTable({
     // already shown the new value, so saying nothing would leave a number
     // on screen that isn't in the database. `onChanged` re-reads the row
     // and puts the real one back.
-    const failure = await saveError(response, "order");
     if (failure) alert(failure);
     onChanged();
   }

@@ -8,9 +8,18 @@ import { CHART_COLORS } from "@/lib/chartPalette";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { MonthsMobileList } from "@/components/bizplan/MonthsMobileList";
 import { count, currency } from "@/lib/money";
+import { YearSwitch } from "@/components/YearSwitch";
 
 
-export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] }) {
+export function BizPlanClient({
+  financials,
+  year,
+  years,
+}: {
+  financials: MonthlyFinancials[];
+  year: number;
+  years: number[];
+}) {
   const [hideEmpty, setHideEmpty] = useState(true);
   /*
    * The year is a seven-column table at `min-w-[720px]`, which on a phone
@@ -43,7 +52,10 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
       {/* Which convention the whole page is in. It moves with the nav's
           switch, and a report that doesn't say so invites the two readings
           to be compared with each other. */}
-      <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
+      <div className="flex items-center gap-3">
+        <YearSwitch year={year} years={years} path="/biz-plan" />
+        <p className="text-xs font-semibold text-ink-soft">All figures {vatLabel}</p>
+      </div>
       {/*
         Five across on a laptop; on a phone one swipeable row of squares.
         Two across cost two rows of height before the charts and still put
@@ -105,7 +117,7 @@ export function BizPlanClient({ financials }: { financials: MonthlyFinancials[] 
             nothing here resizes on its own — the tappable target is the
             label, which is what gets the height. */}
         <div className="flex items-center justify-between max-md:flex-wrap max-md:gap-y-1">
-          <h2 className="font-display text-lg font-bold text-ink">Year</h2>
+          <h2 className="font-display text-lg font-bold text-ink">{year}</h2>
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-soft max-md:min-h-9">
             <input
               type="checkbox"

@@ -10,6 +10,7 @@ import { Modal } from "@/components/Modal";
 import { Field, TextInput } from "@/components/Field";
 import { EmptyState } from "@/components/EmptyState";
 import { JellyHop } from "@/components/JellyLoader";
+import { sendWrite } from "@/components/saveError";
 
 /**
  * The shared to-do list — the Dashboard's pane and the whole of `/tasks`.
@@ -57,12 +58,22 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
 
   const openCount = rows.filter((task) => !task.doneAt).length;
 
+  /**
+   * Writes one change. A refusal — or a request that never arrived — puts
+   * the row back as it was and says so: the tick and the edit are drawn
+   * before the answer comes, and left standing they would claim a change
+   * the list does not hold.
+   */
   async function send(task: Task, body: Record<string, unknown>) {
-    await fetch(`/api/tasks/${task.key}`, {
+    const { error } = await sendWrite("task", `/api/tasks/${task.key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: task.title, staffId: task.staffId, done: !!task.doneAt, ...body }),
     });
+    if (error) {
+      setRows((current) => current.map((row) => (row.key === task.key ? task : row)));
+      alert(error);
+    }
     router.refresh();
   }
 
@@ -89,16 +100,23 @@ export function TaskList({ tasks, staff }: { tasks: Task[]; staff: StaffAccount[
 
   async function remove(task: Task) {
     setRows((current) => current.filter((row) => row.key !== task.key));
-    await fetch(`/api/tasks/${task.key}`, { method: "DELETE" });
+    const { error } = await sendWrite("task", `/api/tasks/${task.key}`, { method: "DELETE" });
+    if (error) {
+      // Back where it was, and no Undo for a delete that did not happen.
+      setRows(rows);
+      alert(error);
+      return;
+    }
     router.refresh();
     // Put aside rather than destroyed, so this offer is real — see
     // `deleteTask`. The offer lapses; the row stays recoverable.
     undo.show("Task deleted", async () => {
-      await fetch(`/api/tasks/${task.key}`, {
+      const { error: undoError } = await sendWrite("task", `/api/tasks/${task.key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ restore: true }),
       });
+      if (undoError) alert(undoError);
       router.refresh();
     });
   }
@@ -191,12 +209,18 @@ function Composer({ staff, onAdded }: { staff: StaffAccount[]; onAdded: () => vo
     const text = title.trim();
     if (!text || busy) return;
     setBusy(true);
-    await fetch("/api/tasks", {
+    const { error } = await sendWrite("task", "/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: text, staffId, done: false }),
     });
     setBusy(false);
+    // The typed text stays where it is, so a failed add costs a retry
+    // rather than the sentence.
+    if (error) {
+      alert(error);
+      return;
+    }
     // The text clears and the assignee does not: adding three things for
     // the same person is the common case, and re-picking them each time is
     // the sort of friction that ends with the list not being used.
@@ -282,12 +306,18 @@ function AddTaskModal({
     const text = title.trim();
     if (!text || busy) return;
     setBusy(true);
-    await fetch("/api/tasks", {
+    const { error } = await sendWrite("task", "/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: text, staffId, done: false }),
     });
     setBusy(false);
+    // The typed text stays where it is, so a failed add costs a retry
+    // rather than the sentence.
+    if (error) {
+      alert(error);
+      return;
+    }
     onAdded();
   }
 

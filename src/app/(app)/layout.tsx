@@ -17,6 +17,7 @@ import { parseVatView, VAT_VIEW_COOKIE } from "@/lib/vatView";
 import { getSeenAnnouncements } from "@/lib/announcementViews";
 import { unseenFor } from "@/lib/announcement";
 import { WhatsNew } from "@/components/WhatsNew";
+import { redirect } from "next/navigation";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   /*
@@ -42,6 +43,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   // Read here, on the server, so the first paint is already in the right
   // convention — see VatViewProvider.
   const vatView = parseVatView(cookieStore.get(VAT_VIEW_COOKIE)?.value);
+  // A cookie the gate let through but the database no longer honours —
+  // the account's role or password changed since it signed in, or the
+  // account is gone (see currentRole). Back to the sign-in page rather than
+  // a dashboard drawn as if they were a staff login.
+  if (session.userId && role === null) redirect("/login");
   // Who an announcement is for is part of whether there is one to show —
   // a staff login is never told about money.
   const announcements = role && seenAnnouncements ? unseenFor(role, seenAnnouncements) : [];

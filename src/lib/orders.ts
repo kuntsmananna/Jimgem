@@ -10,6 +10,7 @@ import {
   type Order,
   type OrderInput,
   type OrderMoney,
+  type StoredMoney,
 } from "./orderTypes";
 
 // Re-exported so existing server-side call sites (`@/lib/orders`) keep
@@ -303,9 +304,17 @@ const MONEY_COLUMNS =
  * whole-order read because that is all it needs — there is no point
  * fetching the package lines and their flavours to copy a deposit across.
  */
-export async function getOrderMoney(id: number): Promise<OrderMoney | null> {
-  const { rows } = await getDb().query<DbOrderRow>(
-    `SELECT ${MONEY_COLUMNS} FROM orders WHERE id = $1 AND deleted_at IS NULL`,
+export async function getOrderMoney(id: number): Promise<StoredMoney | null> {
+  const { rows } = await getDb().query<
+    DbOrderRow & { lines: { package_type_id: number; package_price: number | null }[] }
+  >(
+    // The lines' copied preset prices ride along in the same round trip.
+    `SELECT ${MONEY_COLUMNS},
+            COALESCE((SELECT json_agg(json_build_object('package_type_id', l.package_type_id,
+                                                       'package_price', l.package_price)
+                                      ORDER BY l.position)
+                        FROM order_package_lines l WHERE l.order_id = orders.id), '[]') AS lines
+       FROM orders WHERE id = $1 AND deleted_at IS NULL`,
     [id],
   );
   const row = rows[0];
@@ -325,6 +334,10 @@ export async function getOrderMoney(id: number): Promise<OrderMoney | null> {
     deposit: Number(row.deposit ?? 0),
     paymentStatus: (row.payment_status ?? "unpaid") as OrderMoney["paymentStatus"],
     paymentMethodId: row.payment_method_id ?? null,
+    packageLines: row.lines.map((line) => ({
+      packageTypeId: String(line.package_type_id),
+      packagePrice: line.package_price === null ? null : Number(line.package_price),
+    })),
   };
 }
 
