@@ -1253,6 +1253,25 @@ The rest of the second review's list, none of it needing a migration:
   against a live client is refused, since a second row with the same name
   is one SUMIT's exact-name link could never tell apart; a near one is
   pointed out and allowed, the order form's picker's two answers.
+- **A write route checks what it was sent** (v0.89.1, `src/lib/validate.ts`):
+  orders (both the whole-order save and the table's inline edits),
+  expenses and tasks parse their body through `parseOrderInput` /
+  `parseOrderPatch` / `parseExpenseInput` / `parseTaskInput` and their URL
+  id through `parseRowId`, and answer a 400 naming the field instead of a
+  500 from Postgres. They had cast the body (`as OrderInput`) and trusted
+  it. **Lenient about form, strict about meaning**: a numeric string is a
+  number and a blank one is "not given", because that is what a text box
+  sends; a negative deposit, a NaN, a payment status off the list or a
+  50,000-character note is refused. Each parser returns only the fields it
+  knows, so nothing extra reaches a query. Two deliberate allowances, each
+  pinned by a test: an expense of **0** (the Sheet's back catalogue has
+  them, and an inline edit resends the whole row) and a **fractional**
+  flavour split (a percentage resolves to units that need not be whole).
+  `readJson` in `requestBody.ts` turns a body that isn't JSON into the
+  same 400. The fixtures in `__tests__/validate.test.ts` are what the forms
+  send — a new rule that would refuse a real save fails there first. The
+  Settings and client routes still read their bodies by hand; they are
+  short and already check what they use.
 - **`.github/workflows/checks.yml`** runs lint, the tests, a build and the
   type check on every push to any branch. It needs no secrets — nothing in
   it reaches the database — and catches what Vercel's build lets through.
@@ -2554,8 +2573,10 @@ also run on every push (`.github/workflows/checks.yml`)
 
 `npm test` runs Vitest over the money math — `vatOn`, `orderSubtotal`,
 `orderDiscount`, `orderTotal`/`orderNet`, the unit tiers, `jellyTotal`
-and `repriceOrder`. Those and nothing else, deliberately: a mistake in
-them does not announce itself — the screen still shows a plausible
+and `repriceOrder` — plus what a staff save may not change (`redact.ts`)
+and what a write route accepts (`validate.ts`). Nothing that needs a
+database or a browser, deliberately: a mistake in the money math does
+not announce itself — the screen still shows a plausible
 figure and the report still adds up — and they are the part that needs
 no database and no browser to check. They are pure functions in
 `orderTypes.ts`, so a test is arithmetic against arithmetic.

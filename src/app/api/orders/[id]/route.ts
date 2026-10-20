@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { StaleWriteError, updateOrder, updateOrderFields, getOrderMoney, type OrderInput, type EditableField } from "@/lib/orders";
+import { StaleWriteError, updateOrder, updateOrderFields, getOrderMoney, type OrderInput } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
 import { callerIsAdmin, refuseSignedOut } from "@/lib/guard";
 import { MONEY_FIELDS, movesPricedLines, withStoredMoney } from "@/lib/redact";
+import { parseOrderInput, parseOrderPatch, parseRowId } from "@/lib/validate";
+import { badRequest, readJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 
@@ -24,10 +26,9 @@ export const runtime = "nodejs";
  * copy was built from. With it, a write over a row someone else has since
  * changed is refused with 409 rather than applied — see StaleWriteError.
  */
-type UpdateBody = { expectedUpdatedAt?: string } & (
-  | ({ mode: "replace" } & OrderInput)
-  | ({ mode: "patch" } & Partial<Record<EditableField, string | number | boolean | null>>)
-);
+// Only the envelope is read off the raw body; the order itself, in either
+// mode, comes from `parseOrderInput` / `parseOrderPatch` (validate.ts).
+type UpdateBody = { mode?: unknown; expectedUpdatedAt?: unknown };
 
 /**
  * A staff account may save an order — that is how an order gets marked
@@ -46,31 +47,41 @@ type UpdateBody = { expectedUpdatedAt?: string } & (
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const refused = await refuseSignedOut();
   if (refused) return refused;
-  const { id } = await ctx.params;
-  const body = (await request.json()) as UpdateBody;
+  const { id: rawId } = await ctx.params;
+  const id = parseRowId(rawId);
+  if (id === null) return badRequest("No such order.");
+  const raw = await readJson(request);
+  if (raw instanceof NextResponse) return raw;
+  const body = raw as UpdateBody;
+  // The version the caller opened, if it sent one — a string or nothing.
+  const expectedUpdatedAt = typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt : undefined;
   const editor = await currentEditor();
   const admin = await callerIsAdmin();
   try {
     if (body.mode === "replace") {
-      let input: OrderInput = body;
+      const parsed = parseOrderInput(body);
+      if (!parsed.ok) return badRequest(parsed.error);
+      let input: OrderInput = parsed.value;
       if (!admin) {
-        const stored = await getOrderMoney(Number(id));
+        const stored = await getOrderMoney(id);
         if (!stored) return NextResponse.json({ error: "No such order." }, { status: 404 });
-        if (movesPricedLines(body, stored)) {
+        if (movesPricedLines(input, stored)) {
           return NextResponse.json(
             { error: "This order's packages carry agreed prices, so only an admin can add or remove one." },
             { status: 403 },
           );
         }
-        input = withStoredMoney(body, stored);
+        input = withStoredMoney(input, stored);
       }
-      return NextResponse.json(await updateOrder(Number(id), input, body.expectedUpdatedAt, editor));
+      return NextResponse.json(await updateOrder(id, input, expectedUpdatedAt, editor));
     }
     if (body.mode === "patch") {
       if (!admin && MONEY_FIELDS.some((field) => field in body)) {
         return NextResponse.json({ error: "Only an admin can change that." }, { status: 403 });
       }
-      await updateOrderFields(Number(id), body, body.expectedUpdatedAt, editor);
+      const parsed = parseOrderPatch(body);
+      if (!parsed.ok) return badRequest(parsed.error);
+      await updateOrderFields(id, parsed.value, expectedUpdatedAt, editor);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: 'Body needs a "mode" of "replace" or "patch".' }, { status: 400 });

@@ -1,24 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteTask, restoreTask, updateTask, type TaskInput } from "@/lib/tasks";
+import { deleteTask, restoreTask, updateTask } from "@/lib/tasks";
 import { currentEditor } from "@/lib/editor";
 import { refuseSignedOut } from "@/lib/guard";
+import { parseRowId, parseTaskInput } from "@/lib/validate";
+import { badRequest, readJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/tasks/[id]">) {
   const refused = await refuseSignedOut();
   if (refused) return refused;
-  const { id } = await ctx.params;
-  const body = (await request.json()) as TaskInput & { restore?: boolean };
+  const id = parseRowId((await ctx.params).id);
+  if (id === null) return badRequest("No such task.");
+  const raw = await readJson(request);
+  if (raw instanceof NextResponse) return raw;
+  const body = raw as { restore?: unknown };
   try {
-    if (body.restore) {
-      await restoreTask(Number(id));
-      return NextResponse.json({ id: Number(id), restored: true });
+    if (body.restore === true) {
+      await restoreTask(id);
+      return NextResponse.json({ id, restored: true });
     }
-    if (!body.title?.trim()) {
-      return NextResponse.json({ error: "A task needs something to say." }, { status: 400 });
-    }
-    return NextResponse.json(await updateTask(Number(id), body, await currentEditor()));
+    const parsed = parseTaskInput(body);
+    if (!parsed.ok) return badRequest(parsed.error);
+    return NextResponse.json(await updateTask(id, parsed.value, await currentEditor()));
   } catch (error) {
     console.error(`Failed to update task ${id}:`, error);
     return NextResponse.json({ error: "Failed to save the task." }, { status: 500 });
@@ -28,9 +32,10 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/tasks/
 export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/tasks/[id]">) {
   const refused = await refuseSignedOut();
   if (refused) return refused;
-  const { id } = await ctx.params;
+  const id = parseRowId((await ctx.params).id);
+  if (id === null) return badRequest("No such task.");
   try {
-    await deleteTask(Number(id));
+    await deleteTask(id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(`Failed to delete task ${id}:`, error);

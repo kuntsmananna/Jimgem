@@ -1,26 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateExpense, deleteExpense, restoreExpense, type ExpenseInput } from "@/lib/expenses";
+import { updateExpense, deleteExpense, restoreExpense } from "@/lib/expenses";
 import { StaleWriteError } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
 import { refuseNonAdmin } from "@/lib/guard";
+import { parseExpenseInput, parseRowId } from "@/lib/validate";
+import { badRequest, readJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
   const refused = await refuseNonAdmin();
   if (refused) return refused;
-  const { id } = await ctx.params;
-  const body = (await request.json()) as ExpenseInput & {
-    expectedUpdatedAt?: string;
+  const { id: rawId } = await ctx.params;
+  const id = parseRowId(rawId);
+  if (id === null) return badRequest("No such expense.");
+  const raw = await readJson(request);
+  if (raw instanceof NextResponse) return raw;
+  const body = raw as {
+    expectedUpdatedAt?: unknown;
     /** The other half of DELETE — see migration 024. */
-    restore?: boolean;
+    restore?: unknown;
   };
   try {
-    if (body.restore) {
-      await restoreExpense(Number(id));
-      return NextResponse.json({ id: Number(id), restored: true });
+    if (body.restore === true) {
+      await restoreExpense(id);
+      return NextResponse.json({ id, restored: true });
     }
-    const expense = await updateExpense(Number(id), body, body.expectedUpdatedAt, await currentEditor());
+    const parsed = parseExpenseInput(body);
+    if (!parsed.ok) return badRequest(parsed.error);
+    const expectedUpdatedAt = typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt : undefined;
+    const expense = await updateExpense(id, parsed.value, expectedUpdatedAt, await currentEditor());
     return NextResponse.json(expense);
   } catch (error) {
     // 409, not 500: the write was refused because the row moved on — see
@@ -39,9 +48,10 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/expens
 export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/expenses/[id]">) {
   const refused = await refuseNonAdmin();
   if (refused) return refused;
-  const { id } = await ctx.params;
+  const id = parseRowId((await ctx.params).id);
+  if (id === null) return badRequest("No such expense.");
   try {
-    await deleteExpense(Number(id));
+    await deleteExpense(id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(`Failed to delete expense ${id}:`, error);

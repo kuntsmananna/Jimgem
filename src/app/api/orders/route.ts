@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createOrder, type OrderInput } from "@/lib/orders";
+import { createOrder } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
 import { refuseNonAdmin } from "@/lib/guard";
+import { parseOrderInput } from "@/lib/validate";
+import { badRequest, readJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 
@@ -14,9 +16,12 @@ export async function POST(request: NextRequest) {
   const refusal = await refuseNonAdmin();
   if (refusal) return refusal;
 
-  const body = (await request.json()) as OrderInput;
+  const body = await readJson(request);
+  if (body instanceof NextResponse) return body;
+  const parsed = parseOrderInput(body);
+  if (!parsed.ok) return badRequest(parsed.error);
   try {
-    const order = await createOrder(body, await currentEditor());
+    const order = await createOrder(parsed.value, await currentEditor());
     return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error("Failed to create order:", error);

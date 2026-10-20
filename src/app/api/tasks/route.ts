@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createTask, type TaskInput } from "@/lib/tasks";
+import { createTask } from "@/lib/tasks";
 import { currentEditor } from "@/lib/editor";
 import { refuseSignedOut } from "@/lib/guard";
+import { parseTaskInput } from "@/lib/validate";
+import { badRequest, readJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const refused = await refuseSignedOut();
   if (refused) return refused;
-  const body = (await request.json()) as TaskInput;
+  const body = await readJson(request);
+  if (body instanceof NextResponse) return body;
   // A blank task is a stray Enter, not a record. Refused here as well as
   // in the composer, since the composer is not the only possible caller.
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: "A task needs something to say." }, { status: 400 });
-  }
+  const parsed = parseTaskInput(body);
+  if (!parsed.ok) return badRequest(parsed.error);
   try {
-    return NextResponse.json(await createTask(body, await currentEditor()), { status: 201 });
+    return NextResponse.json(await createTask(parsed.value, await currentEditor()), { status: 201 });
   } catch (error) {
     console.error("Failed to create task:", error);
     return NextResponse.json({ error: "Failed to add the task." }, { status: 500 });
