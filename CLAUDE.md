@@ -2042,6 +2042,11 @@ compares identity, and a panel builds a fresh draft before every call.
   nothing shows sharp in between. The switch's hover card is
   `SwitchExplainer` (`HoverCard.tsx`), shared with Jelly mode's and What's
   new's so the three side by side cannot drift.
+  **The Undo bar is left sharp on purpose**, the owner's call: its message
+  names the client it just changed ("Maya Levi — Paid in full"), and it is
+  a few seconds' confirmation of the person's own action — blurred, it
+  would not say what Undo undoes. No message carries a ₪, so the observer
+  never marks it either.
 - **`HoverCard` measures on tap before it sets state.** Its tap-to-open
   read `e.currentTarget` inside a `setAt` updater, which React can run
   after the event's target has been cleared — every tap that opened a card
