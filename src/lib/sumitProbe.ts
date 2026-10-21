@@ -14,6 +14,7 @@
  * designed panel, because it is a throwaway diagnostic whose output is
  * meant to be copied out and read once, not lived with.
  */
+import { normalizeClientName } from "./clientName";
 import { SUMIT_CALL_BUDGET, flushSumitCalls, sumitCallsUsed } from "./sumitBudget";
 import {
   listDocuments,
@@ -34,21 +35,6 @@ const money = (amount: number) => `₪${shekels.format(Math.round(amount))}`;
 const monthOf = (document: SumitDocument) => (document.Date ?? "").slice(0, 7) || "no date";
 const sumValue = (documents: SumitDocument[]) =>
   documents.reduce((total, document) => total + (document.CompanyValue ?? 0), 0);
-
-/**
- * The comparison key for "is this the same client". Deliberately loose —
- * quotes and geresh/gershayim, punctuation and doubled spaces are all
- * noise in a hand-typed Hebrew business name — but never fuzzy: a near
- * match is reported as a near match, for a human to confirm.
- */
-function normalizeName(name: string): string {
-  return name
-    .normalize("NFKC")
-    .replace(/["'`׳״]/g, "")
-    .replace(/[\s,.\-–—_/]+/g, " ")
-    .trim()
-    .toLowerCase();
-}
 
 function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
   const groups = new Map<string, T[]>();
@@ -325,12 +311,12 @@ async function probe(options: SumitProbeOptions): Promise<string> {
     const orders = await getOrders();
     const orderNames = new Map<string, string>();
     for (const order of orders) {
-      if (order.customer.trim()) orderNames.set(normalizeName(order.customer), order.customer);
+      if (order.customer.trim()) orderNames.set(normalizeClientName(order.customer), order.customer);
     }
     const sumitNames = new Map<string, string>();
     for (const group of customers.values()) {
       const name = group[0].CustomerName;
-      if (name?.trim()) sumitNames.set(normalizeName(name), name);
+      if (name?.trim()) sumitNames.set(normalizeClientName(name), name);
     }
     const matched = [...orderNames.keys()].filter((key) => sumitNames.has(key));
     const unmatchedOrders = [...orderNames].filter(([key]) => !sumitNames.has(key));

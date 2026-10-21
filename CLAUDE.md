@@ -1646,7 +1646,7 @@ The rest of the second review's list, none of it needing a migration:
   `בילדוטס בע"מ` is usually the same customer and occasionally isn't, and
   only a person can tell. The order form's picker and the Clients page both
   show near matches without acting on them. **A near match is a whole
-  word's start**, not a substring anywhere (`namesOverlap`, v0.90.2), so a
+  word's start**, not a substring anywhere (`looksLikeSameClient`, v0.90.2), so a
   common syllable mid-word does not flag half the list. The order form's
   **suggestions** are a search and match anywhere in the name
   (`nameContains`), from the first letter — the owner's call. **A name being

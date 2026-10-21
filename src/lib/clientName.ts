@@ -34,16 +34,11 @@ function startsAWord(outer: string, inner: string): boolean {
   return outer.startsWith(inner) || outer.includes(` ${inner}`);
 }
 
-/**
- * The two names could be one client: equal, or one is the other with
- * words added — `בילדוטס` against `בילדוטס בע"מ`. Matched at the start of
- * a word rather than anywhere, so a common syllable buried mid-word
- * (`כהן`, `בית`) does not flag half the list as a possible duplicate.
- */
-export function namesOverlap(a: string, b: string): boolean {
+/** Normalise both names once and test them both ways round. */
+function eitherWay(a: string, b: string, test: (outer: string, inner: string) => boolean): boolean {
   const [x, y] = [normalizeClientName(a), normalizeClientName(b)];
   if (!x || !y) return false;
-  return startsAWord(x, y) || startsAWord(y, x);
+  return test(x, y) || test(y, x);
 }
 
 /**
@@ -53,19 +48,20 @@ export function namesOverlap(a: string, b: string): boolean {
  * a duplicate warning should not.
  */
 export function nameContains(a: string, b: string): boolean {
-  const [x, y] = [normalizeClientName(a), normalizeClientName(b)];
-  if (!x || !y) return false;
-  return x.includes(y) || y.includes(x);
+  return eitherWay(a, b, (outer, inner) => outer.includes(inner));
 }
 
 /**
- * Two names already on file that look like the same client without being
- * the same name. Offered for confirmation, never applied on its own. No
- * minimum length: a stored `BK` beside a stored `BK Events` is exactly the
- * pair a person should be shown.
+ * Two names that look like the same client without being the same name:
+ * one is the other with words added — `בילדוטס` against `בילדוטס בע"מ`.
+ * Matched at the start of a word rather than anywhere, so a common
+ * syllable buried mid-word (`כהן`, `בית`) does not flag half the list.
+ * Offered for confirmation, never applied on its own. No minimum length:
+ * a stored `BK` beside a stored `BK Events` is exactly the pair a person
+ * should be shown.
  */
 export function looksLikeSameClient(a: string, b: string): boolean {
-  return !sameClientName(a, b) && namesOverlap(a, b);
+  return eitherWay(a, b, (outer, inner) => outer !== inner && startsAWord(outer, inner));
 }
 
 /** Letters typed before a name being typed is compared as a near match. */
