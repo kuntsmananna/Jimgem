@@ -26,19 +26,49 @@ export function sameClientName(a: string, b: string): boolean {
 }
 
 /**
- * One name looks like a longer form of the other — `בילדוטס` against
- * `בילדוטס בע"מ`. Offered for confirmation, never applied on its own.
- *
- * Not before three letters: the shorter name is "contained" in the longer
- * one, so a single typed letter matched half the client list and the
- * warning came up on the first keystroke of every new name (v0.90.1, the
- * owner's report).
+ * `inner` appears in `outer` where a word starts — `לוי` in `מאיה לוי`,
+ * not `הן` inside `כהן`. Both already normalised, so a word boundary is a
+ * single space.
  */
-const MIN_NEAR_MATCH = 3;
+function startsAWord(outer: string, inner: string): boolean {
+  return outer.startsWith(inner) || outer.includes(` ${inner}`);
+}
 
-export function looksLikeSameClient(a: string, b: string): boolean {
+/**
+ * The two names could be one client: equal, or one is the other with
+ * words added — `בילדוטס` against `בילדוטס בע"מ`. Matched at the start of
+ * a word rather than anywhere, so a common syllable buried mid-word
+ * (`כהן`, `בית`) does not flag half the list. This is what the order
+ * form's client suggestions offer, from the first letter typed.
+ */
+export function namesOverlap(a: string, b: string): boolean {
   const [x, y] = [normalizeClientName(a), normalizeClientName(b)];
-  if (!x || !y || x === y) return false;
-  if (Math.min(x.length, y.length) < MIN_NEAR_MATCH) return false;
-  return x.includes(y) || y.includes(x);
+  if (!x || !y) return false;
+  return startsAWord(x, y) || startsAWord(y, x);
+}
+
+/**
+ * Two names already on file that look like the same client without being
+ * the same name. Offered for confirmation, never applied on its own. No
+ * minimum length: a stored `BK` beside a stored `BK Events` is exactly the
+ * pair a person should be shown.
+ */
+export function looksLikeSameClient(a: string, b: string): boolean {
+  return !sameClientName(a, b) && namesOverlap(a, b);
+}
+
+/** Letters typed before a name being typed is compared as a near match. */
+const MIN_TYPED_LETTERS = 3;
+
+/**
+ * A name still being typed looks like a client already on file. Waits for
+ * three letters of the *typed* name — spaces not counted — because one
+ * letter starts a word in half the list and the warning came up on the
+ * first keystroke of every new name (v0.90.1, the owner's report). The
+ * stored name has no minimum: typing `BK Events` should still point at a
+ * client called `BK`.
+ */
+export function typedNameLooksLike(typed: string, stored: string): boolean {
+  if (normalizeClientName(typed).replace(/ /g, "").length < MIN_TYPED_LETTERS) return false;
+  return looksLikeSameClient(typed, stored);
 }

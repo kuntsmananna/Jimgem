@@ -12,7 +12,7 @@ import { formatOrderDate } from "@/lib/orderTypes";
 import type { ClientDocumentLine, ClientOrderLine } from "./ClientsClient";
 import { JellyHop } from "@/components/JellyLoader";
 import { sendWrite } from "@/components/saveError";
-import { looksLikeSameClient, sameClientName } from "@/lib/clientName";
+import { sameClientName, typedNameLooksLike } from "@/lib/clientName";
 
 
 
@@ -80,7 +80,7 @@ export function ClientModal({
   const existing = client === null ? others.find((other) => sameClientName(other.name, draft.name)) : undefined;
   const nearby =
     client === null && draft.name.trim() && !existing
-      ? others.filter((other) => looksLikeSameClient(other.name, draft.name))
+      ? others.filter((other) => typedNameLooksLike(draft.name, other.name))
       : [];
 
   async function save() {

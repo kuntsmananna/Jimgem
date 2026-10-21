@@ -1645,9 +1645,15 @@ The rest of the second review's list, none of it needing a migration:
   links, and `looksLikeSameClient` only ever *offers* — `בילדוטס` against
   `בילדוטס בע"מ` is usually the same customer and occasionally isn't, and
   only a person can tell. The order form's picker and the Clients page both
-  show near matches without acting on them. A near match needs **three letters** on the
-  shorter side (v0.90.1) — one typed letter is "contained" in half the
-  list, and the warning came up on every new name's first keystroke.
+  show near matches without acting on them. **A near match is a whole
+  word's start**, not a substring anywhere (`namesOverlap`, v0.90.2), so a
+  common syllable mid-word does not flag half the list; the order form's
+  suggestions use the same rule, from the first letter. **A name being
+  typed is compared only from three letters** (`typedNameLooksLike`,
+  spaces not counted) — one typed letter starts a word in half the list.
+  The minimum is on the typed side only: typing `BK Events` still points
+  at a stored `BK`, and two stored names (the client card's "similar")
+  have no minimum at all.
 - **A client is created when the order is saved, not as the name is
   typed** — an abandoned half-filled form leaves nothing behind. If that
   create fails the order still saves, unlinked: losing a booking to a

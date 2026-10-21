@@ -4,7 +4,7 @@ import { dialable } from "@/components/clients/ClientsMobileList";
 import { useMemo, useRef, useState } from "react";
 import { Phone, UserPlus } from "lucide-react";
 import type { Client } from "@/lib/clients";
-import { looksLikeSameClient, normalizeClientName } from "@/lib/clientName";
+import { namesOverlap, normalizeClientName, typedNameLooksLike } from "@/lib/clientName";
 import { TextInput } from "@/components/Field";
 import { usePopoverDismiss } from "@/components/useOverlayDismiss";
 
@@ -56,21 +56,16 @@ export function ClientPicker({
   // order already uses — the rule every picker in the app follows, so an
   // archived client stays visible exactly where it is still in use.
   const matches = useMemo(() => {
-    const typed = normalizeClientName(name);
-    if (!typed) return [];
     return clients
       .filter((client) => !client.archivedAt || client.id === clientId)
-      .filter((client) => {
-        const candidate = normalizeClientName(client.name);
-        return candidate.includes(typed) || typed.includes(candidate);
-      })
+      .filter((client) => namesOverlap(client.name, name))
       .slice(0, 6);
   }, [clients, name, clientId]);
 
   const exact = clients.some((client) => normalizeClientName(client.name) === normalizeClientName(name));
   const isNew = name.trim() !== "" && !exact;
   // Someone already on file under a longer or shorter form of this name.
-  const nearby = isNew ? clients.filter((client) => looksLikeSameClient(client.name, name)) : [];
+  const nearby = isNew ? clients.filter((client) => typedNameLooksLike(name, client.name)) : [];
 
   return (
     <div ref={box} className="relative min-w-0 flex-1">
