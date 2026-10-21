@@ -240,7 +240,7 @@ const MENU_WIDTH = 176;
 export function stageHint(stage: ProductionStage | undefined): string {
   if (!stage) return "A status that is no longer on the list in Settings.";
   if (!stage.countsAsIncome) return "A quote — not counted as income until the customer says yes.";
-  if (stage.isFinal) return "Done. Hidden by the default Status filter.";
+  if (stage.isFinal) return "Done — the order is finished.";
   return "Booked and still to do — counted as income.";
 }
 

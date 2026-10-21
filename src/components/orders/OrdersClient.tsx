@@ -154,16 +154,13 @@ export function OrdersClient({
   // shows how to read the grid instead of which orders are in play.
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   /**
-   * Which stages are in play. Starts on every stage the owner has *not*
-   * marked final, because 62 of 79 orders are delivered and the page is
-   * about what still needs doing until you ask for the archive.
-   *
-   * Read from the stage list once, at mount: changing it later would
-   * silently reset a filter someone had set by hand.
+   * Which stages are in play — all of them by default (v0.90.5, the owner's
+   * call): a finished, paid order is still one worth seeing on the list,
+   * and the 14-day scope already keeps the page a work queue. Empty is
+   * "all", as for the payment filters. A finished order is told apart by
+   * its fill on a phone (`OrdersMobileList`).
    */
-  const [stageFilter, setStageFilter] = useState<Set<ProductionStatus>>(
-    () => new Set(stages.filter((stage) => !stage.isFinal).map((stage) => stage.key)),
-  );
+  const [stageFilter, setStageFilter] = useState<Set<ProductionStatus>>(new Set());
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   // The Dashboard's Latest orders list links here with ?order=<key> to

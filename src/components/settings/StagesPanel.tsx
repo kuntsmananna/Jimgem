@@ -161,7 +161,7 @@ function StageEditor({
           checked={draft.isFinal}
           onChange={(isFinal) => onChange({ ...draft, isFinal })}
           label="Finished"
-          hint="Hidden from the Orders table unless you ask for it."
+          hint="Marks the order as done — drawn recessed on the phone's list."
         />
       </div>
 

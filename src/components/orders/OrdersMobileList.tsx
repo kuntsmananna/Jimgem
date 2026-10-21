@@ -158,9 +158,8 @@ function OrderCard({
         the one that fails a reader in sunlight. Nothing here changes a
         text colour, so every ratio on the card is what it was.
 
-        Only visible when the Status filter is widened, since it defaults
-        to the non-final stages — which is exactly the moment the
-        distinction is worth drawing.
+        The Status filter shows every stage by default (v0.90.5), so a
+        mixed list of open and finished orders is the usual case.
       */
       data-jiggle-item
       className={`tap w-full rounded-card border border-line px-4 py-3 text-left ${

@@ -202,9 +202,9 @@ done. It is the fill rather than a fade because the obvious alternative
 costs contrast: at `opacity-70` the card's labels measure 2.97 against a
 4.5 floor, so the cheapest-looking answer is the one that fails a reader
 in sunlight. Changing no text colour leaves every ratio as it was — the
-recessed card measures 4.54 on its labels and 14.29 on its values. It
-only shows once the Status filter is widened, since that defaults to the
-non-final stages, which is exactly when the distinction is worth drawing.
+recessed card measures 4.54 on its labels and 14.29 on its values. Since
+v0.90.5 the Status filter shows every stage by default, so a mixed list is
+the usual case and the fill earns its keep on every visit.
 The desktop table does not do this and does not need to: a `<tr>` has no
 surface of its own, the same reason the offer fill stays row-only.
 
@@ -2625,8 +2625,8 @@ not a fixed union. Orders store a stage's `key`, fixed at creation, so
 renaming one is free and cannot retype the orders using it — the opposite
 trade from `order_types`, which orders reference by name. Two flags on the
 row carry what used to be hardcoded against the words "offer" and
-"delivered": `counts_as_income` (false for a quote) and `is_final` (left
-out of the Orders table's default stage filter). `ProductionStatus` is
+"delivered": `counts_as_income` (false for a quote) and `is_final` (the
+order is done — no longer hidden by default since v0.90.5). `ProductionStatus` is
 therefore just `string`, and `PRODUCTION_STATUS_LABEL` is gone;
 `ProductionStagesContext` provides the list from the app layout the same
 way order types are provided, and `isBooked(order, stages)` takes the
@@ -2946,11 +2946,12 @@ matches". Calendar ignores the scope: it navigates by its own month.
 **Status is a filter, not a Delivered toggle.** It is called *Status*
 everywhere — the Settings pane, this filter and the table's column — after
 a spell where the same list answered to Status, Stage and Statuses on
-three different screens. It defaults to `ACTIVE_STAGES` — every stage except Delivered, derived from
-`PRODUCTION_STATUS_LABEL` so a stage added later shows up rather than
-hiding — which keeps the old default (most of the 57 orders are
-delivered)
-while also answering "show me the offers". Kanban ignores it: its columns
+three different screens. **It defaults to every stage** (v0.90.5, the
+owner's call — paid and finished orders are shown too); empty means "all",
+as for the payment filters. Until then it started on the non-final stages
+only, which hid every delivered, paid order from the default view; the
+14-day scope is what keeps the page a work queue. `is_final` still drives
+the phone card's recessed fill and the status chip's hint. Kanban ignores it: its columns
 already *are* the stages, and hiding one would leave the board unable to
 show work it exists to track.
 
