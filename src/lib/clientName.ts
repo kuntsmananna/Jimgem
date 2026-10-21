@@ -28,9 +28,17 @@ export function sameClientName(a: string, b: string): boolean {
 /**
  * One name looks like a longer form of the other — `בילדוטס` against
  * `בילדוטס בע"מ`. Offered for confirmation, never applied on its own.
+ *
+ * Not before three letters: the shorter name is "contained" in the longer
+ * one, so a single typed letter matched half the client list and the
+ * warning came up on the first keystroke of every new name (v0.90.1, the
+ * owner's report).
  */
+const MIN_NEAR_MATCH = 3;
+
 export function looksLikeSameClient(a: string, b: string): boolean {
   const [x, y] = [normalizeClientName(a), normalizeClientName(b)];
   if (!x || !y || x === y) return false;
+  if (Math.min(x.length, y.length) < MIN_NEAR_MATCH) return false;
   return x.includes(y) || y.includes(x);
 }

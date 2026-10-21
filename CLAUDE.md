@@ -1645,7 +1645,9 @@ The rest of the second review's list, none of it needing a migration:
   links, and `looksLikeSameClient` only ever *offers* — `בילדוטס` against
   `בילדוטס בע"מ` is usually the same customer and occasionally isn't, and
   only a person can tell. The order form's picker and the Clients page both
-  show near matches without acting on them.
+  show near matches without acting on them. A near match needs **three letters** on the
+  shorter side (v0.90.1) — one typed letter is "contained" in half the
+  list, and the warning came up on every new name's first keystroke.
 - **A client is created when the order is saved, not as the name is
   typed** — an abandoned half-filled form leaves nothing behind. If that
   create fails the order still saves, unlinked: losing a booking to a
