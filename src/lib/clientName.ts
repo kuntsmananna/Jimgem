@@ -38,13 +38,24 @@ function startsAWord(outer: string, inner: string): boolean {
  * The two names could be one client: equal, or one is the other with
  * words added — `בילדוטס` against `בילדוטס בע"מ`. Matched at the start of
  * a word rather than anywhere, so a common syllable buried mid-word
- * (`כהן`, `בית`) does not flag half the list. This is what the order
- * form's client suggestions offer, from the first letter typed.
+ * (`כהן`, `בית`) does not flag half the list as a possible duplicate.
  */
 export function namesOverlap(a: string, b: string): boolean {
   const [x, y] = [normalizeClientName(a), normalizeClientName(b)];
   if (!x || !y) return false;
   return startsAWord(x, y) || startsAWord(y, x);
+}
+
+/**
+ * What the order form's client suggestions offer as a name is typed: one
+ * name anywhere inside the other, from the first letter. Looser than a
+ * near match on purpose — a search should find `ילדו` in `בילדוטס`, while
+ * a duplicate warning should not.
+ */
+export function nameContains(a: string, b: string): boolean {
+  const [x, y] = [normalizeClientName(a), normalizeClientName(b)];
+  if (!x || !y) return false;
+  return x.includes(y) || y.includes(x);
 }
 
 /**

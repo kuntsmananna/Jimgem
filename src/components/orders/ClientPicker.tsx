@@ -4,7 +4,7 @@ import { dialable } from "@/components/clients/ClientsMobileList";
 import { useMemo, useRef, useState } from "react";
 import { Phone, UserPlus } from "lucide-react";
 import type { Client } from "@/lib/clients";
-import { namesOverlap, normalizeClientName, typedNameLooksLike } from "@/lib/clientName";
+import { nameContains, normalizeClientName, typedNameLooksLike } from "@/lib/clientName";
 import { TextInput } from "@/components/Field";
 import { usePopoverDismiss } from "@/components/useOverlayDismiss";
 
@@ -58,7 +58,7 @@ export function ClientPicker({
   const matches = useMemo(() => {
     return clients
       .filter((client) => !client.archivedAt || client.id === clientId)
-      .filter((client) => namesOverlap(client.name, name))
+      .filter((client) => nameContains(client.name, name))
       .slice(0, 6);
   }, [clients, name, clientId]);
 

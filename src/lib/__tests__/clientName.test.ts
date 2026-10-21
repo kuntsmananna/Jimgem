@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { looksLikeSameClient, namesOverlap, typedNameLooksLike } from "../clientName";
+import { looksLikeSameClient, nameContains, typedNameLooksLike } from "../clientName";
 
 describe("looksLikeSameClient", () => {
   it("offers a longer form of the same name", () => {
@@ -36,9 +36,10 @@ describe("typedNameLooksLike", () => {
   });
 });
 
-describe("namesOverlap", () => {
-  it("suggests from the first letter, exact names included", () => {
-    expect(namesOverlap("מ", "מאיה לוי")).toBe(true);
-    expect(namesOverlap("Maya Levi", "Maya Levi")).toBe(true);
+describe("nameContains", () => {
+  it("finds a name from any part of it, from the first letter", () => {
+    expect(nameContains("מ", "מאיה לוי")).toBe(true);
+    expect(nameContains("ילדו", "בילדוטס")).toBe(true);
+    expect(nameContains("Maya Levi", "Maya Levi")).toBe(true);
   });
 });

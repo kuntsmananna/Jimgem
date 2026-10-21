@@ -1,6 +1,6 @@
 {
   "name": "jimgem",
-  "version": "0.90.2",
+  "version": "0.90.3",
   "private": true,
   "scripts": {
     "dev": "next dev",

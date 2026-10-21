@@ -1647,8 +1647,9 @@ The rest of the second review's list, none of it needing a migration:
   only a person can tell. The order form's picker and the Clients page both
   show near matches without acting on them. **A near match is a whole
   word's start**, not a substring anywhere (`namesOverlap`, v0.90.2), so a
-  common syllable mid-word does not flag half the list; the order form's
-  suggestions use the same rule, from the first letter. **A name being
+  common syllable mid-word does not flag half the list. The order form's
+  **suggestions** are a search and match anywhere in the name
+  (`nameContains`), from the first letter — the owner's call. **A name being
   typed is compared only from three letters** (`typedNameLooksLike`,
   spaces not counted) — one typed letter starts a word in half the list.
   The minimum is on the typed side only: typing `BK Events` still points
