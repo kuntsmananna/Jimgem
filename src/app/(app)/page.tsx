@@ -1,6 +1,7 @@
 import { getYearlyFinancials, yearOf } from "@/lib/financials";
 import { getOrders, orderMonth, orderFlavorUnits } from "@/lib/orders";
-import { isBooked, stageMap } from "@/lib/orderTypes";
+import { isBooked, isoDate, stageMap, stillDue } from "@/lib/orderTypes";
+import { DUE_SOON_DAYS } from "@/lib/dueSoon";
 import { getFlavors, getPrices, getProductionStages, getStaff } from "@/lib/settings";
 import { getVatView } from "@/lib/vatViewServer";
 import { DashboardClient, type FlavorLine } from "@/components/dashboard/DashboardClient";
@@ -45,6 +46,17 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
     }));
   });
 
+  // The orders the "still owe" reminder could mean, cut a day wider on both
+  // sides than its window: the window itself is applied in the browser,
+  // against the browser's today — the server runs in UTC.
+  const from = new Date();
+  from.setDate(from.getDate() - 1);
+  const to = new Date();
+  to.setDate(to.getDate() + DUE_SOON_DAYS + 1);
+  const owing = orders.filter(
+    (order) => order.date >= isoDate(from) && order.date <= isoDate(to) && stillDue(order) > 0,
+  );
+
   // No version footer here any more — it sits in the nav, on every page.
   return (
     <DashboardClient
@@ -65,6 +77,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       flavorLines={flavorLines}
       tasks={tasks}
       staff={staff}
+      owing={owing}
     />
   );
 }

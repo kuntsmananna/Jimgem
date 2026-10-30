@@ -15,6 +15,10 @@ import { SelectDropdown } from "@/components/orders/Dropdown";
 import { count, currency } from "@/lib/money";
 import { YearSwitch } from "@/components/YearSwitch";
 import Link from "next/link";
+import type { Order } from "@/lib/orderTypes";
+import { dueSoon } from "@/lib/dueSoon";
+import { DueSoonStrip } from "@/components/orders/DueSoonStrip";
+import { useStageMap } from "@/components/ProductionStagesContext";
 
 export interface FlavorLine {
   month: number;
@@ -64,6 +68,7 @@ export function DashboardClient({
   flavorLines,
   tasks,
   staff,
+  owing,
 }: {
   financials: MonthlyFinancials[];
   /** The year `financials` is in, and the years there is anything for — see `YearSwitch`. */
@@ -77,8 +82,11 @@ export function DashboardClient({
   tasks: Task[];
   /** Who a task can be given to — see `TaskList`. */
   staff: StaffAccount[];
+  /** Orders around the coming week that still owe — see `DueSoonStrip`. */
+  owing: Order[];
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | "all">("all");
+  const stageMap = useStageMap();
   const { label: vatLabel } = useVatView();
   /*
    * The phone gets this pane now, where it did not get the one before it.
@@ -176,6 +184,7 @@ export function DashboardClient({
        was most of a screen of cream by the bottom of the page. */
     <div className="flex flex-col gap-6 max-md:gap-4">
       <SetupChecklist setup={setup} />
+      <DueSoonStrip items={dueSoon(owing, stageMap, new Date())} />
       <div className="flex items-center gap-2 max-md:flex-wrap">
         <YearSwitch year={year} years={years} path="/" />
         {/* A row of pills is the right control for a period on a laptop and

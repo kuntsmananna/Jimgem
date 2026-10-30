@@ -1371,6 +1371,26 @@ shopping list and the money rail draws no cost.
   `parseRecipeInput` (refuses an ingredient listed twice) and
   `parseStockInput` (blank = not counted) are in `validate.ts`.
 
+### v0.93 — events this week that still owe
+
+- **`DueSoonStrip`** (`orders/DueSoonStrip.tsx`) is one amber line — "3
+  events in the next 7 days still owe ₪6,650" — that opens into those
+  orders, soonest first. On the **Orders page** (admin, above the list,
+  not on the calendar or while searching) a row opens the order in place;
+  on the **Dashboard** (under the setup checklist) it links to
+  `/orders?order=`. Folded by default, and drawn only when something is
+  owed: a reminder that is always there is one that gets scrolled past.
+- **`dueSoon` in `src/lib/dueSoon.ts`** is the rule (tested): dated today
+  to `DUE_SOON_DAYS` (7) ahead, booked (a quote owes nothing), not
+  finished, and `stillDue` above zero — so "Paid in full" with no deposit
+  typed in is never chased. On Orders it reads **every order**, not the
+  filtered list, or the reminder would hide behind the filters it is
+  meant to cut through. The Dashboard's server cuts candidates a day wider
+  than the window and the browser applies it against its own today, the
+  prep sheet's rule for the UTC server.
+- No notifications, email or push: the strip is where the two of them
+  already look. No migration.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

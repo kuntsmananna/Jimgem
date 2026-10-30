@@ -27,6 +27,8 @@ import { writePrefCookie } from "@/lib/prefCookie";
 import { COLUMNS, FIXED_COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
 import { PaymentMethodsProvider } from "./PaymentMethodsContext";
 import { FoodCostProvider } from "./FoodCostContext";
+import { DueSoonStrip } from "./DueSoonStrip";
+import { dueSoon } from "@/lib/dueSoon";
 import { EmptyState } from "@/components/EmptyState";
 import { useCanSeeMoney, useIsAdmin } from "@/components/RoleContext";
 import { ColumnsMenu } from "./ColumnsMenu";
@@ -331,6 +333,9 @@ export function OrdersClient({
   const mobile = useIsMobile();
 
   const stageIndex = stageMap(stages);
+  // Booked events this week still owing — every order, not just the ones
+  // in scope: a reminder that hid behind the filters would not remind.
+  const soon = money ? dueSoon(orders, stageIndex, new Date()) : [];
   const totals = totalOf(inScope, unitsPerPackage, stageIndex, forOrder);
   const previousTotals = totalOf(
     previous === null || searching ? [] : source.filter((o) => inRange(o.date, previous)),
@@ -935,6 +940,7 @@ export function OrdersClient({
           {/* Said out loud, because the chips above still show their
               choices: a list wider than they describe would otherwise look
               like the filters had stopped working. */}
+          {!searching && view !== "calendar" && <DueSoonStrip items={soon} onOpen={setOpenKey} />}
           {searching && inScope.length > 0 && view !== "calendar" && (
             <p className="text-xs font-semibold text-ink-soft" role="status">
               Searching every order — the date window and filters are paused until the search is cleared.
