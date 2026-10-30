@@ -24,18 +24,114 @@ export interface Announcement {
   /** Who it is for — a release about money is admin-only, since a staff login never sees money. */
   audience: Role[];
   /** Which picture heads it — see `WhatsNew`. */
-  art: "paid-by" | "refresh" | "orders-table" | "jelly-mode";
+  art: "paid-by" | "refresh" | "orders-table" | "jelly-mode" | "prep-sheet" | "food-cost" | "due-soon";
   /** This release's page heading. The popup itself is always titled "What's new". */
   title: string;
   lede: string;
   items: {
-    icon: "amount" | "card" | "filter" | "palette" | "lift" | "hover" | "jelly" | "day" | "columns" | "extras" | "select";
+    icon:
+      | "amount"
+      | "card"
+      | "filter"
+      | "palette"
+      | "lift"
+      | "hover"
+      | "jelly"
+      | "day"
+      | "columns"
+      | "extras"
+      | "select"
+      | "basket"
+      | "print"
+      | "recipe"
+      | "bell";
     title: string;
     text: string;
   }[];
 }
 
 export const ANNOUNCEMENTS: Announcement[] = [
+  /*
+   * v0.91-v0.93. The prep sheet is for everybody — it carries no money and
+   * the kitchen is who uses it — so its shopping list is described here
+   * too. What a jelly costs and who still owes are money, so they are an
+   * admin's pages of their own.
+   */
+  {
+    id: "v0.91-prep-sheet",
+    released: "2026-10-30",
+    audience: ["admin", "staff"],
+    art: "prep-sheet",
+    title: "The prep sheet",
+    lede: "One page that adds up what the coming days' orders need: how much of each flavour, which trays, what the events need, and what to buy.",
+    items: [
+      {
+        icon: "jelly",
+        title: "How much of each flavour",
+        text: "Units per flavour for today, 3, 7 or 14 days, largest first — and how many still have no flavour decided.",
+      },
+      {
+        icon: "day",
+        title: "Day by day",
+        text: "Under the totals, the same orders by day: every package, its split, the extras and the note.",
+      },
+      {
+        icon: "basket",
+        title: "A shopping list",
+        text: "What these orders take against what's on the shelf, and how many packs to buy. Tap a count to update it.",
+      },
+      {
+        icon: "print",
+        title: "Find it, print it",
+        text: "Prep sheet on the Orders page (Prep on a phone). It prints as a clean sheet for the kitchen.",
+      },
+    ],
+  },
+  {
+    id: "v0.92-food-cost",
+    released: "2026-10-30",
+    audience: ["admin"],
+    art: "food-cost",
+    title: "What a jelly costs to make",
+    lede: "Add your ingredients and a recipe per flavour, and every order shows what its jelly costs and what is left after it.",
+    items: [
+      {
+        icon: "amount",
+        title: "Ingredients, by the pack",
+        text: "Type them as the receipt says — a 700 ml bottle for ₪70. Settings → Flavors.",
+      },
+      {
+        icon: "recipe",
+        title: "A recipe per flavour",
+        text: "What one batch makes and takes. The cost of one jelly is worked out as you type.",
+      },
+      {
+        icon: "card",
+        title: "In every order",
+        text: "The money panel ends with Ingredients and what is left after them, before VAT. Units with no recipe are counted, never guessed.",
+      },
+    ],
+  },
+  {
+    id: "v0.93-due-soon",
+    released: "2026-10-30",
+    audience: ["admin"],
+    art: "due-soon",
+    title: "Who still owes before the event",
+    lede: "Events in the next 7 days that haven't been paid in full now say so, on the Orders page and the Dashboard.",
+    items: [
+      {
+        icon: "bell",
+        title: "One line, when it matters",
+        text: "It shows only when something is owed, and opens into the orders it means — tap one to open it.",
+      },
+      {
+        icon: "filter",
+        title: "Not hidden by the filters",
+        text: "It looks at every booked order, whatever the list is narrowed to. Quotes and paid orders are never chased.",
+      },
+    ],
+  },
   // v0.79: jelly mode, for everyone — a toy, so worded as one. Re-announced
   // in v0.79.7 under a new id (it was "v0.79-jelly-mode") so the picture
   // with the phone reaches everyone who had already closed the first one;

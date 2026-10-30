@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import {
   BadgeCheck,
   Banknote,
+  BellRing,
   Boxes,
+  ChefHat,
   Briefcase,
   Cake,
   HandPlatter,
@@ -15,7 +17,9 @@ import {
   Landmark,
   MousePointer2,
   Palette,
+  Printer,
   Receipt,
+  ShoppingBasket,
   Sparkles,
   SquareCheck,
   TrendingUp,
@@ -46,6 +50,10 @@ const ITEM_ICON = {
   columns: Columns3,
   extras: Truck,
   select: SquareCheck,
+  basket: ShoppingBasket,
+  print: Printer,
+  recipe: ChefHat,
+  bell: BellRing,
 } as const;
 
 /**
@@ -247,7 +255,13 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
 function Page({ announcement }: { announcement: Announcement }) {
   return (
     <>
-      {announcement.art === "jelly-mode" ? (
+      {announcement.art === "prep-sheet" ? (
+        <PrepSheetIllustration />
+      ) : announcement.art === "food-cost" ? (
+        <FoodCostIllustration />
+      ) : announcement.art === "due-soon" ? (
+        <DueSoonIllustration />
+      ) : announcement.art === "jelly-mode" ? (
         <JellyModeIllustration />
       ) : announcement.art === "orders-table" ? (
         <OrdersTableIllustration />
@@ -590,6 +604,122 @@ function ShakenPhone() {
             </div>
           ))}
           <span className="-mx-1.5 mt-auto h-4 shrink-0 bg-black" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The prep sheet in one picture: the flavours pane with its bars, a slip of
+ * the shopping list with one row to buy, and the jelly cubes the sheet adds
+ * up scattered behind — drawn from the page's own pieces.
+ */
+function PrepSheetIllustration() {
+  const flavours: { color: (typeof SERIES_COLORS)[keyof typeof SERIES_COLORS]; name: string; units: number }[] = [
+    { color: SERIES_COLORS.midori, name: "Gin & Tonic", units: 240 },
+    { color: SERIES_COLORS.berry, name: "Berry", units: 150 },
+    { color: SERIES_COLORS.royale, name: "Kir Royale", units: 90 },
+  ];
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <Cube color={SERIES_COLORS.jasmine} className="top-3 right-5 size-7 rotate-[14deg]" />
+      <Cube color={SERIES_COLORS.berry} className="bottom-3 left-[46%] size-5 rotate-[-10deg] max-md:hidden" />
+      {/* The flavours pane. */}
+      <div className="absolute top-4 left-5 w-[13.5rem] rounded-xl bg-card p-3 shadow-md max-md:left-4 max-md:w-[10rem]">
+        <p className="mb-2 flex items-center justify-between text-[11px] font-bold text-ink">
+          Flavours <span className="font-semibold text-ink-soft">next 7 days</span>
+        </p>
+        {flavours.map((f) => (
+          <div key={f.name} className="mb-1.5">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-ink">
+              <span className="flex items-center gap-1.5">
+                <span className="jelly-cube h-2.5 w-2.5" style={cubeColors(f.color)} />
+                {f.name}
+              </span>
+              <span className="font-display text-[12px] font-extrabold tabular-nums">{f.units}</span>
+            </div>
+            <span className="mt-0.5 block h-1 rounded-full bg-ink/[0.06]">
+              <span className="block h-full rounded-full bg-ink/70" style={{ width: `${(f.units / 240) * 100}%` }} />
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* A slip of the shopping list, overlapping the pane. */}
+      <div className="absolute right-5 bottom-4 w-[11rem] rotate-[2deg] rounded-xl bg-card p-2.5 text-[10px] shadow-xl max-md:right-3 max-md:w-[8.5rem]">
+        <p className="mb-1.5 flex items-center gap-1 font-bold text-ink">
+          <ShoppingBasket size={11} /> Shopping list
+        </p>
+        <p className="flex items-center justify-between py-0.5 text-ink">
+          <span className="font-semibold">Vodka</span>
+          <span className="rounded-full bg-tile-peach px-1.5 font-extrabold">2 packs</span>
+        </p>
+        <p className="flex items-center justify-between py-0.5 text-ink">
+          <span className="font-semibold">Gelatin</span>
+          <span className="font-semibold text-accent">Enough</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A recipe card — one batch, what goes in, what a jelly comes to — beside a
+ * slip of the black money panel ending in the two new rows.
+ */
+function FoodCostIllustration() {
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <Cube color={SERIES_COLORS.midori} className="top-4 right-[44%] size-6 rotate-[-12deg] max-md:hidden" />
+      <Cube color={SERIES_COLORS.royale} className="bottom-3 left-4 size-7 rotate-[8deg]" />
+      {/* The recipe card. */}
+      <div className="absolute top-4 left-5 w-[12.5rem] rounded-xl bg-card p-3 text-[10px] shadow-md max-md:left-4 max-md:w-[9.5rem]">
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold text-ink">
+          <span className="jelly-cube h-3 w-3" style={cubeColors(SERIES_COLORS.midori)} />
+          Gin &amp; Tonic
+        </p>
+        <p className="mb-1 text-ink-soft">One batch makes 30 units:</p>
+        <p className="flex justify-between font-semibold text-ink"><span>Vodka</span><span>300 ml</span></p>
+        <p className="flex justify-between font-semibold text-ink"><span>Gelatin</span><span>60 g</span></p>
+        <p className="flex justify-between font-semibold text-ink"><span>Tonic syrup</span><span>200 ml</span></p>
+        <p className="mt-1.5 border-t border-line pt-1.5 text-right font-display text-[12px] font-extrabold text-ink">₪1.30 a jelly</p>
+      </div>
+      {/* The money panel's last rows. */}
+      <div className="absolute right-5 bottom-4 w-[11.5rem] rotate-[-2deg] rounded-xl bg-black p-3 text-[10px] text-cream/75 shadow-xl max-md:right-3 max-md:w-[9rem]">
+        <Line label="Total" value="₪2,400" strong />
+        <div className="my-1.5 border-t border-dashed border-cream/20" />
+        <Line label="Ingredients" value="₪312" />
+        <Line label="Left over" value="₪1,722" strong />
+      </div>
+    </div>
+  );
+}
+
+/** The amber strip, opened, over a glimpse of the orders list. */
+function DueSoonIllustration() {
+  const rows = [
+    { when: "Today", name: "Maya Levi", due: "₪1,800", today: true },
+    { when: "Sun 1/11", name: "Noa Cohen", due: "₪650" },
+    { when: "Wed 4/11", name: "Studio Lev", due: "₪4,200" },
+  ];
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <Cube color={SERIES_COLORS.berry} className="top-3 right-4 size-6 rotate-[16deg]" />
+      <Cube color={SERIES_COLORS.jasmine} className="bottom-3 left-3 size-5 rotate-[-8deg]" />
+      <div className="absolute inset-x-6 top-5 rounded-xl bg-tile-peach shadow-md max-md:inset-x-4">
+        <p className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-ink">
+          <BellRing size={12} />
+          <span className="flex-1">3 events in the next 7 days still owe <b className="font-display font-extrabold">₪6,650</b></span>
+          <span className="text-ink-soft">Hide</span>
+        </p>
+        <div className="flex flex-col gap-1 px-1.5 pb-1.5">
+          {rows.map((r) => (
+            <p key={r.name} className="flex items-center gap-3 rounded-lg bg-card/80 px-2.5 py-1.5 text-[11px]">
+              <span className={`w-14 font-bold ${r.today ? "text-accent" : "text-ink-soft"}`}>{r.when}</span>
+              <span className="flex-1 font-semibold text-ink">{r.name}</span>
+              <span className="font-display font-extrabold text-due">{r.due}</span>
+            </p>
+          ))}
         </div>
       </div>
     </div>
