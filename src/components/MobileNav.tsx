@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   ClipboardList,
+  ChefHat,
   Ellipsis,
   LayoutDashboard,
   ListChecks,
@@ -48,6 +49,7 @@ const BAR = [
 const MORE = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/clients", label: "Clients", icon: Users },
+  { href: "/prep", label: "Prep sheet", icon: ChefHat },
   { href: "/biz-plan", label: "Biz Plan", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -106,7 +108,7 @@ export function MobileNav({ name, version }: { name: string; version: string }) 
           everything above it is cream and belongs to the work, and the bar
           is the thing that is always there.
         */
-        className="on-ink fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-cream/15 pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="on-ink fixed inset-x-0 bottom-0 z-30 flex items-stretch print:hidden border-t border-cream/15 pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {(admin ? BAR : STAFF_BAR).map((item) => (
           <BarItem key={item.href} {...item} active={isActive(item.href, path)} />
@@ -247,6 +249,7 @@ const PAGES = [
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/clients", label: "Clients", icon: Users },
+  { href: "/prep", label: "Prep sheet", icon: ChefHat },
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/biz-plan", label: "Biz Plan", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },

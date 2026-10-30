@@ -45,6 +45,7 @@ const LINKS = [
  */
 const STAFF_LINKS = [
   { href: "/orders", label: "Orders" },
+  { href: "/prep", label: "Prep" },
   { href: "/tasks", label: "Tasks" },
 ];
 
@@ -69,6 +70,7 @@ const PHONE_TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/biz-plan": "Biz Plan",
   "/settings": "Settings",
+  "/prep": "Prep sheet",
 };
 
 export function Nav({ name, version }: { name: string; version: string }) {
@@ -101,7 +103,7 @@ export function Nav({ name, version }: { name: string; version: string }) {
        along the bottom and the sheet behind More. */
     /* A step slimmer on a phone (`max-md:py-3`): it is sticky, so every
        pixel of it is taken from the list under it for as long as you scroll. */
-    <header ref={header} className="group/header sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4 max-md:py-3">
+    <header ref={header} className="group/header print:hidden sticky top-0 z-30 flex items-center justify-between border-b border-line bg-cream/95 px-8 py-4 backdrop-blur max-md:px-4 max-md:py-3">
       <div className="flex items-center gap-8">
         {/* The mark itself, and still the way back to the Dashboard.
             Sized by height, and 40px rather than the 32 that would match

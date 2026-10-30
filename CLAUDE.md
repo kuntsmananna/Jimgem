@@ -1294,6 +1294,32 @@ The rest of the second review's list, none of it needing a migration:
   `row_revisions` but only migration 026 attaches the triggers — so after
   a restore the pane reads 026 as not run, which is the truth: paste it.
 
+### v0.91 — the prep sheet
+
+- **`/prep` adds up what the coming days' orders need** (`src/lib/prep.ts`,
+  `prep/PrepClient.tsx`): units per flavour (largest first, with what has
+  no flavour yet called out), packages per size, loose event totals, then
+  displays per option, waitresses, kosher orders and deliveries, and under
+  that the same orders **day by day** as the kitchen reads them — every
+  line's split, the extras and the note. Today, 3, 7 (the default) or 14
+  days, and booked only unless "+ quotes" is chosen: a quote may never
+  land. Finished orders are out — they have been made.
+- **No money, for anyone**: the page always sends `redactOrders`, and
+  display options with their prices zeroed. **Staff reach it** —
+  `prep` is in `STAFF_SEGMENTS`, the third pill on a staff account's
+  laptop nav. An admin finds it in the phone's More sheet; both find it
+  from the Orders page (a **Prep sheet** link in the toolbar, a **Prep**
+  chip at the end of the phone's filter row — the only way in on a staff
+  account's phone, whose bar has no More). No seventh desktop pill for an
+  admin, for the reason that row has none for Tasks.
+- **The window is picked against the browser's today**, not the server's:
+  a Vercel function runs in UTC, a day behind Israel for two hours a night.
+  The server sends a day either side of the widest window to allow for it.
+- Unassigned is counted per line, only where a line is short — the
+  coverage chip's rule, so an overfilled line cannot cancel a short one.
+- **It prints**: the header and the bottom bar are `print:hidden` and
+  `main` drops its padding, so Print gives the sheet alone.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

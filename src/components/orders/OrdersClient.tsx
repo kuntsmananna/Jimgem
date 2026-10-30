@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, CalendarRange, Columns3, Copy, CreditCard, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, ChefHat, Columns3, Copy, CreditCard, ListChecks, Plus, Table2, Trash2, Wallet, X, type LucideIcon } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   isBooked,
@@ -748,6 +749,15 @@ export function OrdersClient({
                 onShowAll={showAllColumns}
               />
             )}
+            {/* The kitchen's sum of what is coming up — a page of its own,
+                reached from here because the orders are what it adds up. */}
+            <Link
+              href="/prep"
+              className="press flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-ink shadow-[inset_0_0_0_1px_var(--color-line)] hover:bg-black/5"
+            >
+              <ChefHat size={14} aria-hidden />
+              Prep sheet
+            </Link>
             {/* `PageSearch`, so the same field also appears in the phone
                 header — this toolbar is `max-md:hidden`, but a portal is not
                 inside what hides it. */}
@@ -868,6 +878,15 @@ export function OrdersClient({
               selected={stageFilter}
               onChange={setStageFilter}
             />
+            {/* The prep sheet, last in the row: the one way to it on a
+                staff account's phone, which has no More sheet. */}
+            <Link
+              href="/prep"
+              className="press flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold whitespace-nowrap text-ink shadow-[inset_0_0_0_1px_var(--color-line)]"
+            >
+              <ChefHat size={14} aria-hidden />
+              Prep
+            </Link>
           </div>
         </div>
 

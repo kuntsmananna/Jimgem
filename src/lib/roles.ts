@@ -4,8 +4,8 @@
  * Two roles, because the business has two kinds of person in it. An
  * **admin** — Anna and Aviv — is what every account was before this
  * existed: the whole dashboard, money included. A **staff** account is the
- * kitchen and the floor: the order list, an order's details, and the
- * shared to-do list. No money anywhere, and no other page.
+ * kitchen and the floor: the order list, an order's details, the prep
+ * sheet and the shared to-do list. No money anywhere, and no other page.
  *
  * This module is deliberately **client-safe** — no database, no session,
  * nothing server-only — because the same three facts are needed in three
@@ -25,7 +25,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const ROLE_DESCRIPTION: Record<Role, string> = {
   admin: "Everything: orders, money, expenses, clients, settings.",
-  staff: "Orders and the to-do list. No money, no other page.",
+  staff: "Orders, the prep sheet and the to-do list. No money, no other page.",
 };
 
 /** Anything that is not exactly "admin" is staff. Unknown fails closed. */
@@ -53,7 +53,7 @@ export function canSeeMoney(role: Role | string | null | undefined): boolean {
  * month is out of reach until somebody decides it should not be — the same
  * fail-closed rule the column default follows.
  */
-const STAFF_SEGMENTS = new Set(["orders", "tasks"]);
+const STAFF_SEGMENTS = new Set(["orders", "tasks", "prep"]);
 
 /**
  * May a staff account reach this path?

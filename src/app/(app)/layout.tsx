@@ -76,7 +76,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         {/* Less air at the top on a phone: `py-8` is desktop spacing under a
             header carrying six pills and a name, and below the breakpoint
             that header is a thin strip with a wordmark on it. */}
-        <main className="px-6 py-8 max-md:px-4 max-md:pt-4 max-md:pb-28">{children}</main>
+        <main className="px-6 py-8 max-md:px-4 max-md:pt-4 max-md:pb-28 print:p-0">{children}</main>
         {/* Once per person per release — see lib/announcement.ts. */}
         {announcements.length > 0 && <WhatsNew announcements={announcements} />}
         {/* "That didn't save", for every page — see Notices.tsx. */}
