@@ -6,6 +6,9 @@ export default async function LoginPage({
 }: PageProps<"/login">) {
   const params = await searchParams;
   const hasError = params?.error === "1";
+  // Refused by the throttle (loginThrottle.ts) — said plainly, with how
+  // long, so a person who mistyped a few times knows it will pass.
+  const throttled = params?.error === "wait";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream px-4">
@@ -48,6 +51,11 @@ export default async function LoginPage({
           {hasError && (
             <p className="text-sm font-medium text-red-700">
               Incorrect username or password.
+            </p>
+          )}
+          {throttled && (
+            <p className="text-sm font-medium text-red-700">
+              Too many attempts. Wait 15 minutes and try again.
             </p>
           )}
 

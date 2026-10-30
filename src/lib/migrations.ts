@@ -71,6 +71,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { id: "032", title: "What's new, per person", script: "scripts/migrate-032-announcement-views.sql", markers: [{ table: "announcement_views" }] },
   { id: "033", title: "Ending a session early", script: "scripts/migrate-033-session-version.sql", markers: [{ column: ["staff", "session_version"] }] },
   { id: "034", title: "Ingredients and stock", script: "scripts/migrate-034-ingredients.sql", markers: [{ index: "flavor_recipe_items_ingredient_idx" }] },
+  { id: "035", title: "Sign-in throttle", script: "scripts/migrate-035-login-attempts.sql", markers: [{ index: "login_attempts_at_idx" }] },
 ];
 
 export type MigrationState = "applied" | "missing" | "data-only";

@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { isThrottled, recentFailures, recordAttempt } from "@/lib/loginThrottle";
 import { verifyCredentials } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import { STAFF_HOME } from "@/lib/roles";
@@ -9,7 +11,20 @@ export async function login(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
+  // The caller's address as Vercel's edge reports it: the first entry of
+  // x-forwarded-for is the client, anything after it a proxy on the way.
+  const forwarded = (await headers()).get("x-forwarded-for");
+  const ip = forwarded?.split(",")[0]?.trim() || (await headers()).get("x-real-ip") || "unknown";
+  const key = username.toLowerCase();
+
+  // Too many recent failures: refuse without checking the password at all
+  // — see loginThrottle.ts.
+  if (isThrottled(await recentFailures(key, ip))) {
+    redirect("/login?error=wait");
+  }
+
   const account = await verifyCredentials(username, password);
+  await recordAttempt(key, ip, account !== null);
   if (!account) {
     redirect("/login?error=1");
   }

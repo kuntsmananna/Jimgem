@@ -667,3 +667,15 @@ CREATE TABLE IF NOT EXISTS flavor_recipe_items (
 );
 
 CREATE INDEX IF NOT EXISTS flavor_recipe_items_ingredient_idx ON flavor_recipe_items (ingredient_id);
+
+-- Sign-in attempts, for the app's own brute-force throttle. See
+-- scripts/migrate-035-login-attempts.sql and src/lib/loginThrottle.ts.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  ok BOOLEAN NOT NULL,
+  at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS login_attempts_at_idx ON login_attempts (at);

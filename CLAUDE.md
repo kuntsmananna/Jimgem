@@ -1391,6 +1391,24 @@ shopping list and the money rail draws no cost.
 - No notifications, email or push: the strip is where the two of them
   already look. No migration.
 
+### v0.94 — sign-in throttle and order-form tests
+
+**Run `scripts/migrate-035-login-attempts.sql` before shipping** (one new
+table). See *Brute force is stopped twice* under Authentication.
+
+- **The order form is tested the way a person uses it**
+  (`src/components/orders/__tests__/OrderForm.test.tsx`, jsdom +
+  Testing Library, dev dependencies only): it will not save without a
+  customer and says why; a new order sends what was typed, priced at the
+  tier, and creates and links the client first; a failed save keeps the
+  form open with the draft; an edit sends `PATCH` with
+  `expectedUpdatedAt` and does not reprice an agreed amount or create a
+  second client; a staff login sees no ₪ at all. Checked by **what the
+  form sends to the server** — jsdom has no layout, so nothing there is
+  about looks. A `.test.tsx` opts into jsdom with the
+  `// @vitest-environment jsdom` line; `.test.ts` files stay in node.
+  `next/navigation` is mocked and `matchMedia` stubbed (desktop).
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
@@ -2511,14 +2529,20 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   them, so removing one would orphan those rows or take real history with
   it. Demoting somebody and changing their password is what "they have
   left" looks like.
-- **Brute force is stopped at the edge, not in this code.** A Vercel
-  Firewall rule rate-limits `POST /login` — the path a Server Action
-  posts back to, and the only request that checks a password — to ten a
-  minute per IP. Nothing in the repo enforces it, so it is worth knowing
-  it exists: the app itself has no attempt counter, no lockout and no
-  delay, and two usernames are public knowledge. If the rule is ever
-  removed, that protection goes with it, and the replacement is a
-  `login_attempts` table rather than nothing.
+- **Brute force is stopped twice** (v0.94): a Vercel Firewall rule
+  rate-limits `POST /login` to ten a minute per IP at the edge, and since
+  migration 035 the app keeps its own **`login_attempts`** log
+  (`src/lib/loginThrottle.ts`). Over the last 15 minutes, counting only
+  failures since that key's last success, it stops checking passwords at
+  5 for one name from one address, 20 for one address across any names,
+  and 50 for one name from anywhere — that last one high because it is
+  also the limit a stranger could use to lock somebody out, and crossing it
+  needs a spread of addresses. A refused sign-in runs no bcrypt and says
+  "Too many attempts. Wait 15 minutes" (`/login?error=wait`). The address
+  is the first `x-forwarded-for` entry. Rows older than a day are deleted
+  as new ones are written. **Before migration 035 is run nothing is
+  throttled and sign-in still works** — refusing everyone because the log
+  is missing would lock the founders out.
 - **Nothing that leaves the database carries a password hash** — see the
   backup and change-log notes in the Database section. An unknown username
   is compared against a dummy hash (`NO_SUCH_USER_HASH` in `auth.ts`,
@@ -2698,8 +2722,10 @@ also run on every push (`.github/workflows/checks.yml`)
 `npm test` runs Vitest over the money math — `vatOn`, `orderSubtotal`,
 `orderDiscount`, `orderTotal`/`orderNet`, the unit tiers, `jellyTotal`
 and `repriceOrder` — plus what a staff save may not change (`redact.ts`)
-and what a write route accepts (`validate.ts`). Nothing that needs a
-database or a browser, deliberately: a mistake in the money math does
+and what a write route accepts (`validate.ts`), the prep sheet, food cost,
+reminder and sign-in throttle rules, and — the one exception to "no
+browser" — the order form driven in jsdom (v0.94). Nothing that needs a
+database, deliberately: a mistake in the money math does
 not announce itself — the screen still shows a plausible
 figure and the report still adds up — and they are the part that needs
 no database and no browser to check. They are pure functions in
