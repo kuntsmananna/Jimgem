@@ -23,6 +23,8 @@ import { FigureTile } from "@/components/FigureTile";
 import { EmptyState } from "@/components/EmptyState";
 import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { extraSlots } from "@/components/orders/OrdersTable";
+import { shoppingList, type FlavorRecipe, type Ingredient } from "@/lib/foodCost";
+import { ShoppingList } from "./ShoppingList";
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -42,11 +44,16 @@ export function PrepClient({
   flavors,
   packageTypes,
   displayOptions,
+  ingredients,
+  recipes,
 }: {
   orders: Order[];
   flavors: Flavor[];
   packageTypes: PackageType[];
   displayOptions: DisplayOption[];
+  /** Sent without prices — see the page. Empty until migration 034 and a first ingredient. */
+  ingredients: Ingredient[];
+  recipes: FlavorRecipe[];
 }) {
   const stages = useStages();
   const [windowId, setWindowId] = useState<PrepWindowId>("7d");
@@ -70,6 +77,10 @@ export function PrepClient({
   const summary = useMemo(() => summarizePrep(inWindow, unitsPerPackage), [inWindow, unitsPerPackage]);
   const byDay = useMemo(() => prepDays(inWindow), [inWindow]);
   const largestFlavor = summary.flavors[0]?.units ?? 0;
+  const shopping = useMemo(
+    () => shoppingList(summary.flavors, summary.unassigned, recipes, ingredients, flavors),
+    [summary, recipes, ingredients, flavors],
+  );
 
   const range = days === 1 ? formatOrderDate(from) : `${formatOrderDate(from)} – ${formatOrderDate(to)}`;
 
@@ -205,6 +216,10 @@ export function PrepClient({
               </section>
             </div>
           </div>
+
+          {/* Only once there is something to shop for: before the first
+              ingredient is added the list would only say it is empty. */}
+          {ingredients.length > 0 && <ShoppingList rows={shopping.rows} untraced={shopping.untraced} />}
 
           <section className="flex flex-col gap-4">
             <h2 className="font-display text-lg font-bold">Day by day</h2>

@@ -15,11 +15,13 @@ import { canSeeMoney } from "@/lib/roles";
 import { redactClients, redactOrders, redactPresets, redactRates } from "@/lib/redact";
 import { cookies } from "next/headers";
 import { ORDERS_FIGURES_COOKIE, parseFiguresFolded } from "@/lib/paneFolds";
+import { getIngredientData } from "@/lib/ingredients";
+import { flavorUnitCosts } from "@/lib/foodCost";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods, cookieStore] =
+  const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods, cookieStore, ingredientData] =
     await Promise.all([
     // Asked here and not only in the app layout, which a client-side
     // navigation does not re-render — see requireSignedInPage.
@@ -42,6 +44,8 @@ export default async function OrdersPage() {
     // since retired still names it, and the picker filters it out itself.
     getPaymentMethods(true),
     cookies(),
+    // Archived included: a recipe may still use one, and costing needs it.
+    getIngredientData(true),
   ]);
 
   /*
@@ -68,6 +72,8 @@ export default async function OrdersPage() {
       // The list itself is not money — the order's choice from it is, and
       // redactOrders has already taken that out.
       paymentMethods={paymentMethods}
+      // What a jelly costs to make is money: a staff login gets none.
+      unitCosts={money ? flavorUnitCosts(ingredientData.recipes, ingredientData.ingredients, flavors) : {}}
       figuresFolded={parseFiguresFolded(cookieStore.get(ORDERS_FIGURES_COOKIE)?.value)}
     />
   );

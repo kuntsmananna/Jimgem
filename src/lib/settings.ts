@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { getDb, isMissingColumn } from "./db";
+import { getDb, isMissingColumn, isMissingTable } from "./db";
 import type { Role } from "./roles";
 import {
   ZERO_PRICES,
@@ -832,6 +832,7 @@ const ARCHIVED_SOURCES: { resource: string; listName: string; table: string; lab
   { resource: "deliveries", listName: "Delivery", table: "delivery_options", labelColumn: "name" },
   { resource: "payment-methods", listName: "Payment methods", table: "payment_methods", labelColumn: "name" },
   { resource: "expense-categories", listName: "Expense categories", table: "expense_categories", labelColumn: "name" },
+  { resource: "ingredients", listName: "Ingredients", table: "ingredients", labelColumn: "name" },
   // Clients archive from their own page rather than a Settings pane, but
   // they come back the same way as everything else — a row that can be
   // retired and has no entry here is a row that vanishes for good.
@@ -844,10 +845,17 @@ export async function getArchivedItems(): Promise<ArchivedItem[]> {
     // Table and column names come from the fixed list above, never from a
     // request — nothing here is interpolated from user input.
     ARCHIVED_SOURCES.map(async (source) => {
-      const { rows } = await db.query<{ id: number; label: string; archived_at: string }>(
-        `SELECT id, ${source.labelColumn} AS label, archived_at
-         FROM ${source.table} WHERE archived_at IS NOT NULL ORDER BY archived_at DESC`,
-      );
+      const { rows } = await db
+        .query<{ id: number; label: string; archived_at: string }>(
+          `SELECT id, ${source.labelColumn} AS label, archived_at
+           FROM ${source.table} WHERE archived_at IS NOT NULL ORDER BY archived_at DESC`,
+        )
+        // A list whose migration has not been run yet has nothing archived
+        // in it — and the Settings page must not go down for it.
+        .catch((error) => {
+          if (isMissingTable(error, source.table)) return { rows: [] };
+          throw error;
+        });
       return rows.map((row) => ({
         resource: source.resource,
         listName: source.listName,

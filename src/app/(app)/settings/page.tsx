@@ -40,13 +40,16 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 import { MigrationsPanel } from "@/components/settings/MigrationsPanel";
 import { getMigrationStatus } from "@/lib/migrations";
 import { requireAdminPage } from "@/lib/guard";
+import { getIngredientData } from "@/lib/ingredients";
+import { IngredientsPanel } from "@/components/settings/IngredientsPanel";
+import { RecipesPanel } from "@/components/settings/RecipesPanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   // Money lives on this page — see requireAdminPage.
   await requireAdminPage();
-  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring, migrations] =
+  const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring, migrations, ingredientData] =
     await Promise.all([
       getFlavors(),
       getPackageTypes(),
@@ -67,6 +70,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       getHistory(),
       getRecurringSummary(),
       getMigrationStatus(),
+      // Archived included: a recipe may still use one, and costing it needs
+      // its price. The panes filter what they offer.
+      getIngredientData(true),
     ]);
   const sumitDocumentCount = sumitDocuments.length;
   // `?tab=lists` opens on that tab — the Dashboard's setup checklist links
@@ -88,6 +94,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <div className="flex min-w-0 flex-col gap-6">
               <FlavorsPanel flavors={flavors} />
               <PresetsPanel presets={presets} flavors={flavors} packageTypes={packageTypes} />
+              {/* What a flavour is made of, beside the flavours: the recipe
+                  is per flavour and the ingredients are what it lists. */}
+              <div className="grid grid-cols-2 items-start gap-6 max-md:grid-cols-1">
+                <IngredientsPanel items={ingredientData.ingredients.filter((i) => !i.archivedAt)} available={ingredientData.available} />
+                <RecipesPanel
+                  flavors={flavors}
+                  ingredients={ingredientData.ingredients}
+                  recipes={ingredientData.recipes}
+                  available={ingredientData.available}
+                />
+              </div>
             </div>
           ),
         },

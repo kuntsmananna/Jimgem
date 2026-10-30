@@ -6,6 +6,7 @@ import {
   VAT_MODES,
   orderBalance,
   orderDiscount,
+  orderNet,
   orderTotal,
   orderVat,
   unitTierFor,
@@ -14,6 +15,9 @@ import {
   type Rates,
 } from "@/lib/orderTypes";
 import { UnitsIcon } from "@/lib/icons";
+import { linesFoodCost } from "@/lib/foodCost";
+import { currency } from "@/lib/money";
+import { useFoodCosts } from "./FoodCostContext";
 import {
   DiscountInput,
   GroupLabel,
@@ -268,8 +272,42 @@ export function OrderMoneyRail({
               {money(Math.abs(balance))}
             </span>
           </SheetRow>
+
+          <FoodCostRows draft={draft} />
         </div>
       </aside>
+    </div>
+  );
+}
+
+/**
+ * What the jelly costs to make, and what the order leaves after it.
+ *
+ * Under the balance and quieter than it, because it is for the business
+ * and not part of what the customer was quoted. Set against the order net
+ * of VAT — VAT is the tax office's, not the business's — whatever the
+ * nav's switch says, and the label says so. Units no recipe covers are
+ * left out and counted beside the figure rather than guessed at (see
+ * foodCost.ts). Nothing at all until a recipe exists.
+ */
+function FoodCostRows({ draft }: { draft: OrderInput }) {
+  const costs = useFoodCosts();
+  if (!costs || Object.keys(costs.unitCosts).length === 0) return null;
+  const { cost, uncosted } = linesFoodCost(draft.packageLines, costs.unitsPerPackage, costs.unitCosts);
+  const left = orderNet(draft) - cost;
+  return (
+    <div className="mt-3 border-t border-dashed border-cream/15 pt-2">
+      <SheetRow label="Ingredients">
+        <span className="pr-2 text-xs font-semibold tabular-nums text-cream/70 max-md:text-sm">{money(cost)}</span>
+      </SheetRow>
+      <SheetRow label="Left after them, excl. VAT">
+        <span className="pr-2 text-sm font-bold tabular-nums text-cream max-md:text-base">{currency(left)}</span>
+      </SheetRow>
+      {uncosted > 0 && (
+        <p className="text-[11px] font-semibold text-cream/55 max-md:text-xs">
+          {nf.format(uncosted)} units not costed — no flavour or no recipe yet
+        </p>
+      )}
     </div>
   );
 }

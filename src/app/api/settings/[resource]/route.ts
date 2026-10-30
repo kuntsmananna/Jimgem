@@ -12,6 +12,9 @@ import {
   type ContentPresetInput,
 } from "@/lib/settings";
 import { refuseNonAdmin } from "@/lib/guard";
+import { createIngredient } from "@/lib/ingredients";
+import { currentEditor } from "@/lib/editor";
+import { parseIngredientInput } from "@/lib/validate";
 
 /** Coerces the JSON body's loosely-typed recipe into numbers. */
 function presetInput(body: {
@@ -90,6 +93,11 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/setting
       case "presets": {
         const preset = await createContentPreset(presetInput(body));
         return NextResponse.json(preset, { status: 201 });
+      }
+      case "ingredients": {
+        const parsed = parseIngredientInput(body);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        return NextResponse.json(await createIngredient(parsed.value, await currentEditor()), { status: 201 });
       }
       default:
         return NextResponse.json({ error: `Unknown resource: ${resource}` }, { status: 404 });

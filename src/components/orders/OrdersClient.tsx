@@ -26,6 +26,7 @@ import { ORDERS_FIGURES_COOKIE, serializeFiguresFolded } from "@/lib/paneFolds";
 import { writePrefCookie } from "@/lib/prefCookie";
 import { COLUMNS, FIXED_COLUMNS, MONEY_COLUMNS, OrdersTable } from "./OrdersTable";
 import { PaymentMethodsProvider } from "./PaymentMethodsContext";
+import { FoodCostProvider } from "./FoodCostContext";
 import { EmptyState } from "@/components/EmptyState";
 import { useCanSeeMoney, useIsAdmin } from "@/components/RoleContext";
 import { ColumnsMenu } from "./ColumnsMenu";
@@ -119,6 +120,7 @@ export function OrdersClient({
   clients,
   rates,
   paymentMethods,
+  unitCosts,
   figuresFolded: initiallyFolded,
 }: {
   orders: Order[];
@@ -130,6 +132,8 @@ export function OrdersClient({
   rates: Rates;
   /** Archived included, so an order paid by a retired method still names it. */
   paymentMethods: PaymentMethod[];
+  /** What a unit of each flavour costs to make — empty for a staff login. */
+  unitCosts: Record<string, number>;
   /** The figures pane was folded when the page loaded — read from its cookie. */
   figuresFolded: boolean;
 }) {
@@ -311,6 +315,12 @@ export function OrdersClient({
   // list one window back, in whichever VAT convention the nav is set to.
   const { forOrder } = useVatView();
   const unitsPerPackage = unitsPerPackageMap(packageTypes);
+  // One object per render of the list it came from, so the rail's context
+  // does not change identity on every keystroke elsewhere on the page.
+  const foodCosts = useMemo(
+    () => ({ unitCosts, unitsPerPackage: unitsPerPackageMap(packageTypes) }),
+    [unitCosts, packageTypes],
+  );
   /*
    * A phone gets a different tree, not a different stylesheet: the table
    * is fifteen columns of `EditableCell` and hiding it in CSS would still
@@ -581,6 +591,7 @@ export function OrdersClient({
 
   return (
     <PaymentMethodsProvider value={paymentMethods}>
+      <FoodCostProvider value={foodCosts}>
       <div className="flex flex-col gap-5 max-md:gap-3">
         <UndoToast offer={undoToast.offer} onDismiss={undoToast.dismiss} />
 
@@ -1074,6 +1085,7 @@ export function OrdersClient({
           </div>
         )}
       </div>
+      </FoodCostProvider>
     </PaymentMethodsProvider>
   );
 }

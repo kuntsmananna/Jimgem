@@ -6,6 +6,9 @@ import {
   parseOrderPatch,
   parseRowId,
   parseTaskInput,
+  parseIngredientInput,
+  parseRecipeInput,
+  parseStockInput,
 } from "../validate";
 
 /**
@@ -152,5 +155,27 @@ describe("parseRowId and isIsoDate", () => {
   it("refuses a day the calendar does not have", () => {
     expect(isIsoDate("2026-02-28")).toBe(true);
     expect(isIsoDate("2026-02-30")).toBe(false);
+  });
+});
+
+describe("ingredients, recipes and stock", () => {
+  it("reads an ingredient the way the pane sends it", () => {
+    const parsed = parseIngredientInput({ name: " Vodka ", unit: "ml", packSize: "700", packPrice: "" });
+    expect(parsed).toEqual({ ok: true, value: { name: "Vodka", unit: "ml", packSize: 700, packPrice: 0 } });
+    expect(parseIngredientInput({ name: "Vodka", unit: "litre", packSize: 1 }).ok).toBe(false);
+    expect(parseIngredientInput({ name: "Vodka", unit: "ml", packSize: 0 }).ok).toBe(false);
+  });
+
+  it("refuses a recipe that lists an ingredient twice", () => {
+    expect(parseRecipeInput({ batchUnits: 30, items: [{ ingredientId: 1, amount: 300 }] }).ok).toBe(true);
+    const twice = parseRecipeInput({ batchUnits: 30, items: [{ ingredientId: 1, amount: 1 }, { ingredientId: 1, amount: 2 }] });
+    expect(twice.ok).toBe(false);
+    expect(parseRecipeInput({ batchUnits: 0, items: [] }).ok).toBe(false);
+  });
+
+  it("takes a blank count as not counted, and refuses a negative one", () => {
+    expect(parseStockInput({ onHand: "" })).toEqual({ ok: true, value: { onHand: null } });
+    expect(parseStockInput({ onHand: "2.5" })).toEqual({ ok: true, value: { onHand: 2.5 } });
+    expect(parseStockInput({ onHand: -1 }).ok).toBe(false);
   });
 });

@@ -70,6 +70,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { id: "031", title: "How an order was paid", script: "scripts/migrate-031-order-payment-method.sql", markers: [{ column: ["orders", "payment_method_id"] }] },
   { id: "032", title: "What's new, per person", script: "scripts/migrate-032-announcement-views.sql", markers: [{ table: "announcement_views" }] },
   { id: "033", title: "Ending a session early", script: "scripts/migrate-033-session-version.sql", markers: [{ column: ["staff", "session_version"] }] },
+  { id: "034", title: "Ingredients and stock", script: "scripts/migrate-034-ingredients.sql", markers: [{ index: "flavor_recipe_items_ingredient_idx" }] },
 ];
 
 export type MigrationState = "applied" | "missing" | "data-only";

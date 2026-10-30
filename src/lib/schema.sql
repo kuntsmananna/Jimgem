@@ -634,3 +634,36 @@ CREATE TABLE IF NOT EXISTS announcement_views (
   seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (staff_id, announcement_id)
 );
+
+-- Ingredients, recipes and stock. See scripts/migrate-034-ingredients.sql
+-- for the reasoning. Stock is counted by hand, never deducted.
+CREATE TABLE IF NOT EXISTS ingredients (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  unit TEXT NOT NULL DEFAULT 'ml' CHECK (unit IN ('ml', 'g', 'pcs')),
+  pack_size NUMERIC(12, 3) NOT NULL DEFAULT 1 CHECK (pack_size > 0),
+  pack_price NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (pack_price >= 0),
+  on_hand NUMERIC(12, 3) CHECK (on_hand >= 0),
+  counted_at TIMESTAMPTZ(3),
+  counted_by TEXT,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  updated_by TEXT
+);
+
+CREATE TABLE IF NOT EXISTS flavor_recipes (
+  flavor_id INTEGER PRIMARY KEY REFERENCES flavors(id) ON DELETE CASCADE,
+  batch_units INTEGER NOT NULL DEFAULT 1 CHECK (batch_units > 0),
+  updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  updated_by TEXT
+);
+
+CREATE TABLE IF NOT EXISTS flavor_recipe_items (
+  flavor_id INTEGER NOT NULL REFERENCES flavor_recipes(flavor_id) ON DELETE CASCADE,
+  ingredient_id INTEGER NOT NULL REFERENCES ingredients(id),
+  amount NUMERIC(12, 3) NOT NULL CHECK (amount > 0),
+  PRIMARY KEY (flavor_id, ingredient_id)
+);
+
+CREATE INDEX IF NOT EXISTS flavor_recipe_items_ingredient_idx ON flavor_recipe_items (ingredient_id);

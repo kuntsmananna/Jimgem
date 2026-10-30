@@ -4,6 +4,7 @@ import { PrepClient } from "@/components/prep/PrepClient";
 import { requireSignedInPage } from "@/lib/guard";
 import { redactOrders } from "@/lib/redact";
 import { isoDate } from "@/lib/orderTypes";
+import { getIngredientData } from "@/lib/ingredients";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ const REACH_DAYS = 15;
  * the server's cut is a day wider on both sides than the widest window.
  */
 export default async function PrepPage() {
-  const [, orders, flavors, packageTypes, displayOptions] = await Promise.all([
+  const [, orders, flavors, packageTypes, displayOptions, ingredientData] = await Promise.all([
     // Asked here and not only in the app layout — see requireSignedInPage.
     requireSignedInPage(),
     getOrders(),
@@ -30,6 +31,8 @@ export default async function PrepPage() {
     getFlavors(true),
     getPackageTypes(true),
     getDisplayOptions(true),
+    // Archived included: a recipe that still uses one still needs it bought.
+    getIngredientData(true),
   ]);
 
   const now = new Date();
@@ -45,6 +48,9 @@ export default async function PrepPage() {
       flavors={flavors}
       packageTypes={packageTypes}
       displayOptions={displayOptions.map((option) => ({ ...option, price: 0 }))}
+      // Prices out: the shopping list is amounts and packs, not shekels.
+      ingredients={ingredientData.ingredients.map((ingredient) => ({ ...ingredient, packPrice: 0 }))}
+      recipes={ingredientData.recipes}
     />
   );
 }

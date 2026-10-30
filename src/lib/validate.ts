@@ -2,6 +2,8 @@ import type { OrderInput, PaymentStatus, VatMode } from "./orderTypes";
 import type { ExpenseInput } from "./expenses";
 import type { TaskInput } from "./tasks";
 import type { EditableField } from "./orders";
+import type { IngredientInput } from "./ingredients";
+import type { IngredientUnit } from "./foodCost";
 
 /**
  * What a write route accepts, checked before any of it reaches SQL.
@@ -285,4 +287,47 @@ export function parseTaskInput(body: unknown): Parsed<TaskInput> {
     if (!title.trim()) throw new Invalid("A task needs something to say.");
     return { title, staffId: r.id("staffId", "Who it's for"), done: r.bool("done", "Done") };
   });
+}
+
+const INGREDIENT_UNIT_IDS: readonly IngredientUnit[] = ["ml", "g", "pcs"];
+
+export function parseIngredientInput(body: unknown): Parsed<IngredientInput> {
+  return run(body, (r) => {
+    const name = r.text("name", "The name").trim();
+    if (!name) throw new Invalid("An ingredient needs a name.");
+    return {
+      name,
+      unit: r.oneOf("unit", "The measure", INGREDIENT_UNIT_IDS),
+      packSize: r.number("packSize", "The pack size", { min: 0.001, max: MAX_COUNT * 100 }),
+      packPrice: r.optionalNumber("packPrice", "The pack price", { min: 0, max: MAX_MONEY }) ?? 0,
+    };
+  });
+}
+
+/**
+ * A recipe: how many units one batch makes and what goes into it. An
+ * ingredient listed twice is refused — the second amount would silently
+ * replace the first.
+ */
+export function parseRecipeInput(
+  body: unknown,
+): Parsed<{ batchUnits: number; items: { ingredientId: number; amount: number }[] }> {
+  return run(body, (r) => {
+    const batchUnits = r.number("batchUnits", "Units per batch", { min: 1, max: MAX_COUNT, int: true });
+    const items = r.list("items", "The recipe", 100).map((entry) => {
+      const item = new Reader(entry);
+      const ingredientId = item.id("ingredientId", "An ingredient");
+      if (ingredientId === null) throw new Invalid("A recipe line has no ingredient.");
+      return { ingredientId, amount: item.number("amount", "An amount", { min: 0.001, max: MAX_COUNT * 100 }) };
+    });
+    if (new Set(items.map((i) => i.ingredientId)).size !== items.length) {
+      throw new Invalid("An ingredient is in the recipe twice.");
+    }
+    return { batchUnits, items };
+  });
+}
+
+/** A shelf count, in packs. Blank clears it back to "not counted". */
+export function parseStockInput(body: unknown): Parsed<{ onHand: number | null }> {
+  return run(body, (r) => ({ onHand: r.optionalNumber("onHand", "The count", { min: 0, max: MAX_COUNT }) }));
 }

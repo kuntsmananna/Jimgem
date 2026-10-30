@@ -1320,6 +1320,57 @@ The rest of the second review's list, none of it needing a migration:
 - **It prints**: the header and the bottom bar are `print:hidden` and
   `main` drops its padding, so Print gives the sheet alone.
 
+### v0.92 — ingredients, recipes, food cost and stock
+
+**Run `scripts/migrate-034-ingredients.sql` before shipping** (three new
+tables; nothing existing changes). Until it is run every page still loads:
+`getIngredientData` answers `available: false` with empty lists, the
+Settings panes say which migration to paste, the prep sheet draws no
+shopping list and the money rail draws no cost.
+
+- **`ingredients`** is what is bought, by the pack as the receipt says it
+  (a 700 ml bottle for ₪70), in one of three measures (`ml`, `g`, `pcs`),
+  plus the shelf count in packs (`on_hand`, fractions allowed, null until
+  counted). **`flavor_recipes` + `flavor_recipe_items`** say what one batch
+  of a flavour makes and takes — a batch because that is how a kitchen
+  writes a recipe down. Both watched by `row_revisions`; ingredients
+  archive like every other list and are in `ARCHIVED_SOURCES`.
+- **`src/lib/foodCost.ts` is the arithmetic** (client-safe, tested):
+  `flavorUnitCosts` (what one jelly of each flavour costs), `linesFoodCost`
+  (an order's jelly), `shoppingList` (what the coming orders need against
+  the count). Two rules: **what cannot be priced is left out and counted,
+  never guessed** — units with no flavour or no recipe come back as
+  `uncosted`/`untraced` and are said beside the figure — and **MIX
+  borrows**: with no recipe of its own it is an even mix of every flavour
+  that has one, as the tray preview draws it.
+- **Settings → Flavors** carries two new panes under the presets:
+  Ingredients (add, edit by tapping a row, archive) and Recipes (per
+  flavour: batch size, ingredient lines, the live cost of one jelly).
+  Getters pass `includeArchived` true — a recipe may still use a retired
+  ingredient and costing needs its price — and the pickers filter.
+- **The order form's money rail** ends with *Ingredients* and *Left after
+  them, excl. VAT* (`FoodCostRows`, via `FoodCostContext` from
+  `OrdersClient`). Set against `orderNet`, whatever the VAT switch says,
+  because VAT is never the business's; the label says so. Not added to the
+  Biz Plan: ingredient purchases are already in Expenses, and counting
+  their cost again per order would charge them twice. **Admins only** —
+  the Orders page sends `unitCosts` as `{}` to a staff login.
+- **The prep sheet's shopping list**: each ingredient the window's orders
+  need, how much (and in packs), what is on the shelf with when and by
+  whom it was counted, and whole packs to buy — "count first" where nobody
+  has counted, rather than a guess. **The count is typed in there**, by
+  anyone signed in (the kitchen counts), through `/api/prep/stock/[id]`,
+  which writes the count and nothing else; prices are stripped from what
+  the prep page sends. **Nothing deducts stock automatically** — the
+  owner's call.
+- Recipes save through `/api/settings/recipes/[flavorId]` in one
+  statement (no transactions on this driver): the recipe upserts, items no
+  longer listed are deleted and the rest upsert — deleting and
+  re-inserting the same key in sibling CTEs collides. Verified against a
+  real Postgres, change log included. `parseIngredientInput`,
+  `parseRecipeInput` (refuses an ingredient listed twice) and
+  `parseStockInput` (blank = not counted) are in `validate.ts`.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

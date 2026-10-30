@@ -20,6 +20,9 @@ import {
   archiveDeliveryOption,
 } from "@/lib/settings";
 import { refuseNonAdmin } from "@/lib/guard";
+import { archiveIngredient, updateIngredient } from "@/lib/ingredients";
+import { currentEditor } from "@/lib/editor";
+import { parseIngredientInput } from "@/lib/validate";
 
 export const runtime = "nodejs";
 
@@ -130,6 +133,15 @@ export async function PATCH(
           ),
         });
         return NextResponse.json(preset);
+      }
+      case "ingredients": {
+        if (body.archive) {
+          await archiveIngredient(numericId);
+          return NextResponse.json({ ok: true });
+        }
+        const parsed = parseIngredientInput(body);
+        if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+        return NextResponse.json(await updateIngredient(numericId, parsed.value, await currentEditor()));
       }
       default:
         return NextResponse.json({ error: `Unknown resource: ${resource}` }, { status: 404 });
