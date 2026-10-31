@@ -102,7 +102,7 @@ function liveOnly(includeArchived: boolean): string {
 }
 
 /** Marks one row archived. The table name is fixed by the caller, never user input. */
-async function archiveRow(table: string, id: number): Promise<void> {
+export async function archiveRow(table: string, id: number): Promise<void> {
   const db = getDb();
   await db.query(`UPDATE ${table} SET archived_at = now() WHERE id = $1`, [id]);
 }

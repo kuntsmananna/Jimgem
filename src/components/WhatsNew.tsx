@@ -268,12 +268,10 @@ const ART: Record<AnnouncementArt, () => React.JSX.Element> = {
 
 /** One release: its picture, its heading, what it changed. */
 function Page({ announcement }: { announcement: Announcement }) {
+  const Art = ART[announcement.art];
   return (
     <>
-      {(() => {
-        const Art = ART[announcement.art];
-        return <Art />;
-      })()}
+      <Art />
       <div className="flex flex-col gap-1.5">
         <h3 className="font-display text-lg leading-tight font-extrabold tracking-tight text-ink">
           {announcement.title}

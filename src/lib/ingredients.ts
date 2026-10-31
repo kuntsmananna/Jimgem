@@ -1,6 +1,7 @@
 import { getDb, isMissingTable, reportMissingTable } from "./db";
 import { isoStamp } from "./stamp";
-import type { FlavorRecipe, Ingredient, IngredientUnit } from "./foodCost";
+import { INGREDIENT_UNITS, type FlavorRecipe, type Ingredient, type IngredientUnit } from "./foodCost";
+import { archiveRow } from "./settings";
 
 /**
  * The ingredients list, the flavour recipes and the shelf count.
@@ -25,7 +26,7 @@ function mapIngredient(row: IngredientRow): Ingredient {
   return {
     id: row.id,
     name: row.name,
-    unit: (["ml", "g", "pcs"].includes(row.unit) ? row.unit : "pcs") as IngredientUnit,
+    unit: (INGREDIENT_UNITS as readonly string[]).includes(row.unit) ? (row.unit as IngredientUnit) : "pcs",
     packSize: Number(row.pack_size),
     packPrice: Number(row.pack_price),
     onHand: row.on_hand === null ? null : Number(row.on_hand),
@@ -103,7 +104,7 @@ export async function updateIngredient(id: number, input: IngredientInput, edito
 }
 
 export async function archiveIngredient(id: number): Promise<void> {
-  await getDb().query("UPDATE ingredients SET archived_at = now() WHERE id = $1", [id]);
+  await archiveRow("ingredients", id);
 }
 
 /**

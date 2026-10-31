@@ -12,12 +12,15 @@
  */
 
 import {
-  isoDate,
-  linePackedUnits,
+  hasDelivery,
   isCustomLine,
+  isOpen,
+  lineAssignedUnits,
+  linePackedUnits,
   type Order,
   type ProductionStage,
 } from "./orderTypes";
+import { inRange, type DateRange } from "./orderScope";
 
 export type PrepWindowId = "today" | "3d" | "7d" | "14d";
 
@@ -29,34 +32,24 @@ export const PREP_WINDOWS: { id: PrepWindowId; label: string; days: number }[] =
   { id: "14d", label: "14 days", days: 14 },
 ];
 
-/** The last day a window reaches, inclusive. */
-export function prepWindowEnd(from: Date, days: number): string {
-  const end = new Date(from);
-  end.setDate(end.getDate() + days - 1);
-  return isoDate(end);
-}
-
 /**
  * The orders the kitchen has to make in the window, earliest first.
  *
  * A finished order is out — it has been made. A quote is out unless asked
  * for: it may never land, and making jelly for it is how stock gets
- * wasted. An unknown stage counts, the rule `isBooked` follows, since a
- * stage row gone missing is a data problem and not a reason to skip an
- * order.
+ * wasted. `isOpen` is the rule, so an unknown stage counts.
  */
 export function prepOrders(
   orders: Order[],
   stages: Map<string, ProductionStage>,
-  { from, to, includeQuotes }: { from: string; to: string; includeQuotes: boolean },
+  range: DateRange,
+  includeQuotes: boolean,
 ): Order[] {
   return orders
-    .filter((order) => order.date >= from && order.date <= to)
-    .filter((order) => {
-      const stage = stages.get(order.productionStatus);
-      if (stage?.isFinal) return false;
-      return includeQuotes || (stage?.countsAsIncome ?? true);
-    })
+    .filter((order) => inRange(order.date, range))
+    .filter((order) =>
+      includeQuotes ? !stages.get(order.productionStatus)?.isFinal : isOpen(order, stages),
+    )
     .sort((a, b) => a.date.localeCompare(b.date) || Number(a.key) - Number(b.key));
 }
 
@@ -102,12 +95,10 @@ export function summarizePrep(orders: Order[], unitsPerPackage: Map<number, numb
     for (const line of order.packageLines) {
       const packed = linePackedUnits(line, unitsPerPackage);
       units += packed;
-      let assigned = 0;
       for (const entry of line.flavors) {
-        assigned += entry.units;
         flavors.set(entry.flavorId, (flavors.get(entry.flavorId) ?? 0) + entry.units);
       }
-      unassigned += Math.max(0, packed - assigned);
+      unassigned += Math.max(0, packed - lineAssignedUnits(line));
       if (isCustomLine(line, unitsPerPackage)) eventUnits += packed;
       else packages.set(line.packageTypeId, (packages.get(line.packageTypeId) ?? 0) + line.quantity);
     }
@@ -116,7 +107,7 @@ export function summarizePrep(orders: Order[], unitsPerPackage: Map<number, numb
     }
     waitresses += order.waitresses ?? 0;
     if (order.kosher) kosherOrders += 1;
-    if (order.deliveryCost !== null) deliveries += 1;
+    if (hasDelivery(order)) deliveries += 1;
   }
 
   return {

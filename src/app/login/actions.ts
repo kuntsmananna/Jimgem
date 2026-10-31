@@ -13,8 +13,9 @@ export async function login(formData: FormData) {
 
   // The caller's address as Vercel's edge reports it: the first entry of
   // x-forwarded-for is the client, anything after it a proxy on the way.
-  const forwarded = (await headers()).get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || (await headers()).get("x-real-ip") || "unknown";
+  const requestHeaders = await headers();
+  const ip =
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || "unknown";
   const key = username.toLowerCase();
 
   // Too many recent failures: refuse without checking the password at all

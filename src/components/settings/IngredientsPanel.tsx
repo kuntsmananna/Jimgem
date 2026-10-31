@@ -6,6 +6,7 @@ import { INGREDIENT_UNITS, formatAmount, type Ingredient, type IngredientUnit } 
 import { ArchiveButton } from "./ArchiveButton";
 import { MigrationNeeded, PANE_ACTION_CLASS, PaneHeader } from "@/components/Pane";
 import { writeOrNotify } from "@/components/saveError";
+import { currencyExact } from "@/lib/money";
 
 interface Draft {
   name: string;
@@ -89,9 +90,9 @@ export function IngredientsPanel({ items, available }: { items: Ingredient[]; av
           value={draft.unit}
           onChange={(e) => setDraft({ ...draft, unit: e.target.value as IngredientUnit })}
         >
-          {INGREDIENT_UNITS.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.label}
+          {INGREDIENT_UNITS.map((unit) => (
+            <option key={unit} value={unit}>
+              {unit}
             </option>
           ))}
         </select>
@@ -157,7 +158,7 @@ export function IngredientsPanel({ items, available }: { items: Ingredient[]; av
                     <span className="min-w-0 flex-1 truncate font-semibold">{item.name}</span>
                     <span className="shrink-0 text-xs text-ink-soft">{formatAmount(item.packSize, item.unit)}</span>
                     <span className="w-16 shrink-0 text-right font-semibold tabular-nums">
-                      {item.packPrice ? `₪${item.packPrice.toLocaleString()}` : "—"}
+                      {item.packPrice ? currencyExact(item.packPrice) : "—"}
                     </span>
                   </button>
                   <ArchiveButton resource="ingredients" id={item.id} name={item.name} noun="ingredient" />

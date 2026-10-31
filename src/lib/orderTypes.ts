@@ -941,6 +941,17 @@ export function isBooked(
   return stages.get(order.productionStatus)?.countsAsIncome ?? true;
 }
 
+/**
+ * Booked and not finished: still work for the kitchen, and still money worth
+ * chasing. The prep sheet and the due-soon reminder both ask exactly this.
+ */
+export function isOpen(
+  order: Pick<Order, "productionStatus">,
+  stages: Map<string, ProductionStage>,
+): boolean {
+  return isBooked(order, stages) && !stages.get(order.productionStatus)?.isFinal;
+}
+
 /** `key → stage`, for the lookups above. */
 export function stageMap(stages: ProductionStage[]): Map<string, ProductionStage> {
   return new Map(stages.map((stage) => [stage.key, stage]));

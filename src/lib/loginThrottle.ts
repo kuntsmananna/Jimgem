@@ -25,19 +25,11 @@ import { getDb, isMissingTable, reportMissingTable } from "./db";
 export const WINDOW_MINUTES = 15;
 export const LIMITS = { nameAndAddress: 5, address: 20, name: 50 } as const;
 
-export interface FailureCounts {
-  nameAndAddress: number;
-  address: number;
-  name: number;
-}
+export type FailureCounts = Record<keyof typeof LIMITS, number>;
 
 /** Whether these recent failures are enough to stop checking passwords. Pure, so it is tested. */
 export function isThrottled(failures: FailureCounts): boolean {
-  return (
-    failures.nameAndAddress >= LIMITS.nameAndAddress ||
-    failures.address >= LIMITS.address ||
-    failures.name >= LIMITS.name
-  );
+  return (Object.keys(LIMITS) as (keyof typeof LIMITS)[]).some((key) => failures[key] >= LIMITS[key]);
 }
 
 /**
@@ -49,14 +41,14 @@ export async function recentFailures(username: string, ip: string): Promise<Fail
   try {
     const { rows } = await getDb().query<{ name_and_address: string; address: string; name: string }>(
       `WITH recent AS (
-         SELECT * FROM login_attempts WHERE at > now() - make_interval(mins => $3)
+         SELECT username, ip, ok, at FROM login_attempts WHERE at > now() - make_interval(mins => $3)
        )
        SELECT
-         (SELECT count(*) FROM recent r WHERE NOT ok AND username = $1 AND ip = $2
+         (SELECT count(*) FROM recent WHERE NOT ok AND username = $1 AND ip = $2
             AND at > COALESCE((SELECT max(at) FROM recent WHERE ok AND username = $1 AND ip = $2), '-infinity')) AS name_and_address,
-         (SELECT count(*) FROM recent r WHERE NOT ok AND ip = $2
+         (SELECT count(*) FROM recent WHERE NOT ok AND ip = $2
             AND at > COALESCE((SELECT max(at) FROM recent WHERE ok AND ip = $2), '-infinity')) AS address,
-         (SELECT count(*) FROM recent r WHERE NOT ok AND username = $1
+         (SELECT count(*) FROM recent WHERE NOT ok AND username = $1
             AND at > COALESCE((SELECT max(at) FROM recent WHERE ok AND username = $1), '-infinity')) AS name`,
       [username, ip, WINDOW_MINUTES],
     );

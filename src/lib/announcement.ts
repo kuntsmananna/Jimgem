@@ -19,35 +19,31 @@ import type { Role } from "./roles";
  * not drawn there is a type error rather than a page silently wearing the
  * wrong picture or no mark.
  */
-export const ANNOUNCEMENT_ARTS = [
-  "paid-by",
-  "refresh",
-  "orders-table",
-  "jelly-mode",
-  "prep-sheet",
-  "food-cost",
-  "due-soon",
-] as const;
-export type AnnouncementArt = (typeof ANNOUNCEMENT_ARTS)[number];
+export type AnnouncementArt =
+  | "paid-by"
+  | "refresh"
+  | "orders-table"
+  | "jelly-mode"
+  | "prep-sheet"
+  | "food-cost"
+  | "due-soon";
 
-export const ITEM_ICON_KEYS = [
-  "amount",
-  "card",
-  "filter",
-  "palette",
-  "lift",
-  "hover",
-  "jelly",
-  "day",
-  "columns",
-  "extras",
-  "select",
-  "basket",
-  "print",
-  "recipe",
-  "bell",
-] as const;
-export type ItemIcon = (typeof ITEM_ICON_KEYS)[number];
+export type ItemIcon =
+  | "amount"
+  | "card"
+  | "filter"
+  | "palette"
+  | "lift"
+  | "hover"
+  | "jelly"
+  | "day"
+  | "columns"
+  | "extras"
+  | "select"
+  | "basket"
+  | "print"
+  | "recipe"
+  | "bell";
 
 export interface Announcement {
   id: string;

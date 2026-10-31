@@ -316,13 +316,10 @@ export function OrdersClient({
   // The summary describes exactly the list on screen, against the same
   // list one window back, in whichever VAT convention the nav is set to.
   const { forOrder } = useVatView();
-  const unitsPerPackage = unitsPerPackageMap(packageTypes);
-  // One object per render of the list it came from, so the rail's context
-  // does not change identity on every keystroke elsewhere on the page.
-  const foodCosts = useMemo(
-    () => ({ unitCosts, unitsPerPackage: unitsPerPackageMap(packageTypes) }),
-    [unitCosts, packageTypes],
-  );
+  const unitsPerPackage = useMemo(() => unitsPerPackageMap(packageTypes), [packageTypes]);
+  // Stable while its inputs are, so the rail's context does not change
+  // identity on every keystroke elsewhere on the page.
+  const foodCosts = useMemo(() => ({ unitCosts, unitsPerPackage }), [unitCosts, unitsPerPackage]);
   /*
    * A phone gets a different tree, not a different stylesheet: the table
    * is fifteen columns of `EditableCell` and hiding it in CSS would still
@@ -332,10 +329,14 @@ export function OrdersClient({
    */
   const mobile = useIsMobile();
 
-  const stageIndex = stageMap(stages);
+  const stageIndex = useMemo(() => stageMap(stages), [stages]);
   // Booked events this week still owing — every order, not just the ones
   // in scope: a reminder that hid behind the filters would not remind.
-  const soon = money ? dueSoon(orders, stageIndex, new Date()) : [];
+  // Not redone per keystroke: it reads every order.
+  const soon = useMemo(
+    () => (money ? dueSoon(orders, stageIndex, new Date()) : []),
+    [money, orders, stageIndex],
+  );
   const totals = totalOf(inScope, unitsPerPackage, stageIndex, forOrder);
   const previousTotals = totalOf(
     previous === null || searching ? [] : source.filter((o) => inRange(o.date, previous)),

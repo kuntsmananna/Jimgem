@@ -1409,6 +1409,26 @@ table). See *Brute force is stopped twice* under Authentication.
   `// @vitest-environment jsdom` line; `.test.ts` files stay in node.
   `next/navigation` is mocked and `matchMedia` stubbed (desktop).
 
+### v0.94.3 — one helper for each rule the v0.91-v0.94 work repeated
+
+- **A window from today is `daysAhead(today, n)`** and the server's
+  UTC-padded cut is **`aroundToday(n)`**, both in `orderScope.ts` (whose
+  14-day scope uses the first). The prep sheet, the due-soon reminder and
+  the Prep and Dashboard pages call them instead of four hand-written
+  `setDate` blocks.
+- **"Booked and not finished" is `isOpen`** beside `isBooked` in
+  `orderTypes.ts`, used by `prepOrders` and `dueSoon`; the prep sheet also
+  uses `hasDelivery`, `linePackedUnits` and `lineAssignedUnits`, as does
+  `linesFoodCost`, so no copy of the coverage rule is left.
+- **What a page strips is in `redact.ts`**: `redactPricedOptions` (also
+  inside `redactRates`) and `redactIngredients`. The Orders page does not
+  read ingredients at all for a staff login.
+- **`INGREDIENT_UNITS` is the one list of measures** (`foodCost.ts`), read
+  by the type, the validator, the row mapper and the pane; ingredients
+  archive through `settings.ts`'s exported `archiveRow`. Shekels in the new
+  panes go through `money.ts` — `currencyExact`, and `currencyPerUnit` (two
+  decimals) for the cost of one jelly.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
@@ -2212,7 +2232,7 @@ table). See *Brute force is stopped twice* under Authentication.
   `orders-table` for v0.78's reorganised list, `prep-sheet` (everyone),
   `food-cost` and `due-soon` (admins) for v0.91-v0.93 — **the pictures and
   the item marks are each one list in `announcement.ts`
-  (`ANNOUNCEMENT_ARTS`, `ITEM_ICON_KEYS`) and a `Record` over it in
+  (the `AnnouncementArt` and `ItemIcon` unions) and a `Record` over it in
   `WhatsNew`** (`ART`, `ITEM_ICON`), so a key added and not drawn fails the
   build rather than showing the wrong picture; a page's `released` is the
   day it reaches `main`, so move it if a release ships later than written —, `jelly-mode` for v0.79 — the pieces and the switch beside a phone being shaken, its own cards mid-wobble, so the picture says the mode is on the phone too, drawn from the table's own

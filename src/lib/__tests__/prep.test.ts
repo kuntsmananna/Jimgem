@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { prepDays, prepOrders, prepWindowEnd, summarizePrep } from "../prep";
+import { prepDays, prepOrders, summarizePrep } from "../prep";
+import { daysAhead } from "../orderScope";
 import type { Order, ProductionStage } from "../orderTypes";
 
 const BASE: Order = {
@@ -66,7 +67,7 @@ const SIZES = new Map([
 ]);
 
 describe("prepOrders", () => {
-  const window = { from: "2026-10-30", to: "2026-11-05", includeQuotes: false };
+  const window = { from: "2026-10-30", to: "2026-11-05" };
 
   it("keeps booked orders in the window, earliest first", () => {
     const orders = [
@@ -75,7 +76,7 @@ describe("prepOrders", () => {
       order({ key: "3", date: "2026-11-06" }),
       order({ key: "4", date: "2026-10-29" }),
     ];
-    expect(prepOrders(orders, STAGES, window).map((o) => o.key)).toEqual(["1", "2"]);
+    expect(prepOrders(orders, STAGES, window, false).map((o) => o.key)).toEqual(["1", "2"]);
   });
 
   it("leaves out finished orders, and quotes unless asked", () => {
@@ -84,8 +85,8 @@ describe("prepOrders", () => {
       order({ key: "2", productionStatus: "offer" }),
       order({ key: "3", productionStatus: "gone-missing" }),
     ];
-    expect(prepOrders(orders, STAGES, window).map((o) => o.key)).toEqual(["3"]);
-    expect(prepOrders(orders, STAGES, { ...window, includeQuotes: true }).map((o) => o.key)).toEqual(["2", "3"]);
+    expect(prepOrders(orders, STAGES, window, false).map((o) => o.key)).toEqual(["3"]);
+    expect(prepOrders(orders, STAGES, window, true).map((o) => o.key)).toEqual(["2", "3"]);
   });
 });
 
@@ -150,7 +151,7 @@ describe("summarizePrep", () => {
   });
 });
 
-describe("prepDays and prepWindowEnd", () => {
+describe("prepDays and daysAhead", () => {
   it("groups runs of the same date", () => {
     const days = prepDays([
       order({ key: "1", date: "2026-10-30" }),
@@ -164,7 +165,7 @@ describe("prepDays and prepWindowEnd", () => {
   });
 
   it("ends a window inclusively, across a month", () => {
-    expect(prepWindowEnd(new Date(2026, 9, 30), 1)).toBe("2026-10-30");
-    expect(prepWindowEnd(new Date(2026, 9, 30), 7)).toBe("2026-11-05");
+    expect(daysAhead(new Date(2026, 9, 30), 1)).toEqual({ from: "2026-10-30", to: "2026-10-30" });
+    expect(daysAhead(new Date(2026, 9, 30), 7)).toEqual({ from: "2026-10-30", to: "2026-11-05" });
   });
 });

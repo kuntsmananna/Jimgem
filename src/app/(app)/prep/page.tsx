@@ -2,14 +2,12 @@ import { getOrders } from "@/lib/orders";
 import { getDisplayOptions, getFlavors, getPackageTypes } from "@/lib/settings";
 import { PrepClient } from "@/components/prep/PrepClient";
 import { requireSignedInPage } from "@/lib/guard";
-import { redactOrders } from "@/lib/redact";
-import { isoDate } from "@/lib/orderTypes";
+import { redactIngredients, redactOrders, redactPricedOptions } from "@/lib/redact";
+import { aroundToday, inRange } from "@/lib/orderScope";
+import { PREP_WINDOWS } from "@/lib/prep";
 import { getIngredientData } from "@/lib/ingredients";
 
 export const dynamic = "force-dynamic";
-
-/** The longest window the sheet offers, plus a day either side for the timezone. */
-const REACH_DAYS = 15;
 
 /**
  * The kitchen's prep sheet — what the coming days' orders add up to.
@@ -18,9 +16,8 @@ const REACH_DAYS = 15;
  * anybody's. It carries no money for either, so the orders are **always**
  * sent redacted — what a page never draws it has no reason to send.
  *
- * Only the next fortnight or so is sent. The window is chosen in the
- * browser, against the browser's own today (the server runs in UTC), so
- * the server's cut is a day wider on both sides than the widest window.
+ * Only the widest window is sent, a day wider each side (`aroundToday`):
+ * the window itself is chosen in the browser, against its own today.
  */
 export default async function PrepPage() {
   const [, orders, flavors, packageTypes, displayOptions, ingredientData] = await Promise.all([
@@ -35,21 +32,16 @@ export default async function PrepPage() {
     getIngredientData(true),
   ]);
 
-  const now = new Date();
-  const from = new Date(now);
-  from.setDate(from.getDate() - 1);
-  const to = new Date(now);
-  to.setDate(to.getDate() + REACH_DAYS);
-  const upcoming = orders.filter((order) => order.date >= isoDate(from) && order.date <= isoDate(to));
+  const reach = aroundToday(Math.max(...PREP_WINDOWS.map((w) => w.days)));
+  const upcoming = orders.filter((order) => inRange(order.date, reach));
 
   return (
     <PrepClient
       orders={redactOrders(upcoming)}
       flavors={flavors}
       packageTypes={packageTypes}
-      displayOptions={displayOptions.map((option) => ({ ...option, price: 0 }))}
-      // Prices out: the shopping list is amounts and packs, not shekels.
-      ingredients={ingredientData.ingredients.map((ingredient) => ({ ...ingredient, packPrice: 0 }))}
+      displayOptions={redactPricedOptions(displayOptions)}
+      ingredients={redactIngredients(ingredientData.ingredients)}
       recipes={ingredientData.recipes}
     />
   );

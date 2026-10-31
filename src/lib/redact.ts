@@ -1,3 +1,4 @@
+import type { Ingredient } from "./foodCost";
 import type { Order, OrderInput, Rates, StoredMoney } from "./orderTypes";
 import type { ContentPreset, StaffAccount } from "./settings";
 import type { Client } from "./clients";
@@ -67,8 +68,8 @@ export const redactOrders = (orders: Order[]): Order[] => orders.map(redactOrder
 export function redactRates(rates: Rates): Rates {
   return {
     prices: Object.fromEntries(Object.keys(rates.prices).map((key) => [key, 0])) as Rates["prices"],
-    displayOptions: rates.displayOptions.map((option) => ({ ...option, price: 0 })),
-    deliveryOptions: rates.deliveryOptions.map((option) => ({ ...option, price: 0 })),
+    displayOptions: redactPricedOptions(rates.displayOptions),
+    deliveryOptions: redactPricedOptions(rates.deliveryOptions),
   };
 }
 
@@ -182,3 +183,16 @@ export const MONEY_FIELDS = [
   "vatMode",
   "vatRate",
 ] as const;
+
+/** A price list with the prices out — the names are not money. */
+export function redactPricedOptions<T extends { price: number }>(options: T[]): T[] {
+  return options.map((option) => ({ ...option, price: 0 }));
+}
+
+/**
+ * Ingredients without what a pack costs. The shelf count and the measures
+ * stay: they are what the prep sheet's shopping list is made of.
+ */
+export function redactIngredients(ingredients: Ingredient[]): Ingredient[] {
+  return ingredients.map((ingredient) => ({ ...ingredient, packPrice: 0 }));
+}

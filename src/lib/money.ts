@@ -43,6 +43,16 @@ export function currencyExact(amount: number): string {
   return withSign(exact.format(amount));
 }
 
+/**
+ * A cost per jelly — ₪1.10, always two decimals, since a unit cost is small
+ * enough that the agorot are the figure.
+ */
+const perUnit = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function currencyPerUnit(amount: number): string {
+  return withSign(perUnit.format(amount));
+}
+
 /** The same formatter without the sign, for counts and units. */
 export function count(value: number): string {
   return shekels.format(value);

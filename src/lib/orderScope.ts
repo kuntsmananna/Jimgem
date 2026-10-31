@@ -37,7 +37,7 @@ export interface DateRange {
   to: string;
 }
 
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
@@ -54,7 +54,7 @@ function monthRange(anchor: Date, offset: number): DateRange {
 export function scopeRange(id: ScopeId, today: Date): DateRange | null {
   switch (id) {
     case "14d":
-      return { from: iso(today), to: iso(addDays(today, 13)) };
+      return daysAhead(today, 14);
     case "month":
       return monthRange(today, 0);
     case "nextMonth":
@@ -62,6 +62,26 @@ export function scopeRange(id: ScopeId, today: Date): DateRange | null {
     case "all":
       return null;
   }
+}
+
+/**
+ * Today and the `days - 1` after it, inclusive — a window that starts now.
+ * The 14-day scope, the prep sheet's windows and the due-soon reminder are
+ * all this one shape.
+ */
+export function daysAhead(today: Date, days: number): DateRange {
+  return { from: iso(today), to: iso(addDays(today, days - 1)) };
+}
+
+/**
+ * `daysAhead` from the server, cut a day wider on both sides. A Vercel
+ * function runs in UTC, whose today is Israel's yesterday for two hours a
+ * night, so a page sends this much and the browser applies the exact
+ * window against its own today.
+ */
+export function aroundToday(days: number): DateRange {
+  const today = new Date();
+  return { from: iso(addDays(today, -1)), to: iso(addDays(today, days)) };
 }
 
 /**

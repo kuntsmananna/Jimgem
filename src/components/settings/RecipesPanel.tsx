@@ -9,11 +9,16 @@ import { isMixFlavor } from "@/lib/flavorStyle";
 import { cubeColors } from "@/components/JellyLoader";
 import { PaneHeader } from "@/components/Pane";
 import { writeOrNotify } from "@/components/saveError";
+import { currencyPerUnit } from "@/lib/money";
 
 const FIELD = "rounded-lg border border-line bg-card px-2 py-1 text-sm max-md:py-2";
 
-/** "₪1.10" — a unit cost is small, so it keeps its agorot. */
-const unitMoney = (n: number) => `₪${n.toFixed(2)}`;
+/** The draft's lines that say something — the same rows the preview prices and the save sends. */
+function draftItems(draft: DraftRecipe): { ingredientId: number; amount: number }[] {
+  return draft.items
+    .map((i) => ({ ingredientId: Number(i.ingredientId), amount: Number(i.amount) }))
+    .filter((i) => i.ingredientId > 0 && i.amount > 0);
+}
 
 interface DraftRecipe {
   batchUnits: string;
@@ -46,16 +51,15 @@ export function RecipesPanel({
   const [busy, setBusy] = useState(false);
 
   const costs = useMemo(() => flavorUnitCosts(recipes, ingredients, flavors), [recipes, ingredients, flavors]);
-  const recipeOf = (id: number) => recipes.find((r) => r.flavorId === id);
+  const recipeById = useMemo(() => new Map(recipes.map((r) => [r.flavorId, r])), [recipes]);
+  const recipeOf = (id: number) => recipeById.get(id);
   const ingredientById = useMemo(() => new Map(ingredients.map((i) => [i.id, i])), [ingredients]);
 
   // What the draft would cost, live, so a recipe is priced as it is typed.
   const draftCost = useMemo(() => {
     if (open === null) return null;
     const batch = Number(draft.batchUnits);
-    const items = draft.items
-      .map((i) => ({ ingredientId: Number(i.ingredientId), amount: Number(i.amount) }))
-      .filter((i) => i.ingredientId && i.amount > 0);
+    const items = draftItems(draft);
     if (!(batch > 0) || items.length === 0) return null;
     return flavorUnitCosts([{ flavorId: open, batchUnits: batch, items }], ingredients, flavors)[String(open)] ?? null;
   }, [open, draft, ingredients, flavors]);
@@ -73,9 +77,7 @@ export function RecipesPanel({
 
   async function save() {
     if (open === null) return;
-    const items = draft.items
-      .filter((i) => i.ingredientId && Number(i.amount) > 0)
-      .map((i) => ({ ingredientId: Number(i.ingredientId), amount: Number(i.amount) }));
+    const items = draftItems(draft);
     setBusy(true);
     const ok = await writeOrNotify("recipe", `/api/settings/recipes/${open}`, "PUT", {
       batchUnits: Number(draft.batchUnits) || 1,
@@ -173,7 +175,7 @@ export function RecipesPanel({
                         <Plus size={13} /> Ingredient
                       </button>
                       <span className="text-sm font-semibold" data-money>
-                        {draftCost === null ? "" : `${unitMoney(draftCost)} a jelly`}
+                        {draftCost === null ? "" : `${currencyPerUnit(draftCost)} a jelly`}
                       </span>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -204,7 +206,7 @@ export function RecipesPanel({
                           : "No recipe yet"}
                     </span>
                     <span className="w-14 shrink-0 text-right font-semibold tabular-nums">
-                      {cost === undefined ? "—" : unitMoney(cost)}
+                      {cost === undefined ? "—" : currencyPerUnit(cost)}
                     </span>
                   </button>
                 )}

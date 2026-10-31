@@ -21,11 +21,12 @@ import { flavorUnitCosts } from "@/lib/foodCost";
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
+  // Asked here and not only in the app layout, which a client-side
+  // navigation does not re-render — see requireSignedInPage.
+  const signedIn = requireSignedInPage();
   const [role, orders, flavors, packageTypes, presets, prices, displayOptions, deliveryOptions, clients, paymentMethods, cookieStore, ingredientData] =
     await Promise.all([
-    // Asked here and not only in the app layout, which a client-side
-    // navigation does not re-render — see requireSignedInPage.
-    requireSignedInPage(),
+    signedIn,
     getOrders(),
     getFlavors(true),
     // Archived included so an existing line still resolves its size.
@@ -44,8 +45,9 @@ export default async function OrdersPage() {
     // since retired still names it, and the picker filters it out itself.
     getPaymentMethods(true),
     cookies(),
+    // What a jelly costs is money, so a staff login is not read it at all.
     // Archived included: a recipe may still use one, and costing needs it.
-    getIngredientData(true),
+    signedIn.then((role) => (canSeeMoney(role) ? getIngredientData(true) : null)),
   ]);
 
   /*
@@ -73,7 +75,7 @@ export default async function OrdersPage() {
       // redactOrders has already taken that out.
       paymentMethods={paymentMethods}
       // What a jelly costs to make is money: a staff login gets none.
-      unitCosts={money ? flavorUnitCosts(ingredientData.recipes, ingredientData.ingredients, flavors) : {}}
+      unitCosts={ingredientData ? flavorUnitCosts(ingredientData.recipes, ingredientData.ingredients, flavors) : {}}
       figuresFolded={parseFiguresFolded(cookieStore.get(ORDERS_FIGURES_COOKIE)?.value)}
     />
   );

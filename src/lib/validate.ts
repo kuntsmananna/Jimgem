@@ -3,7 +3,7 @@ import type { ExpenseInput } from "./expenses";
 import type { TaskInput } from "./tasks";
 import type { EditableField } from "./orders";
 import type { IngredientInput } from "./ingredients";
-import type { IngredientUnit } from "./foodCost";
+import { INGREDIENT_UNITS } from "./foodCost";
 
 /**
  * What a write route accepts, checked before any of it reaches SQL.
@@ -289,15 +289,13 @@ export function parseTaskInput(body: unknown): Parsed<TaskInput> {
   });
 }
 
-const INGREDIENT_UNIT_IDS: readonly IngredientUnit[] = ["ml", "g", "pcs"];
-
 export function parseIngredientInput(body: unknown): Parsed<IngredientInput> {
   return run(body, (r) => {
     const name = r.text("name", "The name").trim();
     if (!name) throw new Invalid("An ingredient needs a name.");
     return {
       name,
-      unit: r.oneOf("unit", "The measure", INGREDIENT_UNIT_IDS),
+      unit: r.oneOf("unit", "The measure", INGREDIENT_UNITS),
       packSize: r.number("packSize", "The pack size", { min: 0.001, max: MAX_COUNT * 100 }),
       packPrice: r.optionalNumber("packPrice", "The pack price", { min: 0, max: MAX_MONEY }) ?? 0,
     };

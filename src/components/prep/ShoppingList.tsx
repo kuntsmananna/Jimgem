@@ -6,6 +6,8 @@ import { ShoppingBasket } from "lucide-react";
 import { formatAmount, type ShoppingRow } from "@/lib/foodCost";
 import { whenText } from "@/components/LastEdited";
 import { writeOrNotify } from "@/components/saveError";
+import { count } from "@/lib/money";
+import { PANE } from "./pane";
 
 const packs = (n: number) => (Math.round(n * 10) / 10).toLocaleString("en-US");
 
@@ -19,7 +21,7 @@ const packs = (n: number) => (Math.round(n * 10) / 10).toLocaleString("en-US");
  */
 export function ShoppingList({ rows, untraced }: { rows: ShoppingRow[]; untraced: number }) {
   return (
-    <section className="rounded-card bg-card/60 p-5 shadow-[inset_0_0_0_1px_var(--color-line)] max-md:p-4 print:shadow-none">
+    <section className={PANE}>
       <h2 className="flex items-center gap-2 font-display text-base font-bold">
         <ShoppingBasket size={16} aria-hidden className="text-ink-soft" />
         Shopping list
@@ -71,7 +73,7 @@ export function ShoppingList({ rows, untraced }: { rows: ShoppingRow[]; untraced
       )}
       {untraced > 0 && rows.length > 0 && (
         <p className="mt-2 text-xs font-semibold text-ink-soft">
-          Not counted in this list: {untraced.toLocaleString("en-US")} units with no flavour or no recipe yet.
+          Not counted in this list: {count(untraced)} units with no flavour or no recipe yet.
         </p>
       )}
     </section>

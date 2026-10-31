@@ -7,17 +7,17 @@ import {
   orderUnits,
   orderWeekdayLong,
   packageLineLabel,
-  stageMap,
-  todayIso,
   unitsPerPackageMap,
   type DisplayOption,
   type Order,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
-import { PREP_WINDOWS, prepDays, prepOrders, prepWindowEnd, summarizePrep, type PrepWindowId } from "@/lib/prep";
+import { PREP_WINDOWS, prepDays, prepOrders, summarizePrep, type PrepWindowId } from "@/lib/prep";
+import { daysAhead } from "@/lib/orderScope";
+import { count } from "@/lib/money";
 import { packageTypeIcon, UnitsIcon } from "@/lib/icons";
 import { cubeColors } from "@/components/JellyLoader";
-import { useStages } from "@/components/ProductionStagesContext";
+import { useStageMap } from "@/components/ProductionStagesContext";
 import { Segmented } from "@/components/orders/OrderSheet";
 import { FigureTile } from "@/components/FigureTile";
 import { EmptyState } from "@/components/EmptyState";
@@ -25,10 +25,7 @@ import { EventTypeChip } from "@/components/orders/EventTypeChip";
 import { extraSlots } from "@/components/orders/OrdersTable";
 import { shoppingList, type FlavorRecipe, type Ingredient } from "@/lib/foodCost";
 import { ShoppingList } from "./ShoppingList";
-
-const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-
-const PANE = "rounded-card bg-card/60 p-5 shadow-[inset_0_0_0_1px_var(--color-line)] max-md:p-4 print:shadow-none";
+import { PANE } from "./pane";
 
 /**
  * The kitchen's prep sheet: what the coming days' orders add up to, then
@@ -55,7 +52,7 @@ export function PrepClient({
   ingredients: Ingredient[];
   recipes: FlavorRecipe[];
 }) {
-  const stages = useStages();
+  const stages = useStageMap();
   const [windowId, setWindowId] = useState<PrepWindowId>("7d");
   const [includeQuotes, setIncludeQuotes] = useState(false);
 
@@ -66,12 +63,11 @@ export function PrepClient({
 
   // The browser's today, not the server's: a Vercel function runs in UTC,
   // which is yesterday in Israel for two hours every night.
-  const from = todayIso();
   const days = PREP_WINDOWS.find((w) => w.id === windowId)!.days;
-  const to = prepWindowEnd(new Date(), days);
+  const { from, to } = daysAhead(new Date(), days);
 
   const inWindow = useMemo(
-    () => prepOrders(orders, stageMap(stages), { from, to, includeQuotes }),
+    () => prepOrders(orders, stages, { from, to }, includeQuotes),
     [orders, stages, from, to, includeQuotes],
   );
   const summary = useMemo(() => summarizePrep(inWindow, unitsPerPackage), [inWindow, unitsPerPackage]);
@@ -131,14 +127,14 @@ export function PrepClient({
       ) : (
         <>
           <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
-            <FigureTile label="Units" value={nf.format(summary.units)} />
-            <FigureTile label="Orders" value={nf.format(summary.orderCount)} />
+            <FigureTile label="Units" value={count(summary.units)} />
+            <FigureTile label="Orders" value={count(summary.orderCount)} />
             <FigureTile
               label="No flavour yet"
-              value={nf.format(summary.unassigned)}
+              value={count(summary.unassigned)}
               note={summary.unassigned ? "units to decide" : "every unit decided"}
             />
-            <FigureTile label="Event days" value={nf.format(byDay.length)} />
+            <FigureTile label="Event days" value={count(byDay.length)} />
           </div>
 
           <div className="grid grid-cols-[3fr_2fr] gap-5 max-md:grid-cols-1 print:grid-cols-[3fr_2fr]">
@@ -154,7 +150,7 @@ export function PrepClient({
                           {flavor && <span aria-hidden className="jelly-cube h-3.5 w-3.5 shrink-0" style={cubeColors(flavor)} />}
                           <span className="truncate">{flavor?.name ?? "Unknown flavour"}</span>
                         </span>
-                        <span className="shrink-0 font-display text-lg font-extrabold tabular-nums">{nf.format(units)}</span>
+                        <span className="shrink-0 font-display text-lg font-extrabold tabular-nums">{count(units)}</span>
                       </div>
                       <span aria-hidden className="h-1.5 rounded-full bg-ink/[0.06]">
                         <span
@@ -168,7 +164,7 @@ export function PrepClient({
                 {summary.unassigned > 0 && (
                   <li className="flex items-baseline justify-between gap-3 rounded-lg bg-tile-peach px-2.5 py-1.5 text-sm font-semibold">
                     <span>Flavour not decided yet</span>
-                    <span className="tabular-nums">{nf.format(summary.unassigned)}</span>
+                    <span className="tabular-nums">{count(summary.unassigned)}</span>
                   </li>
                 )}
               </ul>
@@ -187,7 +183,7 @@ export function PrepClient({
                           <Icon size={15} aria-hidden className="text-ink-soft" />
                           {type?.name ?? "Unknown package"}
                         </span>
-                        <span className="font-display text-lg font-extrabold tabular-nums">× {nf.format(packages)}</span>
+                        <span className="font-display text-lg font-extrabold tabular-nums">× {count(packages)}</span>
                       </li>
                     );
                   })}
@@ -197,7 +193,7 @@ export function PrepClient({
                         <UnitsIcon size={15} aria-hidden className="text-ink-soft" />
                         Event totals (loose units)
                       </span>
-                      <span className="font-display text-lg font-extrabold tabular-nums">{nf.format(summary.eventUnits)}</span>
+                      <span className="font-display text-lg font-extrabold tabular-nums">{count(summary.eventUnits)}</span>
                     </li>
                   )}
                 </ul>
@@ -229,7 +225,7 @@ export function PrepClient({
                   <span className={date === from ? "text-accent" : ""}>{date === from ? "Today" : orderWeekdayLong(date)}</span>
                   <span className="text-ink-soft">{formatOrderDate(date)}</span>
                   <span className="text-ink-soft">
-                    · {nf.format(dayOrders.reduce((sum, o) => sum + orderUnits(o.packageLines, unitsPerPackage), 0))} units
+                    · {count(dayOrders.reduce((sum, o) => sum + orderUnits(o.packageLines, unitsPerPackage), 0))} units
                   </span>
                 </h3>
                 <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1 print:grid-cols-2">
@@ -261,7 +257,7 @@ function Need({ icon, label, value }: { icon: React.ReactNode; label: string; va
         </span>
         {label}
       </span>
-      <span className="font-display text-lg font-extrabold tabular-nums">{value ? nf.format(value) : "—"}</span>
+      <span className="font-display text-lg font-extrabold tabular-nums">{value ? count(value) : "—"}</span>
     </li>
   );
 }
@@ -290,7 +286,7 @@ function PrepOrderCard({
         </div>
         <p className="flex shrink-0 items-center gap-1 font-display text-lg font-extrabold tabular-nums">
           <UnitsIcon size={14} aria-hidden className="text-ink-soft" />
-          {nf.format(orderUnits(order.packageLines, unitsPerPackage))}
+          {count(orderUnits(order.packageLines, unitsPerPackage))}
         </p>
       </div>
       {order.location && (
@@ -314,7 +310,7 @@ function PrepOrderCard({
                   return (
                     <span key={entry.flavorId} className="flex items-center gap-1.5 font-semibold">
                       {flavor && <span aria-hidden className="jelly-cube h-2.5 w-2.5" style={cubeColors(flavor)} />}
-                      {flavor?.name ?? "Unknown"} <span className="tabular-nums text-ink-soft">{nf.format(entry.units)}</span>
+                      {flavor?.name ?? "Unknown"} <span className="tabular-nums text-ink-soft">{count(entry.units)}</span>
                     </span>
                   );
                 })}

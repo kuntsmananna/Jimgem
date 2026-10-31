@@ -87,6 +87,7 @@ export function DashboardClient({
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | "all">("all");
   const stageMap = useStageMap();
+  const soon = useMemo(() => dueSoon(owing, stageMap, new Date()), [owing, stageMap]);
   const { label: vatLabel } = useVatView();
   /*
    * The phone gets this pane now, where it did not get the one before it.
@@ -184,7 +185,7 @@ export function DashboardClient({
        was most of a screen of cream by the bottom of the page. */
     <div className="flex flex-col gap-6 max-md:gap-4">
       <SetupChecklist setup={setup} />
-      <DueSoonStrip items={dueSoon(owing, stageMap, new Date())} />
+      <DueSoonStrip items={soon} />
       <div className="flex items-center gap-2 max-md:flex-wrap">
         <YearSwitch year={year} years={years} path="/" />
         {/* A row of pills is the right control for a period on a laptop and

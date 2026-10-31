@@ -21,14 +21,11 @@
  */
 
 import { isMixFlavor } from "./flavorStyle";
+import { lineAssignedUnits, linePackedUnits, type OrderPackageLine } from "./orderTypes";
 
-export type IngredientUnit = "ml" | "g" | "pcs";
-
-export const INGREDIENT_UNITS: { id: IngredientUnit; label: string }[] = [
-  { id: "ml", label: "ml" },
-  { id: "g", label: "g" },
-  { id: "pcs", label: "pcs" },
-];
+/** What a recipe measures an ingredient in — the one list, also what the database's CHECK allows. */
+export const INGREDIENT_UNITS = ["ml", "g", "pcs"] as const;
+export type IngredientUnit = (typeof INGREDIENT_UNITS)[number];
 
 export interface Ingredient {
   id: number;
@@ -75,12 +72,10 @@ export function perUnitRecipes(
   for (const recipe of recipes) {
     if (recipe.items.length > 0) out.set(recipe.flavorId, perUnit(recipe));
   }
-  const others = [...out.entries()].filter(([id]) => {
-    const flavor = flavors.find((f) => f.id === id);
-    return !flavor || !isMixFlavor(flavor);
-  });
+  const mixIds = new Set(flavors.filter(isMixFlavor).map((f) => f.id));
+  const others = [...out.entries()].filter(([id]) => !mixIds.has(id));
   for (const flavor of flavors) {
-    if (!isMixFlavor(flavor) || out.has(flavor.id) || others.length === 0) continue;
+    if (!mixIds.has(flavor.id) || out.has(flavor.id) || others.length === 0) continue;
     const mix: PerUnit = new Map();
     for (const [, amounts] of others) {
       for (const [ingredientId, amount] of amounts) {
@@ -131,22 +126,19 @@ export function flavorUnitCosts(
  * caller says so beside the figure.
  */
 export function linesFoodCost(
-  lines: { packageTypeId: string; quantity: number; flavors: { flavorId: string; units: number }[] }[],
+  lines: OrderPackageLine[],
   unitsPerPackage: Map<number, number>,
   unitCosts: Record<string, number>,
 ): { cost: number; uncosted: number } {
   let cost = 0;
   let uncosted = 0;
   for (const line of lines) {
-    const packed = line.quantity * (unitsPerPackage.get(Number(line.packageTypeId)) ?? 0);
-    let assigned = 0;
     for (const entry of line.flavors) {
-      assigned += entry.units;
       const unitCost = unitCosts[entry.flavorId];
       if (unitCost === undefined) uncosted += entry.units;
       else cost += unitCost * entry.units;
     }
-    uncosted += Math.max(0, packed - assigned);
+    uncosted += Math.max(0, linePackedUnits(line, unitsPerPackage) - lineAssignedUnits(line));
   }
   return { cost: Math.round(cost * 100) / 100, uncosted };
 }

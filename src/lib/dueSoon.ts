@@ -7,7 +7,8 @@
  * app said which orders those were until somebody went looking.
  */
 
-import { isBooked, isoDate, stillDue, type Order, type ProductionStage } from "./orderTypes";
+import { isOpen, stillDue, type Order, type ProductionStage } from "./orderTypes";
+import { daysAhead, inRange } from "./orderScope";
 
 /** How far ahead "soon" looks: a week, the same horizon as the prep sheet. */
 export const DUE_SOON_DAYS = 7;
@@ -29,13 +30,9 @@ export function dueSoon(
   today: Date,
   days = DUE_SOON_DAYS,
 ): DueSoon[] {
-  const from = isoDate(today);
-  const end = new Date(today);
-  end.setDate(end.getDate() + days - 1);
-  const to = isoDate(end);
+  const window = daysAhead(today, days);
   return orders
-    .filter((order) => order.date >= from && order.date <= to)
-    .filter((order) => isBooked(order, stages) && !stages.get(order.productionStatus)?.isFinal)
+    .filter((order) => inRange(order.date, window) && isOpen(order, stages))
     .map((order) => ({ order, due: stillDue(order) }))
     .filter(({ due }) => due > 0)
     .sort((a, b) => a.order.date.localeCompare(b.order.date) || b.due - a.due);

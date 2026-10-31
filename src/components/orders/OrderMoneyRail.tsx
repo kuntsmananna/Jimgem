@@ -298,7 +298,7 @@ function FoodCostRows({ draft }: { draft: OrderInput }) {
   return (
     <div className="mt-3 border-t border-dashed border-cream/15 pt-2">
       <SheetRow label="Ingredients">
-        <span className="pr-2 text-xs font-semibold tabular-nums text-cream/70 max-md:text-sm">{money(cost)}</span>
+        <span className="pr-2 text-xs font-semibold tabular-nums text-cream/70 max-md:text-sm">{currency(cost)}</span>
       </SheetRow>
       <SheetRow label="Left after them, excl. VAT">
         <span className="pr-2 text-sm font-bold tabular-nums text-cream max-md:text-base">{currency(left)}</span>
