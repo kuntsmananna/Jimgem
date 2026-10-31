@@ -13,6 +13,42 @@ import type { Role } from "./roles";
  * a week, or the release before was not for their role — gets every one
  * they have not seen in a single popup, a page each, newest first.
  */
+/**
+ * The pictures and the item marks a page can name, each stated once.
+ * `WhatsNew` maps both with a `Record` over these, so a key added here and
+ * not drawn there is a type error rather than a page silently wearing the
+ * wrong picture or no mark.
+ */
+export const ANNOUNCEMENT_ARTS = [
+  "paid-by",
+  "refresh",
+  "orders-table",
+  "jelly-mode",
+  "prep-sheet",
+  "food-cost",
+  "due-soon",
+] as const;
+export type AnnouncementArt = (typeof ANNOUNCEMENT_ARTS)[number];
+
+export const ITEM_ICON_KEYS = [
+  "amount",
+  "card",
+  "filter",
+  "palette",
+  "lift",
+  "hover",
+  "jelly",
+  "day",
+  "columns",
+  "extras",
+  "select",
+  "basket",
+  "print",
+  "recipe",
+  "bell",
+] as const;
+export type ItemIcon = (typeof ITEM_ICON_KEYS)[number];
+
 export interface Announcement {
   id: string;
   /**
@@ -24,27 +60,12 @@ export interface Announcement {
   /** Who it is for — a release about money is admin-only, since a staff login never sees money. */
   audience: Role[];
   /** Which picture heads it — see `WhatsNew`. */
-  art: "paid-by" | "refresh" | "orders-table" | "jelly-mode" | "prep-sheet" | "food-cost" | "due-soon";
+  art: AnnouncementArt;
   /** This release's page heading. The popup itself is always titled "What's new". */
   title: string;
   lede: string;
   items: {
-    icon:
-      | "amount"
-      | "card"
-      | "filter"
-      | "palette"
-      | "lift"
-      | "hover"
-      | "jelly"
-      | "day"
-      | "columns"
-      | "extras"
-      | "select"
-      | "basket"
-      | "print"
-      | "recipe"
-      | "bell";
+    icon: ItemIcon;
     title: string;
     text: string;
   }[];
@@ -55,41 +76,35 @@ export const ANNOUNCEMENTS: Announcement[] = [
    * v0.91-v0.93. The prep sheet is for everybody — it carries no money and
    * the kitchen is who uses it — so its shopping list is described here
    * too. What a jelly costs and who still owes are money, so they are an
-   * admin's pages of their own.
+   * admin's pages of their own. Newest first, like everything here.
+   *
+   * `released` is the day these reach main, not the day they were written:
+   * a login created in between used the app without them and must still be
+   * told. **Move it to the ship day if they ship later.**
    */
   {
-    id: "v0.91-prep-sheet",
-    released: "2026-10-30",
-    audience: ["admin", "staff"],
-    art: "prep-sheet",
-    title: "The prep sheet",
-    lede: "One page that adds up what the coming days' orders need: how much of each flavour, which trays, what the events need, and what to buy.",
+    id: "v0.93-due-soon",
+    released: "2026-10-31",
+    audience: ["admin"],
+    art: "due-soon",
+    title: "Who still owes before the event",
+    lede: "Events in the next 7 days that haven't been paid in full now say so, on the Orders page and the Dashboard.",
     items: [
       {
-        icon: "jelly",
-        title: "How much of each flavour",
-        text: "Units per flavour for today, 3, 7 or 14 days, largest first — and how many still have no flavour decided.",
+        icon: "bell",
+        title: "One line, when it matters",
+        text: "It shows only when something is owed, and opens into the orders it means — tap one to open it.",
       },
       {
-        icon: "day",
-        title: "Day by day",
-        text: "Under the totals, the same orders by day: every package, its split, the extras and the note.",
-      },
-      {
-        icon: "basket",
-        title: "A shopping list",
-        text: "What these orders take against what's on the shelf, and how many packs to buy. Tap a count to update it.",
-      },
-      {
-        icon: "print",
-        title: "Find it, print it",
-        text: "Prep sheet on the Orders page (Prep on a phone). It prints as a clean sheet for the kitchen.",
+        icon: "filter",
+        title: "Not hidden by the filters",
+        text: "It looks at every booked order, whatever the filters are set to — set aside while you search or use the calendar. Quotes and paid orders are never chased.",
       },
     ],
   },
   {
     id: "v0.92-food-cost",
-    released: "2026-10-30",
+    released: "2026-10-31",
     audience: ["admin"],
     art: "food-cost",
     title: "What a jelly costs to make",
@@ -113,22 +128,32 @@ export const ANNOUNCEMENTS: Announcement[] = [
     ],
   },
   {
-    id: "v0.93-due-soon",
-    released: "2026-10-30",
-    audience: ["admin"],
-    art: "due-soon",
-    title: "Who still owes before the event",
-    lede: "Events in the next 7 days that haven't been paid in full now say so, on the Orders page and the Dashboard.",
+    id: "v0.91-prep-sheet",
+    released: "2026-10-31",
+    audience: ["admin", "staff"],
+    art: "prep-sheet",
+    title: "The prep sheet",
+    lede: "One page that adds up what the coming days' orders need: how much of each flavour, which trays, what the events need, and what to buy.",
     items: [
       {
-        icon: "bell",
-        title: "One line, when it matters",
-        text: "It shows only when something is owed, and opens into the orders it means — tap one to open it.",
+        icon: "jelly",
+        title: "How much of each flavour",
+        text: "Units per flavour for today, 3, 7 or 14 days, largest first — and how many still have no flavour decided.",
       },
       {
-        icon: "filter",
-        title: "Not hidden by the filters",
-        text: "It looks at every booked order, whatever the list is narrowed to. Quotes and paid orders are never chased.",
+        icon: "day",
+        title: "Day by day",
+        text: "Under the totals, the same orders by day: every package, its split, the extras and the note.",
+      },
+      {
+        icon: "basket",
+        title: "A shopping list",
+        text: "Once ingredients and recipes are set up in Settings → Flavors: what these orders take against what's on the shelf, and how many packs to buy. Tap a count to update it.",
+      },
+      {
+        icon: "print",
+        title: "Find it, print it",
+        text: "Prep sheet on the Orders page (Prep on a phone). It prints as a clean sheet for the kitchen.",
       },
     ],
   },

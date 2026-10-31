@@ -2210,7 +2210,12 @@ table). See *Brute force is stopped twice* under Authentication.
   picks the picture (`paid-by` for v0.71, `refresh` for v0.74's new look,
   which went to staff logins too and so is worded without money,
   `orders-table` for v0.78's reorganised list, `prep-sheet` (everyone),
-  `food-cost` and `due-soon` (admins) for v0.91-v0.93, `jelly-mode` for v0.79 — the pieces and the switch beside a phone being shaken, its own cards mid-wobble, so the picture says the mode is on the phone too, drawn from the table's own
+  `food-cost` and `due-soon` (admins) for v0.91-v0.93 — **the pictures and
+  the item marks are each one list in `announcement.ts`
+  (`ANNOUNCEMENT_ARTS`, `ITEM_ICON_KEYS`) and a `Record` over it in
+  `WhatsNew`** (`ART`, `ITEM_ICON`), so a key added and not drawn fails the
+  build rather than showing the wrong picture; a page's `released` is the
+  day it reaches `main`, so move it if a release ships later than written —, `jelly-mode` for v0.79 — the pieces and the switch beside a phone being shaken, its own cards mid-wobble, so the picture says the mode is on the phone too, drawn from the table's own
   new marks — shared with staff too, so its money half is a separate
   admin-only page), and its
   `title` is that page's heading. The popup itself is always titled

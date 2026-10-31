@@ -33,12 +33,12 @@ import { JellyBlob, WiggleLines } from "@/components/JellyMode";
 import { SwitchExplainer } from "@/components/HoverCard";
 import { flavorCubeGradient } from "@/lib/flavorStyle";
 import { SERIES_COLORS } from "@/lib/chartPalette";
-import { announcementsFor, type Announcement } from "@/lib/announcement";
+import { announcementsFor, type Announcement, type AnnouncementArt, type ItemIcon } from "@/lib/announcement";
 import { useRole } from "@/components/RoleContext";
 
 const noSubscription = () => () => {};
 
-const ITEM_ICON = {
+const ITEM_ICON: Record<ItemIcon, LucideIcon> = {
   amount: Receipt,
   card: CreditCard,
   filter: Filter,
@@ -54,7 +54,7 @@ const ITEM_ICON = {
   print: Printer,
   recipe: ChefHat,
   bell: BellRing,
-} as const;
+};
 
 /**
  * The "what's new" popup, shown once to each person on their next visit
@@ -251,25 +251,29 @@ function Pages({ announcements, onDone }: { announcements: Announcement[]; onDon
   );
 }
 
+/**
+ * Each page's picture by its `art` key. A `Record` over every key, so a
+ * picture named in announcement.ts and not drawn here fails the build
+ * instead of quietly showing the Paid-by one.
+ */
+const ART: Record<AnnouncementArt, () => React.JSX.Element> = {
+  "paid-by": Illustration,
+  refresh: RefreshIllustration,
+  "orders-table": OrdersTableIllustration,
+  "jelly-mode": JellyModeIllustration,
+  "prep-sheet": PrepSheetIllustration,
+  "food-cost": FoodCostIllustration,
+  "due-soon": DueSoonIllustration,
+};
+
 /** One release: its picture, its heading, what it changed. */
 function Page({ announcement }: { announcement: Announcement }) {
   return (
     <>
-      {announcement.art === "prep-sheet" ? (
-        <PrepSheetIllustration />
-      ) : announcement.art === "food-cost" ? (
-        <FoodCostIllustration />
-      ) : announcement.art === "due-soon" ? (
-        <DueSoonIllustration />
-      ) : announcement.art === "jelly-mode" ? (
-        <JellyModeIllustration />
-      ) : announcement.art === "orders-table" ? (
-        <OrdersTableIllustration />
-      ) : announcement.art === "refresh" ? (
-        <RefreshIllustration />
-      ) : (
-        <Illustration />
-      )}
+      {(() => {
+        const Art = ART[announcement.art];
+        return <Art />;
+      })()}
       <div className="flex flex-col gap-1.5">
         <h3 className="font-display text-lg leading-tight font-extrabold tracking-tight text-ink">
           {announcement.title}
@@ -687,9 +691,10 @@ function FoodCostIllustration() {
       {/* The money panel's last rows. */}
       <div className="absolute right-5 bottom-4 w-[11.5rem] rotate-[-2deg] rounded-xl bg-black p-3 text-[10px] text-cream/75 shadow-xl max-md:right-3 max-md:w-[9rem]">
         <Line label="Total" value="₪2,400" strong />
+        <Line label="of which VAT" value="₪366" />
         <div className="my-1.5 border-t border-dashed border-cream/20" />
         <Line label="Ingredients" value="₪312" />
-        <Line label="Left over" value="₪1,722" strong />
+        <Line label="Net left" value="₪1,722" strong />
       </div>
     </div>
   );
