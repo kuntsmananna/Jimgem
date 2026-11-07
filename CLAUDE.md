@@ -2757,6 +2757,13 @@ figure and the report still adds up — and they are the part that needs
 no database and no browser to check. They are pure functions in
 `orderTypes.ts`, so a test is arithmetic against arithmetic.
 
+`/simplify-repo` (`.claude/skills/simplify-repo/`) is a whole-repo
+`/simplify`: it sweeps every source file in batches against this file's
+standards and commits behaviour-preserving cleanups batch by batch. Its
+`project.md` holds this repo's exclusions (applied migrations, the parked
+panes), standards greps and verify steps — keep it in step when a
+convention here changes.
+
 DB scripts: `npm run db:migrate` applies `src/lib/schema.sql`, `db:seed`
 seeds the value lists, `db:import` pulls the Sheet into Postgres.
 
