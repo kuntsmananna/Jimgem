@@ -26,7 +26,9 @@ Files beside this one:
 - `inventory.sh` — lists reviewable files grouped into batches.
 - `project.md` — **this repo's** exclusions, standards greps, verify commands
   and rules the sweep must not break. Read it in Phase 0; it overrides the
-  defaults here.
+  defaults here. If the repo has its own `.simplify-repo/project.md`, that one
+  wins (this is how a skill installed once in `~/.claude/skills/` gets
+  per-repo settings).
 
 ## The rules that outrank everything below
 
@@ -58,6 +60,19 @@ Files beside this one:
 
 ## Phase 0 — load the standard
 
+0. **First run in a repo:** if `project.md` is missing or still the template
+   (its title still ends in `(TEMPLATE)`), write the real one before anything else. Derive
+   it from the repo itself: CLAUDE.md / AGENTS.md / CONTRIBUTING / README, the
+   lint and format config, `package.json` scripts (or Makefile, pyproject,
+   etc.) and the CI workflows. Fill every section of the template: generated,
+   vendored, content and already-applied-migration paths to exclude; one grep
+   per checkable convention (run each to confirm it is valid and finds what
+   it should); rules a cleanup must not break (deliberate oddities the docs
+   explain, files kept unused on purpose); fast and full verify commands; the
+   shipping rules (version bumps, branches). Save it as
+   `<repo>/.simplify-repo/project.md` if this skill is installed outside the
+   repo, else beside this file. Show it to the user and wait for an OK before
+   sweeping: it decides what the sweep is allowed to touch.
 1. Read, in full: root `CLAUDE.md`, `AGENTS.md` (and anything they `@`-import),
    every nested `CLAUDE.md` inside the sweep's scope, `project.md` beside this
    file, and the lint/format config (`eslint.config.*`, `.prettierrc*`,
@@ -79,7 +94,8 @@ Files beside this one:
 
 ## Phase 1 — inventory and ledger
 
-1. Run `bash .claude/skills/simplify-repo/inventory.sh [--max N] [paths...]`.
+1. Run `bash <this skill's directory>/inventory.sh [--max N] [paths...]` from
+   the repo root.
    It lists every reviewable source file, grouped into batches by directory,
    in a stable order.
 2. **Repo-wide greps first.** Run each standards grep listed in `project.md`

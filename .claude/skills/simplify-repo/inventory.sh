@@ -5,8 +5,8 @@
 #   --max N   most files per batch (default 8); a bigger directory is split
 #   paths     limit the sweep to these paths/globs (default: whole repo)
 #
-# Reads exclusions from project.md beside this script: every line of the
-# form "- exclude: <glob>" (bash glob, '*' also matches '/').
+# Reads exclusions from project.md (the repo's .simplify-repo/project.md,
+# else the one beside this script): every line of the form "- exclude: <glob>" (bash glob, '*' also matches '/').
 # Output, one block per batch, in a stable order (a resume still matches
 # work done by file, not by batch id, since new files can shift batches):
 #   ## <batch-id> (<n> files)
@@ -36,9 +36,13 @@ excludes=(
   '.simplify-repo/*' '.claude/*' '*.min.*' '*.d.ts' '*.generated.*'
   'public/*' 'vendor/*'
 )
-if [[ -f "$here/project.md" ]]; then
+# Project settings: the repo's own copy wins (needed when the skill is
+# installed once for all repos under ~/.claude/skills), else the one here.
+project="$root/.simplify-repo/project.md"
+[[ -f "$project" ]] || project="$here/project.md"
+if [[ -f "$project" ]]; then
   while IFS= read -r pat; do excludes+=("$pat"); done < <(
-    sed -n 's/^[[:space:]]*-[[:space:]]*exclude:[[:space:]]*`\{0,1\}\([^`]*\)`\{0,1\}[[:space:]]*$/\1/p' "$here/project.md"
+    sed -n 's/^[[:space:]]*-[[:space:]]*exclude:[[:space:]]*`\{0,1\}\([^`]*\)`\{0,1\}[[:space:]]*$/\1/p' "$project"
   )
 fi
 
