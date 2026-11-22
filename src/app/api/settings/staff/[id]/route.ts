@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { endSessions, updateStaffName, resetStaffPassword, updateStaffRole, LastAdminError } from "@/lib/settings";
+import {
+  endSessions,
+  updateStaffName,
+  updateStaffEmail,
+  resetStaffPassword,
+  updateStaffRole,
+  LastAdminError,
+} from "@/lib/settings";
 import { getSession } from "@/lib/session";
 import { refuseNonAdmin } from "@/lib/guard";
 import { ROLES, type Role } from "@/lib/roles";
 
 export const runtime = "nodejs";
+
+/** A deliberately loose shape check — something@something.something, no spaces. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Rename an account, reset its password, or change what it may see.
@@ -38,6 +48,17 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/settin
       await signOutElsewhere(numericId, staff.role);
       return NextResponse.json(staff);
     }
+    if (body.email !== undefined) {
+      const email = String(body.email).trim();
+      // Empty clears it — back to username-only; anything else must look
+      // like an address so a typo is caught here, not at the next sign-in.
+      if (email && !EMAIL.test(email)) {
+        return NextResponse.json({ error: "That doesn't look like an email address." }, { status: 400 });
+      }
+      // No session is ended: an email is a second way in, not a credential
+      // reset, so adding one should not sign the person out.
+      return NextResponse.json(await updateStaffEmail(numericId, email));
+    }
     const staff = await updateStaffName(numericId, body.name);
     return NextResponse.json(staff);
   } catch (error) {
@@ -45,6 +66,11 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/settin
     // answer is a sentence the panel can print.
     if (error instanceof LastAdminError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    // The one email failure worth wording: the address is already another
+    // account's (the case-insensitive unique index).
+    if (error instanceof Error && /unique|duplicate/i.test(error.message)) {
+      return NextResponse.json({ error: "Another account already uses that email." }, { status: 409 });
     }
     console.error(`Failed to update staff/${id}:`, error);
     return NextResponse.json({ error: "Failed to update." }, { status: 500 });

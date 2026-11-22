@@ -22,22 +22,58 @@ interface StaffAuthRow {
 }
 
 /**
- * Reads one staff row, dropping the columns a migration may not have
+ * Reads one staff row by id, dropping the columns a migration may not have
  * added yet rather than failing: `role` (030) and `session_version` (033).
  * Signing in must not be the thing that breaks in the minutes between a
  * deploy and the paste into the database console. Without `role` everyone
  * is an admin, which is what they were the moment before; without
  * `session_version` no session can be ended early, which is how it was.
  */
-async function readStaff(where: "username" | "id", value: string | number): Promise<StaffAuthRow | undefined> {
+async function readStaffById(id: number): Promise<StaffAuthRow | undefined> {
   const db = getDb();
   for (const extra of ["role, session_version", "role", ""]) {
     const columns = ["id", "name", "username", "password_hash", extra].filter(Boolean).join(", ");
     try {
-      const { rows } = await db.query<StaffAuthRow>(`SELECT ${columns} FROM staff WHERE ${where} = $1`, [value]);
+      const { rows } = await db.query<StaffAuthRow>(`SELECT ${columns} FROM staff WHERE id = $1`, [id]);
       return rows[0];
     } catch (error) {
       if (!isMissingColumn(error, "session_version") && !isMissingColumn(error, "role")) throw error;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Finds the account a sign-in names, by **username or email**, case
+ * folded on both sides — so `aviv`, `Aviv` and `aviv.sarel@gmail.com` all
+ * reach the one account. A username can never hold an `@` (the create
+ * route forbids it), so the two can never be confused.
+ *
+ * Degrades the same way as `readStaffById`, with `email` (036) shed first
+ * and on its own: a database still waiting for that migration matches on
+ * the username alone, which is exactly how it worked before. Without it
+ * signing in would break in the deploy-to-paste window, which is the one
+ * thing this must not do.
+ */
+async function readStaffForLogin(identifier: string): Promise<StaffAuthRow | undefined> {
+  const db = getDb();
+  const attempts: Array<{ columns: string; where: string }> = [
+    { columns: "id, name, username, password_hash, role, session_version", where: "lower(username) = lower($1) OR lower(email) = lower($1)" },
+    { columns: "id, name, username, password_hash, role, session_version", where: "lower(username) = lower($1)" },
+    { columns: "id, name, username, password_hash, role", where: "lower(username) = lower($1)" },
+    { columns: "id, name, username, password_hash", where: "lower(username) = lower($1)" },
+  ];
+  for (const { columns, where } of attempts) {
+    try {
+      const { rows } = await db.query<StaffAuthRow>(`SELECT ${columns} FROM staff WHERE ${where}`, [identifier]);
+      return rows[0];
+    } catch (error) {
+      if (
+        !isMissingColumn(error, "email") &&
+        !isMissingColumn(error, "session_version") &&
+        !isMissingColumn(error, "role")
+      )
+        throw error;
     }
   }
   return undefined;
@@ -61,7 +97,7 @@ function roleOf(row: StaffAuthRow): Role {
 const NO_SUCH_USER_HASH = "$2b$10$sT1EyUf.HsS/UXFs41fzC.gcmuUtC..Vzberh2zJTGfoomdKZELl2";
 
 export async function verifyCredentials(username: string, password: string): Promise<StaffAccount | null> {
-  const row = await readStaff("username", username);
+  const row = await readStaffForLogin(username);
   if (!row) {
     await bcrypt.compare(password, NO_SUCH_USER_HASH);
     return null;
@@ -101,7 +137,7 @@ export async function currentRole(): Promise<Role | null> {
   try {
     const session = await getSession();
     if (!session.userId) return null;
-    const row = await readStaff("id", session.userId);
+    const row = await readStaffById(session.userId);
     if (!row) return null;
     if (row.session_version != null && row.session_version !== (session.version ?? 0)) return null;
     return roleOf(row);

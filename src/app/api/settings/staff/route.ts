@@ -8,6 +8,9 @@ export const runtime = "nodejs";
 /** The shortest password this will accept, stated once — the panel says it too. */
 const MIN_PASSWORD = 8;
 
+/** A deliberately loose shape check — something@something.something, no spaces. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
  * Add an account.
  *
@@ -32,8 +35,14 @@ export async function POST(request: NextRequest) {
   const username = String(body.username ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
   const role = body.role as Role;
+  // Optional: the address they can also sign in with. Lower-cased to match
+  // the case-insensitive unique index and the login lookup.
+  const email = String(body.email ?? "").trim().toLowerCase();
 
   if (!name) return NextResponse.json({ error: "Give them a name." }, { status: 400 });
+  if (email && !EMAIL.test(email)) {
+    return NextResponse.json({ error: "That doesn't look like an email address." }, { status: 400 });
+  }
   if (!/^[a-z0-9._-]{3,}$/.test(username)) {
     return NextResponse.json(
       { error: "A username is 3+ characters, letters, numbers, dot, dash or underscore." },
@@ -51,12 +60,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    return NextResponse.json(await createStaff({ name, username, password, role }), { status: 201 });
+    return NextResponse.json(await createStaff({ name, username, password, role, email: email || null }), {
+      status: 201,
+    });
   } catch (error) {
-    // The unique index on username is the one failure worth wording: it is
-    // the only way this goes wrong that the person can actually fix.
+    // The unique indexes are the failures worth wording: a taken username
+    // or an email already on another account — both the person can fix.
     if (error instanceof Error && /unique|duplicate/i.test(error.message)) {
-      return NextResponse.json({ error: `“${username}” is taken.` }, { status: 409 });
+      const taken = /email/i.test(error.message) ? "That email is already on another account." : `“${username}” is taken.`;
+      return NextResponse.json({ error: taken }, { status: 409 });
     }
     console.error("Failed to create a staff account:", error);
     return NextResponse.json({ error: "Couldn't create the account." }, { status: 500 });

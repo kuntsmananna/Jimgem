@@ -19,8 +19,18 @@ CREATE TABLE IF NOT EXISTS staff (
   -- password adds one, which ends every session issued before it -- see
   -- scripts/migrate-033-session-version.sql.
   session_version INTEGER NOT NULL DEFAULT 0,
+  -- An optional second way to sign in: a login matches on username OR
+  -- email, so the address a person already knows gets them in. See
+  -- migration 036 and src/lib/auth.ts. Set from Settings, never seeded.
+  email TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- One address per account, case-insensitive and partial so the many rows
+-- with no email yet do not all collide on NULL.
+CREATE UNIQUE INDEX IF NOT EXISTS staff_email_lower_idx
+  ON staff (lower(email))
+  WHERE email IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS flavors (
   id SERIAL PRIMARY KEY,

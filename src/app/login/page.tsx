@@ -22,7 +22,7 @@ export default async function LoginPage({
         <form action={login} className="mt-6 flex flex-col gap-4">
           <div>
             <label htmlFor="username" className="text-xs font-semibold text-ink-soft">
-              Username
+              Username or email
             </label>
             <input
               id="username"
@@ -31,6 +31,13 @@ export default async function LoginPage({
               required
               autoFocus
               autoComplete="username"
+              // A phone capitalises the first letter by default, and the
+              // lookup is case-folded on this side anyway — but turning the
+              // keyboard's corrections off keeps a stray space or a
+              // capital from ever reaching the field in the first place.
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="mt-1 w-full rounded-lg border border-line bg-cream/40 px-3 py-2 text-sm text-ink outline-none focus:border-accent"
             />
           </div>

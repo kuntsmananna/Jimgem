@@ -33,6 +33,8 @@ export function StaffPanel({ items }: { items: StaffAccount[] }) {
   const router = useRouter();
   const [editingName, setEditingName] = useState<number | null>(null);
   const [nameDraft, setNameDraft] = useState("");
+  const [editingEmail, setEditingEmail] = useState<number | null>(null);
+  const [emailDraft, setEmailDraft] = useState("");
   const [resetting, setResetting] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [adding, setAdding] = useState(false);
@@ -88,6 +90,13 @@ export function StaffPanel({ items }: { items: StaffAccount[] }) {
 
   async function saveRole(id: number, role: Role) {
     await send(`/api/settings/staff/${id}`, "PATCH", { role });
+  }
+
+  async function saveEmail(id: number) {
+    // An empty value is allowed — it clears the address, back to
+    // username-only — so this does not guard on a blank draft the way the
+    // name does.
+    if (await send(`/api/settings/staff/${id}`, "PATCH", { email: emailDraft.trim() })) setEditingEmail(null);
   }
 
   return (
@@ -172,6 +181,53 @@ export function StaffPanel({ items }: { items: StaffAccount[] }) {
               />
             </div>
 
+            {/*
+              The email an account may also sign in with. It sits under the
+              name because that is the identity half of the row — the role
+              and the password are what you do to an account, this is what
+              it is called. "Add email" rather than a blank, so the option
+              is visible on the accounts that have none.
+            */}
+            {editingEmail === staff.id ? (
+              <div className="mt-2 flex items-center gap-2 max-md:flex-wrap">
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="name@example.com (blank to remove)"
+                  className="min-w-0 flex-1 rounded-lg border border-line px-2 py-1 text-sm max-md:py-2"
+                  value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)}
+                />
+                <button
+                  onClick={() => saveEmail(staff.id)}
+                  disabled={busy}
+                  className="text-xs font-semibold text-accent max-md:text-sm"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingEmail(null)}
+                  className="text-xs font-semibold text-ink-soft max-md:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setEditingEmail(staff.id);
+                  setEmailDraft(staff.email ?? "");
+                }}
+                className="mt-1 block truncate text-xs text-ink-soft underline decoration-dotted hover:text-ink max-md:min-h-9 max-md:text-sm"
+              >
+                {staff.email ? staff.email : "Add email"}
+              </button>
+            )}
+
             {resetting === staff.id ? (
               <div className="mt-2 flex items-center gap-2 max-md:flex-wrap">
                 <input
@@ -233,10 +289,11 @@ function NewAccount({
 }: {
   busy: boolean;
   onCancel: () => void;
-  onCreate: (input: { name: string; username: string; password: string; role: Role }) => void;
+  onCreate: (input: { name: string; username: string; password: string; role: Role; email: string }) => void;
 }) {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("staff");
 
@@ -261,6 +318,22 @@ function NewAccount({
           />
         </label>
       </div>
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">
+          Email <span className="font-medium normal-case text-ink-soft/80">(optional — a second way to sign in)</span>
+        </span>
+        <input
+          className={field}
+          type="email"
+          inputMode="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="name@example.com"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+      </label>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-bold tracking-[0.08em] text-ink-soft uppercase">Password</span>
         <input
@@ -291,7 +364,7 @@ function NewAccount({
         </button>
         <button
           disabled={busy}
-          onClick={() => onCreate({ name, username, password, role })}
+          onClick={() => onCreate({ name, username, password, role, email })}
           className={`${PANE_ACTION_CLASS} disabled:opacity-60`}
         >
           {busy ? "Adding…" : "Add account"}

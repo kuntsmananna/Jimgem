@@ -2555,6 +2555,22 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   them, so removing one would orphan those rows or take real history with
   it. Demoting somebody and changing their password is what "they have
   left" looks like.
+- **A login matches on username or email** (v0.95, migration 036). Both
+  founders typed their Gmail address at the sign-in box and were refused —
+  the account is `anna` / `aviv`, the lookup matched the username exactly,
+  and "Incorrect username or password" was shown for a password that was
+  never checked. `readStaffForLogin` in `auth.ts` now matches
+  `lower(username) = lower($1) OR lower(email) = lower($1)`, so either one
+  gets them in and a stray capital no longer matters; a username can never
+  hold an `@` (the create route forbids it), so the two cannot be confused.
+  `staff.email` is **nullable, case-insensitively unique and seeded by
+  nobody** — an address is personal and not derivable from a username, so
+  it is set from Settings → Team, never written into a committed file. The
+  column degrades the same way as `role` and `session_version`, shed first
+  and on its own, so sign-in survives the deploy-to-paste window. The login
+  field is relabelled "Username or email" and wears
+  `autoCapitalize="none"` / `autoCorrect="off"`. Changing an email **ends
+  no session** — it is a second way in, not a credential reset.
 - **Brute force is stopped twice** (v0.94): a Vercel Firewall rule
   rate-limits `POST /login` to ten a minute per IP at the edge, and since
   migration 035 the app keeps its own **`login_attempts`** log

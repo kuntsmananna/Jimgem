@@ -48,6 +48,12 @@ export interface StaffAccount {
    * rule the snapshots and the change log follow.
    */
   role: Role;
+  /**
+   * An optional second way to sign in (migration 036): a login matches on
+   * username OR email. Null when none is set, and absent on a database
+   * still waiting for that migration — see `getStaff`.
+   */
+  email?: string | null;
 }
 
 interface FlavorRow {
@@ -113,6 +119,8 @@ interface StaffRow {
   username: string;
   /** Absent on a database still waiting for migration 030 — see getStaff. */
   role?: string | null;
+  /** Absent on a database still waiting for migration 036 — see getStaff. */
+  email?: string | null;
 }
 
 function mapFlavor(row: FlavorRow): Flavor {
@@ -478,9 +486,15 @@ export async function updateExpenseCategory(id: number, name: string): Promise<E
 export async function getStaff(): Promise<StaffAccount[]> {
   const db = getDb();
   try {
-    const { rows } = await db.query<StaffRow>("SELECT id, name, username, role FROM staff ORDER BY id");
-    return rows.map((r) => ({ id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role) }));
+    const { rows } = await db.query<StaffRow>("SELECT id, name, username, role, email FROM staff ORDER BY id");
+    return rows.map((r) => ({ id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role), email: r.email ?? null }));
   } catch (error) {
+    // Shed `email` (036) first and on its own: a database that has `role`
+    // but not `email` still wants its roles read correctly.
+    if (isMissingColumn(error, "email")) {
+      const { rows } = await db.query<StaffRow>("SELECT id, name, username, role FROM staff ORDER BY id");
+      return rows.map((r) => ({ id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role) }));
+    }
     if (!isMissingColumn(error, "role")) throw error;
     await reportMissingColumn();
     const { rows } = await db.query<StaffRow>("SELECT id, name, username FROM staff ORDER BY id");
@@ -517,14 +531,30 @@ export async function createStaff(input: {
   username: string;
   password: string;
   role: Role;
+  email?: string | null;
 }): Promise<StaffAccount> {
   const db = getDb();
   const passwordHash = await bcrypt.hash(input.password, 10);
-  const { rows } = await db.query<StaffRow>(
-    "INSERT INTO staff (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, username, role",
-    [input.name, input.username, passwordHash, input.role],
-  );
-  return { id: rows[0].id, name: rows[0].name, username: rows[0].username, role: normalizeRole(rows[0].role) };
+  const email = input.email ?? null;
+  try {
+    const { rows } = await db.query<StaffRow>(
+      "INSERT INTO staff (name, username, password_hash, role, email) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, username, role, email",
+      [input.name, input.username, passwordHash, input.role, email],
+    );
+    const r = rows[0];
+    return { id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role), email: r.email ?? null };
+  } catch (error) {
+    // Before migration 036 there is no email column — make the account
+    // anyway, minus the address it cannot store. Any other failure (a
+    // taken username, say) is the caller's to word, so it is rethrown.
+    if (!isMissingColumn(error, "email")) throw error;
+    const { rows } = await db.query<StaffRow>(
+      "INSERT INTO staff (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, username, role",
+      [input.name, input.username, passwordHash, input.role],
+    );
+    const r = rows[0];
+    return { id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role) };
+  }
 }
 
 /**
@@ -601,6 +631,24 @@ export async function updateStaffName(id: number, name: string): Promise<StaffAc
     [name, id],
   );
   return { id: rows[0].id, name: rows[0].name, username: rows[0].username, role: normalizeRole(rows[0].role) };
+}
+
+/**
+ * Set or clear the address an account may also sign in with (migration
+ * 036). An empty string clears it — back to username-only. A collision on
+ * the case-insensitive unique index surfaces as a thrown error the route
+ * words; this fails loudly before the migration has run, which is right,
+ * since there is nowhere to store the address yet.
+ */
+export async function updateStaffEmail(id: number, email: string): Promise<StaffAccount> {
+  const db = getDb();
+  const value = email.trim().toLowerCase() || null;
+  const { rows } = await db.query<StaffRow>(
+    "UPDATE staff SET email = $1 WHERE id = $2 RETURNING id, name, username, role, email",
+    [value, id],
+  );
+  const r = rows[0];
+  return { id: r.id, name: r.name, username: r.username, role: normalizeRole(r.role), email: r.email ?? null };
 }
 
 /**
