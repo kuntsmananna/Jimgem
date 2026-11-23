@@ -42,7 +42,7 @@ export default function PrivacyPage() {
         <p className="mt-1">
           A team member may choose to connect their Google Calendar. The dashboard then creates one calendar of
           its own in that Google account, named &ldquo;Gems orders&rdquo;, and writes the business&apos;s orders
-          into it as events — the date, customer name, place and what is being made. It uses Google&apos;s{" "}
+          into it as events — the date and times, customer name, place and what is being made. It uses Google&apos;s{" "}
           <code className="font-mono text-xs">calendar.app.created</code> permission, which allows access only to
           calendars the dashboard itself created. It cannot see, read or change any other calendar or event.
         </p>

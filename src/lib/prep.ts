@@ -50,7 +50,16 @@ export function prepOrders(
     .filter((order) =>
       includeQuotes ? !stages.get(order.productionStatus)?.isFinal : isOpen(order, stages),
     )
-    .sort((a, b) => a.date.localeCompare(b.date) || Number(a.key) - Number(b.key));
+    // Within a day, in the order the kitchen works it: by the first time the
+    // order needs anyone (the van, else the event's start), untimed last.
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        // Plain comparison, not localeCompare: collation sorts "~" before
+        // the digits, which would put every untimed order first.
+        compareText(firstTime(a), firstTime(b)) ||
+        Number(a.key) - Number(b.key),
+    );
 }
 
 export interface PrepSummary {
@@ -145,4 +154,16 @@ export function prepDays(orders: Order[]): { date: string; orders: Order[] }[] {
     else days.push({ date: order.date, orders: [order] });
   }
   return days;
+}
+
+/** The earliest clock time an order is due by — "~" sorts after any "HH:MM". */
+function firstTime(order: Order): string {
+  const times = [hasDelivery(order) ? order.deliveryTime : null, order.eventTime].filter(
+    (time): time is string => time !== null,
+  );
+  return times.length > 0 ? times.sort()[0] : "~";
+}
+
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }

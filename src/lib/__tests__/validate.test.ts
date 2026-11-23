@@ -53,6 +53,22 @@ const ORDER = {
 
 const errorOf = (result: { ok: boolean; error?: string }) => (result.ok ? null : result.error);
 
+describe("order times", () => {
+  it("reads a typed clock time and treats blank or missing as not set", () => {
+    const parsed = parseOrderInput({ ...ORDER, eventTime: "9:05", deliveryTime: "" });
+    expect(parsed.ok && parsed.value.eventTime).toBe("09:05");
+    expect(parsed.ok && parsed.value.deliveryTime).toBeNull();
+    const old = parseOrderInput(ORDER); // a form from before times existed
+    expect(old.ok && old.value.eventTime).toBeNull();
+  });
+  it("drops seconds and refuses what is not a time", () => {
+    const parsed = parseOrderInput({ ...ORDER, eventTime: "19:30:00" });
+    expect(parsed.ok && parsed.value.eventTime).toBe("19:30");
+    expect(errorOf(parseOrderInput({ ...ORDER, eventTime: "25:00" }))).toBe("The event time isn't a time.");
+    expect(errorOf(parseOrderInput({ ...ORDER, deliveryTime: "noon" }))).toBe("The delivery time isn't a time.");
+  });
+});
+
 describe("parseOrderInput", () => {
   it("accepts what the form sends, and passes on only the order's own fields", () => {
     const parsed = parseOrderInput(ORDER);

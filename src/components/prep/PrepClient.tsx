@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BadgeCheck, HandPlatter, Printer, Sparkles, Truck } from "lucide-react";
+import { BadgeCheck, Clock, HandPlatter, Printer, Sparkles, Truck } from "lucide-react";
 import {
   formatOrderDate,
   orderUnits,
@@ -10,6 +10,7 @@ import {
   unitsPerPackageMap,
   type DisplayOption,
   type Order,
+  hasDelivery,
 } from "@/lib/orderTypes";
 import type { Flavor, PackageType } from "@/lib/settings";
 import { PREP_WINDOWS, prepDays, prepOrders, summarizePrep, type PrepWindowId } from "@/lib/prep";
@@ -289,6 +290,24 @@ function PrepOrderCard({
           {count(orderUnits(order.packageLines, unitsPerPackage))}
         </p>
       </div>
+      {/* The two times the kitchen plans around (v0.98): when the van
+          leaves for it and when the event starts. Only those set. */}
+      {(order.eventTime || (hasDelivery(order) && order.deliveryTime)) && (
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm font-semibold tabular-nums">
+          {hasDelivery(order) && order.deliveryTime && (
+            <span className="flex items-center gap-1">
+              <Truck size={13} aria-hidden className="text-ink-soft" />
+              {order.deliveryTime}
+            </span>
+          )}
+          {order.eventTime && (
+            <span className="flex items-center gap-1">
+              <Clock size={13} aria-hidden className="text-ink-soft" />
+              Starts {order.eventTime}
+            </span>
+          )}
+        </p>
+      )}
       {order.location && (
         <p data-private className="text-sm font-semibold text-ink-soft">
           {order.location}

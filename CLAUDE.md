@@ -1495,6 +1495,47 @@ enabled** on that Cloud project, and the consent screen **In production**
   the real app — previews and production share the database, and so the
   connections.
 
+### v0.98 — when an order starts, and when its delivery is due
+
+**Run `scripts/migrate-038-order-times.sql` before shipping** (two
+nullable columns on `orders`). Every order save writes them, so until it
+is run **saving an order fails** on any deployment carrying this code —
+previews included, since they share the production database. The read
+path survives without them (`SELECT *`, and `clockTime` reads a missing
+column as "not set").
+
+- **`orders.event_time` and `orders.delivery_time`** are `TIME`, Israel's
+  wall clock with no zone — the way the orders' dates already are — and
+  `"HH:MM"` everywhere above the database (`clockTime` trims Postgres's
+  seconds; `Reader.time` in `validate.ts` accepts `9:05`, drops seconds,
+  and reads blank or missing as null, so a form from before this sends
+  null rather than failing). **Back-filled with nothing**: a guessed hour
+  in someone's calendar is worse than an all-day event.
+- **The form**: the start time sits beside the date on the Customer tab
+  (on a phone written short behind a clock, the date's own trick, with the
+  real field laid over it); the delivery time is a row under Delivery on
+  the Event tab, **drawn only while the order has a delivery**, and
+  switching delivery to None clears it.
+- **The calendar** (`orderEvents`, which replaced `orderEvent`): with a
+  start time the order is a timed event of `EVENT_MINUTES` (three hours —
+  an order has a start and no end) and shows as busy; without, it stays an
+  all-day event shown as free. **A delivered order with a delivery time
+  gets a second event**, `DELIVERY_MINUTES` long, id `gemsdlv<id>` beside
+  `gemsorder<id>` — both in Google's a–v/0–9 alphabet. Titles lead with
+  🎉 and 🚚, Google Calendar having no icons of its own. One fingerprint
+  (`eventsHash`) covers both, so `calendar_events` did not change shape; a
+  re-written order that no longer has a delivery event has it taken down,
+  and a deleted order has both taken down. `laterOnClock` carries an event
+  past midnight. The first sync after this ships rewrites every event once,
+  since every title changed.
+- **Shown where an order is read**: the phone card (Starts, Delivery), the
+  review step, and the prep sheet, which now **orders each day by the
+  first time an order needs anyone** — the van, else the start — untimed
+  last. That comparison is plain `<`, not `localeCompare`: collation sorts
+  punctuation before digits, which put every untimed order first.
+- `/privacy` says "the date and times" now, as it must whenever what goes
+  to Google changes.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

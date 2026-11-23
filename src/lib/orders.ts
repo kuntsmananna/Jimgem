@@ -127,6 +127,9 @@ interface DbOrderRow {
   client_id: number | null;
   customer_type: string | null;
   location: string | null;
+  /** TIME columns (migration 038) — "19:30:00", absent before it is run. */
+  event_time?: string | null;
+  delivery_time?: string | null;
   guests: number | null;
   mirrors: number | null;
   waitresses: number | null;
@@ -226,6 +229,16 @@ function nestDisplays(rows: DbDisplayRow[]): Map<number, OrderDisplay[]> {
   return byOrder;
 }
 
+/**
+ * A TIME column as "HH:MM". Postgres answers "19:30:00"; the form, the
+ * calendar and the cards all want the minutes and no more. Null for an
+ * unset time — and for a database still waiting for migration 038, where
+ * the column is not there at all.
+ */
+function clockTime(value: string | null | undefined): string | null {
+  return value ? value.slice(0, 5) : null;
+}
+
 function mapDbOrder(
   row: DbOrderRow,
   packageLines: OrderPackageLine[],
@@ -239,6 +252,8 @@ function mapDbOrder(
     clientId: row.client_id,
     customerType: row.customer_type ?? "",
     location: row.location ?? "",
+    eventTime: clockTime(row.event_time),
+    deliveryTime: clockTime(row.delivery_time),
     details: row.details ?? "",
     guests: row.guests,
     mirrors: row.mirrors,
@@ -483,6 +498,11 @@ const ORDER_FIELDS: { column: string; value: (input: OrderInput) => unknown }[] 
   { column: "client_id", value: (i) => i.clientId },
   { column: "customer_type", value: (i) => i.customerType },
   { column: "location", value: (i) => i.location },
+  // Migration 038. Every save writes them, so it must be run before this
+  // ships; the read path above survives without them (SELECT * just lacks
+  // the columns, and clockTime reads that as "not set").
+  { column: "event_time", value: (i) => i.eventTime },
+  { column: "delivery_time", value: (i) => i.deliveryTime },
   { column: "guests", value: (i) => i.guests },
   { column: "mirrors", value: (i) => i.mirrors },
   { column: "waitresses", value: (i) => i.waitresses },
@@ -677,6 +697,8 @@ export async function duplicateOrder(id: number): Promise<Order> {
     clientId: source.client_id,
     customerType: source.customer_type ?? "",
     location: source.location ?? "",
+    eventTime: clockTime(source.event_time),
+    deliveryTime: clockTime(source.delivery_time),
     guests: source.guests,
     mirrors: source.mirrors,
     displays: nestDisplays(displayRows).get(id) ?? [],

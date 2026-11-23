@@ -243,7 +243,12 @@ CREATE TABLE IF NOT EXISTS orders (
     CHECK (payment_status IN ('unpaid', 'deposit', 'paid', 'comp', 'net40')),
   production_status TEXT NOT NULL DEFAULT 'queue',
   notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- When the event starts and when the delivery is due, local clock
+  -- times or null (migration 038, word for word). Only read for delivery
+  -- while the order has one.
+  event_time TIME,
+  delivery_time TIME
 );
 
 -- Import provenance for orders brought over from the Google Sheet (see

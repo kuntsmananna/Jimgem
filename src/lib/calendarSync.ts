@@ -1,9 +1,17 @@
 import { after } from "next/server";
 import { getDb, isMissingTable, reportMissingTable } from "./db";
 import { getOrders } from "./orders";
-import { getDisplayOptions, getFlavors, getPackageTypes, getProductionStages } from "./settings";
+import { getDeliveryOptions, getDisplayOptions, getFlavors, getPackageTypes, getProductionStages } from "./settings";
 import { stageMap, type Order } from "./orderTypes";
-import { calendarEventId, eventHash, orderEvent, type CalendarEventBody, type EventContext } from "./calendarEvent";
+import {
+  TIME_ZONE,
+  calendarEventId,
+  deliveryEventId,
+  eventsHash,
+  orderEvents,
+  type CalendarEventBody,
+  type EventContext,
+} from "./calendarEvent";
 import { RefreshRevokedError, refreshAccessToken, revokeToken } from "./googleOAuth";
 
 /**
@@ -31,7 +39,6 @@ import { RefreshRevokedError, refreshAccessToken, revokeToken } from "./googleOA
 
 const API = "https://www.googleapis.com/calendar/v3";
 const CALENDAR_NAME = "Gems orders";
-const TIME_ZONE = "Asia/Jerusalem";
 /** How far back a sync reaches. Older events are left as they were written. */
 const LOOKBACK_DAYS = 31;
 /** Calls in flight at once per calendar — gentle on Google's rate limit. */
@@ -195,12 +202,8 @@ async function putEvent(accessToken: string, calendarId: string, event: Calendar
   if (!response.ok) throw await failure(response, "event write");
 }
 
-async function deleteEvent(accessToken: string, calendarId: string, orderId: number): Promise<void> {
-  const response = await google(
-    accessToken,
-    "DELETE",
-    `/calendars/${encodeURIComponent(calendarId)}/events/${calendarEventId(orderId)}`,
-  );
+async function deleteEvent(accessToken: string, calendarId: string, eventId: string): Promise<void> {
+  const response = await google(accessToken, "DELETE", `/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`);
   // 404 / 410: already gone, which is the state this was asking for.
   if (!response.ok && response.status !== 404 && response.status !== 410) throw await failure(response, "event delete");
 }
@@ -220,13 +223,14 @@ function lookbackStart(): string {
 
 /** The orders and lookups every connection's sync reads — loaded once per run. */
 async function loadContext(appUrl: string): Promise<{ orders: Order[]; ctx: EventContext }> {
-  const [orders, packageTypes, flavors, displays, stages] = await Promise.all([
+  const [orders, packageTypes, flavors, displays, deliveries, stages] = await Promise.all([
     getOrders(),
     // Archived included: these resolve rows already stored, and an order
     // that used a since-retired package must still say what it holds.
     getPackageTypes(true),
     getFlavors(true),
     getDisplayOptions(true),
+    getDeliveryOptions(true),
     getProductionStages(true),
   ]);
   return {
@@ -236,6 +240,7 @@ async function loadContext(appUrl: string): Promise<{ orders: Order[]; ctx: Even
       packageNames: new Map(packageTypes.map((type) => [type.id, type.name])),
       flavorNames: new Map(flavors.map((flavor) => [flavor.id, flavor.name])),
       displayNames: new Map(displays.map((option) => [option.id, option.name])),
+      deliveryNames: new Map(deliveries.map((option) => [option.id, option.name])),
       stages: stageMap(stages),
       appUrl,
     },
@@ -307,12 +312,18 @@ async function syncOne(
     const hashes = new Map(stored.map((row) => [row.order_id, row.content_hash]));
 
     const changed = orders
-      .map((order) => ({ orderId: Number(order.key), event: orderEvent(order, ctx) }))
-      .map((entry) => ({ ...entry, hash: eventHash(entry.event) }))
+      .map((order) => ({ orderId: Number(order.key), events: orderEvents(order, ctx) }))
+      .map((entry) => ({ ...entry, hash: eventsHash(entry.events) }))
       .filter((entry) => hashes.get(entry.orderId) !== entry.hash);
 
-    await inBatches(changed, async ({ orderId, event, hash }) => {
-      await putEvent(accessToken, connection.calendar_id, event);
+    await inBatches(changed, async ({ orderId, events, hash }) => {
+      for (const event of events) await putEvent(accessToken, connection.calendar_id, event);
+      // An order written before may have had a delivery event that it no
+      // longer has (delivery switched off, or its time cleared) — take it
+      // down. Skipped on the first fill, where there is nothing to remove.
+      if (hashes.has(orderId) && !events.some((event) => event.id === deliveryEventId(orderId))) {
+        await deleteEvent(accessToken, connection.calendar_id, deliveryEventId(orderId));
+      }
       await db.query(
         `INSERT INTO calendar_events (staff_id, order_id, content_hash, synced_at) VALUES ($1, $2, $3, now())
          ON CONFLICT (staff_id, order_id) DO UPDATE SET content_hash = EXCLUDED.content_hash, synced_at = now()`,
@@ -323,7 +334,8 @@ async function syncOne(
 
     const gone = stored.map((row) => row.order_id).filter((orderId) => !live.has(orderId));
     await inBatches(gone, async (orderId) => {
-      await deleteEvent(accessToken, connection.calendar_id, orderId);
+      await deleteEvent(accessToken, connection.calendar_id, calendarEventId(orderId));
+      await deleteEvent(accessToken, connection.calendar_id, deliveryEventId(orderId));
       await db.query("DELETE FROM calendar_events WHERE staff_id = $1 AND order_id = $2", [staffId, orderId]);
       removed += 1;
     });

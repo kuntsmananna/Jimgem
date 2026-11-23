@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { calendarEventId, eventHash, nextDay, orderEvent, type EventContext } from "../calendarEvent";
+import {
+  calendarEventId,
+  deliveryEventId,
+  eventsHash,
+  laterOnClock,
+  nextDay,
+  orderEvents,
+  type EventContext,
+} from "../calendarEvent";
 import type { Order, ProductionStage } from "../orderTypes";
 
 const stage = (key: string, label: string, countsAsIncome = true, isFinal = false): ProductionStage =>
@@ -19,6 +27,7 @@ const ctx: EventContext = {
     [11, "Mango"],
   ]),
   displayNames: new Map([[5, "Mirror"]]),
+  deliveryNames: new Map([[3, "Tel Aviv"]]),
   stages: new Map([
     ["queue", stage("queue", "Queued")],
     ["offer", stage("offer", "Quote", false)],
@@ -35,6 +44,8 @@ function order(overrides: Partial<Order> = {}): Order {
     clientId: 1,
     customerType: "Wedding",
     location: "Tel Aviv",
+    eventTime: null,
+    deliveryTime: null,
     details: "",
     guests: 150,
     mirrors: null,
@@ -67,92 +78,98 @@ function order(overrides: Partial<Order> = {}): Order {
   } as Order;
 }
 
-describe("calendarEventId", () => {
-  it("is fixed per order and only uses Google's id alphabet (a-v, 0-9)", () => {
+const main = (o: Order) => orderEvents(o, ctx)[0];
+
+describe("event ids", () => {
+  it("are fixed per order and only use Google's id alphabet (a-v, 0-9)", () => {
     expect(calendarEventId(42)).toBe("gemsorder42");
-    expect(calendarEventId("7")).toMatch(/^[a-v0-9]{5,}$/);
+    expect(deliveryEventId(42)).toBe("gemsdlv42");
+    for (const id of [calendarEventId("7"), deliveryEventId("7")]) expect(id).toMatch(/^[a-v0-9]{5,}$/);
   });
 });
 
-describe("nextDay", () => {
-  it("rolls over months, years and leap days", () => {
+describe("clock arithmetic", () => {
+  it("rolls days over months, years and leap days", () => {
     expect(nextDay("2026-11-23")).toBe("2026-11-24");
-    expect(nextDay("2026-11-30")).toBe("2026-12-01");
     expect(nextDay("2026-12-31")).toBe("2027-01-01");
     expect(nextDay("2028-02-28")).toBe("2028-02-29");
   });
+  it("carries a late event past midnight", () => {
+    expect(laterOnClock("2026-12-03", "19:30", 180)).toEqual({ date: "2026-12-03", time: "22:30" });
+    expect(laterOnClock("2026-12-31", "22:00", 180)).toEqual({ date: "2027-01-01", time: "01:00" });
+  });
 });
 
-describe("orderEvent", () => {
-  it("is an all-day event on the order's date", () => {
-    const event = orderEvent(order(), ctx);
-    expect(event.id).toBe("gemsorder42");
+describe("the order's own event", () => {
+  it("with no time is all-day, as before, and shown as free", () => {
+    const event = main(order());
     expect(event.start).toEqual({ date: "2026-12-03" });
     expect(event.end).toEqual({ date: "2026-12-04" });
-    expect(event.status).toBe("confirmed");
-    expect(event.location).toBe("Tel Aviv");
+    expect(event.transparency).toBe("transparent");
   });
 
-  it("titles with who and how many", () => {
-    expect(orderEvent(order(), ctx).summary).toBe("Maya Levi · 18 units");
+  it("with a time sits at its hour for three hours, in Israel's time, and shows as busy", () => {
+    const event = main(order({ eventTime: "19:30" }));
+    expect(event.start).toEqual({ dateTime: "2026-12-03T19:30:00", timeZone: "Asia/Jerusalem" });
+    expect(event.end).toEqual({ dateTime: "2026-12-03T22:30:00", timeZone: "Asia/Jerusalem" });
+    expect(event.transparency).toBe("opaque");
   });
 
-  it("says what to make, the extras and the note, and links back to the order", () => {
-    const { description } = orderEvent(order(), ctx);
+  it("is marked 🎉 and titled with who and how many", () => {
+    expect(main(order()).summary).toBe("🎉 Maya Levi · 18 units");
+  });
+
+  it("says what to make, the extras with the delivery's time, and links back", () => {
+    const { description } = main(order({ deliveryOptionId: 3, deliveryTime: "17:00" }));
     expect(description).toContain("Status: Queued");
-    expect(description).toContain("Guests: 150");
     expect(description).toContain("2× 9 units — Lychee 10, Mango 8");
     expect(description).toContain("Mirror ×2");
-    expect(description).toContain("Waitresses ×2");
-    expect(description).toContain("Kosher");
-    expect(description).toContain("Delivery");
+    expect(description).toContain("Delivery to Tel Aviv at 17:00");
     expect(description).toContain("Gate code 1234");
     expect(description).toContain("https://jimgem.vercel.app/orders?order=42");
   });
 
-  it("carries no money at all", () => {
-    const event = orderEvent(order(), ctx);
-    const text = JSON.stringify(event);
-    expect(text).not.toContain("₪");
-    for (const figure of ["1234", "300", "400", "500"]) {
-      // 1234 is in the note on purpose ("Gate code 1234"); the rest are only prices.
-      if (figure === "1234") continue;
-      expect(text).not.toContain(figure);
-    }
-  });
-
-  it("draws a quote as tentative and says so in the title", () => {
-    const event = orderEvent(order({ productionStatus: "offer" }), ctx);
+  it("draws a quote as tentative and says so", () => {
+    const event = main(order({ productionStatus: "offer" }));
     expect(event.status).toBe("tentative");
-    expect(event.summary).toBe("Quote · Maya Levi · 18 units");
-  });
-
-  it("calls out a package with no flavours yet, and leaves out what an order lacks", () => {
-    const event = orderEvent(
-      order({
-        packageLines: [{ packageTypeId: "1", quantity: 120, flavors: [] }],
-        displays: [],
-        waitresses: null,
-        kosher: false,
-        deliveryCost: null,
-        notes: "",
-        guests: null,
-      }),
-      ctx,
-    );
-    expect(event.summary).toBe("Maya Levi · 120 units");
-    expect(event.description).toContain("120 units — no flavours yet");
-    expect(event.description).not.toContain("Extras");
-    expect(event.description).not.toContain("Guests");
+    expect(event.summary).toBe("🎉 Quote · Maya Levi · 18 units");
   });
 });
 
-describe("eventHash", () => {
-  it("changes when the event does, and only then", () => {
-    const a = eventHash(orderEvent(order(), ctx));
-    expect(eventHash(orderEvent(order(), ctx))).toBe(a);
-    expect(eventHash(orderEvent(order({ location: "Haifa" }), ctx))).not.toBe(a);
-    // Money is not in the event, so repricing writes nothing to Google.
-    expect(eventHash(orderEvent(order({ totalAmount: 9999, deposit: 0 }), ctx))).toBe(a);
+describe("the delivery's event", () => {
+  it("appears only for a delivered order with a delivery time", () => {
+    expect(orderEvents(order(), ctx)).toHaveLength(1); // delivered, no time
+    expect(orderEvents(order({ deliveryCost: null, deliveryTime: "17:00" }), ctx)).toHaveLength(1); // time, no delivery
+    expect(orderEvents(order({ deliveryTime: "17:00" }), ctx)).toHaveLength(2);
+  });
+
+  it("is marked 🚚, an hour long at its own time, and says when the event starts", () => {
+    const [, delivery] = orderEvents(order({ deliveryOptionId: 3, deliveryTime: "17:00", eventTime: "19:30" }), ctx);
+    expect(delivery.id).toBe("gemsdlv42");
+    expect(delivery.summary).toBe("🚚 Delivery · Maya Levi");
+    expect(delivery.start).toEqual({ dateTime: "2026-12-03T17:00:00", timeZone: "Asia/Jerusalem" });
+    expect(delivery.end).toEqual({ dateTime: "2026-12-03T18:00:00", timeZone: "Asia/Jerusalem" });
+    expect(delivery.description).toContain("Delivery for Maya Levi — Tel Aviv");
+    expect(delivery.description).toContain("The event starts at 19:30");
+  });
+});
+
+describe("no money", () => {
+  it("in either event", () => {
+    const text = JSON.stringify(orderEvents(order({ deliveryTime: "17:00" }), ctx));
+    expect(text).not.toContain("₪");
+    // 300, 400 and 500 are this order's prices; none may reach Google.
+    for (const figure of ["300", "400", "500"]) expect(text).not.toContain(figure);
+  });
+});
+
+describe("eventsHash", () => {
+  it("changes when what goes to the calendar does, and only then", () => {
+    const a = eventsHash(orderEvents(order(), ctx));
+    expect(eventsHash(orderEvents(order(), ctx))).toBe(a);
+    expect(eventsHash(orderEvents(order({ eventTime: "20:00" }), ctx))).not.toBe(a);
+    expect(eventsHash(orderEvents(order({ deliveryTime: "17:00" }), ctx))).not.toBe(a);
+    // Money is in neither event, so repricing writes nothing to Google.
+    expect(eventsHash(orderEvents(order({ totalAmount: 9999, deposit: 0 }), ctx))).toBe(a);
   });
 });

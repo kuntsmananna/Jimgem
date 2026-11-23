@@ -95,6 +95,19 @@ class Reader {
     return value as T;
   }
 
+  /**
+   * A clock time, "HH:MM" (seconds tolerated and dropped), or null when
+   * blank or absent — an order with no time yet is the ordinary case.
+   */
+  time(key: string, label: string): string | null {
+    const value = this.body[key];
+    if (value === undefined || value === null || value === "") return null;
+    if (typeof value !== "string") throw new Invalid(`${label} isn't a time.`);
+    const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(value.trim());
+    if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) throw new Invalid(`${label} isn't a time.`);
+    return `${match[1].padStart(2, "0")}:${match[2]}`;
+  }
+
   list(key: string, label: string, max: number): Record<string, unknown>[] {
     const value = this.body[key];
     if (value === undefined || value === null) return [];
@@ -149,6 +162,8 @@ export function parseOrderInput(body: unknown): Parsed<OrderInput> {
       clientId: r.id("clientId", "The client"),
       customerType: r.text("customerType", "The order type"),
       location: r.text("location", "The location"),
+      eventTime: r.time("eventTime", "The event time"),
+      deliveryTime: r.time("deliveryTime", "The delivery time"),
       guests: optionalCount("guests", "Guests"),
       mirrors: optionalCount("mirrors", "Mirrors"),
       displays: r.list("displays", "Displays", 50).map((item) => {

@@ -7,7 +7,7 @@ import {
   formatOrderDate,
   orderWeekday,
 } from "@/lib/orderTypes";
-import { CalendarDays, ExternalLink, MapPin } from "lucide-react";
+import { CalendarDays, Clock, ExternalLink, MapPin } from "lucide-react";
 import { TextInput, TextArea } from "@/components/Field";
 import { useIsMobile } from "@/components/useMediaQuery";
 import { useOrderTypes } from "@/components/OrderTypesContext";
@@ -173,6 +173,38 @@ export function OrderCustomerPanel({
               // is sized to the date plus its picker button and no further.
               className="w-[8.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums max-md:w-[10.5rem]"
             />
+            )}
+            {/*
+              When the event starts (v0.98) — beside the date because it is
+              the rest of the same answer, and it is what places the order
+              at its hour in a connected Google Calendar. Optional: blank
+              keeps the order an all-day event. On a phone it is written
+              short behind a clock, the date's own trick, with the real
+              time field laid over it so a tap opens the phone's picker.
+            */}
+            {mobile ? (
+              <label className="relative flex shrink-0 items-center gap-1.5 rounded-xl py-1.5 pr-2 pl-2 text-base active:bg-ink/[0.06]">
+                <Clock size={15} aria-hidden className="text-ink-soft" />
+                <span className={`tabular-nums ${draft.eventTime ? "" : "text-ink-soft"}`}>
+                  {draft.eventTime ?? "Time"}
+                </span>
+                <input
+                  type="time"
+                  value={draft.eventTime ?? ""}
+                  onChange={(e) => set({ eventTime: e.target.value || null })}
+                  aria-label="Event start time"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+            ) : (
+              <TextInput
+                type="time"
+                value={draft.eventTime ?? ""}
+                onChange={(e) => set({ eventTime: e.target.value || null })}
+                aria-label="Event start time"
+                title="When the event starts"
+                className="w-[6.5rem] shrink-0 px-2.5 py-1.5 text-sm tabular-nums"
+              />
             )}
             <label className="relative flex min-w-0 flex-1 items-center">
               <MapPin

@@ -13,6 +13,7 @@ import { ChipSpread, spreadOptions } from "./ChipSpread";
 import { GroupLabel, SheetRow, YesNo } from "./OrderSheet";
 import { NumberStepper } from "./PackageLineEditor";
 import { useCanSeeMoney } from "@/components/RoleContext";
+import { TextInput } from "@/components/Field";
 
 /**
  * The Event tab: how big the event is and what it needs beyond the jelly.
@@ -131,15 +132,16 @@ export function OrderEventPanel({
           showLabel={false}
           endOnPhone
           value={hasDelivery(draft) ? String(draft.deliveryOptionId ?? "other") : "none"}
-          onChange={(value) =>
-            onChange(
-              withDelivery(
-                draft,
-                value !== "none",
-                value === "other" || value === "none" ? null : Number(value),
-              ),
-            )
-          }
+          onChange={(value) => {
+            const next = withDelivery(
+              draft,
+              value !== "none",
+              value === "other" || value === "none" ? null : Number(value),
+            );
+            // No delivery, no delivery time: left behind, it would come back
+            // the moment delivery was switched on again for some other trip.
+            onChange(value === "none" ? { ...next, deliveryTime: null } : next);
+          }}
           options={[
             { value: "none", label: "None" },
             ...spreadOptions(
@@ -158,6 +160,25 @@ export function OrderEventPanel({
           ]}
         />
       </section>
+      {/*
+        When the van has to be there (v0.98). Only while there is a delivery
+        — a time for a trip nobody is making says nothing. With a time, the
+        delivery becomes a calendar event of its own (🚚) beside the
+        order's (🎉); without one it is a line in the order's event.
+      */}
+      {hasDelivery(draft) && (
+        <div className="-mt-3 max-md:mt-0">
+          <SheetRow label="Delivery time">
+            <TextInput
+              type="time"
+              value={draft.deliveryTime ?? ""}
+              onChange={(e) => onChange({ ...draft, deliveryTime: e.target.value || null })}
+              aria-label="Delivery time"
+              className="w-[6.5rem] px-2.5 py-1.5 text-sm tabular-nums max-md:w-[7.5rem]"
+            />
+          </SheetRow>
+        </div>
+      )}
       {hasDelivery(draft) && (
         <p className="-mt-3 text-[11px] text-ink-soft">
             {draft.deliveryOptionId === null

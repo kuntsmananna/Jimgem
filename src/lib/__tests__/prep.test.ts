@@ -11,6 +11,8 @@ const BASE: Order = {
   clientId: null,
   customerType: "Wedding",
   location: "",
+  eventTime: null,
+  deliveryTime: null,
   details: "",
   guests: null,
   mirrors: null,
@@ -77,6 +79,17 @@ describe("prepOrders", () => {
       order({ key: "4", date: "2026-10-29" }),
     ];
     expect(prepOrders(orders, STAGES, window, false).map((o) => o.key)).toEqual(["1", "2"]);
+  });
+
+  it("orders a day by the first time each order needs anyone, untimed last", () => {
+    const day = "2026-11-01";
+    const orders = [
+      order({ key: "1", date: day }), // no time
+      order({ key: "2", date: day, eventTime: "20:00" }),
+      order({ key: "3", date: day, eventTime: "21:00", deliveryCost: 0, deliveryTime: "18:30" }), // van first
+      order({ key: "4", date: day, eventTime: "19:00", deliveryCost: null, deliveryTime: "08:00" }), // no delivery: its time is not read
+    ];
+    expect(prepOrders(orders, STAGES, window, false).map((o) => o.key)).toEqual(["3", "4", "2", "1"]);
   });
 
   it("leaves out finished orders, and quotes unless asked", () => {

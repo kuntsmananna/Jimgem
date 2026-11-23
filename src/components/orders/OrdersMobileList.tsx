@@ -14,6 +14,7 @@ import {
   paymentBadgeClass,
   type Order,
   type PaymentStatus,
+  hasDelivery,
 } from "@/lib/orderTypes";
 import { paymentMethodIconElement } from "@/lib/icons";
 import { count, currency } from "@/lib/money";
@@ -198,6 +199,9 @@ function OrderCard({
             single character — a card that shows less than the table it
             replaced. Across both columns it gets ~270px. */}
         {order.location && <Figure label="Location" value={order.location} wide isPrivate />}
+        {/* When it starts and when the van goes (v0.98) — only the ones set. */}
+        {order.eventTime && <Figure label="Starts" value={order.eventTime} />}
+        {hasDelivery(order) && order.deliveryTime && <Figure label="Delivery" value={order.deliveryTime} />}
         {order.guests !== null && (
           <div className="flex items-baseline justify-between gap-2">
             <dt className="shrink-0 text-ink-soft">Guests</dt>

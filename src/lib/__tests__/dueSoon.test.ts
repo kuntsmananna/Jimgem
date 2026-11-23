@@ -3,7 +3,7 @@ import { dueSoon } from "../dueSoon";
 import type { Order, ProductionStage } from "../orderTypes";
 
 const BASE = {
-  key: "1", source: "db", date: "2026-10-30", customer: "Noa", clientId: null, customerType: "", location: "",
+  key: "1", source: "db", date: "2026-10-30", customer: "Noa", clientId: null, customerType: "", location: "", eventTime: null, deliveryTime: null,
   details: "", guests: null, mirrors: null, displays: [], waitresses: null, kosher: false, packageLines: [],
   totalAmount: 1000, deliveryCost: null, deliveryOptionId: null, mirrorsCost: null, displayCost: null,
   waitressCost: null, kosherCost: null, discount: 0, discountIsPercent: false, vatMode: "exempt", vatRate: 0,

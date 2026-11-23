@@ -25,6 +25,8 @@ const ORDER: Order = {
   clientId: 3,
   customerType: "Wedding",
   location: "Tel Aviv",
+  eventTime: null,
+  deliveryTime: null,
   details: "",
   guests: 120,
   mirrors: 2,

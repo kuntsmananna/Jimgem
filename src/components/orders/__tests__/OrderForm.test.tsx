@@ -44,6 +44,8 @@ const ORDER: Order = {
   clientId: 7,
   customerType: "",
   location: "",
+  eventTime: null,
+  deliveryTime: null,
   details: "",
   guests: null,
   mirrors: null,
@@ -188,6 +190,21 @@ describe("editing an order", () => {
     expect(body.totalAmount).toBe(180);
     // An order already linked to a client does not create another.
     expect(fetchMock.mock.calls.some(([url]) => url === "/api/clients")).toBe(false);
+  });
+
+  it("sends the event's start time and, with a delivery, the delivery time", async () => {
+    renderForm({ order: { ...ORDER, deliveryCost: 0 } });
+    fireEvent.change(screen.getByLabelText("Event start time"), { target: { value: "19:30" } });
+    fireEvent.change(screen.getByLabelText("Delivery time"), { target: { value: "17:15" } });
+    await press("Save changes");
+    const body = sentOrder();
+    expect(body.eventTime).toBe("19:30");
+    expect(body.deliveryTime).toBe("17:15");
+  });
+
+  it("offers no delivery time for an order with no delivery", async () => {
+    renderForm({ order: { ...ORDER, deliveryCost: null } });
+    expect(screen.queryByLabelText("Delivery time")).toBeNull();
   });
 
   it("does not show a staff login any money", async () => {

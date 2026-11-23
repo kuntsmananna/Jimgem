@@ -45,6 +45,8 @@ function anOrder(over: Partial<OrderInput> = {}): OrderInput {
     clientId: null,
     customerType: "",
     location: "",
+    eventTime: null,
+    deliveryTime: null,
     guests: null,
     mirrors: null,
     displays: [],

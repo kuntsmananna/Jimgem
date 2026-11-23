@@ -341,6 +341,17 @@ export interface Order {
   customerType: string;
   location: string;
   /**
+   * When the event starts, "HH:MM" (24-hour, Israel time), or null when
+   * nobody has said. With it the order sits in a calendar at its hour;
+   * without, it is an all-day event as before (v0.98, migration 038).
+   */
+  eventTime: string | null;
+  /**
+   * When the delivery is due, "HH:MM", or null. Read only while the order
+   * has a delivery (`hasDelivery`); it becomes a calendar event of its own.
+   */
+  deliveryTime: string | null;
+  /**
    * The Sheet's פירוט cell, exactly as imported. **Legacy and unread** —
    * migration 004 folded this text into `notes`, which is the editable
    * field the UI shows, and the importer now does the same for new rows.
@@ -470,6 +481,17 @@ export interface OrderInput {
   clientId: number | null;
   customerType: string;
   location: string;
+  /**
+   * When the event starts, "HH:MM" (24-hour, Israel time), or null when
+   * nobody has said. With it the order sits in a calendar at its hour;
+   * without, it is an all-day event as before (v0.98, migration 038).
+   */
+  eventTime: string | null;
+  /**
+   * When the delivery is due, "HH:MM", or null. Read only while the order
+   * has a delivery (`hasDelivery`); it becomes a calendar event of its own.
+   */
+  deliveryTime: string | null;
   guests: number | null;
   /**
    * Legacy and unread: displays became a list (see `displays`), and

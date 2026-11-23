@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, MapPin, Pencil, UserRound } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Pencil, UserRound } from "lucide-react";
 import {
   type OrderInput,
   type OrderPackageLine,
@@ -88,6 +88,12 @@ export function OrderReview({
             <CalendarDays size={15} aria-hidden className="text-ink-soft" />
             {orderWeekday(draft.date)} {formatOrderDate(draft.date)}
           </span>
+          {draft.eventTime && (
+            <span className="flex items-center gap-1.5 tabular-nums">
+              <Clock size={15} aria-hidden className="text-ink-soft" />
+              {draft.eventTime}
+            </span>
+          )}
           {draft.location && (
             <span className="flex min-w-0 items-center gap-1.5">
               <MapPin size={15} aria-hidden className="shrink-0 text-ink-soft" />
