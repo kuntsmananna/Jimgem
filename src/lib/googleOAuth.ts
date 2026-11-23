@@ -15,15 +15,26 @@ import crypto from "crypto";
  * read, and `googleapis` (already installed, for the Sheet) would pull its
  * auth stack onto the login path for three requests.
  *
- * **The scope is identity only** — `openid email profile`. The calendar
- * sync that follows will ask each admin for calendar access separately, at
- * the moment they connect a calendar; asking for it here would show every
- * person signing in a consent screen about their calendar.
+ * **Two flows share one callback.** Signing in asks for identity only
+ * (`openid email profile`). Connecting a calendar (v0.97) is asked for
+ * separately, by an admin who is already signed in, and adds
+ * `calendar.app.created` — the narrowest calendar scope Google offers: the
+ * app may make calendars of its own and write inside them, and cannot see
+ * or change anything else in the person's calendar. Asking for it at
+ * sign-in would show everyone a consent screen about their calendar. The
+ * flow cookie carries which of the two it is, so the callback (one
+ * registered redirect URI) knows what to do with the code.
  */
 
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const USERINFO_ENDPOINT = "https://openidconnect.googleapis.com/v1/userinfo";
+const REVOKE_ENDPOINT = "https://oauth2.googleapis.com/revoke";
+
+/** Make calendars of its own, and write only inside them. */
+export const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
+
+export type FlowKind = "signin" | "calendar";
 
 export const GOOGLE_CALLBACK_PATH = "/api/auth/google/callback";
 
@@ -81,11 +92,16 @@ export interface FlowStart {
  * The redirect out. `state` defends the callback against a forged return
  * (someone else's code landing in this browser); PKCE binds the code to
  * this browser's verifier, so a code intercepted on the way back is useless
- * without the cookie. `prompt=select_account` so somebody signed into two
- * Google accounts — a personal and a work one — picks, rather than being
- * signed in silently as whichever was used last.
+ * without the cookie.
+ *
+ * Signing in uses `prompt=select_account`, so somebody signed into two
+ * Google accounts picks rather than being signed in silently as whichever
+ * was used last. Connecting a calendar uses `prompt=consent` with
+ * `access_type=offline`, which is what makes Google hand back a refresh
+ * token — the thing that lets the app keep writing to the calendar after
+ * the person has gone — every time, including on a reconnect.
  */
-export function startFlow(origin: string): FlowStart | null {
+export function startFlow(origin: string, kind: FlowKind = "signin", loginHint?: string): FlowStart | null {
   const config = readConfig();
   if (!config) return null;
   const state = randomToken();
@@ -94,21 +110,35 @@ export function startFlow(origin: string): FlowStart | null {
     client_id: config.clientId,
     redirect_uri: callbackUrl(origin),
     response_type: "code",
-    scope: "openid email profile",
+    scope: kind === "calendar" ? `openid email ${CALENDAR_SCOPE}` : "openid email profile",
     state,
     code_challenge: pkceChallenge(verifier),
     code_challenge_method: "S256",
-    prompt: "select_account",
   });
-  return { url: `${AUTH_ENDPOINT}?${params}`, cookieValue: `${state}.${verifier}` };
+  if (kind === "calendar") {
+    params.set("access_type", "offline");
+    params.set("prompt", "consent");
+    if (loginHint) params.set("login_hint", loginHint);
+  } else {
+    params.set("prompt", "select_account");
+  }
+  return { url: `${AUTH_ENDPOINT}?${params}`, cookieValue: `${kind}.${state}.${verifier}` };
 }
 
-/** Splits the flow cookie back into its two halves, or null if it is not one. */
-export function parseFlowCookie(value: string | undefined): { state: string; verifier: string } | null {
+/**
+ * Splits the flow cookie back into its three parts, or null if it is not
+ * one. A state and a verifier are base64url, which has no dot, so the dots
+ * are unambiguous.
+ */
+export function parseFlowCookie(
+  value: string | undefined,
+): { kind: FlowKind; state: string; verifier: string } | null {
   if (!value) return null;
-  const dot = value.indexOf(".");
-  if (dot <= 0 || dot === value.length - 1) return null;
-  return { state: value.slice(0, dot), verifier: value.slice(dot + 1) };
+  const parts = value.split(".");
+  if (parts.length !== 3) return null;
+  const [kind, state, verifier] = parts;
+  if ((kind !== "signin" && kind !== "calendar") || !state || !verifier) return null;
+  return { kind, state, verifier };
 }
 
 /** Constant-time string comparison, so the state check leaks nothing by timing. */
@@ -123,23 +153,21 @@ export interface GoogleIdentity {
   name: string | null;
 }
 
+export interface GoogleTokens {
+  accessToken: string;
+  /** Only on a consent with `access_type=offline` — the calendar flow. */
+  refreshToken: string | null;
+}
+
 /**
- * The code exchange and the profile read, both server-to-server over TLS
- * with the client secret — which is what makes the answer trustworthy
- * without verifying a token's signature here: it came from Google directly,
- * not through the browser.
- *
- * Returns null on anything short of a **verified** address. A Google
- * account can be opened on any email address, and until its owner clicks
- * the link Google sends, nobody has proved they control it — so accepting
- * an unverified one would let a stranger open a Google account on a staff
- * member's address and sign in as them.
+ * The code exchange, server-to-server over TLS with the client secret —
+ * which is what makes the answer trustworthy without verifying a token's
+ * signature here: it came from Google directly, not through the browser.
  */
-export async function identityFromCode(code: string, verifier: string, origin: string): Promise<GoogleIdentity | null> {
+export async function exchangeCode(code: string, verifier: string, origin: string): Promise<GoogleTokens | null> {
   const config = readConfig();
   if (!config) return null;
-
-  const tokenResponse = await fetch(TOKEN_ENDPOINT, {
+  const response = await fetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -151,21 +179,81 @@ export async function identityFromCode(code: string, verifier: string, origin: s
       code_verifier: verifier,
     }),
   });
-  if (!tokenResponse.ok) {
-    console.error("Google token exchange failed:", tokenResponse.status);
+  if (!response.ok) {
+    console.error("Google token exchange failed:", response.status);
     return null;
   }
-  const tokens = (await tokenResponse.json()) as { access_token?: string };
+  const tokens = (await response.json()) as { access_token?: string; refresh_token?: string };
   if (!tokens.access_token) return null;
+  return { accessToken: tokens.access_token, refreshToken: tokens.refresh_token ?? null };
+}
 
-  const profileResponse = await fetch(USERINFO_ENDPOINT, {
-    headers: { Authorization: `Bearer ${tokens.access_token}` },
-  });
-  if (!profileResponse.ok) {
-    console.error("Google profile read failed:", profileResponse.status);
+/**
+ * Who the token belongs to. Null on anything short of a **verified**
+ * address. A Google account can be opened on any email address, and until
+ * its owner clicks the link Google sends, nobody has proved they control
+ * it — so accepting an unverified one would let a stranger open a Google
+ * account on a staff member's address and sign in as them.
+ */
+export async function fetchIdentity(accessToken: string): Promise<GoogleIdentity | null> {
+  const response = await fetch(USERINFO_ENDPOINT, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) {
+    console.error("Google profile read failed:", response.status);
     return null;
   }
-  const profile = (await profileResponse.json()) as { email?: string; email_verified?: boolean; name?: string };
+  const profile = (await response.json()) as { email?: string; email_verified?: boolean; name?: string };
   if (!profile.email || profile.email_verified !== true) return null;
   return { email: profile.email.toLowerCase(), name: profile.name ?? null };
+}
+
+/** Sign-in's two steps in one: the code to a verified identity, or null. */
+export async function identityFromCode(code: string, verifier: string, origin: string): Promise<GoogleIdentity | null> {
+  const tokens = await exchangeCode(code, verifier, origin);
+  return tokens ? fetchIdentity(tokens.accessToken) : null;
+}
+
+/**
+ * Google has withdrawn the refresh token — the person removed the app from
+ * their Google account, changed their password, or (while the consent
+ * screen is still in Testing) seven days have passed. Not a fault to retry:
+ * the connection has to be made again.
+ */
+export class RefreshRevokedError extends Error {
+  constructor() {
+    super("Google no longer accepts this calendar connection. Connect it again.");
+    this.name = "RefreshRevokedError";
+  }
+}
+
+/** A fresh access token from a stored refresh token. */
+export async function refreshAccessToken(refreshToken: string): Promise<string> {
+  const config = readConfig();
+  if (!config) throw new Error("Google sign-in is not configured.");
+  const response = await fetch(TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    if (body.error === "invalid_grant") throw new RefreshRevokedError();
+    throw new Error(`Google token refresh failed (${response.status}).`);
+  }
+  const tokens = (await response.json()) as { access_token?: string };
+  if (!tokens.access_token) throw new Error("Google returned no access token.");
+  return tokens.access_token;
+}
+
+/** Withdraws a token at Google. Best effort: a token already dead is fine. */
+export async function revokeToken(token: string): Promise<void> {
+  await fetch(REVOKE_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token }),
+  }).catch(() => undefined);
 }

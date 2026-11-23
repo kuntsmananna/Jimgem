@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { captureSnapshot } from "@/lib/backup";
 import { rollForwardRecurring } from "@/lib/recurringExpenses";
+import { appUrlFor, syncCalendars } from "@/lib/calendarSync";
 
 // Reading every table and writing the document back is more work than a
 // page render, and it runs while nobody is watching.
@@ -47,10 +48,20 @@ export async function GET(request: NextRequest) {
     recurring = { error: error instanceof Error ? error.message : "Roll-forward failed." };
   }
 
+  // The calendars' net (v0.97): every save already syncs, but a save whose
+  // sync was cut short, or Google being down for a minute, is caught up
+  // here. Reported, never thrown, for the reason the roll-forward is.
+  let calendars: unknown;
   try {
-    return NextResponse.json({ recurring, snapshot: await captureSnapshot("nightly") });
+    calendars = await syncCalendars({ appUrl: appUrlFor(request.nextUrl.origin) });
+  } catch (error) {
+    calendars = { error: error instanceof Error ? error.message : "Calendar sync failed." };
+  }
+
+  try {
+    return NextResponse.json({ recurring, calendars, snapshot: await captureSnapshot("nightly") });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Snapshot failed.";
-    return NextResponse.json({ recurring, error: message }, { status: 500 });
+    return NextResponse.json({ recurring, calendars, error: message }, { status: 500 });
   }
 }

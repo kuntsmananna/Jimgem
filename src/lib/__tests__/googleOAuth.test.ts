@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  CALENDAR_SCOPE,
   callbackUrl,
   googleSignInEnabled,
   parseFlowCookie,
@@ -19,15 +20,18 @@ describe("pkceChallenge", () => {
 });
 
 describe("parseFlowCookie", () => {
-  it("splits state from verifier", () => {
-    expect(parseFlowCookie("abc.def-ghi")).toEqual({ state: "abc", verifier: "def-ghi" });
+  it("splits the flow kind, state and verifier", () => {
+    expect(parseFlowCookie("signin.abc.def-ghi")).toEqual({ kind: "signin", state: "abc", verifier: "def-ghi" });
+    expect(parseFlowCookie("calendar.s_1.v-2")).toEqual({ kind: "calendar", state: "s_1", verifier: "v-2" });
   });
-  it("refuses anything that is not two halves", () => {
+  it("refuses anything that is not a known flow in three parts", () => {
     expect(parseFlowCookie(undefined)).toBeNull();
     expect(parseFlowCookie("")).toBeNull();
-    expect(parseFlowCookie("nodot")).toBeNull();
-    expect(parseFlowCookie(".verifier")).toBeNull();
-    expect(parseFlowCookie("state.")).toBeNull();
+    expect(parseFlowCookie("abc.def")).toBeNull();
+    expect(parseFlowCookie("admin.abc.def")).toBeNull();
+    expect(parseFlowCookie("signin..def")).toBeNull();
+    expect(parseFlowCookie("signin.abc.")).toBeNull();
+    expect(parseFlowCookie("signin.a.b.c")).toBeNull();
   });
 });
 
@@ -74,6 +78,31 @@ describe("startFlow", () => {
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     // The secret never leaves the server.
     expect(flow.url).not.toContain("secret");
+  });
+
+  it("connecting a calendar asks for the narrow calendar scope and lasting access", () => {
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID", "id");
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "secret");
+    const flow = startFlow("https://x.test", "calendar", "aviv@example.com")!;
+    const url = new URL(flow.url);
+    expect(url.searchParams.get("scope")).toBe(`openid email ${CALENDAR_SCOPE}`);
+    expect(CALENDAR_SCOPE).toBe("https://www.googleapis.com/auth/calendar.app.created");
+    expect(url.searchParams.get("access_type")).toBe("offline");
+    // A refresh token comes back only on a fresh consent.
+    expect(url.searchParams.get("prompt")).toBe("consent");
+    expect(url.searchParams.get("login_hint")).toBe("aviv@example.com");
+    // Same callback as sign-in: no second redirect URI to register.
+    expect(url.searchParams.get("redirect_uri")).toBe("https://x.test/api/auth/google/callback");
+    expect(parseFlowCookie(flow.cookieValue)?.kind).toBe("calendar");
+  });
+
+  it("signing in never asks for the calendar", () => {
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID", "id");
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "secret");
+    const url = new URL(startFlow("https://x.test")!.url);
+    expect(url.searchParams.get("scope")).not.toContain("calendar");
+    expect(url.searchParams.get("access_type")).toBeNull();
+    expect(parseFlowCookie(startFlow("https://x.test")!.cookieValue)?.kind).toBe("signin");
   });
 
   it("draws a fresh state every time", () => {

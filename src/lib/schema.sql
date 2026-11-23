@@ -689,3 +689,27 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 );
 
 CREATE INDEX IF NOT EXISTS login_attempts_at_idx ON login_attempts (at);
+
+-- Each admin's own Google Calendar, kept in step with the orders (migration
+-- 037, word for word). refresh_token is a credential, so it is stripped
+-- from downloaded backups and this table is not watched by row_revisions.
+CREATE TABLE IF NOT EXISTS calendar_connections (
+  staff_id INTEGER PRIMARY KEY REFERENCES staff(id) ON DELETE CASCADE,
+  google_email TEXT NOT NULL,
+  calendar_id TEXT NOT NULL,
+  refresh_token TEXT,
+  last_synced_at TIMESTAMPTZ,
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- A fingerprint of the event last written for each order, per admin, so a
+-- sync writes only what changed. No foreign key to orders, so a vanished
+-- order can still be found here and its event taken down.
+CREATE TABLE IF NOT EXISTS calendar_events (
+  staff_id INTEGER NOT NULL REFERENCES calendar_connections(staff_id) ON DELETE CASCADE,
+  order_id INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (staff_id, order_id)
+);

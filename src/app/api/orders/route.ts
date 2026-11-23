@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { scheduleCalendarSync } from "@/lib/calendarSync";
 import { createOrder } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
 import { refuseNonAdmin } from "@/lib/guard";
@@ -15,6 +16,9 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   const refusal = await refuseNonAdmin();
   if (refusal) return refusal;
+  // Keep every connected Google Calendar in step — after the answer has
+  // gone, so the save is no slower (see calendarSync.ts).
+  scheduleCalendarSync(request.nextUrl.origin);
 
   const body = await readJson(request);
   if (body instanceof NextResponse) return body;

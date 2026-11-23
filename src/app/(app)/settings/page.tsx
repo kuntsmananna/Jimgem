@@ -43,12 +43,24 @@ import { requireAdminPage } from "@/lib/guard";
 import { getIngredientData } from "@/lib/ingredients";
 import { IngredientsPanel } from "@/components/settings/IngredientsPanel";
 import { RecipesPanel } from "@/components/settings/RecipesPanel";
+import { CalendarPanel } from "@/components/settings/CalendarPanel";
+import { getCalendarConnection } from "@/lib/calendarSync";
+import { googleSignInEnabled } from "@/lib/googleOAuth";
+import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; calendar?: string }>;
+}) {
   // Money lives on this page — see requireAdminPage.
   await requireAdminPage();
+  // The calendar pane is about the person looking at it: each admin
+  // connects their own.
+  const { userId } = await getSession();
+  const calendarConnection = await getCalendarConnection(userId);
   const [flavors, packageTypes, paymentMethods, expenseCategories, staff, presets, orderTypes, prices, stages, displayOptions, deliveryOptions, archived, lastSumitSync, sumitDocuments, sumitUsage, snapshots, history, recurring, migrations, ingredientData] =
     await Promise.all([
       getFlavors(),
@@ -77,7 +89,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const sumitDocumentCount = sumitDocuments.length;
   // `?tab=lists` opens on that tab — the Dashboard's setup checklist links
   // straight to where each step is done.
-  const { tab } = await searchParams;
+  const { tab, calendar } = await searchParams;
 
   return (
     <SettingsTabs
@@ -159,8 +171,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           label: "Team",
           icon: <Users size={14} />,
           content: (
-            <div className="max-w-xl">
+            <div className="flex max-w-xl flex-col gap-6">
               <StaffPanel items={staff} />
+              <CalendarPanel connection={calendarConnection} configured={googleSignInEnabled()} outcome={calendar} />
             </div>
           ),
         },

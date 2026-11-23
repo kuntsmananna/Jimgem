@@ -227,19 +227,39 @@ export async function getSnapshotDocument(id: number): Promise<string | null> {
     // objects for the sake of one field. The CASE leaves a document that
     // has no staff array exactly as it is — `jsonb_set` would otherwise
     // add an empty one that was never in the backup.
-    `SELECT CASE
-              WHEN data -> 'data' ? 'staff' THEN jsonb_set(
+    //
+    // The calendar connections' refresh tokens (v0.97) go the same way,
+    // set to null rather than dropped: a restore then brings the rows back
+    // as "connect again", which is exactly what a token that never left
+    // the database should become in a copy that has.
+    `WITH staff_done AS (
+       SELECT CASE
+                WHEN data -> 'data' ? 'staff' THEN jsonb_set(
+                  data,
+                  '{data,staff}',
+                  COALESCE(
+                    (SELECT jsonb_agg(person - 'password_hash')
+                       FROM jsonb_array_elements(data -> 'data' -> 'staff') AS person),
+                    '[]'::jsonb
+                  )
+                )
+                ELSE data
+              END AS data
+         FROM db_snapshots WHERE id = $1
+     )
+     SELECT CASE
+              WHEN data -> 'data' ? 'calendar_connections' THEN jsonb_set(
                 data,
-                '{data,staff}',
+                '{data,calendar_connections}',
                 COALESCE(
-                  (SELECT jsonb_agg(person - 'password_hash')
-                     FROM jsonb_array_elements(data -> 'data' -> 'staff') AS person),
+                  (SELECT jsonb_agg(jsonb_set(link, '{refresh_token}', 'null'::jsonb))
+                     FROM jsonb_array_elements(data -> 'data' -> 'calendar_connections') AS link),
                   '[]'::jsonb
                 )
               )
               ELSE data
             END::text AS data
-       FROM db_snapshots WHERE id = $1`,
+       FROM staff_done`,
     [id],
   );
   return rows[0]?.data ?? null;

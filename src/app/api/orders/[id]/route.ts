@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { scheduleCalendarSync } from "@/lib/calendarSync";
 import { StaleWriteError, updateOrder, updateOrderFields, getOrderMoney, type OrderInput } from "@/lib/orders";
 import { currentEditor } from "@/lib/editor";
 import { callerIsAdmin, refuseSignedOut } from "@/lib/guard";
@@ -47,6 +48,9 @@ type UpdateBody = { mode?: unknown; expectedUpdatedAt?: unknown };
 export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/orders/[id]">) {
   const refused = await refuseSignedOut();
   if (refused) return refused;
+  // Keep every connected Google Calendar in step — after the answer has
+  // gone, so the save is no slower (see calendarSync.ts).
+  scheduleCalendarSync(request.nextUrl.origin);
   const { id: rawId } = await ctx.params;
   const id = parseRowId(rawId);
   if (id === null) return badRequest("No such order.");

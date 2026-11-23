@@ -1429,6 +1429,64 @@ table). See *Brute force is stopped twice* under Authentication.
   panes go through `money.ts` — `currencyExact`, and `currencyPerUnit` (two
   decimals) for the cost of one jelly.
 
+### v0.97 — each admin's Google Calendar
+
+**Run `scripts/migrate-037-calendar-sync.sql` before shipping** (two new
+tables; nothing existing changes). Until it is run the Team tab's
+calendar pane says which migration to paste and nothing syncs. It also
+needs Google sign-in's OAuth client (v0.96), the **Google Calendar API
+enabled** on that Cloud project, and the consent screen **In production**
+— in Testing, Google withdraws the refresh token after seven days.
+
+- **Settings → Team → Your Google Calendar** (`CalendarPanel`): each admin
+  connects **their own**, the owner's call. Connect is a link to
+  `/api/auth/google/calendar`, which asks for `calendar.app.created` with
+  `access_type=offline` — the narrowest calendar scope Google has: the app
+  makes a calendar of its own, **"Gems orders"**, and can write only inside
+  it, never seeing or touching the rest of the person's calendar. It
+  **shares the sign-in callback** (`/api/auth/google/callback`): the flow
+  cookie now carries `signin.` or `calendar.` before the state, so no
+  second redirect URI has to be registered with Google. That route is
+  outside the session gate, so the calendar half checks for an admin
+  itself. The Google account need not be the one they sign in with.
+- **`orderEvent` in `src/lib/calendarEvent.ts` is what an event says**
+  (pure, tested): all-day on the order's date, titled "customer · N units",
+  the stage, type, guests, every package line with its flavours, the
+  extras, the note and a link back (`/orders?order=`). **No money** — a
+  calendar is shared far more casually than the dashboard, and once an
+  event is in Google, Hide mode and the staff redaction reach none of it.
+  A quote is `tentative` and titled "Quote · …". Events are `transparent`
+  so a booking never blocks a free/busy slot.
+- **`src/lib/calendarSync.ts` reconciles rather than replays**: every
+  order dated from 31 days back is rendered, fingerprinted (`eventHash`)
+  and compared with `calendar_events`; only the differences are written,
+  and events of orders that no longer exist are taken down. An order that
+  merely slips into the past keeps its event. **The event id is derived
+  from the order** (`calendarEventId` → `gemsorder42`, Google's a–v/0–9
+  alphabet), so two syncs racing each other land on one event, not two —
+  which is what lets a sync fire **after every order save**
+  (`scheduleCalendarSync`, through `after()` so the save is no slower) with
+  no queue, and again from the nightly cron as a net. A write is `PUT`
+  first, then a create with the chosen id on 404, then `PUT` again on 409.
+- **A connection's failure is recorded, never thrown at a save**: each
+  admin's last error shows in their pane, and a refresh token Google has
+  withdrawn (`RefreshRevokedError`, i.e. `invalid_grant`) is nulled so the
+  pane says "Connect again" and later syncs stop trying. Disconnect deletes
+  the Gems calendar from their Google account, revokes the token and
+  forgets the row.
+- **`calendar_connections.refresh_token` is a credential**: not watched by
+  `row_revisions`, and `getSnapshotDocument` sets it to null in a
+  downloaded backup (beside stripping password hashes), so a restore from a
+  file brings the connection back as "connect again". Both tables are in
+  `schema.sql` word for word, and 036 and 037 are in `MIGRATIONS`. Verified
+  against a real Postgres: schema built from scratch, 037 twice, the save
+  statement (a new calendar clears its old fingerprints, a reconnect to the
+  same one keeps them), the cascade on disconnect, and the backup strip.
+- Event links point at `VERCEL_PROJECT_PRODUCTION_URL` when Vercel sets it
+  (`appUrlFor`), so an event written by a preview deployment still opens
+  the real app — previews and production share the database, and so the
+  connections.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { GOOGLE_FLOW_COOKIE, identityFromCode, parseFlowCookie, sameToken } from "@/lib/googleOAuth";
+import { after } from "next/server";
+import {
+  GOOGLE_FLOW_COOKIE,
+  exchangeCode,
+  fetchIdentity,
+  identityFromCode,
+  parseFlowCookie,
+  sameToken,
+} from "@/lib/googleOAuth";
 import { accountForVerifiedEmail, startSession } from "@/lib/auth";
+import { callerIsAdmin } from "@/lib/guard";
+import { getSession } from "@/lib/session";
+import { appUrlFor, saveCalendarConnection, syncCalendars } from "@/lib/calendarSync";
 import { recordAttempt } from "@/lib/loginThrottle";
 import { STAFF_HOME } from "@/lib/roles";
 
 export const runtime = "nodejs";
+// Connecting a calendar ends with its first sync, which writes every
+// coming order.
+export const maxDuration = 60;
 
 /**
  * Where Google sends the person back (v0.96).
@@ -26,13 +40,21 @@ export async function GET(request: NextRequest) {
   cookieStore.delete({ name: GOOGLE_FLOW_COOKIE, path: "/api/auth/google" });
 
   const params = request.nextUrl.searchParams;
+  const toSettings = (outcome: string) =>
+    NextResponse.redirect(new URL(`/settings?tab=team&calendar=${outcome}`, request.url));
   // The person pressed Cancel on Google's screen: not an error worth a
   // red line, just back where they started.
-  if (params.get("error") === "access_denied") return NextResponse.redirect(new URL("/login", request.url));
+  if (params.get("error") === "access_denied") {
+    return flow?.kind === "calendar" ? toSettings("cancelled") : NextResponse.redirect(new URL("/login", request.url));
+  }
 
   const code = params.get("code");
   const state = params.get("state");
-  if (!flow || !code || !state || !sameToken(state, flow.state)) return back("google");
+  if (!flow || !code || !state || !sameToken(state, flow.state)) {
+    return flow?.kind === "calendar" ? toSettings("error") : back("google");
+  }
+
+  if (flow.kind === "calendar") return connectCalendar(request, code, flow.verifier, toSettings);
 
   let identity;
   try {
@@ -51,4 +73,40 @@ export async function GET(request: NextRequest) {
 
   await startSession(account);
   return NextResponse.redirect(new URL(account.role === "admin" ? "/" : STAFF_HOME, request.url));
+}
+
+/**
+ * The calendar half of the callback (v0.97). The caller must still be a
+ * signed-in admin — this route is outside the session gate, so it asks.
+ * The Google account need not be the one they sign in with: whoever's
+ * calendar they choose on Google's screen is the one that fills.
+ */
+async function connectCalendar(
+  request: NextRequest,
+  code: string,
+  verifier: string,
+  toSettings: (outcome: string) => NextResponse,
+): Promise<NextResponse> {
+  if (!(await callerIsAdmin())) return NextResponse.redirect(new URL("/login", request.url));
+  const session = await getSession();
+  try {
+    const tokens = await exchangeCode(code, verifier, request.nextUrl.origin);
+    // No refresh token means no way to write later — Google sends one only
+    // on a fresh consent, which the calendar flow always asks for.
+    if (!tokens?.refreshToken) return toSettings("error");
+    const identity = await fetchIdentity(tokens.accessToken);
+    if (!identity) return toSettings("error");
+    await saveCalendarConnection(session.userId, identity.email, tokens.refreshToken, tokens.accessToken);
+  } catch (error) {
+    console.error("Connecting a Google Calendar failed:", error);
+    return toSettings("error");
+  }
+  // The first fill can take a while for a busy season: done after the
+  // redirect, so the person lands back in Settings straight away.
+  const staffId = session.userId;
+  const appUrl = appUrlFor(request.nextUrl.origin);
+  after(async () => {
+    await syncCalendars({ staffId, appUrl }).catch((error) => console.error("First calendar sync failed:", error));
+  });
+  return toSettings("connected");
 }

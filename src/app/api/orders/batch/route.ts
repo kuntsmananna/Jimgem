@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { scheduleCalendarSync } from "@/lib/calendarSync";
 import {
   setPaymentStatusMany,
   setProductionStatusMany,
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest) {
   // delivered goes through the PATCH beside this instead.
   const refusal = await refuseNonAdmin();
   if (refusal) return refusal;
+  // Keep every connected Google Calendar in step — after the answer has
+  // gone, so the save is no slower (see calendarSync.ts).
+  scheduleCalendarSync(request.nextUrl.origin);
 
   const body = (await request.json()) as BatchBody;
   const ids = Array.isArray(body?.ids) ? body.ids.map(Number).filter(Number.isFinite) : [];
