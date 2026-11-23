@@ -33,6 +33,9 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Set by Next's guided security upgrade (16.4.2 → 16.4.6). It marks the
+  // app as having taken the advisory-driven update; leave it in place.
+  experimental: { agentUpgrade: "security" },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
