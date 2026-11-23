@@ -2571,6 +2571,27 @@ app read until a Biz Plan month was actually looked at. `withSign` in
   field is relabelled "Username or email" and wears
   `autoCapitalize="none"` / `autoCorrect="off"`. Changing an email **ends
   no session** — it is a second way in, not a credential reset.
+- **Sign in with Google** (v0.96, `src/lib/googleOAuth.ts`, the two routes
+  under `/api/auth/google`). A "Continue with Google" button on `/login`,
+  drawn **only once `GOOGLE_OAUTH_CLIENT_ID` and `_SECRET` are both set** —
+  a button that can only fail is worse than none. The address Google
+  returns must be **verified** and must be some account's `staff.email`
+  (`accountForVerifiedEmail`); nothing is created for an address nobody
+  carries, so there is still no self-service signup — an unknown address
+  lands on `/login?error=google-unknown`, which tells them to ask an admin.
+  Plain `fetch`, no library: state + PKCE in a ten-minute httpOnly cookie
+  scoped to the callback, the code exchanged server-side with the secret,
+  the profile read from Google directly, which is why no token signature is
+  checked here. **Identity scope only** (`openid email profile`): the
+  calendar sync asks each admin for calendar access separately when they
+  connect one. The redirect URI is the request's own origin, so **every
+  origin signed in on — production and each preview — has to be listed on
+  the OAuth client**, or Google answers `redirect_uri_mismatch`. Both ways
+  in end in `startSession` in `auth.ts`, so they cannot disagree about what
+  a session holds, and a Google sign-in is written to `login_attempts`
+  under the address. The two routes are outside the session gate in
+  `proxy.ts`. Google sign-in is **not throttled**: Google did the
+  authenticating, and there is no password here to guess.
 - **Brute force is stopped twice** (v0.94): a Vercel Firewall rule
   rate-limits `POST /login` to ten a minute per IP at the edge, and since
   migration 035 the app keeps its own **`login_attempts`** log
@@ -2722,6 +2743,8 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | Spreadsheet ID for the business sheet | yes |
 | `DATABASE_URL` | Postgres connection string | yes |
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
+| `GOOGLE_OAUTH_CLIENT_ID` | OAuth client for Sign in with Google (not the Sheets service account) | no — the button appears once both are set |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Its secret; read only by `googleOAuth.ts` | no |
 | `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |
 | `SUMIT_API_KEY` | SUMIT API key secret | no (SUMIT probe only, for now) |
 | `CRON_SECRET` | Shared secret the nightly backup checks — Vercel sends it as `Authorization: Bearer` on scheduled runs | yes, or the backup refuses to run |

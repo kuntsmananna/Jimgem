@@ -57,6 +57,10 @@ export const config = {
      * - /api/backup/cron, which is called by the schedule rather than by a
      *   person: it has no session to present, and carries the cron secret
      *   instead — the route refuses to run without it.
+     * - /api/auth/google and its /callback (v0.96): the way *in* with
+     *   Google, reached before there is any session to present. They write
+     *   nothing but a sign-in cookie, and only for an address an admin has
+     *   put on an account.
      * - Next.js internals (_next/*)
      * - **anything ending in a static-asset extension** — which for this
      *   app means `public/`: the icons, the mark, the web manifest.
@@ -84,6 +88,6 @@ export const config = {
      * new *kind* of asset does. The trade is Next's own — `public/` is
      * public, so nothing secret goes in it.
      */
-    "/((?!login|api/backup/cron|_next|[^?]*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|webmanifest|txt|xml|pdf|css|woff2?|ttf|otf|mp4|webm)$).*)",
+    "/((?!login|api/backup/cron|api/auth/google|_next|[^?]*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|webmanifest|txt|xml|pdf|css|woff2?|ttf|otf|mp4|webm)$).*)",
   ],
 };

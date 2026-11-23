@@ -116,6 +116,46 @@ export async function verifyCredentials(username: string, password: string): Pro
 }
 
 /**
+ * The account a **verified** Google address belongs to, or null (v0.96).
+ *
+ * Matches `staff.email` only in effect: it goes through the same lookup as
+ * the sign-in box, but a username can never hold an `@`, so an address can
+ * only ever meet an email. No password is involved — Google has already
+ * proved the person owns the address, which is the whole point. An address
+ * no account carries is refused rather than creating one: there is still
+ * no self-service signup, and an admin adds people from Settings → Team.
+ */
+export async function accountForVerifiedEmail(email: string): Promise<StaffAccount | null> {
+  const row = await readStaffForLogin(email);
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    username: row.username,
+    role: roleOf(row),
+    sessionVersion: row.session_version ?? 0,
+  };
+}
+
+/**
+ * Writes the signed-in cookie for an account. One place for both ways in —
+ * the password form and Google — so the two can never disagree about what
+ * a session holds (the role copy for the edge gate, the version that lets
+ * a session be ended early).
+ */
+export async function startSession(account: StaffAccount): Promise<void> {
+  const session = await getSession();
+  session.userId = account.id;
+  session.username = account.username;
+  session.name = account.name;
+  // The cheap copy of the role, for the edge gate. The database is what
+  // decides what data leaves the server -- see `currentRole` below.
+  session.role = account.role;
+  session.version = account.sessionVersion;
+  await session.save();
+}
+
+/**
  * What the person making this request may see, **read from the database
  * rather than from their cookie**.
  *
