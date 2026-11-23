@@ -1482,6 +1482,14 @@ enabled** on that Cloud project, and the consent screen **In production**
   against a real Postgres: schema built from scratch, 037 twice, the save
   statement (a new calendar clears its old fingerprints, a reconnect to the
   same one keeps them), the cascade on disconnect, and the backup strip.
+- **`/privacy` is public** (v0.97.1, outside the session gate): Google
+  will not move an OAuth app out of Testing without a homepage and a
+  privacy policy URL on its Branding page. It states what the code does
+  with Google data — identity for sign-in, one app-made calendar, the
+  stored token, the Limited Use statement — and **must change in the same
+  commit as anything that changes that**. No personal address in it; the
+  contact is gem-bites.com. `calendar.app.created` is listed by Google as
+  a **non-sensitive** scope, so publishing needs no verification.
 - Event links point at `VERCEL_PROJECT_PRODUCTION_URL` when Vercel sets it
   (`appUrlFor`), so an event written by a preview deployment still opens
   the real app — previews and production share the database, and so the

@@ -57,6 +57,9 @@ export const config = {
      * - /api/backup/cron, which is called by the schedule rather than by a
      *   person: it has no session to present, and carries the cron secret
      *   instead — the route refuses to run without it.
+     * - /privacy (v0.97.1): the privacy policy Google requires before an
+     *   OAuth app can be published, which reviewers and anyone on the
+     *   consent screen must be able to read without an account.
      * - /api/auth/google and its /callback (v0.96): the way *in* with
      *   Google, reached before there is any session to present. They write
      *   nothing but a sign-in cookie, and only for an address an admin has
@@ -88,6 +91,6 @@ export const config = {
      * new *kind* of asset does. The trade is Next's own — `public/` is
      * public, so nothing secret goes in it.
      */
-    "/((?!login|api/backup/cron|api/auth/google|_next|[^?]*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|webmanifest|txt|xml|pdf|css|woff2?|ttf|otf|mp4|webm)$).*)",
+    "/((?!login|privacy|api/backup/cron|api/auth/google|_next|[^?]*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|webmanifest|txt|xml|pdf|css|woff2?|ttf|otf|mp4|webm)$).*)",
   ],
 };
