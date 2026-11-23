@@ -164,7 +164,7 @@ export function OrderEventPanel({
         When the van has to be there (v0.98). Only while there is a delivery
         — a time for a trip nobody is making says nothing. With a time, the
         delivery becomes a calendar event of its own (🚚) beside the
-        order's (🎉); without one it is a line in the order's event.
+        order's (🍸); without one it is a line in the order's event.
       */}
       {hasDelivery(draft) && (
         <div className="-mt-3 max-md:mt-0">

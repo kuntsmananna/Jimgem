@@ -1522,7 +1522,7 @@ column as "not set").
   all-day event shown as free. **A delivered order with a delivery time
   gets a second event**, `DELIVERY_MINUTES` long, id `gemsdlv<id>` beside
   `gemsorder<id>` — both in Google's a–v/0–9 alphabet. Titles lead with
-  🎉 and 🚚, Google Calendar having no icons of its own. One fingerprint
+  🍸 and 🚚, Google Calendar having no icons of its own. One fingerprint
   (`eventsHash`) covers both, so `calendar_events` did not change shape; a
   re-written order that no longer has a delivery event has it taken down,
   and a deleted order has both taken down. `laterOnClock` carries an event

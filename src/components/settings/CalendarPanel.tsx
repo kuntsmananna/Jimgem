@@ -64,7 +64,7 @@ export function CalendarPanel({
     <section className="rounded-card border border-line bg-card p-6">
       <PaneHeader
         title="Your Google Calendar"
-        description="Every order in a calendar of its own — at its start time when it has one (🎉), with its delivery as a second event (🚚) — updated a few seconds after any change. No prices are sent."
+        description="Every order in a calendar of its own — at its start time when it has one (🍸), with its delivery as a second event (🚚) — updated a few seconds after any change. No prices are sent."
         action={
           connection.available && configured && (!connection.connected || connection.needsReconnect) ? (
             <a href={connectHref} className={`flex items-center gap-1.5 ${PANE_ACTION_CLASS}`}>

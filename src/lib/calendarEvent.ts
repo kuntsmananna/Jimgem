@@ -118,7 +118,7 @@ function span(date: string, time: string | null, minutes: number): { start: Even
  * delivery of its own when the order is delivered *and* has a delivery
  * time. An order with times sits at its hours; without, the event is an
  * all-day one as it always was. Each is led by a mark that reads at a
- * glance in a crowded week — 🎉 for the event, 🚚 for the van.
+ * glance in a crowded week — 🍸 for the event, 🚚 for the van.
  */
 export function orderEvents(order: Order, ctx: EventContext): CalendarEventBody[] {
   const booked = isBooked(order, ctx.stages);
@@ -176,7 +176,7 @@ export function orderEvents(order: Order, ctx: EventContext): CalendarEventBody[
   const events: CalendarEventBody[] = [
     {
       id: calendarEventId(order.key),
-      summary: `🎉 ${booked ? "" : "Quote · "}${title}`,
+      summary: `🍸 ${booked ? "" : "Quote · "}${title}`,
       location: order.location.trim(),
       description: lines.join("\n"),
       ...span(order.date, order.eventTime, EVENT_MINUTES),

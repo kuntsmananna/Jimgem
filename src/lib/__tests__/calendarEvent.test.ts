@@ -115,8 +115,8 @@ describe("the order's own event", () => {
     expect(event.transparency).toBe("opaque");
   });
 
-  it("is marked 🎉 and titled with who and how many", () => {
-    expect(main(order()).summary).toBe("🎉 Maya Levi · 18 units");
+  it("is marked 🍸 and titled with who and how many", () => {
+    expect(main(order()).summary).toBe("🍸 Maya Levi · 18 units");
   });
 
   it("says what to make, the extras with the delivery's time, and links back", () => {
@@ -132,7 +132,7 @@ describe("the order's own event", () => {
   it("draws a quote as tentative and says so", () => {
     const event = main(order({ productionStatus: "offer" }));
     expect(event.status).toBe("tentative");
-    expect(event.summary).toBe("🎉 Quote · Maya Levi · 18 units");
+    expect(event.summary).toBe("🍸 Quote · Maya Levi · 18 units");
   });
 });
 
