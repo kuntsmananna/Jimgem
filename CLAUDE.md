@@ -1535,6 +1535,14 @@ column as "not set").
   punctuation before digits, which put every untimed order first.
 - `/privacy` says "the date and times" now, as it must whenever what goes
   to Google changes.
+- **Announced as three pages** (v0.98.2, released 2026-11-23): order
+  times and the sign-in changes to everyone, the calendar to admins only
+  (only an admin can reach Settings to connect one). Each says **how to
+  set the thing up**, not only that it exists — two of the three do
+  nothing until somebody adds an email or presses Connect. Art keys
+  `order-times`, `calendar`, `sign-in`; item marks `clock`, `login`,
+  `mail`, `sync`. Three is exactly `MAX_ANNOUNCEMENT_PAGES`, so nobody's
+  arrival popup is cut short.
 
 ## Data-fetching conventions
 

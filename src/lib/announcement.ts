@@ -26,7 +26,10 @@ export type AnnouncementArt =
   | "jelly-mode"
   | "prep-sheet"
   | "food-cost"
-  | "due-soon";
+  | "due-soon"
+  | "sign-in"
+  | "calendar"
+  | "order-times";
 
 export type ItemIcon =
   | "amount"
@@ -43,7 +46,11 @@ export type ItemIcon =
   | "basket"
   | "print"
   | "recipe"
-  | "bell";
+  | "bell"
+  | "clock"
+  | "login"
+  | "mail"
+  | "sync";
 
 export interface Announcement {
   id: string;
@@ -68,6 +75,89 @@ export interface Announcement {
 }
 
 export const ANNOUNCEMENTS: Announcement[] = [
+  /*
+   * v0.95-v0.98, shipped together. Times are for everybody — the kitchen
+   * reads them on the prep sheet and a staff login can set them — and so
+   * is signing in. The calendar is an admin's: only an admin can reach
+   * Settings to connect one. Each page says how to set the thing up, not
+   * only that it exists, because two of the three do nothing until
+   * somebody does. Newest first.
+   */
+  {
+    id: "v0.98-order-times",
+    released: "2026-11-23",
+    audience: ["admin", "staff"],
+    art: "order-times",
+    title: "When it starts, when the van goes",
+    lede: "Every order can now say what time the event starts and, if it's delivered, what time the delivery is due.",
+    items: [
+      {
+        icon: "clock",
+        title: "Start time, beside the date",
+        text: "Open an order — the time sits right after the date. On a phone, tap the clock next to the date. Leave it empty if nobody knows yet.",
+      },
+      {
+        icon: "extras",
+        title: "Delivery time, under Delivery",
+        text: "On the Event tab, pick where it's going and a Delivery time row appears. Choosing None clears it.",
+      },
+      {
+        icon: "print",
+        title: "The prep sheet follows the clock",
+        text: "Each day is now in the order the kitchen works it: by the delivery time, else the start time. Orders with no time come last.",
+      },
+    ],
+  },
+  {
+    id: "v0.97-calendar",
+    released: "2026-11-23",
+    audience: ["admin"],
+    art: "calendar",
+    title: "Your orders in Google Calendar",
+    lede: "Connect your Google Calendar once, and every order appears in it — and stays up to date by itself.",
+    items: [
+      {
+        icon: "sync",
+        title: "How to connect",
+        text: "Settings → Team → Your Google Calendar → Connect, then choose your Google account and allow access. Each of you connects your own.",
+      },
+      {
+        icon: "day",
+        title: "What appears",
+        text: "A calendar called Gems orders: 🍸 for each event, at its start time (all day if it has none), and 🚚 for a delivery with a time. Quotes look outlined. No prices are sent.",
+      },
+      {
+        icon: "clock",
+        title: "Always current",
+        text: "Change or delete an order and your calendar follows within seconds. Sync now is there if you want to be sure; Disconnect removes the Gems calendar.",
+      },
+    ],
+  },
+  {
+    id: "v0.96-sign-in",
+    released: "2026-11-23",
+    audience: ["admin", "staff"],
+    art: "sign-in",
+    title: "Signing in, the easy way",
+    lede: "You can sign in with your email address instead of your username — or skip the password and use Google.",
+    items: [
+      {
+        icon: "mail",
+        title: "Username or email",
+        text: "The sign-in box takes either. Capitals and a phone's auto-correct no longer matter.",
+      },
+      {
+        icon: "login",
+        title: "Continue with Google",
+        text: "One tap on the sign-in page, then pick your Google account. It works for any address saved on your account.",
+      },
+      {
+        icon: "select",
+        title: "Setting it up",
+        text: "An admin adds each person's email in Settings → Team (\u201cAdd email\u201d under their name). Without one, Google sign-in says the account isn't linked.",
+      },
+    ],
+  },
   /*
    * v0.91-v0.93. The prep sheet is for everybody — it carries no money and
    * the kitchen is who uses it — so its shopping list is described here

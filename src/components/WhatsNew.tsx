@@ -26,6 +26,11 @@ import {
   Truck,
   UserRound,
   type LucideIcon,
+  Clock,
+  LogIn,
+  Mail,
+  RefreshCw,
+  MapPin,
 } from "lucide-react";
 import { cubeColors } from "@/components/JellyLoader";
 import { Modal, useModalScroller } from "@/components/Modal";
@@ -54,6 +59,10 @@ const ITEM_ICON: Record<ItemIcon, LucideIcon> = {
   print: Printer,
   recipe: ChefHat,
   bell: BellRing,
+  clock: Clock,
+  login: LogIn,
+  mail: Mail,
+  sync: RefreshCw,
 };
 
 /**
@@ -264,6 +273,9 @@ const ART: Record<AnnouncementArt, () => React.JSX.Element> = {
   "prep-sheet": PrepSheetIllustration,
   "food-cost": FoodCostIllustration,
   "due-soon": DueSoonIllustration,
+  "sign-in": SignInIllustration,
+  calendar: CalendarIllustration,
+  "order-times": OrderTimesIllustration,
 };
 
 /** One release: its picture, its heading, what it changed. */
@@ -723,6 +735,97 @@ function DueSoonIllustration() {
               <span className="font-display font-extrabold text-due">{r.due}</span>
             </p>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** v0.98: the order form's date line with its new time, and the delivery row. */
+function OrderTimesIllustration() {
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <Cube color={SERIES_COLORS.midori} className="top-3 right-4 size-6 rotate-[14deg]" />
+      <Cube color={SERIES_COLORS.berry} className="bottom-3 left-3 size-5 rotate-[-10deg]" />
+      <div className="absolute inset-x-6 top-5 flex flex-col gap-2.5 rounded-xl bg-card p-3.5 shadow-md max-md:inset-x-4">
+        <p className="font-display text-base font-extrabold text-ink">Maya Levi</p>
+        <div className="flex items-center gap-2 text-[11px] text-ink">
+          <span className="flex items-center gap-1 rounded-md bg-ink/[0.05] px-2 py-1 tabular-nums">
+            <CalendarDays size={11} className="text-ink-soft" />
+            Thu 3/12
+          </span>
+          <span className="flex items-center gap-1 rounded-md bg-accent/15 px-2 py-1 font-bold tabular-nums ring-1 ring-accent">
+            <Clock size={11} className="text-accent" />
+            19:30
+          </span>
+          <span className="flex min-w-0 items-center gap-1 truncate px-1 text-ink-soft">
+            <MapPin size={11} />
+            Tel Aviv
+          </span>
+        </div>
+        <div className="flex items-center justify-between border-t border-line pt-2.5 text-[11px]">
+          <span className="flex items-center gap-1.5 font-bold text-ink">
+            <Truck size={12} />
+            Delivery time
+          </span>
+          <span className="rounded-md bg-accent/15 px-2 py-1 font-bold tabular-nums ring-1 ring-accent">17:00</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** v0.97: one day of the "Gems orders" calendar — the van, then the event. */
+function CalendarIllustration() {
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <Cube color={SERIES_COLORS.jasmine} className="top-3 left-4 size-5 rotate-[-12deg]" />
+      <Cube color={SERIES_COLORS.berry} className="right-4 bottom-3 size-6 rotate-[18deg]" />
+      <div className="absolute inset-x-8 top-4 bottom-4 rounded-xl bg-card p-3 shadow-md max-md:inset-x-5">
+        <p className="flex items-center justify-between text-[10px] font-bold tracking-wide text-ink-soft uppercase">
+          <span>Thu 3 Dec</span>
+          <span className="flex items-center gap-1 normal-case">
+            <span className="size-2 rounded-full bg-accent" />
+            Gems orders
+          </span>
+        </p>
+        <div className="mt-2 grid grid-cols-[2.25rem_1fr] gap-x-2 text-[10px] text-ink-soft tabular-nums">
+          {["17:00", "18:00", "19:00", "20:00", "21:00"].map((hour) => (
+            <p key={hour} className="col-start-1 h-[1.45rem] leading-none">{hour}</p>
+          ))}
+          <div className="col-start-2 row-span-5 row-start-1 relative">
+            <p className="absolute inset-x-0 top-0 h-[1.45rem] truncate rounded-md bg-ink/80 px-2 py-0.5 text-[10px] font-semibold text-cream">
+              🚚 Delivery · Maya Levi
+            </p>
+            <p className="absolute inset-x-0 top-[3.6rem] h-[3.1rem] rounded-md bg-accent px-2 py-1 text-[10px] font-semibold text-cream">
+              🍸 Maya Levi · 120 units
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** v0.96: the sign-in card with its new Google button and either-way box. */
+function SignInIllustration() {
+  return (
+    <div aria-hidden className="relative h-48 overflow-hidden rounded-2xl bg-band">
+      <Cube color={SERIES_COLORS.midori} className="top-4 left-5 size-5 rotate-[10deg]" />
+      <Cube color={SERIES_COLORS.jasmine} className="right-5 bottom-4 size-6 rotate-[-14deg]" />
+      <div className="absolute inset-x-12 top-5 flex flex-col gap-2.5 rounded-xl bg-card p-3.5 shadow-md max-md:inset-x-6">
+        <p className="flex items-center justify-center gap-2 rounded-full border border-line bg-white py-1.5 text-[11px] font-semibold text-ink">
+          <span className="font-display text-sm font-extrabold">G</span>
+          Continue with Google
+        </p>
+        <p className="flex items-center gap-2 text-[9px] font-semibold text-ink-soft">
+          <span className="h-px flex-1 bg-line" />
+          or with a password
+          <span className="h-px flex-1 bg-line" />
+        </p>
+        <div>
+          <p className="text-[9px] font-semibold text-ink-soft">Username or email</p>
+          <p className="mt-0.5 rounded-md border border-accent bg-white px-2 py-1 text-[11px] text-ink">you@gmail.com</p>
         </div>
       </div>
     </div>
