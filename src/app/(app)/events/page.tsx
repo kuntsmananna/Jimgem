@@ -9,6 +9,7 @@ import type { SaleEvent } from "@/lib/eventTypes";
 import { getEventSummaries, type EventSummary } from "@/lib/eventStats";
 import { EventStatsButton } from "@/components/events/EventsPane";
 import { count, currency } from "@/lib/money";
+import { getVatView } from "@/lib/vatViewServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +22,14 @@ const PAY_WORDS = { staff: "Staff rings it up", self: "Customers self-scan", bot
  * ones already held under them. Admins only — every event is priced.
  */
 export default async function EventsPage() {
-  const [, { available, events }, presets, summaries] = await Promise.all([
+  const [, { available, events }, presets, summaries, vatView] = await Promise.all([
     requireAdminPage(),
     getEvents(),
     getContentPresets(),
     getEventSummaries(),
+    getVatView(),
   ]);
+  const net = vatView === "net";
   const takings = new Map(summaries.map((s) => [s.id, s]));
   const today = todayIso();
   const coming = events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
@@ -64,7 +67,7 @@ export default async function EventsPage() {
           <h2 className="mb-2.5 text-xs font-extrabold tracking-[0.12em] uppercase">Coming up</h2>
           <ul className="motion-stagger flex flex-col gap-2">
             {coming.map((event) => (
-              <EventRow key={event.id} event={event} presetName={presetName} summary={takings.get(event.id)} />
+              <EventRow key={event.id} event={event} presetName={presetName} summary={takings.get(event.id)} net={net} />
             ))}
           </ul>
         </section>
@@ -75,7 +78,7 @@ export default async function EventsPage() {
           <h2 className="mb-2.5 text-xs font-extrabold tracking-[0.12em] uppercase">Done</h2>
           <ul className="motion-stagger flex flex-col gap-2">
             {done.map((event) => (
-              <EventRow key={event.id} event={event} presetName={presetName} summary={takings.get(event.id)} past />
+              <EventRow key={event.id} event={event} presetName={presetName} summary={takings.get(event.id)} net={net} past />
             ))}
           </ul>
         </section>
@@ -88,11 +91,14 @@ function EventRow({
   event,
   presetName,
   summary,
+  net,
   past = false,
 }: {
   event: SaleEvent;
   presetName: Map<number, string>;
   summary?: EventSummary;
+  /** The VAT switch says net — takings without VAT, as every other figure. */
+  net: boolean;
   past?: boolean;
 }) {
   const sold = summary && summary.sales > 0 ? summary : null;
@@ -121,7 +127,7 @@ function EventRow({
         <span className={`flex items-center gap-2 max-md:col-span-2 max-md:justify-start ${sold ? "md:pe-24" : ""}`}>
           {sold ? (
             <span className="text-sm font-bold tabular-nums max-md:text-xs">
-              {count(sold.sales)} customers · {currency(sold.takings)}
+              {count(sold.sales)} customers · {currency(net ? sold.netTakings : sold.takings)}
             </span>
           ) : (
             <span className="text-sm font-semibold text-ink-soft max-md:text-xs">{PAY_WORDS[event.payMode]}</span>

@@ -1723,17 +1723,22 @@ No migration.
   (boxes × the preset's package size) — **not to `orderCount`**: a
   stall's customers are not orders. `MonthlyFinancials` carries
   `eventRevenue`/`eventSales` apart so the Biz Plan's average order value
-  leaves event takings out.
+  leaves event takings out. The year switch offers a year that has only
+  events (`getEventYears`), and the Dashboard's flavour split counts event
+  boxes too (`getEventSaleItems` + `presetFlavorUnits`), so it adds up to
+  the Units sold tile beside it.
 - **`EventStatsModal`** (the canvas's Stats board): customers, takings
   (following the VAT switch), average basket, boxes sold of brought, the
   share that bought a deal; sales per 15 minutes over the event's hours
-  (Israel time, `getEventStats`), boxes by product, every sale, and a CSV
+  (Israel time, `getEventStats`, timed by **when a sale was rung up**, not
+  when its card payment was confirmed — the nightly check confirms at 04:00
+  — and with anything before 06:00 read as the night running on), boxes by product, every sale, and a CSV
   (with a BOM so Excel reads Hebrew). Read from `/api/events/<id>/stats`
   when opened, so no page carries every event's sales.
 - **One row per event** (`EventsPane`) under the Biz Plan's months and in
   the Dashboard's column (narrowed by its month pills), each opening the
   popup; drawn only when the year has events. The Events page shows each
-  event's customers and takings, with a **Stats** button
+  event's customers and takings (following the VAT switch), with a **Stats** button
   (`EventStatsButton`) beside the row's link.
 
 ## Data-fetching conventions

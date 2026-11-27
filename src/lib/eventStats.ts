@@ -13,7 +13,7 @@
  */
 
 import { getDb, isMissingTable } from "./db";
-import { SELF_SERVICE } from "./eventSales";
+import { SELF_SERVICE } from "./eventTypes";
 
 const VAT_RATE = `COALESCE((SELECT amount FROM prices WHERE key = 'vat_rate'), 0)`;
 
@@ -148,8 +148,10 @@ export async function getEventStats(eventId: number): Promise<EventStats> {
       total: string;
       discount: string;
     }>(
-      `SELECT id, COALESCE(paid_at, created_at) AS at, items, deal, method, seller, total, discount
-         FROM event_sales WHERE event_id = $1 AND status = 'paid' ORDER BY COALESCE(paid_at, created_at), id`,
+      // When it was rung up, not when it was confirmed: a card payment the
+      // nightly check confirms at 04:00 still happened at the stall.
+      `SELECT id, created_at AS at, items, deal, method, seller, total, discount
+         FROM event_sales WHERE event_id = $1 AND status = 'paid' ORDER BY created_at, id`,
       [eventId],
     ),
     db.query<{ amount: string }>("SELECT amount FROM prices WHERE key = 'vat_rate'"),
@@ -171,4 +173,39 @@ export async function getEventStats(eventId: number): Promise<EventStats> {
       };
     }),
   };
+}
+
+/** Every year with a paid event sale in it — for the reports' year switch. */
+export async function getEventYears(): Promise<number[]> {
+  try {
+    const { rows } = await getDb().query<{ year: number }>(
+      `SELECT DISTINCT extract(year FROM e.date)::int AS year
+         FROM event_sales s JOIN events e ON e.id = s.event_id
+        WHERE s.status = 'paid' AND e.deleted_at IS NULL`,
+    );
+    return rows.map((r) => r.year);
+  } catch (error) {
+    if (isMissingTable(error, "event_sales")) return [];
+    throw error;
+  }
+}
+
+/**
+ * What one year's paid event sales took, box by box with the event's
+ * month — for the Dashboard's flavour split, which has to count the same
+ * units as the Units sold tile beside it.
+ */
+export async function getEventSaleItems(year: number): Promise<{ month: number; presetId: number; qty: number }[]> {
+  try {
+    const { rows } = await getDb().query<{ month: number; preset_id: number; qty: number }>(
+      `SELECT extract(month FROM e.date)::int AS month, (i ->> 'presetId')::int AS preset_id, (i ->> 'qty')::int AS qty
+         FROM event_sales s JOIN events e ON e.id = s.event_id, jsonb_array_elements(s.items) i
+        WHERE s.status = 'paid' AND e.deleted_at IS NULL AND extract(year FROM e.date) = $1`,
+      [year],
+    );
+    return rows.map((r) => ({ month: r.month, presetId: r.preset_id, qty: r.qty }));
+  } catch (error) {
+    if (isMissingTable(error, "event_sales")) return [];
+    throw error;
+  }
 }

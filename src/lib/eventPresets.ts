@@ -85,3 +85,20 @@ export function trayCubes(
   }
   return cubes;
 }
+
+/**
+ * The flavour units in `qty` boxes of a preset — its package size times
+ * each flavour's share. MIX stays MIX, as it does on an order.
+ */
+export function presetFlavorUnits(
+  presetId: number,
+  qty: number,
+  presets: ContentPreset[],
+  packageTypes: PackageType[],
+): { flavorId: string; units: number }[] {
+  const preset = presets.find((p) => p.id === presetId);
+  if (!preset) return [];
+  const size = packageTypes.find((p) => p.id === preset.packageTypeId)?.unitsPerPackage ?? 0;
+  const shares = preset.flavors.reduce((sum, f) => sum + f.share, 0) || 1;
+  return preset.flavors.map((f) => ({ flavorId: String(f.flavorId), units: (size * qty * f.share) / shares }));
+}

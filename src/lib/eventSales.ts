@@ -10,7 +10,9 @@
 
 import { getDb, isMissingTable } from "./db";
 import { getEvent } from "./events";
-import { dealLabel, priceBasket, type BasketLine } from "./eventTypes";
+import { dealLabel, priceBasket, SELF_SERVICE, type BasketLine } from "./eventTypes";
+
+export { SELF_SERVICE };
 import { createSaleLink, PaymentLinkError } from "./paymentLinks";
 import { paymentPageUrl } from "./paymentLinkTypes";
 
@@ -134,8 +136,6 @@ export async function settleOpenSale(id: number, how: "cancel" | "cash"): Promis
   return (await getSaleStatus(id))?.status ?? null;
 }
 
-/** Who a self-service sale is recorded as sold by. */
-export const SELF_SERVICE = "self-service";
 
 /**
  * How many baskets one stall's shop may open in ten minutes before it

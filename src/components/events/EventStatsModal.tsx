@@ -36,6 +36,13 @@ const toMinute = (hhmm: string | null) => {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;
 };
+/**
+ * Minutes on the event's own clock: anything before 06:00 is the night
+ * running on past midnight, not that morning, so an event from 20:00 to
+ * 01:00 draws as one evening rather than a whole day.
+ */
+const NIGHT_ENDS = 6 * 60;
+const onEventClock = (minute: number | null) => (minute !== null && minute < NIGHT_ENDS ? minute + 1440 : minute);
 
 /**
  * One event's statistics (v0.103, the owner's ask; drawn on the canvas's
@@ -103,17 +110,18 @@ function StatsBody({ data, net, vatLabel }: { data: StatsData; net: boolean; vat
 
   // The timeline runs over the event's own hours, widened to take in any
   // sale outside them; without hours, from the first sale's hour to the last.
-  const first = sales.length ? Math.min(...sales.map((s) => s.minute)) : null;
-  const last = sales.length ? Math.max(...sales.map((s) => s.minute)) : null;
-  const startAt = Math.min(toMinute(event.startsAt) ?? Infinity, first ?? Infinity);
-  const endAt = Math.max(toMinute(event.endsAt) ?? -Infinity, last !== null ? last + 1 : -Infinity);
+  const minutes = sales.map((s) => onEventClock(s.minute)!);
+  const first = minutes.length ? Math.min(...minutes) : null;
+  const last = minutes.length ? Math.max(...minutes) : null;
+  const startAt = Math.min(onEventClock(toMinute(event.startsAt)) ?? Infinity, first ?? Infinity);
+  const endAt = Math.max(onEventClock(toMinute(event.endsAt)) ?? -Infinity, last !== null ? last + 1 : -Infinity);
   const slots: number[] = [];
   let from = 0;
   if (Number.isFinite(startAt) && Number.isFinite(endAt)) {
     from = Math.floor(startAt / 60) * 60;
     const to = Math.ceil(endAt / SLOT) * SLOT;
     for (let m = from; m < to; m += SLOT) slots.push(0);
-    for (const s of sales) slots[Math.floor((s.minute - from) / SLOT)] += 1;
+    for (const m of minutes) slots[Math.floor((m - from) / SLOT)] += 1;
   }
   const peak = Math.max(0, ...slots);
   const peakAt = slots.indexOf(peak);
@@ -138,14 +146,20 @@ function StatsBody({ data, net, vatLabel }: { data: StatsData; net: boolean; vat
         String(s.total),
       ]),
     ];
-    const csv = rows.map((r) => r.map((c) => `"${c.replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    // A cell starting with = + - @ would run as a formula in Excel.
+    const cell = (c: string) => `"${(/^[=+\-@]/.test(c) ? `'${c}` : c).replaceAll('"', '""')}"`;
+    const csv = rows.map((r) => r.map(cell).join(",")).join("\r\n");
     // A byte-order mark so Excel reads the Hebrew names as Hebrew.
     const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = `${event.name.replace(/[\\/:*?"<>|]+/g, " ").trim() || "event"} sales.csv`;
+    // In the document, and the URL kept a moment: Safari reads the blob
+    // after the click returns, and an older Firefox ignores a detached link.
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
   return (

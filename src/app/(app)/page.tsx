@@ -1,10 +1,11 @@
 import { getYearlyFinancials, yearOf } from "@/lib/financials";
 import { getOrders, orderMonth, orderFlavorUnits } from "@/lib/orders";
 import { isBooked, stageMap, todayIso } from "@/lib/orderTypes";
-import { getEventSummaries } from "@/lib/eventStats";
+import { getEventSaleItems, getEventSummaries } from "@/lib/eventStats";
+import { presetFlavorUnits } from "@/lib/eventPresets";
 import { aroundToday, inRange } from "@/lib/orderScope";
 import { DUE_SOON_DAYS } from "@/lib/dueSoon";
-import { getFlavors, getPrices, getProductionStages, getStaff } from "@/lib/settings";
+import { getContentPresets, getFlavors, getPackageTypes, getPrices, getProductionStages, getStaff } from "@/lib/settings";
 import { getVatView } from "@/lib/vatViewServer";
 import { DashboardClient, type FlavorLine } from "@/components/dashboard/DashboardClient";
 import { getTasks } from "@/lib/tasks";
@@ -18,7 +19,19 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   const vatView = await getVatView();
   const asked = Number((await searchParams).year);
   const askedYear = Number.isInteger(asked) && asked > 2000 ? asked : Number(todayIso().slice(0, 4));
-  const [{ year, years, months: financials }, orders, flavors, stages, tasks, staff, prices, events] = await Promise.all([
+  const [
+    { year, years, months: financials },
+    orders,
+    flavors,
+    stages,
+    tasks,
+    staff,
+    prices,
+    events,
+    eventItems,
+    presets,
+    packageTypes,
+  ] = await Promise.all([
     getYearlyFinancials(vatView, askedYear),
     getOrders(),
     // Archived included: this resolves what stored orders packed, not
@@ -32,6 +45,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
     getStaff(),
     getPrices(),
     getEventSummaries(askedYear),
+    getEventSaleItems(askedYear),
+    // Archived included: a sale may hold a preset or size since retired.
+    getContentPresets(),
+    getPackageTypes(true),
   ]);
 
   const stageIndex = stageMap(stages);
@@ -49,6 +66,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       ...line,
     }));
   });
+  // Event boxes too, since the Units sold tile beside it counts them.
+  for (const item of eventItems) {
+    for (const line of presetFlavorUnits(item.presetId, item.qty, presets, packageTypes)) {
+      flavorLines.push({ month: item.month, ...line });
+    }
+  }
 
   // The orders the "still owe" reminder could mean: a date cut only, a day
   // wider each side (`aroundToday`). The rule itself is `dueSoon`'s, applied

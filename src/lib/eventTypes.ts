@@ -6,6 +6,9 @@
  * the server all have to agree on.
  */
 
+/** Who a self-service sale is recorded as sold by (v0.102). */
+export const SELF_SERVICE = "self-service";
+
 export const PAY_MODES = ["staff", "self", "both"] as const;
 export type PayMode = (typeof PAY_MODES)[number];
 
