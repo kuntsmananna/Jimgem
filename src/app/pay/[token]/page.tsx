@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Lock } from "lucide-react";
 import { getPublicLink } from "@/lib/paymentLinks";
-import { PAYMENT_LINK_KIND_HEBREW } from "@/lib/paymentLinkTypes";
-import { PayShell, shekels } from "../PayShell";
+import { payCopy } from "../copy";
+import { PayRow, PayShell, readPayLang, shekels } from "../PayShell";
 
-export const metadata: Metadata = { title: "תשלום — Gems", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Gems — תשלום / Payment", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
  * It says what is being paid for and how much, and its button goes
  * through `/pay/<token>/go` to SUMIT. Once paid it says so instead, so the
  * same link sent twice, or opened after the fact, cannot be paid twice.
+ * Hebrew or English, by the switch in `PayShell`.
  */
 export default async function PayPage({
   params,
@@ -27,56 +28,66 @@ export default async function PayPage({
   const query = await searchParams;
   const link = await getPublicLink(token);
   if (!link) notFound();
+  const lang = await readPayLang();
+  const t = payCopy(lang);
 
   if (link.status === "paid") {
     return (
-      <PayShell>
-        <CircleCheck size={44} className="mx-auto text-accent" aria-hidden />
-        <h1 className="font-display mt-3 text-2xl font-extrabold">התשלום התקבל</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          {shekels(link.paidAmount ?? link.amount)} · {PAYMENT_LINK_KIND_HEBREW[link.kind]} להזמנה לתאריך {link.date}
-        </p>
-        <p className="mt-4 text-sm">תודה! 🍸</p>
+      <PayShell lang={lang} token={token} back="page">
+        <div className="flex flex-col items-center text-center">
+          <CircleCheck size={48} strokeWidth={1.75} className="text-accent" aria-hidden />
+          <h1 className="font-display mt-3 text-2xl font-extrabold">{t.paidTitle}</h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            {t.kind(link.kind)} · {shekels(link.paidAmount ?? link.amount)} · {link.date}
+          </p>
+        </div>
       </PayShell>
     );
   }
 
   if (link.status === "cancelled") {
     return (
-      <PayShell>
-        <h1 className="font-display text-xl font-extrabold">הלינק הזה כבר לא פעיל</h1>
-        <p className="mt-2 text-sm text-ink-soft">אם צריך לשלם, נשלח לך לינק חדש.</p>
+      <PayShell lang={lang} token={token} back="page">
+        <h1 className="font-display text-xl font-extrabold">{t.linkClosedTitle}</h1>
+        <p className="mt-2 text-sm text-ink-soft">{t.linkClosedText}</p>
       </PayShell>
     );
   }
 
   return (
-    <PayShell>
-      <p className="text-sm font-semibold text-ink-soft">{PAYMENT_LINK_KIND_HEBREW[link.kind]} להזמנה לתאריך {link.date}</p>
-      <p data-private className="mt-1 text-sm text-ink-soft">
-        {link.customer}
+    <PayShell lang={lang} token={token} back="page">
+      <p className="text-sm font-semibold text-ink-soft">
+        {t.kind(link.kind)} {t.forOrder}
       </p>
-      <p className="font-display mt-4 text-5xl leading-none font-extrabold tabular-nums">{shekels(link.amount)}</p>
+      <p className="font-display mt-1 text-[52px] leading-none font-extrabold tabular-nums">
+        <span dir="ltr">{shekels(link.amount)}</span>
+      </p>
 
-      {query.cancelled && (
-        <p className="mt-5 rounded-xl bg-band px-3 py-2 text-sm">התשלום לא הושלם. אפשר לנסות שוב.</p>
-      )}
-      {query.unavailable && (
-        <p className="mt-5 rounded-xl bg-band px-3 py-2 text-sm">
-          לא הצלחנו לפתוח את דף התשלום כרגע. נסו שוב בעוד רגע, או כתבו לנו.
-        </p>
-      )}
+      <dl className="mt-5 divide-y divide-line border-y border-line">
+        <PayRow label={t.name}>
+          <span data-private>{link.customer}</span>
+        </PayRow>
+        <PayRow label={t.eventDate}>{link.date}</PayRow>
+        <PayRow label={t.amount}>
+          <span dir="ltr">{shekels(link.amount)}</span>
+        </PayRow>
+      </dl>
+
+      {query.cancelled && <p className="mt-5 rounded-2xl bg-band px-4 py-3 text-sm">{t.cancelledTry}</p>}
+      {query.unavailable && <p className="mt-5 rounded-2xl bg-band px-4 py-3 text-sm">{t.unavailable}</p>}
 
       {/* A plain link, not next/link: nothing may prefetch it, since
           following it can ask SUMIT for a fresh page. */}
       <a
         href={`/pay/${link.token}/go`}
-        className="press mt-6 flex h-12 w-full items-center justify-center rounded-full bg-black text-base font-bold text-cream"
+        className="press mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-[17px] font-bold text-cream"
       >
-        לתשלום מאובטח
+        <Lock size={17} aria-hidden />
+        {t.pay}
       </a>
-      <p className="mt-3 text-xs text-ink-soft">
-        התשלום מתבצע בדף המאובטח של SUMIT.{link.receiptByEmail ? " הקבלה תישלח אליך למייל." : ""}
+      <p className="mt-3 text-center text-xs leading-relaxed text-ink-soft">
+        {t.secure}
+        {link.receiptByEmail ? ` · ${t.receipt}` : ""}
       </p>
     </PayShell>
   );

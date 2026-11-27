@@ -1587,6 +1587,14 @@ refuses the link and the popup shows SUMIT's own sentence.
   Automatic search, so SUMIT reuses one income item rather than making one
   per payment; the receipt is SUMIT's own, emailed when the client card has
   an email.
+- **The customer pages speak Hebrew or English** (v0.99.4, `pay/copy.ts`):
+  a switch at the top of each, remembered in the `gems_pay_lang` cookie by
+  `/pay/<token>/lang`, since the thank-you page's address is fixed when
+  SUMIT is asked and a query string could not survive the trip. Hebrew by
+  default. They wear the official mark, laid out like a hosted checkout
+  (the amount largest, a short label/value list, one dark button and a
+  line of reassurance), and the thank-you ends on Follow us — Instagram
+  (`INSTAGRAM_URL`) and the website. SUMIT's own page stays in Hebrew.
 - **A link made on a preview opens the preview**, which a customer cannot
   reach while Vercel protects it — make real links in production.
 - `payment_links.order_id` is nullable for the event register planned

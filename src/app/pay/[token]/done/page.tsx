@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CircleCheck, Clock } from "lucide-react";
+import { CircleCheck, Clock, Globe } from "lucide-react";
 import { confirmReturn, getPublicLink } from "@/lib/paymentLinks";
-import { PAYMENT_LINK_KIND_HEBREW } from "@/lib/paymentLinkTypes";
-import { PayShell, shekels } from "../../PayShell";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL, payCopy, SITE_URL } from "../../copy";
+import { InstagramMark, PayShell, readPayLang, shekels } from "../../PayShell";
 
-export const metadata: Metadata = { title: "תודה — Gems", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Gems — תודה / Thank you", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
@@ -13,6 +13,10 @@ export const dynamic = "force-dynamic";
  * query. The id is only a claim — anyone can type this URL — so
  * `confirmReturn` asks SUMIT about it, and checks it is valid and carries
  * this link's token, before the link and the order are marked paid.
+ *
+ * The thank-you ends on an invitation to follow on Instagram and visit the
+ * website (v0.99.4, the owner's ask): the one moment a customer is glad to
+ * hear from the business is the moment after paying it.
  */
 export default async function PayDonePage({
   params,
@@ -36,31 +40,60 @@ export default async function PayDonePage({
   }
   const link = await getPublicLink(token);
   if (!link) notFound();
+  const lang = await readPayLang();
+  const t = payCopy(lang);
 
-  if (status === "paid" || link.status === "paid") {
+  if (status !== "paid" && link.status !== "paid") {
     return (
-      <PayShell>
-        <CircleCheck size={48} className="mx-auto text-accent" aria-hidden />
-        <h1 className="font-display mt-3 text-2xl font-extrabold">תודה, התשלום התקבל!</h1>
-        <p className="font-display mt-4 text-4xl leading-none font-extrabold tabular-nums">
-          {shekels(link.paidAmount ?? link.amount)}
-        </p>
-        <p className="mt-2 text-sm text-ink-soft">
-          {PAYMENT_LINK_KIND_HEBREW[link.kind]} להזמנה לתאריך {link.date}
-        </p>
-        {link.receiptByEmail && <p className="mt-4 text-sm">הקבלה בדרך אליך למייל.</p>}
-        <p className="mt-4 text-sm">נתראה באירוע 🍸</p>
+      <PayShell lang={lang} token={token} back="done">
+        <div className="flex flex-col items-center text-center">
+          <Clock size={40} strokeWidth={1.75} className="text-ink-soft" aria-hidden />
+          <h1 className="font-display mt-3 text-xl font-extrabold">{t.pendingTitle}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t.pendingText}</p>
+        </div>
       </PayShell>
     );
   }
 
   return (
-    <PayShell>
-      <Clock size={40} className="mx-auto text-ink-soft" aria-hidden />
-      <h1 className="font-display mt-3 text-xl font-extrabold">מאשרים את התשלום</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        עדיין לא קיבלנו אישור מ-SUMIT. אם חויבת, נראה את זה אצלנו בקרוב ואין צורך לשלם שוב.
-      </p>
+    <PayShell lang={lang} token={token} back="done">
+      <div className="flex flex-col items-center text-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-cream">
+          <CircleCheck size={34} strokeWidth={2} aria-hidden />
+        </span>
+        <h1 className="font-display mt-4 text-[26px] leading-tight font-extrabold">{t.paidTitle}</h1>
+        <p className="font-display mt-2 text-4xl leading-none font-extrabold tabular-nums" dir="ltr">
+          {shekels(link.paidAmount ?? link.amount)}
+        </p>
+        <p className="mt-2 text-sm text-ink-soft">
+          {t.kind(link.kind)} · {link.date}
+        </p>
+        {link.receiptByEmail && <p className="mt-3 text-sm">{t.receiptOnWay}</p>}
+        <p className="mt-4 text-base font-semibold">{t.thanks}</p>
+      </div>
+
+      {/* The invitation, in a box of its own under a rule: a thank-you
+          first, an ask second. */}
+      <div className="mt-6 rounded-2xl bg-cream p-4">
+        <p className="font-bold">{t.followTitle}</p>
+        <p className="mt-0.5 text-sm text-ink-soft">{t.followText}</p>
+        <div className="mt-3 flex flex-col gap-2">
+          <a
+            href={INSTAGRAM_URL}
+            className="press flex h-12 items-center justify-center gap-2 rounded-full bg-black font-bold text-cream"
+          >
+            <InstagramMark />
+            <span dir="ltr">{INSTAGRAM_HANDLE}</span>
+          </a>
+          <a
+            href={SITE_URL}
+            className="press flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-card font-bold text-ink"
+          >
+            <Globe size={17} aria-hidden />
+            {t.site}
+          </a>
+        </div>
+      </div>
     </PayShell>
   );
 }
