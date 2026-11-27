@@ -741,3 +741,46 @@ CREATE TABLE IF NOT EXISTS payment_links (
 );
 
 CREATE INDEX IF NOT EXISTS payment_links_order_idx ON payment_links (order_id);
+
+-- Events and what they sell (migration 040, word for word). Sales come later.
+CREATE TABLE IF NOT EXISTS events (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  date DATE NOT NULL,
+  starts_at TIME,
+  ends_at TIME,
+  location TEXT NOT NULL DEFAULT '',
+  pay_mode TEXT NOT NULL DEFAULT 'both' CHECK (pay_mode IN ('staff', 'self', 'both')),
+  qr_mode TEXT NOT NULL DEFAULT 'product' CHECK (qr_mode IN ('product', 'stall')),
+  count_stock BOOLEAN NOT NULL DEFAULT true,
+  seller_ids INTEGER[] NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'ready')),
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  updated_by TEXT,
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS event_products (
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  preset_id INTEGER NOT NULL REFERENCES content_presets(id),
+  price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+  brought INTEGER CHECK (brought IS NULL OR brought >= 0),
+  position INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (event_id, preset_id)
+);
+
+CREATE TABLE IF NOT EXISTS event_deals (
+  id SERIAL PRIMARY KEY,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('bundle', 'percent', 'free', 'price')),
+  min_qty INTEGER NOT NULL DEFAULT 1 CHECK (min_qty >= 1),
+  price NUMERIC(10, 2) CHECK (price IS NULL OR price >= 0),
+  percent NUMERIC(5, 2) CHECK (percent IS NULL OR (percent > 0 AND percent <= 100)),
+  preset_ids INTEGER[] NOT NULL DEFAULT '{}',
+  position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS event_deals_event_idx ON event_deals (event_id);
+

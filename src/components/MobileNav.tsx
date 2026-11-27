@@ -13,6 +13,7 @@ import {
   Receipt,
   Settings,
   Sparkles,
+  Store,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -49,6 +50,7 @@ const BAR = [
 const MORE = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/clients", label: "Clients", icon: Users },
+  { href: "/events", label: "Events", icon: Store },
   { href: "/prep", label: "Prep sheet", icon: ChefHat },
   { href: "/biz-plan", label: "Biz Plan", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },

@@ -1600,6 +1600,42 @@ refuses the link and the popup shows SUMIT's own sentence.
 - `payment_links.order_id` is nullable for the event register planned
   next (one row per sale, no order).
 
+### v0.100 — events, stage 1: setting one up
+
+**Run `scripts/migrate-040-events.sql` before shipping** (three new tables,
+watched by `row_revisions`). Until it is run the Events page says which
+migration to paste; nothing else is touched.
+
+- **Events** are markets, fairs and pop-ups where ready-made boxes are sold
+  on the spot, designed on the "Gems event sales" canvas (11 screens). This
+  stage is the desk half: **Events** in the nav (a seventh desktop pill,
+  and in the phone's More sheet), `/events` (coming up, soonest first;
+  done under it) and `/events/new` · `/events/<id>` (`EventSetupForm`):
+  name, date, half-hour From/Until behind a clock, place, who sells; how
+  customers pay (staff / self / both) and, for self-service, one QR per
+  product or one for the stall (folding shut for staff-only); what is on
+  the table — **content presets**, since a preset already is a box with a
+  fixed mix — with this event's price **copied in** and boxes brought when
+  stock is counted; and deals. A side column ticks itself off ("Ready to
+  sell?"). Save draft / Save — ready to sell. Admins only.
+- **Deals are four kinds** (`eventTypes.ts`, tested): bundle (N for ₪X,
+  repeating, the dearest boxes bundled), percent (off the eligible boxes
+  from N), free (every N+1th box free, the cheapest), price (a special
+  price per named box). A deal may name products (`presetIds`, empty =
+  all). **`priceBasket` applies the one deal that saves most, never two** —
+  the owner's rule; the register and the customer's basket will use it.
+- **Saved whole, in one statement** (`events.ts`): the event row, products
+  deleted-if-gone then upserted (deleting and re-inserting one key in
+  sibling CTEs collides), deals replaced; every child depends on the event
+  row matching, so a stale save (`expectedUpdatedAt`) or a deleted event
+  writes nothing and answers 409. Children travel as JSON through
+  `jsonb_to_recordset`. Verified against a real Postgres. Events
+  soft-delete. `parseEventInput` in `validate.ts`.
+- **Next stages**: the register on the seller's phone (stage 2), the
+  self-service basket, proof screen and printed signs (3), the statistics
+  popup and a Dashboard line per event (4). Sales will reuse
+  `payment_links` (its `order_id` is nullable for exactly this).
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

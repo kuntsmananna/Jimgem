@@ -26,6 +26,7 @@ import { HideModeButton } from "@/components/HideMode";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/orders", label: "Orders" },
+  { href: "/events", label: "Events" },
   { href: "/clients", label: "Clients" },
   { href: "/expenses", label: "Expenses" },
   { href: "/biz-plan", label: "Biz Plan" },

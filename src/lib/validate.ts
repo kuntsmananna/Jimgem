@@ -1,4 +1,5 @@
 import type { OrderInput, PaymentStatus, VatMode } from "./orderTypes";
+import { DEAL_KINDS, EVENT_STATUSES, PAY_MODES, QR_MODES, type EventInput } from "./eventTypes";
 import type { ExpenseInput } from "./expenses";
 import type { TaskInput } from "./tasks";
 import type { EditableField } from "./orders";
@@ -343,4 +344,68 @@ export function parseRecipeInput(
 /** A shelf count, in packs. Blank clears it back to "not counted". */
 export function parseStockInput(body: unknown): Parsed<{ onHand: number | null }> {
   return run(body, (r) => ({ onHand: r.optionalNumber("onHand", "The count", { min: 0, max: MAX_COUNT }) }));
+}
+
+/**
+ * An event and everything set up for it (v0.100 event register). A product
+ * listed twice is refused, as an ingredient twice in a recipe is; a deal
+ * must carry the number its kind needs.
+ */
+export function parseEventInput(body: unknown): Parsed<EventInput> {
+  return run(body, (r) => {
+    const name = r.text("name", "The name").trim();
+    if (!name) throw new Invalid("An event needs a name.");
+    const products = r.list("products", "What's for sale", 200).map((entry) => {
+      const p = new Reader(entry);
+      const presetId = p.id("presetId", "A product");
+      if (presetId === null) throw new Invalid("A product line has no product.");
+      return {
+        presetId,
+        price: p.number("price", "A price", { min: 0, max: MAX_MONEY }),
+        brought: p.optionalNumber("brought", "Boxes brought", { min: 0, max: MAX_COUNT, int: true }),
+      };
+    });
+    if (new Set(products.map((p) => p.presetId)).size !== products.length) {
+      throw new Invalid("A product is on the table twice.");
+    }
+    const deals = r.list("deals", "The deals", 50).map((entry) => {
+      const d = new Reader(entry);
+      const kind = d.oneOf("kind", "A deal's kind", DEAL_KINDS);
+      const deal = {
+        kind,
+        minQty: d.optionalNumber("minQty", "A deal's quantity", { min: 1, max: 1000, int: true }) ?? 1,
+        price: d.optionalNumber("price", "A deal's price", { min: 0, max: MAX_MONEY }),
+        percent: d.optionalNumber("percent", "A deal's percent", { min: 0.01, max: 100 }),
+        presetIds: idList(entry.presetIds, "A deal names a product that isn't one."),
+      };
+      if ((kind === "bundle" || kind === "price") && deal.price === null) throw new Invalid("A deal needs its price.");
+      if (kind === "percent" && deal.percent === null) throw new Invalid("A deal needs its percent.");
+      return deal;
+    });
+    return {
+      name,
+      date: r.date("date", "The date"),
+      startsAt: r.time("startsAt", "The start"),
+      endsAt: r.time("endsAt", "The end"),
+      location: r.text("location", "The place"),
+      payMode: r.oneOf("payMode", "How customers pay", PAY_MODES),
+      qrMode: r.oneOf("qrMode", "The QR codes", QR_MODES),
+      countStock: r.bool("countStock", "Count stock"),
+      sellerIds: idList((body as Record<string, unknown>).sellerIds, "A seller isn't one of the team."),
+      status: r.oneOf("status", "The status", EVENT_STATUSES),
+      notes: r.text("notes", "The notes", 5000),
+      products,
+      deals,
+    };
+  });
+}
+
+/** A list of row ids, or empty when absent; anything else in it is refused. */
+function idList(value: unknown, error: string): number[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 200) throw new Invalid(error);
+  return value.map((id) => {
+    if (typeof id !== "number" || !Number.isInteger(id) || id < 1 || id > 2_147_483_647) throw new Invalid(error);
+    return id;
+  });
 }
