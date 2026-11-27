@@ -134,7 +134,9 @@ function OrderCard({
   const units = orderUnits(order.packageLines, unitsPerPackage);
   /* What the order *has*, in the table's slot order — the same list. */
   const extras = extraSlots(order).filter((slot) => slot.on > 0);
-  const method = usePaymentMethods().find((m) => m.id === order.paymentMethodId);
+  const allMethods = usePaymentMethods();
+  const method = allMethods.find((m) => m.id === order.paymentMethodId);
+  const hasMethods = allMethods.length > 0;
   const total = orderTotal(order);
   const due = stillDue(order);
   // The table's rule for a quote, not a second reading of the flag.
@@ -259,18 +261,28 @@ function OrderCard({
           is the status, so it comes from `paymentBadgeClass` rather than
           being decided here.
         */}
+        {/* How they paid is a circle of its own beside the badge, as in the
+            table (v0.98.3) — dashed and empty while nobody has said, so the
+            gap shows. Named in words after the badge, since a phone has no
+            hover to say what the mark means. */}
+        {hasMethods && (
+          <span
+            aria-hidden
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+              method ? "border border-line bg-card text-ink" : "border border-dashed border-ink-soft/60"
+            }`}
+          >
+            {method && paymentMethodIconElement(method.name, 12)}
+          </span>
+        )}
         <span
           className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentBadgeClass(
             order.paymentStatus,
           )}`}
         >
-          {/* How they paid rides inside the badge as its mark, as it does in
-              the table (v0.78) — and is named in words after it, since a
-              phone has no hover to say what the mark means. */}
-          {method && paymentMethodIconElement(method.name)}
           {paymentLabel(order)}
-          {method && <span className="font-medium opacity-75">· {method.name}</span>}
         </span>
+        {method && <span className="truncate text-[11px] font-medium text-ink-soft">{method.name}</span>}
         <span className="flex-1" />
         {/*
           What is still owed, in the table's amber, before the total —

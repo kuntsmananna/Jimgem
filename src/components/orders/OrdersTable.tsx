@@ -14,7 +14,6 @@ import {
   stillDue,
   todayIso,
   unitsPerPackageMap,
-  PAYMENT_STATUS_LABEL,
   type Order,
   type OrderInput,
 } from "@/lib/orderTypes";
@@ -29,7 +28,6 @@ import { eventType, orderTypeIconElement } from "@/lib/icons";
 import { AmountHoverCard } from "./AmountHoverCard";
 import { ContentHoverCard } from "./ContentHoverCard";
 import { EditableCell } from "./EditableCell";
-import { usePaymentMethods } from "./PaymentMethodsContext";
 import { useVatView } from "@/components/VatViewContext";
 import { PaymentStatusSelect, ProductionStatusSelect, stageHint } from "./StatusSelects";
 import { cubeColors } from "@/components/JellyLoader";
@@ -141,7 +139,6 @@ export function OrdersTable({
    */
   const selectable = useIsAdmin();
   const { forOrder } = useVatView();
-  const paymentMethods = usePaymentMethods();
   // From the app-layout provider rather than a prop — see OrderTypesContext.
   const orderTypes = useOrderTypes();
   // A row is provisional when its stage says it is not income yet — the
@@ -372,7 +369,6 @@ export function OrdersTable({
             const isOpen = openKey === order.key;
             const firstOfDay = order.date !== orders[at - 1]?.date;
             const booked = isBooked(order, stageIndex);
-            const method = paymentMethods.find((m) => m.id === order.paymentMethodId);
 
             return (
               <Fragment key={order.key}>
@@ -624,14 +620,7 @@ export function OrdersTable({
                   )}
                   {show("payment") && (
                     <td>
-                      <Tip
-                        label={`${PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus}${
-                          method ? ` · ${method.name}` : " · not said how yet"
-                        } — click to change`}
-                        className="inline-flex"
-                      >
-                        <PaymentStatusSelect order={order} onChanged={onChanged} onUndoable={onUndoable} />
-                      </Tip>
+                      <PaymentStatusSelect order={order} onChanged={onChanged} onUndoable={onUndoable} />
                     </td>
                   )}
                 </tr>

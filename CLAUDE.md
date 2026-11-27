@@ -1707,9 +1707,12 @@ column as "not set").
   it, VAT included, so the Dashboard and Biz Plan figures are exactly what
   they were — VAT stays what the order's own `vat_mode` says. It is in
   `OrderMoney`, so a staff account is neither sent it nor able to set it.
-  Since v0.78 it rides **inside the payment badge** as its icon, in the
-  table and on the phone card (which names it in words too), and is set
-  from the badge's own menu; it was a column of neutral chips
+  Since v0.98.3 it is **a small circle of its own just left of the payment
+  badge**, in the table and on the phone card (which names it in words
+  too), with its own menu; **dashed with a plus while no method is set**,
+  so the missing answer shows. From v0.78 it rode inside the badge as its
+  icon, which nobody noticed could be set and which drew nothing at all
+  for "not said yet". Before that it was a column of neutral chips
   (`PaymentMethodChip`, still used by Kanban and the hover cards) beside
   the badge, two cells answering one question. Its icon is matched from the
   method's name by keyword (`paymentMethodIcon` in `icons.ts`), since the
@@ -3011,10 +3014,11 @@ rows they name. Now, from `COLUMNS` in `OrdersTable.tsx`:
   "VAT included" rather than quoting a gross total that would disagree
   with the Total column under the net switch. A quote's balance is drawn quiet,
   since a quote owes nothing. It replaced the Deposit column: the deposit
-  is the past, what is still owed is the job. **Paid by moved into the
-  payment badge** as its icon, and into the badge's own menu as a second
-  half under the statuses (`PaymentStatusSelect.chooseMethod`, with the
-  same Undo offer) — two cells had been answering one question.
+  is the past, what is still owed is the job. **Paid by is a circle
+  beside the payment badge** in the same cell (v0.98.3; inside the badge
+  v0.78-v0.98.2), each opening its own half of `PaymentStatusSelect`'s
+  list (`part`), with the same Undo offer — one cell answering "has this
+  been paid, and how", as two controls that can each be seen.
 - **Every mark explains itself** through `Tip` (`src/components/Tip.tsx`):
   a dark one-line label that opens the moment the pointer arrives, where
   `title` takes a second and is gone by the time it is read. It is the

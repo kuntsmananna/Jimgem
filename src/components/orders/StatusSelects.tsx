@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import {
   PAYMENT_STATUS_LABEL,
   paymentBadgeClass,
@@ -19,6 +19,7 @@ import { useStage, useStages } from "@/components/ProductionStagesContext";
 import { paymentMethodIconElement } from "@/lib/icons";
 import { usePaymentMethods } from "./PaymentMethodsContext";
 import { notify } from "@/components/Notices";
+import { Tip } from "@/components/Tip";
 
 /**
  * The payment status, as the badge it is everywhere else — and a click on
@@ -47,14 +48,18 @@ export function PaymentStatusSelect({
 }) {
   const [busy, setBusy] = useState(false);
   const [at, setAt] = useState<{ left: number; top: number } | null>(null);
+  const [part, setPart] = useState<"status" | "method">("status");
   const chip = useRef<HTMLButtonElement | null>(null);
+  const circle = useRef<HTMLButtonElement | null>(null);
   const menu = useRef<HTMLDivElement | null>(null);
   const statuses = Object.keys(PAYMENT_STATUS_LABEL) as PaymentStatus[];
   /*
-   * How it was paid rides in the same badge and the same list (v0.78): the
-   * method's icon sits inside the badge, and the list has a Paid by half
-   * under the statuses. It was a column of its own beside this one — two
-   * cells answering one question, "has this been paid, and how".
+   * How it was paid sits beside the badge in a circle of its own (v0.98.3),
+   * each opening its own half of the list. It rode inside the badge from
+   * v0.78, which hid it: a mark inside a status pill read as part of the
+   * status, nobody guessed it could be set, and an order with no method
+   * simply had no mark, so "not said yet" looked like nothing at all. The
+   * empty circle is dashed with a plus — the missing answer is visible.
    */
   const allMethods = usePaymentMethods();
   const method = allMethods.find((m) => m.id === order.paymentMethodId) ?? null;
@@ -66,14 +71,15 @@ export function PaymentStatusSelect({
     if (at === null) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!chip.current?.contains(target) && !menu.current?.contains(target)) close();
+      if (!chip.current?.contains(target) && !circle.current?.contains(target) && !menu.current?.contains(target))
+        close();
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // Captured and stopped, for the reason `usePopoverDismiss` gives.
       event.stopPropagation();
       close();
-      chip.current?.focus();
+      (part === "method" ? circle : chip).current?.focus();
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey, true);
@@ -82,17 +88,22 @@ export function PaymentStatusSelect({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey, true);
     };
-  }, [at, close]);
+  }, [at, close, part]);
   useCloseOnScroll(at !== null, close);
 
-  function open() {
-    const rect = chip.current?.getBoundingClientRect();
+  function open(which: "status" | "method") {
+    const rect = (which === "method" ? circle : chip).current?.getBoundingClientRect();
     if (!rect) return;
-    const height = statuses.length * 34 + 12 + (methods.length ? (methods.length + 1) * 34 + 30 : 0);
+    const height = which === "status" ? statuses.length * 34 + 12 : (methods.length + 1) * 34 + 40;
     // HoverCard's placement — below, else above, held on screen when it
-    // fits neither: with the Paid by half the list is ~400px, and on a
-    // short window it opened with its statuses above the top edge.
+    // fits neither.
+    setPart(which);
     setAt(positionBelow(rect, MENU_WIDTH, height, "below-left"));
+  }
+
+  function toggle(which: "status" | "method") {
+    if (at && part === which) close();
+    else open(which);
   }
 
   async function write(patch: { paymentStatus: PaymentStatus } | { paymentMethodId: number | null }): Promise<boolean> {
@@ -149,37 +160,60 @@ export function PaymentStatusSelect({
 
   return (
     <>
-      <button
-        ref={chip}
-        type="button"
-        disabled={busy}
-        aria-haspopup="listbox"
-        aria-expanded={at !== null}
-        aria-label={`Payment: ${PAYMENT_STATUS_LABEL[order.paymentStatus]}${method ? `, by ${method.name}` : ""}. Change`}
-        onClick={() => (at ? close() : open())}
-        className={`press keeps-color inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${paymentBadgeClass(order.paymentStatus)}`}
-      >
-        {busy ? (
-          <JellyHop size={5} label="Saving" />
-        ) : (
-          <>
-            {method && <span className="shrink-0">{paymentMethodIconElement(method.name)}</span>}
-            {PAYMENT_STATUS_LABEL[order.paymentStatus]}
-            <ChevronDown size={11} aria-hidden className="opacity-60" />
-          </>
+      <span className="inline-flex items-center gap-1.5">
+        {methods.length > 0 && (
+          <Tip label={method ? `Paid by ${method.name} — click to change` : "How was it paid? Click to choose"}>
+            <button
+              ref={circle}
+              type="button"
+              disabled={busy}
+              aria-haspopup="listbox"
+              aria-expanded={at !== null && part === "method"}
+              aria-label={method ? `Paid by ${method.name}. Change` : "How it was paid: not chosen yet. Choose"}
+              onClick={() => toggle("method")}
+              className={`press flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                method
+                  ? "border border-line bg-card text-ink"
+                  : "border border-dashed border-ink-soft/60 text-ink-soft hover:border-ink hover:text-ink"
+              }`}
+            >
+              {method ? paymentMethodIconElement(method.name, 12) : <Plus size={11} aria-hidden />}
+            </button>
+          </Tip>
         )}
-      </button>
+        <Tip label={`${PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus} — click to change`}>
+          <button
+            ref={chip}
+            type="button"
+            disabled={busy}
+            aria-haspopup="listbox"
+            aria-expanded={at !== null && part === "status"}
+            aria-label={`Payment: ${PAYMENT_STATUS_LABEL[order.paymentStatus]}. Change`}
+            onClick={() => toggle("status")}
+            className={`press keeps-color inline-flex min-w-16 items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${paymentBadgeClass(order.paymentStatus)}`}
+          >
+            {busy ? (
+              <JellyHop size={5} label="Saving" />
+            ) : (
+              <>
+                {PAYMENT_STATUS_LABEL[order.paymentStatus]}
+                <ChevronDown size={11} aria-hidden className="opacity-60" />
+              </>
+            )}
+          </button>
+        </Tip>
+      </span>
       {at !== null &&
         createPortal(
           <div
             ref={menu}
             role="listbox"
-            aria-label="Payment status"
+            aria-label={part === "method" ? "Paid by" : "Payment status"}
             onKeyDown={onMenuKey}
             style={{ left: at.left, top: at.top, width: MENU_WIDTH }}
             className="motion-drop fixed z-50 flex flex-col rounded-xl border border-line bg-card p-1.5 shadow-[0_18px_40px_-14px_rgb(120_80_60/0.4)]"
           >
-            {statuses.map((status) => {
+            {part === "status" && statuses.map((status) => {
               const current = status === order.paymentStatus;
               return (
                 <button
@@ -196,9 +230,9 @@ export function PaymentStatusSelect({
                 </button>
               );
             })}
-            {methods.length > 0 && (
+            {part === "method" && (
               <>
-                <p className="mt-1.5 border-t border-line px-2 pt-2 pb-1 text-[10px] font-bold tracking-[0.12em] text-ink-soft uppercase">
+                <p className="px-2 pt-1 pb-1 text-[10px] font-bold tracking-[0.12em] text-ink-soft uppercase">
                   Paid by
                 </p>
                 {[{ id: null, name: "Not yet" }, ...methods].map((m) => {
