@@ -43,7 +43,7 @@ export function EventRegister({ event, tally, presets }: { event: SaleEvent; tal
     .filter((p) => (counts[p.presetId] ?? 0) > 0)
     .map((p) => ({ presetId: p.presetId, qty: counts[p.presetId], unitPrice: p.price }));
   const priced = priceBasket(lines, event.deals);
-  const deal = priced.deal === null ? "" : dealLabel(event.deals[priced.deal]);
+  const deal = priced.deal === null ? "" : dealLabel(event.deals[priced.deal], lang);
   const name = (presetId: number) => presetById.get(presetId)?.name ?? "—";
   const summary = lines.map((l) => `${l.qty} × ${name(l.presetId)}`);
 

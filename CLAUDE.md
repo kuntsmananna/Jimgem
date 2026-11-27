@@ -1667,6 +1667,45 @@ register says which migration to paste.
 - Verified against a real Postgres: cash, card paid through `markPaid`,
   cash-instead and cancel.
 
+### v0.102 — events, stage 3: self-service, the proof screen and the jelly tray
+
+**Run `scripts/migrate-042-event-shop.sql` before shipping** (a column on
+`events`, one on `event_sales`). Until it is run the shop does not exist
+(`getEventByToken` answers null), the signs page says which migration to
+paste, and the proof screen simply reads "not handed over".
+
+- **`/shop/<events.public_token>`** (`ShopClient`, public — `shop/` is in
+  `proxy.ts`'s matcher) is an event's self-service basket, for an event
+  that is **ready** and not staff-only. The basket is kept on the phone
+  (`localStorage`, per event), so scanning the next box's QR adds to it; a
+  product QR is `?add=<preset>`, which adds one, says so in a banner and
+  is dropped from the address. Stock shows where it is counted. Checkout
+  (`/shop/<token>/checkout`) prices on the server through `recordSale`,
+  seller `self-service`, and makes the link **without a SUMIT page**
+  (`createSaleLink`'s `lazy`): anyone can fill a basket from a printed
+  sign, so the metered call waits for Pay, where `sumitUrlForCustomer`
+  makes it. `shopIsBusy` refuses past 120 baskets in ten minutes per event.
+- **The thank-you of a sale is the proof screen** (`SaleProof` /
+  `SaleProofView` in `src/app/pay/`), also shown when a paid sale's link is
+  reopened: the sale's code and colour (`saleMark`, from its id), a clock
+  that ticks (a screenshot does not), what was taken, and for a
+  self-service sale **"Staff: tap once handed over"**, which stamps
+  `event_sales.handed_at` through `/pay/<token>/handed` and reads as handed
+  over from then on. Then **the jelly tray** (`JellyTray`): the flavours
+  bought (`trayCubes`, at most 36, MIX spread over the others), wobbling
+  under a finger through `wobble.ts` and when the phone is shaken —
+  behind a "Shake the phone" button where iOS must be asked, on touch
+  screens only. Then Follow us (`FollowUs`, shared with the order
+  thank-you).
+- **`/events/<id>/signs`** (admin) prints the signs: a sign per box with
+  its own QR, four to an A4, or one stall sign, as the setup chose; both
+  languages, the box's deal on its sign. The QR points at the
+  **production** address (`appUrlFor`). Reached from the setup screen's
+  "On the day" card (Print signs, The shop).
+- The language cookie is **site-wide** now (`setPayLangCookie` in
+  `pay/copy.ts`), so the shop and the payment pages share it; the old
+  `/pay`-only cookie is cleared beside it. `dealLabel` takes `"he"`.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

@@ -409,3 +409,21 @@ function idList(value: unknown, error: string): number[] {
     return id;
   });
 }
+
+/**
+ * A basket as the register and the self-service shop send it:
+ * `[{ presetId, qty }]`. A sentence when it isn't one.
+ */
+export function parseSaleItems(raw: unknown): { presetId: number; qty: number }[] | string {
+  if (!Array.isArray(raw) || raw.length > 100) return "The basket didn't arrive.";
+  const items = [];
+  for (const entry of raw) {
+    const presetId = Number((entry as { presetId?: unknown })?.presetId);
+    const qty = Number((entry as { qty?: unknown })?.qty);
+    if (!Number.isInteger(presetId) || presetId < 1 || !Number.isInteger(qty) || qty < 0 || qty > 1000) {
+      return "A line in the basket isn't one.";
+    }
+    items.push({ presetId, qty });
+  }
+  return items;
+}

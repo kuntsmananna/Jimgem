@@ -65,6 +65,8 @@ export interface SaleEvent extends EventInput {
   id: number;
   updatedAt: string;
   updatedBy: string;
+  /** The self-service shop's address, `/shop/<token>` (v0.102); empty before migration 042. */
+  publicToken: string;
 }
 
 /** A blank event for the New event screen. */
@@ -164,17 +166,18 @@ export function priceBasket(lines: BasketLine[], deals: EventDeal[]): BasketPric
   return { subtotal, discount: best, total: round2(subtotal - best), deal };
 }
 
-/** A deal in a few words, for lists and the register — "3 for ₪100". */
-export function dealLabel(deal: EventDeal): string {
+/** A deal in a few words, for lists and the register — "3 for ₪100", or in Hebrew. */
+export function dealLabel(deal: EventDeal, lang: "en" | "he" = "en"): string {
   const shekels = (n: number | null) => `₪${(n ?? 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const he = lang === "he";
   switch (deal.kind) {
     case "bundle":
-      return `${deal.minQty} for ${shekels(deal.price)}`;
+      return he ? `${deal.minQty} ב-${shekels(deal.price)}` : `${deal.minQty} for ${shekels(deal.price)}`;
     case "percent":
-      return `${deal.percent ?? 0}% off from ${deal.minQty}`;
+      return he ? `${deal.percent ?? 0}% הנחה מ-${deal.minQty}` : `${deal.percent ?? 0}% off from ${deal.minQty}`;
     case "free":
-      return `Buy ${deal.minQty}, get 1 free`;
+      return he ? `קנו ${deal.minQty}, קבלו 1 חינם` : `Buy ${deal.minQty}, get 1 free`;
     case "price":
-      return `Special price ${shekels(deal.price)}`;
+      return he ? `מחיר מיוחד ${shekels(deal.price)}` : `Special price ${shekels(deal.price)}`;
   }
 }

@@ -802,6 +802,17 @@ thead .pick-box,
   animation: pop-in 520ms var(--ease-entrance) 120ms backwards;
 }
 
+/* The proof screen's tick breathes out a ring (v0.102), so a paid screen
+   reads as live from across the stall — a screenshot does not pulse. */
+@keyframes proof-pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.proof-ring {
+  animation: proof-pulse 1.6s ease-out infinite;
+}
+
 .motion-drop {
   animation: drop-in var(--motion-fast) var(--ease-entrance);
   transform-origin: top;
@@ -1082,6 +1093,7 @@ thead .pick-box,
   .motion-veil,
   .motion-rise,
   .motion-pop,
+  .proof-ring,
   .motion-drop,
   .motion-lift,
   .motion-fade,

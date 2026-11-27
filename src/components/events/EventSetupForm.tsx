@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Clock, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, Clock, ExternalLink, Plus, Printer, Trash2, X } from "lucide-react";
 import { JellyHop } from "@/components/JellyLoader";
 import { LastEdited } from "@/components/LastEdited";
 import { Tip } from "@/components/Tip";
@@ -37,6 +37,7 @@ export function EventSetupForm({
   initial,
   updatedAt,
   updatedBy,
+  shopToken,
   presets,
   staff,
 }: {
@@ -44,6 +45,8 @@ export function EventSetupForm({
   initial: EventInput;
   updatedAt: string | null;
   updatedBy: string;
+  /** The self-service shop's token; empty for a new event or before migration 042. */
+  shopToken: string;
   presets: PresetSummary[];
   staff: { id: number; name: string }[];
 }) {
@@ -502,7 +505,7 @@ export function EventSetupForm({
               ))}
             </ul>
           </div>
-          <OnTheDay eventId={eventId} />
+          <OnTheDay eventId={eventId} selfService={draft.payMode !== "staff"} shopToken={shopToken} ready={draft.status === "ready"} />
         </aside>
       </div>
     </div>
@@ -651,7 +654,17 @@ function DealChip({ on, onClick, children }: { on: boolean; onClick: () => void;
  * the seller to scan with their phone — the canvas's "On the day" card.
  * Only once the event is saved, since the register needs its id.
  */
-function OnTheDay({ eventId }: { eventId: number | null }) {
+function OnTheDay({
+  eventId,
+  selfService,
+  shopToken,
+  ready,
+}: {
+  eventId: number | null;
+  selfService: boolean;
+  shopToken: string;
+  ready: boolean;
+}) {
   const [qr, setQr] = useState<string | null>(null);
   useEffect(() => {
     if (eventId === null) return;
@@ -686,6 +699,36 @@ function OnTheDay({ eventId }: { eventId: number | null }) {
           >
             Open the register
           </Link>
+          {/* Self-service (v0.102): the signs to print, and the shop they
+              open. Only once the event has a shop address (migration 042). */}
+          {selfService && shopToken && (
+            <div className="mt-4 border-t border-cream/15 pt-4">
+              <p className="text-sm font-extrabold">Self-service</p>
+              <p className="mt-1 text-sm leading-relaxed text-cream/75">
+                {ready
+                  ? "Print the QR signs for the table. Customers scan, pay and show you the proof screen."
+                  : "Print the QR signs for the table. The shop opens once the event is saved as ready to sell."}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link
+                  href={`/events/${eventId}/signs`}
+                  className="press flex h-11 items-center justify-center gap-1.5 rounded-full bg-cream text-sm font-extrabold text-black"
+                >
+                  <Printer size={15} aria-hidden />
+                  Print signs
+                </Link>
+                <a
+                  href={`/shop/${shopToken}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="press flex h-11 items-center justify-center gap-1.5 rounded-full border border-cream/30 text-sm font-extrabold"
+                >
+                  <ExternalLink size={15} aria-hidden />
+                  The shop
+                </a>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

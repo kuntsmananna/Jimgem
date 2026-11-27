@@ -78,6 +78,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { id: "039", title: "Payment links", script: "scripts/migrate-039-payment-links.sql", markers: [{ table: "payment_links" }] },
   { id: "040", title: "Events", script: "scripts/migrate-040-events.sql", markers: [{ table: "event_deals" }] },
   { id: "041", title: "Event sales", script: "scripts/migrate-041-event-sales.sql", markers: [{ table: "event_sales" }] },
+  { id: "042", title: "Event shop", script: "scripts/migrate-042-event-shop.sql", markers: [{ column: ["event_sales", "handed_at"] }] },
 ];
 
 export type MigrationState = "applied" | "missing" | "data-only";

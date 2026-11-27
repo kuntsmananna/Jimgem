@@ -12,7 +12,7 @@
  * writes nothing at all and is reported as a conflict.
  */
 
-import { getDb, isMissingTable } from "./db";
+import { getDb, isMissingColumn, isMissingTable } from "./db";
 import { StaleWriteError } from "./orders";
 import type { DealKind, EventInput, EventStatus, PayMode, QrMode, SaleEvent } from "./eventTypes";
 
@@ -31,6 +31,8 @@ interface EventRow {
   notes: string;
   updated_at: string | Date;
   updated_by: string | null;
+  /** Missing before migration 042. */
+  public_token?: string | null;
   products: { preset_id: number; price: string | number; brought: number | null }[] | null;
   deals:
     | { kind: DealKind; min_qty: number; price: string | number | null; percent: string | number | null; preset_ids: number[] }[]
@@ -58,6 +60,7 @@ function mapEvent(row: EventRow): SaleEvent {
     notes: row.notes,
     updatedAt: new Date(row.updated_at).toISOString(),
     updatedBy: row.updated_by ?? "",
+    publicToken: row.public_token ?? "",
     products: (row.products ?? []).map((p) => ({ presetId: p.preset_id, price: Number(p.price), brought: p.brought })),
     deals: (row.deals ?? []).map((d) => ({
       kind: d.kind,
@@ -97,6 +100,24 @@ export async function getEvents(): Promise<{ available: boolean; events: SaleEve
 export async function getEvent(id: number): Promise<SaleEvent | null> {
   const { rows } = await getDb().query<EventRow>(`${SELECT_EVENT} WHERE e.id = $1 AND e.deleted_at IS NULL`, [id]);
   return rows[0] ? mapEvent(rows[0]) : null;
+}
+
+/**
+ * The event a shop address names (v0.102). Null for a bad token, a deleted
+ * event, or a database without migration 042 yet, where no shop exists.
+ */
+export async function getEventByToken(token: string): Promise<SaleEvent | null> {
+  if (!/^[0-9a-f]{20}$/.test(token)) return null;
+  try {
+    const { rows } = await getDb().query<EventRow>(
+      `${SELECT_EVENT} WHERE e.public_token = $1 AND e.deleted_at IS NULL`,
+      [token],
+    );
+    return rows[0] ? mapEvent(rows[0]) : null;
+  } catch (error) {
+    if (isMissingColumn(error, "public_token")) return null;
+    throw error;
+  }
 }
 
 /** The children as JSON for `jsonb_to_recordset`, with their position. */

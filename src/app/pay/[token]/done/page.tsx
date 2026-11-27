@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CircleCheck, Clock, Globe } from "lucide-react";
+import { CircleCheck, Clock } from "lucide-react";
 import { confirmReturn, getPublicLink } from "@/lib/paymentLinks";
-import { INSTAGRAM_HANDLE, INSTAGRAM_URL, payCopy, SITE_URL } from "../../copy";
-import { InstagramMark, PayShell, readPayLang, shekels } from "../../PayShell";
+import { payCopy } from "../../copy";
+import { FollowUs, PayShell, readPayLang, shekels } from "../../PayShell";
+import { SaleProof } from "../../SaleProof";
 
 export const metadata: Metadata = { title: "Gems — תודה / Thank you", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -55,6 +56,15 @@ export default async function PayDonePage({
     );
   }
 
+  if (link.kind === "sale") {
+    return (
+      <PayShell lang={lang} token={token} back="done">
+        <SaleProof token={token} lang={lang} amount={link.paidAmount ?? link.amount} />
+        <FollowUs lang={lang} title={t.thanksBuy} />
+      </PayShell>
+    );
+  }
+
   return (
     <PayShell lang={lang} token={token} back="done">
       <div className="flex flex-col items-center text-center">
@@ -72,28 +82,7 @@ export default async function PayDonePage({
         <p className="mt-4 text-base font-semibold">{t.thanks}</p>
       </div>
 
-      {/* The invitation, in a box of its own under a rule: a thank-you
-          first, an ask second. */}
-      <div className="motion-stagger mt-6 rounded-2xl bg-cream p-4">
-        <p className="font-bold">{t.followTitle}</p>
-        <p className="mt-0.5 text-sm text-ink-soft">{t.followText}</p>
-        <div className="mt-3 flex flex-col gap-2">
-          <a
-            href={INSTAGRAM_URL}
-            className="press flex h-12 items-center justify-center gap-2 rounded-full bg-black font-bold text-cream"
-          >
-            <InstagramMark />
-            <span dir="ltr">{INSTAGRAM_HANDLE}</span>
-          </a>
-          <a
-            href={SITE_URL}
-            className="press flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-card font-bold text-ink"
-          >
-            <Globe size={17} aria-hidden />
-            {t.site}
-          </a>
-        </div>
-      </div>
+      <FollowUs lang={lang} />
     </PayShell>
   );
 }

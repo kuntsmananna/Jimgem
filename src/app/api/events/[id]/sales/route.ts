@@ -3,7 +3,7 @@ import { refuseNonAdmin } from "@/lib/guard";
 import { currentEditor } from "@/lib/editor";
 import { recordSale } from "@/lib/eventSales";
 import { PaymentLinkError } from "@/lib/paymentLinks";
-import { parseRowId } from "@/lib/validate";
+import { parseRowId, parseSaleItems } from "@/lib/validate";
 import { badRequest, readJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
@@ -22,16 +22,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/events/
   if (raw instanceof NextResponse) return raw;
   const body = (raw ?? {}) as { items?: unknown; method?: unknown };
   if (body.method !== "card" && body.method !== "cash") return badRequest("Card or cash?");
-  if (!Array.isArray(body.items) || body.items.length > 100) return badRequest("The basket didn't arrive.");
-  const items = [];
-  for (const entry of body.items) {
-    const presetId = Number((entry as { presetId?: unknown })?.presetId);
-    const qty = Number((entry as { qty?: unknown })?.qty);
-    if (!Number.isInteger(presetId) || presetId < 1 || !Number.isInteger(qty) || qty < 0 || qty > 1000) {
-      return badRequest("A line in the basket isn't one.");
-    }
-    items.push({ presetId, qty });
-  }
+  const items = parseSaleItems(body.items);
+  if (typeof items === "string") return badRequest(items);
   try {
     const sale = await recordSale({
       eventId,

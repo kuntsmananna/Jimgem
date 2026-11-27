@@ -142,7 +142,7 @@ interface ChargeTarget {
   customerName: string;
   date: string;
   receiptByEmail: boolean;
-  items: { name: string; qty: number }[];
+  items: { presetId: number; name: string; qty: number }[];
 }
 
 function orderTarget(kind: PaymentLinkKind, order: Order, client: Awaited<ReturnType<typeof orderFor>>["client"]): ChargeTarget {
@@ -177,7 +177,11 @@ async function saleTarget(saleId: number): Promise<ChargeTarget | null> {
   const row = rows[0];
   if (!row) return null;
   const date = formatOrderDate(typeof row.date === "string" ? row.date.slice(0, 10) : row.date.toISOString().slice(0, 10));
-  const items = (row.items ?? []).map((i) => ({ name: row.names?.[String(i.presetId)] ?? "Gems", qty: i.qty }));
+  const items = (row.items ?? []).map((i) => ({
+    presetId: i.presetId,
+    name: row.names?.[String(i.presetId)] ?? "Gems",
+    qty: i.qty,
+  }));
   return {
     customer: { id: null, name: "לקוח מזדמן" },
     itemName: "רכישה באירוע — Gems",
@@ -274,7 +278,7 @@ export interface PublicPaymentLink {
   date: string;
   receiptByEmail: boolean;
   /** What an event sale took; empty for an order. */
-  items: { name: string; qty: number }[];
+  items: { presetId: number; name: string; qty: number }[];
 }
 
 export async function getPublicLink(token: string): Promise<PublicPaymentLink | null> {
@@ -499,12 +503,23 @@ function dayBefore(date: Date): Date {
  * sale pointed at it. A refusal from SUMIT leaves the sale open with no
  * link, which the register shows as a failure and can cancel.
  */
-export async function createSaleLink(saleId: number, amount: number, appUrl: string, editor?: string): Promise<PaymentLink> {
+export async function createSaleLink(
+  saleId: number,
+  amount: number,
+  appUrl: string,
+  editor?: string,
+  options: { lazy?: boolean } = {},
+): Promise<PaymentLink> {
   const target = await saleTarget(saleId);
   if (!target) throw new PaymentLinkError("That sale no longer exists.");
   const token = randomBytes(18).toString("base64url");
   try {
-    const page = await sumitPageFor({ token, amount }, target, appUrl);
+    // A self-service basket (v0.102) asks SUMIT for nothing yet: anyone can
+    // fill one from a printed QR, so the metered call waits for Pay, where
+    // `sumitUrlForCustomer` makes the page a link without one needs.
+    const page = options.lazy
+      ? { url: null, expiresAt: null }
+      : await sumitPageFor({ token, amount }, target, appUrl);
     const { rows } = await getDb().query<LinkRow>(
       `WITH link AS (
          INSERT INTO payment_links (token, order_id, kind, amount, sumit_url, sumit_expires_at, created_by, updated_by)

@@ -805,3 +805,13 @@ CREATE TABLE IF NOT EXISTS event_sales (
 CREATE INDEX IF NOT EXISTS event_sales_event_idx ON event_sales (event_id);
 CREATE INDEX IF NOT EXISTS event_sales_link_idx ON event_sales (payment_link_id);
 
+-- The self-service shop's address and the proof screen's tap (migration 042, word for word).
+ALTER TABLE events ADD COLUMN IF NOT EXISTS public_token TEXT;
+UPDATE events SET public_token = substr(md5(random()::text || id::text || clock_timestamp()::text), 1, 20)
+ WHERE public_token IS NULL;
+ALTER TABLE events ALTER COLUMN public_token SET DEFAULT substr(md5(random()::text || clock_timestamp()::text), 1, 20);
+ALTER TABLE events ALTER COLUMN public_token SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS events_public_token_idx ON events (public_token);
+
+ALTER TABLE event_sales ADD COLUMN IF NOT EXISTS handed_at TIMESTAMPTZ;
+

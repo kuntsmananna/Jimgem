@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { CircleCheck, Lock } from "lucide-react";
 import { getPublicLink } from "@/lib/paymentLinks";
 import { payCopy } from "../copy";
-import { PayRow, PayShell, readPayLang, shekels } from "../PayShell";
+import { FollowUs, PayRow, PayShell, readPayLang, shekels } from "../PayShell";
+import { SaleProof } from "../SaleProof";
 
 export const metadata: Metadata = { title: "Gems — תשלום / Payment", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -30,6 +31,16 @@ export default async function PayPage({
   if (!link) notFound();
   const lang = await readPayLang();
   const t = payCopy(lang);
+
+  if (link.status === "paid" && link.kind === "sale") {
+    // Reopened after paying: the proof screen again, so it can still be shown.
+    return (
+      <PayShell lang={lang} token={token} back="page">
+        <SaleProof token={token} lang={lang} amount={link.paidAmount ?? link.amount} />
+        <FollowUs lang={lang} title={t.thanksBuy} />
+      </PayShell>
+    );
+  }
 
   if (link.status === "paid") {
     return (
@@ -66,7 +77,7 @@ export default async function PayPage({
       <dl className="motion-stagger mt-5 divide-y divide-line border-y border-line">
         {link.items.length > 0
           ? link.items.map((item) => (
-              <PayRow key={item.name} label={item.name}>
+              <PayRow key={item.presetId} label={item.name}>
                 × {item.qty}
               </PayRow>
             ))

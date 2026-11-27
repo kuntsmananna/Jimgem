@@ -60,6 +60,8 @@ export async function recordSale(input: {
   method: "card" | "cash";
   seller?: string;
   appUrl: string;
+  /** A self-service basket: no SUMIT page until the customer presses Pay. */
+  lazy?: boolean;
 }): Promise<{ id: number; total: number; status: SaleStatus; payUrl: string | null }> {
   const event = await getEvent(input.eventId);
   if (!event) throw new PaymentLinkError("That event no longer exists.");
@@ -93,7 +95,7 @@ export async function recordSale(input: {
   const id = rows[0].id;
   if (input.method === "cash") return { id, total: priced.total, status: "paid", payUrl: null };
 
-  const link = await createSaleLink(id, priced.total, input.appUrl, input.seller);
+  const link = await createSaleLink(id, priced.total, input.appUrl, input.seller, { lazy: input.lazy });
   return { id, total: priced.total, status: "open", payUrl: paymentPageUrl(input.appUrl, link.token) };
 }
 
@@ -130,4 +132,86 @@ export async function settleOpenSale(id: number, how: "cancel" | "cash"): Promis
   );
   if (rows[0]) return rows[0].status;
   return (await getSaleStatus(id))?.status ?? null;
+}
+
+/** Who a self-service sale is recorded as sold by. */
+export const SELF_SERVICE = "self-service";
+
+/**
+ * How many baskets one stall's shop may open in ten minutes before it
+ * refuses more. The shop is public and printed on a sign; a basket costs
+ * no SUMIT call, but a script filling the table with open sales is still
+ * worth stopping. Far above what a queue at a stall can produce.
+ */
+const SHOP_BASKETS_PER_10_MIN = 120;
+
+export async function shopIsBusy(eventId: number): Promise<boolean> {
+  const { rows } = await getDb().query<{ n: string }>(
+    `SELECT count(*) AS n FROM event_sales
+      WHERE event_id = $1 AND seller = $2 AND created_at > now() - interval '10 minutes'`,
+    [eventId, SELF_SERVICE],
+  );
+  return Number(rows[0]?.n ?? 0) >= SHOP_BASKETS_PER_10_MIN;
+}
+
+/** What a customer's proof screen shows, found by their payment link's token. */
+export interface SaleProof {
+  saleId: number;
+  eventName: string;
+  selfService: boolean;
+  items: SaleItem[];
+  paidAt: string | null;
+  handedAt: string | null;
+}
+
+export async function getSaleProof(linkToken: string): Promise<SaleProof | null> {
+  // handed_at read through to_jsonb so a database without migration 042
+  // answers "not handed over" rather than failing the thank-you page.
+  const { rows } = await getDb().query<{
+    id: number;
+    name: string;
+    seller: string | null;
+    items: SaleItem[];
+    paid_at: string | Date | null;
+    handed_at: string | null;
+  }>(
+    `SELECT s.id, e.name, s.seller, s.items, s.paid_at, to_jsonb(s) ->> 'handed_at' AS handed_at
+       FROM event_sales s
+       JOIN payment_links l ON l.id = s.payment_link_id
+       JOIN events e ON e.id = s.event_id
+      WHERE l.token = $1`,
+    [linkToken],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    saleId: row.id,
+    eventName: row.name,
+    selfService: row.seller === SELF_SERVICE,
+    items: row.items ?? [],
+    paidAt: row.paid_at ? new Date(row.paid_at).toISOString() : null,
+    handedAt: row.handed_at ? new Date(row.handed_at).toISOString() : null,
+  };
+}
+
+/**
+ * Staff tapped "handed over" on the customer's proof screen. Only a paid
+ * sale, and only once — a second tap answers with the first one's time.
+ */
+export async function handOver(linkToken: string): Promise<string | null> {
+  const { rows } = await getDb().query<{ handed_at: string | Date }>(
+    `WITH done AS (
+       UPDATE event_sales s SET handed_at = now()
+         FROM payment_links l
+        WHERE l.id = s.payment_link_id AND l.token = $1 AND s.status = 'paid' AND s.handed_at IS NULL
+        RETURNING s.handed_at
+     )
+     SELECT handed_at FROM done
+     UNION ALL
+     SELECT s.handed_at FROM event_sales s JOIN payment_links l ON l.id = s.payment_link_id
+      WHERE l.token = $1 AND s.handed_at IS NOT NULL
+     LIMIT 1`,
+    [linkToken],
+  );
+  return rows[0] ? new Date(rows[0].handed_at).toISOString() : null;
 }

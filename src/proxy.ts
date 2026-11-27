@@ -63,6 +63,10 @@ export const config = {
      * - /pay/<token> and what hangs off it (v0.99): the payment page a
      *   customer's link opens. It shows one order's amount to whoever holds
      *   the random token, and writes only what SUMIT confirms was paid.
+     * - /shop/<token> and its /checkout (v0.102): an event stall's
+     *   self-service shop, printed on its signs as a QR code. It shows the
+     *   event's boxes and prices, and its checkout can only open an unpaid
+     *   basket priced by the server — no SUMIT call until Pay is pressed.
      * - /api/auth/google and its /callback (v0.96): the way *in* with
      *   Google, reached before there is any session to present. They write
      *   nothing but a sign-in cookie, and only for an address an admin has
@@ -94,6 +98,6 @@ export const config = {
      * new *kind* of asset does. The trade is Next's own — `public/` is
      * public, so nothing secret goes in it.
      */
-    "/((?!login|privacy|pay/|api/backup/cron|api/auth/google|_next|[^?]*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|webmanifest|txt|xml|pdf|css|woff2?|ttf|otf|mp4|webm)$).*)",
+    "/((?!login|privacy|pay/|shop/|api/backup/cron|api/auth/google|_next|[^?]*\\.(?:png|jpe?g|gif|svg|ico|webp|avif|webmanifest|txt|xml|pdf|css|woff2?|ttf|otf|mp4|webm)$).*)",
   ],
 };

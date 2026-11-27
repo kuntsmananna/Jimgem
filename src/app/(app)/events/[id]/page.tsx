@@ -33,6 +33,7 @@ export default async function EventSetupPage({ params }: { params: Promise<{ id:
       initial={event ?? emptyEvent(todayIso())}
       updatedAt={event?.updatedAt ?? null}
       updatedBy={event?.updatedBy ?? ""}
+      shopToken={event?.publicToken ?? ""}
       presets={presetSummaries(presets, flavors, packageTypes)}
       staff={staff.map((s) => ({ id: s.id, name: s.name }))}
     />
