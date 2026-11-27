@@ -96,6 +96,12 @@ export async function getClients(includeArchived = false): Promise<Client[]> {
   return rows.map(mapClient);
 }
 
+/** One client by id, archived or not, or null. */
+export async function getClientById(id: number): Promise<Client | null> {
+  const { rows } = await getDb().query<ClientRow>("SELECT * FROM clients WHERE id = $1", [id]);
+  return rows[0] ? mapClient(rows[0]) : null;
+}
+
 /**
  * Every client with what they have ordered.
  *

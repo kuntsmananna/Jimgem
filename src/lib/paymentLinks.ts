@@ -31,8 +31,8 @@
 
 import { randomBytes } from "node:crypto";
 import { getDb, isMissingTable } from "./db";
-import { getOrders } from "./orders";
-import { getClients } from "./clients";
+import { getOrderById } from "./orders";
+import { getClientById } from "./clients";
 import { formatOrderDate, orderTotal, type Order } from "./orderTypes";
 import { beginPaymentRedirect, getPayment, listValidPayments, type SumitPayment } from "./sumit";
 import { flushSumitCalls } from "./sumitBudget";
@@ -123,9 +123,9 @@ async function linkById(id: number): Promise<LinkRow | null> {
 
 /** The order and its client, as SUMIT needs them. */
 async function orderFor(orderId: number) {
-  const order = (await getOrders()).find((o) => o.key === String(orderId));
+  const order = await getOrderById(orderId);
   if (!order) throw new PaymentLinkError("That order no longer exists.");
-  const client = order.clientId ? (await getClients(true)).find((c) => c.id === order.clientId) : undefined;
+  const client = order.clientId ? ((await getClientById(order.clientId)) ?? undefined) : undefined;
   return { order, client };
 }
 
@@ -273,6 +273,23 @@ function paymentMatches(payment: SumitPayment | null, row: LinkRow): payment is 
 }
 
 /**
+ * The return page's looser test, for a SUMIT that leaves ExternalIdentifier
+ * out of a payment ("when available", its schema says). Only here, where
+ * the payment's id came from SUMIT's own redirect to this link's address:
+ * a valid payment of this link's amount, made since the link was created.
+ * The payments list (the cron, ↻ Check) has no such id to lean on, so it
+ * keeps the strict test.
+ */
+function returnMatches(payment: SumitPayment | null, row: LinkRow): payment is SumitPayment {
+  if (!payment || !payment.ValidPayment) return false;
+  if (payment.ExternalIdentifier) return payment.ExternalIdentifier === row.token;
+  const sameAmount = Math.abs(payment.Amount - Number(row.amount)) < 0.01;
+  const made = payment.Date ? new Date(payment.Date).getTime() : NaN;
+  const since = new Date(row.created_at).getTime() - 24 * 3600 * 1000;
+  return sameAmount && Number.isFinite(made) && made >= since;
+}
+
+/**
  * Records a confirmed payment, on the link and its order, once — see the
  * header. The order's total is worked out here (it is `orderTotal`'s
  * arithmetic, which lives in TypeScript) and handed to the statement.
@@ -280,7 +297,7 @@ function paymentMatches(payment: SumitPayment | null, row: LinkRow): payment is 
 async function markPaid(row: LinkRow, payment: SumitPayment): Promise<void> {
   let total = 0;
   if (row.order_id !== null) {
-    const order = (await getOrders()).find((o) => o.key === String(row.order_id));
+    const order = await getOrderById(row.order_id);
     total = order ? orderTotal(order) : 0;
   }
   const paid = Number.isFinite(payment.Amount) && payment.Amount > 0 ? payment.Amount : Number(row.amount);
@@ -300,7 +317,7 @@ async function markPaid(row: LinkRow, payment: SumitPayment): Promise<void> {
      UPDATE orders o
         SET deposit = o.deposit + link.paid_amount,
             payment_status = CASE
-              WHEN o.deposit + link.paid_amount >= $5 - 0.5 THEN 'paid'
+              WHEN $5::numeric > 0 AND o.deposit + link.paid_amount >= $5::numeric - 0.5 THEN 'paid'
               WHEN o.payment_status IN ('paid', 'comp') THEN o.payment_status
               ELSE 'deposit' END,
             payment_method_id = COALESCE((SELECT id FROM card), o.payment_method_id),
@@ -329,13 +346,27 @@ async function markPaid(row: LinkRow, payment: SumitPayment): Promise<void> {
  * one `payments/get` for the id the return carries. Returns the link's
  * state after.
  */
+/**
+ * Payment ids this process has already asked SUMIT about for a link, so a
+ * reloaded thank-you page (or a made-up id) does not spend a metered call
+ * each time. Per instance and short-lived — the cron and ↻ Check are the
+ * net for anything it lets slip.
+ */
+const askedRecently = new Map<string, number>();
+const ASK_AGAIN_MS = 10 * 60 * 1000;
+
 export async function confirmReturn(token: string, paymentId: number | null): Promise<PaymentLinkStatus | null> {
   const row = await linkByToken(token);
   if (!row) return null;
   if (row.status === "paid" || paymentId === null) return row.status;
+  const key = `${row.id}:${paymentId}`;
+  const now = Date.now();
+  if ((askedRecently.get(key) ?? 0) > now - ASK_AGAIN_MS) return row.status;
+  askedRecently.set(key, now);
+  if (askedRecently.size > 500) askedRecently.clear();
   try {
     const payment = await getPayment(paymentId);
-    if (!paymentMatches(payment, row)) return row.status;
+    if (!returnMatches(payment, row)) return row.status;
     await markPaid(row, payment);
     return "paid";
   } finally {
@@ -375,7 +406,7 @@ export async function reconcileOpenLinks(): Promise<{ open: number; paid: number
     ({ rows } = await getDb().query<LinkRow>(
       `SELECT * FROM payment_links
         WHERE status = 'open' AND sumit_url IS NOT NULL
-          AND created_at > now() - interval '30 days'
+          AND sumit_expires_at > now() - interval '1 day'
         ORDER BY created_at`,
     ));
   } catch (error) {

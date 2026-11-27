@@ -1924,8 +1924,8 @@ refuses the link and the popup shows SUMIT's own sentence.
   for one fact can disagree, and the reassuring answer is the one that
   wins.
 - **SUMIT's documents are mirrored into `sumit_documents`, never read on a
-  render path.** `sumitSync.ts` is the only module besides the probe that
-  imports `sumit.ts`, the same structural rule that keeps the Google Sheet
+  render path.** `sumitSync.ts` and `paymentLinks.ts` (v0.99) are the only modules
+  besides the probe that import `sumit.ts`, the same structural rule that keeps the Google Sheet
   behind `sheetImport.ts`. Sync is **a date window plus an upsert on
   `document_id`** because the API offers nothing better — no customer
   filter, no "modified since" — so re-pulling a window is the only way to

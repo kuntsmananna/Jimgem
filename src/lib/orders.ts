@@ -308,6 +308,30 @@ export async function getOrders(): Promise<Order[]> {
   );
 }
 
+/**
+ * One order by id, or null — the same shape `getOrders` builds, for the
+ * public payment pages (v0.99.7), which need one row and should not read
+ * every order to find it.
+ */
+export async function getOrderById(id: number): Promise<Order | null> {
+  const db = getDb();
+  const [{ rows: orderRows }, { rows: lineRows }, { rows: flavorRows }, { rows: displayRows }] =
+    await Promise.all([
+      db.query<DbOrderRow>("SELECT * FROM orders WHERE id = $1 AND deleted_at IS NULL", [id]),
+      db.query<DbPackageLineRow>("SELECT * FROM order_package_lines WHERE order_id = $1", [id]),
+      db.query<DbLineFlavorRow>(
+        `SELECT f.* FROM order_package_line_flavors f
+           JOIN order_package_lines l ON l.id = f.line_id
+          WHERE l.order_id = $1`,
+        [id],
+      ),
+      db.query<DbDisplayRow>("SELECT * FROM order_displays WHERE order_id = $1", [id]),
+    ]);
+  const row = orderRows[0];
+  if (!row) return null;
+  return mapDbOrder(row, nestPackageLines(lineRows, flavorRows).get(row.id) ?? [], nestDisplays(displayRows).get(row.id) ?? []);
+}
+
 /** Every money column of one order, and nothing else — see `OrderMoney`. */
 const MONEY_COLUMNS =
   "total_amount, delivery_cost, delivery_option_id, mirrors_cost, display_cost, waitress_cost, kosher_cost, discount, discount_is_percent, vat_mode, vat_rate, deposit, payment_status, payment_method_id";
