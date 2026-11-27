@@ -7,8 +7,10 @@
  * Every SUMIT call is a POST whose *body* carries the credentials — there
  * is no header auth and no GET, so `sumitPost` is the whole protocol.
  *
- * Read-only so far. The integration's first phase only pulls documents
- * out of SUMIT (see scripts/sumit-probe.mts); nothing here writes to it.
+ * Mostly read-only: documents are pulled out of SUMIT (see sumitSync.ts).
+ * The one write is a payment link (v0.99, `beginPaymentRedirect`), which
+ * asks SUMIT for a hosted payment page — SUMIT issues the receipt itself
+ * once the customer pays.
  */
 
 import { assertWithinSumitBudget, flushSumitCalls, recordSumitCall } from "./sumitBudget";
@@ -346,4 +348,113 @@ export async function getVatRate(date?: Date | string): Promise<number> {
     Date: date ? isoDate(date) : null,
   });
   return data.Rate;
+}
+
+/* ------------------------------------------------------------------ */
+/* Payment links (v0.99) — see src/lib/paymentLinks.ts.                */
+/* ------------------------------------------------------------------ */
+
+export interface SumitPaymentCustomer {
+  /** SUMIT's own id, when the client is already linked — it wins over the rest. */
+  id?: number | null;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export interface SumitPaymentItem {
+  name: string;
+  description?: string;
+  unitPrice: number;
+  quantity?: number;
+}
+
+/**
+ * Asks SUMIT for a hosted payment page and returns its address.
+ *
+ * Prices are gross (`VATIncluded`), the way every figure a customer sees in
+ * this app is. On success SUMIT sends the customer back to `redirectUrl`
+ * with `OG-PaymentID` and `OG-ExternalIdentifier` added; the payment is only
+ * believed once `getPayment` confirms it, since anyone can type a URL.
+ */
+export async function beginPaymentRedirect(input: {
+  customer: SumitPaymentCustomer;
+  items: SumitPaymentItem[];
+  externalIdentifier: string;
+  redirectUrl: string;
+  cancelUrl: string;
+  /** SUMIT's ceiling is 240. */
+  expirationHours: number;
+  /** Where SUMIT emails the receipt, if anywhere. */
+  emailReceiptTo?: string | null;
+  /** 0 for an order sold VAT-free. */
+  vatRate?: number;
+}): Promise<string> {
+  const { customer } = input;
+  const data = await sumitPost<{ RedirectURL: string | null }>("/billing/payments/beginredirect/", {
+    Customer: customer.id
+      ? { ID: customer.id }
+      : {
+          Name: customer.name,
+          Phone: customer.phone || null,
+          EmailAddress: customer.email || null,
+          // Automatic: reuse a SUMIT customer matching every field given,
+          // else create one. Phone and email narrow it past the name alone.
+          SearchMode: 0,
+        },
+    Items: input.items.map((item) => ({
+      // A fixed name with Automatic search reuses one income item per kind
+      // of charge rather than creating a new item on every payment.
+      Item: { Name: item.name, SearchMode: 0 },
+      UnitPrice: item.unitPrice,
+      Quantity: item.quantity ?? 1,
+      Description: item.description ?? null,
+    })),
+    VATIncluded: true,
+    ...(input.vatRate === 0 ? { VATRate: 0 } : {}),
+    RedirectURL: input.redirectUrl,
+    CancelRedirectURL: input.cancelUrl,
+    ExternalIdentifier: input.externalIdentifier,
+    ExpirationHours: input.expirationHours,
+    SendUpdateByEmailAddress: input.emailReceiptTo || null,
+  });
+  if (!data?.RedirectURL) throw new Error("SUMIT returned no payment page address.");
+  return data.RedirectURL;
+}
+
+/** What SUMIT says about one payment — the fields the links read. */
+export interface SumitPayment {
+  ID: number;
+  CustomerID: number;
+  Date: string | null;
+  ValidPayment: boolean;
+  Status: string | null;
+  StatusDescription: string | null;
+  Amount: number;
+  ExternalIdentifier: string | null;
+  DocumentID: number;
+}
+
+/** One payment by SUMIT's id (the `OG-PaymentID` a return carries). One call. */
+export async function getPayment(paymentId: number): Promise<SumitPayment | null> {
+  const data = await sumitPost<{ Payment: SumitPayment | null }>("/billing/payments/get/", { PaymentID: paymentId });
+  return data?.Payment ?? null;
+}
+
+/**
+ * Valid payments in a window, every page. One call per thousand — so the
+ * nightly check of every open link is one call, where asking about each
+ * link by id would be one apiece (and an unreturned customer gives no id).
+ */
+export async function listValidPayments(from: Date, to: Date): Promise<SumitPayment[]> {
+  const all: SumitPayment[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await sumitPost<{ Payments: SumitPayment[] | null; HasNextPage: boolean }>(
+      "/billing/payments/list/",
+      { Date_From: from.toISOString(), Date_To: to.toISOString(), Valid: true, StartIndex: page * PAGE_SIZE },
+    );
+    all.push(...(data?.Payments ?? []));
+    if (!data?.HasNextPage) break;
+  }
+  return all;
 }

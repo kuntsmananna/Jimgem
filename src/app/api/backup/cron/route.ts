@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { captureSnapshot } from "@/lib/backup";
 import { rollForwardRecurring } from "@/lib/recurringExpenses";
 import { appUrlFor, syncCalendars } from "@/lib/calendarSync";
+import { reconcileOpenLinks } from "@/lib/paymentLinks";
 
 // Reading every table and writing the document back is more work than a
 // page render, and it runs while nobody is watching.
@@ -58,10 +59,19 @@ export async function GET(request: NextRequest) {
     calendars = { error: error instanceof Error ? error.message : "Calendar sync failed." };
   }
 
+  // Payment links whose customer paid and never came back to say so
+  // (v0.99): one SUMIT call when any link is open, none otherwise.
+  let payments: unknown;
   try {
-    return NextResponse.json({ recurring, calendars, snapshot: await captureSnapshot("nightly") });
+    payments = await reconcileOpenLinks();
+  } catch (error) {
+    payments = { error: error instanceof Error ? error.message : "Payment check failed." };
+  }
+
+  try {
+    return NextResponse.json({ recurring, calendars, payments, snapshot: await captureSnapshot("nightly") });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Snapshot failed.";
-    return NextResponse.json({ recurring, calendars, error: message }, { status: 500 });
+    return NextResponse.json({ recurring, calendars, payments, error: message }, { status: 500 });
   }
 }

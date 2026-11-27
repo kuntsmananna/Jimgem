@@ -1544,6 +1544,54 @@ column as "not set").
   `mail`, `sync`. Three is exactly `MAX_ANNOUNCEMENT_PAGES`, so nobody's
   arrival popup is cut short.
 
+### v0.99 — payment links
+
+**Run `scripts/migrate-039-payment-links.sql` before shipping** (one new
+table, watched by `row_revisions`). Until it is run the popup says which
+migration to paste and making a link fails; nothing else is touched. SUMIT
+needs **Billing and complete accounting details** switched on, or it
+refuses the link and the popup shows SUMIT's own sentence.
+
+- **Open an order → Payment link** (under Still due in the money rail,
+  admins only, a saved order only) opens `PaymentLinkModal`: Deposit
+  (`DEFAULT_DEPOSIT_PERCENT`, 50, editable, whole shekels), Balance
+  (`stillDue`), Whole order or another amount — worked out from the order
+  **as saved**, gross. Then WhatsApp / email with a Hebrew message
+  (`paymentMessage`), Copy, Open, and a QR code (the `qrcode` package) for
+  a customer standing there. The order's links are listed under it with
+  ↻ Check and Cancel.
+- **The customer gets our address, `/pay/<token>`, never SUMIT's**
+  (`paymentLinks.ts`). SUMIT's page expires (240 hours at most); ours does
+  not — it shows the amount, its button goes through `/pay/<token>/go`,
+  which makes a fresh SUMIT page when the old one has run out, and it says
+  "paid" once paid. The three `/pay` pages are public (`pay/` in
+  `proxy.ts`'s matcher), in Hebrew and right to left, `noindex`.
+- **A payment is believed only once SUMIT says so.** SUMIT returns the
+  customer to `/pay/<token>/done?OG-PaymentID=…`; that page asks
+  `payments/get` and requires `ValidPayment` and our token as the
+  payment's `ExternalIdentifier`. A customer who never comes back is found
+  by the nightly cron (`reconcileOpenLinks`: one `payments/list` call when
+  any link is open, none otherwise) or by ↻ Check. There is no webhook
+  documented; `IPNURL` appears in SUMIT's example but not its schema.
+- **Paying writes the link and the order in one statement**: the amount is
+  added to `deposit` (what "paid so far" means), status becomes Paid in
+  full once that covers `orderTotal` (computed in TS and passed in) and
+  Deposit paid before, Paid by becomes the list's card method (matched by
+  name: אשראי / כרטיס / credit / card), `updated_by` is "SUMIT". The
+  `status <> 'paid'` guard makes a return and the cron racing count once —
+  verified against a real Postgres. The SUMIT customer id is stored on the
+  client where it has none. An open order form is then stale, so its next
+  save is a 409, as it should be.
+- **Cost**: one metered call to make a link, one to confirm, one more if
+  an expired page is reopened. The SUMIT item name is fixed per kind with
+  Automatic search, so SUMIT reuses one income item rather than making one
+  per payment; the receipt is SUMIT's own, emailed when the client card has
+  an email.
+- **A link made on a preview opens the preview**, which a customer cannot
+  reach while Vercel protects it — make real links in production.
+- `payment_links.order_id` is nullable for the event register planned
+  next (one row per sale, no order).
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
@@ -1619,7 +1667,8 @@ column as "not set").
   credentials in its *body*; `sumitPost` is the whole protocol, and a
   failure comes back as HTTP 200 with a non-Success `Status`, so the
   envelope check is what catches a bad key.
-- **Read-only so far.** `sumitProbe.ts` is reconnaissance for the
+- **One write: payment links** (v0.99, see that section above). Everything else is
+  read-only. `sumitProbe.ts` is reconnaissance for the
   integration's design: the document type mix, income and expense
   documents by month, the customer roster reconstructed from documents,
   and how those names line up against the orders already in Postgres. It
@@ -2863,8 +2912,8 @@ app read until a Biz Plan month was actually looked at. `withSign` in
 | `SESSION_SECRET` | 32+ char secret encrypting the session cookie | yes |
 | `GOOGLE_OAUTH_CLIENT_ID` | OAuth client for Sign in with Google (not the Sheets service account) | no — the button appears once both are set |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Its secret; read only by `googleOAuth.ts` | no |
-| `SUMIT_COMPANY_ID` | SUMIT company identifier | no (SUMIT probe only, for now) |
-| `SUMIT_API_KEY` | SUMIT API key secret | no (SUMIT probe only, for now) |
+| `SUMIT_COMPANY_ID` | SUMIT company identifier | no (syncs and payment links) |
+| `SUMIT_API_KEY` | SUMIT API key secret | no (syncs and payment links) |
 | `CRON_SECRET` | Shared secret the nightly backup checks — Vercel sends it as `Authorization: Bearer` on scheduled runs | yes, or the backup refuses to run |
 
 ## Shipping

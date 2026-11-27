@@ -29,6 +29,7 @@ import { useUndoable, useUndoShortcuts } from "@/components/useUndoable";
 import { OrderCustomerPanel } from "./OrderCustomerPanel";
 import { OrderEventPanel } from "./OrderEventPanel";
 import { OrderMoneyRail } from "./OrderMoneyRail";
+import { PaymentLinkModal } from "./PaymentLinkModal";
 import { OrderReview } from "./OrderReview";
 import { GroupLabel, money } from "./OrderSheet";
 import { useCanSeeMoney } from "@/components/RoleContext";
@@ -306,6 +307,8 @@ export function OrderForm({
    * save row. Desktop never sets it: the rail is on screen there.
    */
   const [moneyOpen, setMoneyOpen] = useState(false);
+  /** The payment-link popup (v0.99), over the form — a saved order only. */
+  const [linkOpen, setLinkOpen] = useState(false);
   /*
    * Whether this form has a money side at all.
    *
@@ -501,6 +504,13 @@ export function OrderForm({
       else setTab("content");
       setMoneyOpen(false);
     },
+    // A link is for the order as saved, so a new one has none to offer.
+    onPaymentLink: isEdit
+      ? () => {
+          setMoneyOpen(false);
+          setLinkOpen(true);
+        }
+      : undefined,
   };
   const rail = <OrderMoneyRail {...railProps} />;
   const railInSheet = <OrderMoneyRail {...railProps} showHeading={false} />;
@@ -635,6 +645,14 @@ export function OrderForm({
               other. */}
           <div className="px-4 pb-4">{railInSheet}</div>
         </Sheet>
+      )}
+
+      {showMoney && linkOpen && order && (
+        <PaymentLinkModal
+          order={order}
+          client={order.clientId ? clients.find((c) => c.id === order.clientId) : undefined}
+          onClose={() => setLinkOpen(false)}
+        />
       )}
 
       {mobile && (

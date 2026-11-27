@@ -76,6 +76,35 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: Announcement[] = [
   /*
+   * v0.99 — payment links, admins only (the money is theirs). Reuses the
+   * paid-by picture: it is the same corner of the order, the payment.
+   */
+  {
+    id: "v0.99-payment-links",
+    released: "2026-11-27",
+    audience: ["admin"],
+    art: "paid-by",
+    title: "Send a payment link",
+    lede: "Ask a customer for the deposit, the balance or the whole order, and they pay by card on their phone through SUMIT.",
+    items: [
+      {
+        icon: "amount",
+        title: "Where it is",
+        text: "Open an order → Payment link, under Still due. Pick Deposit (half, unless you change it), Balance or Whole order, then Create link.",
+      },
+      {
+        icon: "card",
+        title: "Send it",
+        text: "WhatsApp and email open with a message ready to go. With the customer in front of you, they can scan the QR code instead.",
+      },
+      {
+        icon: "bell",
+        title: "It marks itself paid",
+        text: "Once they pay, the order's deposit, payment status and Paid by update on their own, and SUMIT sends the receipt. If they paid and closed the page, press the ↻ beside the link.",
+      },
+    ],
+  },
+  /*
    * v0.95-v0.98, shipped together. Times are for everybody — the kitchen
    * reads them on the prep sheet and a staff login can set them — and so
    * is signing in. The calendar is an admin's: only an admin can reach

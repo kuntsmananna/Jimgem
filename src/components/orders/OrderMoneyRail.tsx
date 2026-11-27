@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Link2 } from "lucide-react";
 import {
   ORDER_EXTRAS,
   VAT_MODES,
@@ -54,6 +55,7 @@ export function OrderMoneyRail({
   manual,
   onManualChange,
   onOpenContent,
+  onPaymentLink,
   showHeading = true,
 }: {
   draft: OrderInput;
@@ -67,6 +69,8 @@ export function OrderMoneyRail({
   manual: ReadonlySet<AmountKey>;
   onManualChange: (manual: ReadonlySet<AmountKey>) => void;
   onOpenContent: () => void;
+  /** Opens the payment-link popup (v0.99); absent on an order not yet saved. */
+  onPaymentLink?: () => void;
   /**
    * False inside the phone's money sheet, whose own title row already
    * says "The order" — the caption above the pane and the sheet's
@@ -272,6 +276,17 @@ export function OrderMoneyRail({
               {money(Math.abs(balance))}
             </span>
           </SheetRow>
+
+          {/* Under the balance, because it is how the balance gets paid. */}
+          {onPaymentLink && (
+            <button
+              type="button"
+              onClick={onPaymentLink}
+              className="press mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-full border border-cream/25 text-[13px] font-semibold text-cream hover:bg-cream/10 max-md:h-11 max-md:text-sm"
+            >
+              <Link2 size={14} aria-hidden /> Payment link
+            </button>
+          )}
 
           <FoodCostRows draft={draft} />
         </div>

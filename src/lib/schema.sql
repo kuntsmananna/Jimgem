@@ -718,3 +718,26 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (staff_id, order_id)
 );
+
+-- Payment links, a SUMIT payment page per request (migration 039, word for
+-- word). token is the customer's URL and the payment's ExternalIdentifier.
+CREATE TABLE IF NOT EXISTS payment_links (
+  id SERIAL PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  order_id INTEGER REFERENCES orders(id),
+  kind TEXT NOT NULL CHECK (kind IN ('deposit', 'balance', 'full', 'custom')),
+  amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
+  sumit_url TEXT,
+  sumit_expires_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'paid', 'cancelled')),
+  sumit_payment_id BIGINT,
+  sumit_document_id BIGINT,
+  paid_amount NUMERIC(10, 2),
+  paid_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  created_by TEXT,
+  updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+  updated_by TEXT
+);
+
+CREATE INDEX IF NOT EXISTS payment_links_order_idx ON payment_links (order_id);

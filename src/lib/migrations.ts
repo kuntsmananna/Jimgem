@@ -75,6 +75,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { id: "036", title: "Sign in with an email", script: "scripts/migrate-036-staff-email.sql", markers: [{ index: "staff_email_lower_idx" }] },
   { id: "037", title: "Google Calendar sync", script: "scripts/migrate-037-calendar-sync.sql", markers: [{ table: "calendar_events" }] },
   { id: "038", title: "Event and delivery times", script: "scripts/migrate-038-order-times.sql", markers: [{ column: ["orders", "delivery_time"] }] },
+  { id: "039", title: "Payment links", script: "scripts/migrate-039-payment-links.sql", markers: [{ table: "payment_links" }] },
 ];
 
 export type MigrationState = "applied" | "missing" | "data-only";
