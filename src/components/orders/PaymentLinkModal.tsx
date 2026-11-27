@@ -5,12 +5,20 @@ import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { Copy, ExternalLink, Mail, MessageCircle, RefreshCw, Link2, X } from "lucide-react";
 import { Modal } from "@/components/Modal";
+import { Tip } from "@/components/Tip";
 import { JellyHop } from "@/components/JellyLoader";
 import { whenText } from "@/components/LastEdited";
 import { sendWrite } from "@/components/saveError";
 import { notify } from "@/components/Notices";
 import { currency } from "@/lib/money";
-import { formatOrderDate, orderTotal, stillDue, PAYMENT_STATUS_LABEL, type Order, type PaymentStatus } from "@/lib/orderTypes";
+import {
+  formatOrderDate,
+  orderTotal,
+  stillDue,
+  PAYMENT_STATUS_LABEL,
+  type Order,
+  type PaymentStatus,
+} from "@/lib/orderTypes";
 import type { Client } from "@/lib/clients";
 import {
   DEFAULT_DEPOSIT_PERCENT,
@@ -192,69 +200,85 @@ export function PaymentLinkModal({
           <div className="mt-2 overflow-hidden rounded-2xl border border-line bg-card">
             <div role="tablist" aria-label="What the link is for" className="grid grid-cols-4 bg-band/60 p-1">
               {(["full", "deposit", "balance", "custom"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={kind === value}
-                  onClick={() => kind !== value && choose(value)}
-                  className={`h-9 rounded-xl text-[13px] font-semibold transition max-md:h-11 ${
-                    kind === value ? "bg-card text-ink shadow-sm" : "text-ink-soft hover:text-ink"
-                  }`}
-                >
-                  {PAYMENT_LINK_KIND_LABEL[value]}
-                </button>
+                <Tip key={value} label={KIND_TIP[value]} className="flex">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={kind === value}
+                    onClick={() => kind !== value && choose(value)}
+                    className={`h-9 w-full rounded-xl text-[13px] font-semibold transition max-md:h-11 ${
+                      kind === value ? "bg-card text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    {PAYMENT_LINK_KIND_LABEL[value]}
+                  </button>
+                </Tip>
               ))}
             </div>
             <div className="flex items-center gap-3 px-4 py-3">
-              <label className="flex min-w-0 flex-1 items-baseline gap-1">
-                <span className="sr-only">Amount, incl. VAT</span>
-                <span className="font-display text-2xl font-extrabold text-ink-soft">₪</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="any"
-                  data-money
-                  value={amount || ""}
-                  placeholder="0"
-                  autoFocus={kind === "custom"}
-                  onChange={(e) => setAmount(Number(e.target.value) || 0)}
-                  className="keeps-size w-full min-w-0 border-0 bg-transparent p-0 font-display text-[34px] leading-none font-extrabold tabular-nums text-ink outline-none"
-                />
-              </label>
-              {kind === "deposit" && (
-                <label className="flex shrink-0 items-center gap-1 rounded-full bg-cream px-3 py-1.5">
+              <Tip
+                label="What the customer will pay, VAT included — type over it to change it"
+                className="flex min-w-0 flex-1"
+              >
+                <label className="flex min-w-0 flex-1 items-baseline gap-1">
+                  <span className="sr-only">Amount, incl. VAT</span>
+                  <span className="font-display text-2xl font-extrabold text-ink-soft">₪</span>
                   <input
                     type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={100}
-                    value={percent}
-                    aria-label="Deposit percent"
-                    onChange={(e) => {
-                      const next = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                      setPercent(next);
-                      setAmount(suggestedAmount(order, "deposit", next));
-                    }}
-                    className="w-10 border-0 bg-transparent p-0 text-right text-base font-bold tabular-nums outline-none"
+                    inputMode="decimal"
+                    min={0}
+                    step="any"
+                    data-money
+                    value={amount || ""}
+                    placeholder="0"
+                    autoFocus={kind === "custom"}
+                    onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                    className="keeps-size w-full min-w-0 border-0 bg-transparent p-0 font-display text-[34px] leading-none font-extrabold tabular-nums text-ink outline-none"
                   />
-                  <span className="font-bold">%</span>
                 </label>
+              </Tip>
+              {kind === "deposit" && (
+                <Tip
+                  label="The deposit as a percent of the order total — the amount follows it"
+                  className="flex shrink-0"
+                >
+                  <label className="flex shrink-0 items-center gap-1 rounded-full bg-cream px-3 py-1.5">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={100}
+                      value={percent}
+                      aria-label="Deposit percent"
+                      onChange={(e) => {
+                        const next = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                        setPercent(next);
+                        setAmount(suggestedAmount(order, "deposit", next));
+                      }}
+                      className="w-10 border-0 bg-transparent p-0 text-right text-base font-bold tabular-nums outline-none"
+                    />
+                    <span className="font-bold">%</span>
+                  </label>
+                </Tip>
               )}
             </div>
             <p className="border-t border-line/60 px-4 py-2 text-xs font-semibold text-ink-soft">{hint}</p>
           </div>
         </section>
 
-        <button
-          type="button"
-          onClick={create}
-          disabled={busy}
-          className="press flex h-11 w-full items-center justify-center gap-2 rounded-full bg-black font-semibold text-cream max-md:h-12"
+        <Tip
+          label="Makes a secure SUMIT payment page for this amount. Nothing reaches the customer until you send it."
+          className="block"
         >
-          {busy ? <JellyHop /> : amount > 0 ? `Create link for ${currency(amount)}` : "Create link"}
-        </button>
+          <button
+            type="button"
+            onClick={create}
+            disabled={busy}
+            className="press flex h-11 w-full items-center justify-center gap-2 rounded-full bg-black font-semibold text-cream max-md:h-12"
+          >
+            {busy ? <JellyHop /> : amount > 0 ? `Create link for ${currency(amount)}` : "Create link"}
+          </button>
+        </Tip>
         {error && <p className="text-xs font-semibold text-red-700">{error}</p>}
 
         {shown && <SharePanel link={shown} order={order} client={client} onDone={() => setShown(null)} />}
@@ -280,13 +304,25 @@ export function PaymentLinkModal({
                   <StatusChip status={link.status} />
                   {link.status === "open" && (
                     <>
-                      <IconButton label="Share" onClick={() => setShown(link)}>
+                      <IconButton
+                        label="Show the QR code and the send buttons for this link again"
+                        word="Share"
+                        onClick={() => setShown(link)}
+                      >
                         <MessageCircle size={15} />
                       </IconButton>
-                      <IconButton label="Ask SUMIT whether it was paid" onClick={() => act(link, "check")}>
+                      <IconButton
+                        label="Ask SUMIT now whether the customer paid — for someone who paid and closed the page (uses one SUMIT call)"
+                        word="Check"
+                        onClick={() => act(link, "check")}
+                      >
                         <RefreshCw size={15} />
                       </IconButton>
-                      <IconButton label="Cancel this link" onClick={() => act(link, "cancel")}>
+                      <IconButton
+                        label="Stop this link taking payment — the customer's page will say it is no longer active"
+                        word="Cancel"
+                        onClick={() => act(link, "cancel")}
+                      >
                         <X size={15} />
                       </IconButton>
                     </>
@@ -316,7 +352,11 @@ function SharePanel({
   const [qr, setQr] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    QRCode.toDataURL(link.url, { margin: 1, width: 440, color: { dark: "#2A2520", light: "#FFFFFF" } })
+    QRCode.toDataURL(link.url, {
+      margin: 1,
+      width: 440,
+      color: { dark: "#2A2520", light: "#FFFFFF" },
+    })
       .then((data) => live && setQr(data))
       .catch(() => live && setQr(null));
     return () => {
@@ -354,32 +394,67 @@ function SharePanel({
         <p className="font-semibold">
           {PAYMENT_LINK_KIND_LABEL[link.kind]} · {currency(link.amount)}
         </p>
-        <IconButton label="Close" onClick={onDone}>
+        <IconButton label="Hide this panel — the link keeps working" onClick={onDone}>
           <X size={15} />
         </IconButton>
       </div>
       {/* Big enough to scan off a phone held out across a table. */}
       {qr && (
-        // A data URL, so there is nothing for next/image to optimise.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={qr} alt="QR code for the payment link" className="mx-auto mt-2 w-56 rounded-xl max-md:w-64" />
+        <Tip
+          label="The customer points their phone camera at this to open the payment page"
+          className="mx-auto mt-2 block w-fit"
+        >
+          {/* A data URL, so there is nothing for next/image to optimise. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qr} alt="QR code for the payment link" className="w-56 rounded-xl max-md:w-64" />
+        </Tip>
       )}
       <p className="mt-2 truncate text-center text-xs text-ink-soft select-all">{link.url}</p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <a href={whatsapp} target="_blank" rel="noreferrer" className="press flex h-10 items-center justify-center gap-2 rounded-full bg-black font-semibold text-cream">
-          <MessageCircle size={15} /> WhatsApp
-        </a>
-        <a href={email} className="press flex h-10 items-center justify-center gap-2 rounded-full border border-line bg-card font-semibold">
-          <Mail size={15} /> Email
-        </a>
-        <button type="button" onClick={copy} className="press flex h-10 items-center justify-center gap-2 rounded-full border border-line bg-card font-semibold">
-          <Copy size={15} /> Copy link
-        </button>
-        <a href={link.url} target="_blank" rel="noreferrer" className="press flex h-10 items-center justify-center gap-2 rounded-full border border-line bg-card font-semibold">
-          <ExternalLink size={15} /> Open
-        </a>
+        <Tip
+          label="Opens WhatsApp with a ready message and the link, addressed to the client card's phone"
+          className="flex"
+        >
+          <a
+            href={whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            className="press flex w-full h-10 items-center justify-center gap-2 rounded-full bg-black font-semibold text-cream"
+          >
+            <MessageCircle size={15} /> WhatsApp
+          </a>
+        </Tip>
+        <Tip label="Opens your email app with the message and the link, ready to send" className="flex">
+          <a
+            href={email}
+            className="press flex w-full h-10 items-center justify-center gap-2 rounded-full border border-line bg-card font-semibold"
+          >
+            <Mail size={15} /> Email
+          </a>
+        </Tip>
+        <Tip label="Copies the link, to paste anywhere" className="flex">
+          <button
+            type="button"
+            onClick={copy}
+            className="press flex w-full h-10 items-center justify-center gap-2 rounded-full border border-line bg-card font-semibold"
+          >
+            <Copy size={15} /> Copy link
+          </button>
+        </Tip>
+        <Tip label="Opens the customer's payment page in a new tab — exactly what they will see" className="flex">
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noreferrer"
+            className="press flex w-full h-10 items-center justify-center gap-2 rounded-full border border-line bg-card font-semibold"
+          >
+            <ExternalLink size={15} /> Open
+          </a>
+        </Tip>
       </div>
-      {!phone && <p className="mt-2 text-xs text-ink-soft">No phone on the client card — WhatsApp will ask who to send it to.</p>}
+      {!phone && (
+        <p className="mt-2 text-xs text-ink-soft">No phone on the client card — WhatsApp will ask who to send it to.</p>
+      )}
     </div>
   );
 }
@@ -392,22 +467,56 @@ function StatusChip({ status }: { status: PaymentLink["status"] }) {
         ? "bg-band text-ink-soft"
         : "bg-tile-peach text-ink";
   const text = status === "paid" ? "Paid" : status === "cancelled" ? "Cancelled" : "Open";
-  return <span className={`keeps-color shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${style}`}>{text}</span>;
-}
-
-function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  const tip =
+    status === "paid"
+      ? "Paid — the order's deposit, payment status and Paid by were updated"
+      : status === "cancelled"
+        ? "Cancelled — the link no longer takes payment"
+        : "Waiting for the customer to pay";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className="press flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-band hover:text-ink max-md:h-9 max-md:w-9"
-    >
-      {children}
-    </button>
+    <Tip label={tip} className="shrink-0">
+      <span className={`keeps-color rounded-full px-2 py-0.5 text-[11px] font-semibold ${style}`}>{text}</span>
+    </Tip>
   );
 }
+
+/**
+ * An icon button with a `Tip` saying what it does on a laptop, and — since
+ * a phone has no hover to ask — its `word` written beside the icon there.
+ */
+function IconButton({
+  label,
+  word,
+  onClick,
+  children,
+}: {
+  label: string;
+  word?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tip label={label} className="shrink-0">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className="press flex h-8 min-w-8 items-center justify-center gap-1 rounded-full text-ink-soft hover:bg-band hover:text-ink max-md:h-9 max-md:px-2.5"
+      >
+        {children}
+        {word && <span className="text-xs font-semibold md:hidden">{word}</span>}
+      </button>
+    </Tip>
+  );
+}
+
+/** What each tab asks for, on hover. */
+const KIND_TIP: Record<PaymentLinkKind, string> = {
+  full: "Ask for the whole order total, whatever was paid already",
+  deposit: "Ask for part of the order up front — half, unless you change the percent",
+  balance: "Ask for what is still due after what was paid",
+  custom: "Type any amount yourself",
+};
 
 /** One read-only figure in the "Payment so far" box. */
 function Figure({ label, value, tone = "text-ink" }: { label: string; value: string; tone?: string }) {

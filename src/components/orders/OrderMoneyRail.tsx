@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Link2 } from "lucide-react";
+import { Tip } from "@/components/Tip";
 import {
   ORDER_EXTRAS,
   VAT_MODES,
@@ -279,6 +280,7 @@ export function OrderMoneyRail({
 
           {/* Under the balance, because it is how the balance gets paid. */}
           {onPaymentLink && (
+            <Tip label="Make a SUMIT payment link for this order, and send it by WhatsApp, email or a QR code" className="block">
             <button
               type="button"
               onClick={onPaymentLink}
@@ -286,6 +288,7 @@ export function OrderMoneyRail({
             >
               <Link2 size={14} aria-hidden /> Payment link
             </button>
+            </Tip>
           )}
 
           <FoodCostRows draft={draft} />
