@@ -859,6 +859,17 @@ thead .pick-box,
   animation: reveal-in var(--motion-slow) var(--ease-draw);
 }
 
+/* A column chart's bars grow up from the floor (v0.103, an event's
+   timeline) on the same timing. */
+@keyframes rise-up {
+  from { transform: scaleY(0); }
+}
+
+.motion-column {
+  transform-origin: bottom;
+  animation: rise-up var(--motion-slow) var(--ease-draw);
+}
+
 /*
  * A bottom sheet comes up from the edge it belongs to (v0.80) — the whole
  * of itself, not the 10px a centred dialog rises. A sheet that faded in a
@@ -1099,6 +1110,7 @@ thead .pick-box,
   .motion-fade,
   .motion-reveal,
   .motion-bar,
+  .motion-column,
   .motion-row,
   .motion-stagger > *,
   .motion-sheet,

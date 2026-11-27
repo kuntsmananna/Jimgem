@@ -1712,6 +1712,30 @@ paste, and the proof screen simply reads "not handed over".
   `pay/copy.ts`), so the shop and the payment pages share it; the old
   `/pay`-only cookie is cleared beside it. `dealLabel` takes `"he"`.
 
+### v0.103 — events, stage 4: statistics, and events in the reports
+
+No migration.
+
+- **Event takings are revenue** (`getEventMonths` in `src/lib/eventStats.ts`,
+  folded in by `getYearlyFinancials`): paid sales only, by the **event's
+  date**, VAT-included at the business's current `vat_rate` (every event
+  is after registration). They add to `revenue`, `profit` and `unitsSold`
+  (boxes × the preset's package size) — **not to `orderCount`**: a
+  stall's customers are not orders. `MonthlyFinancials` carries
+  `eventRevenue`/`eventSales` apart so the Biz Plan's average order value
+  leaves event takings out.
+- **`EventStatsModal`** (the canvas's Stats board): customers, takings
+  (following the VAT switch), average basket, boxes sold of brought, the
+  share that bought a deal; sales per 15 minutes over the event's hours
+  (Israel time, `getEventStats`), boxes by product, every sale, and a CSV
+  (with a BOM so Excel reads Hebrew). Read from `/api/events/<id>/stats`
+  when opened, so no page carries every event's sales.
+- **One row per event** (`EventsPane`) under the Biz Plan's months and in
+  the Dashboard's column (narrowed by its month pills), each opening the
+  popup; drawn only when the year has events. The Events page shows each
+  event's customers and takings, with a **Stats** button
+  (`EventStatsButton`) beside the row's link.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via

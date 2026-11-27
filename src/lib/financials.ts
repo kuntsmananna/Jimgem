@@ -1,3 +1,4 @@
+import { getEventMonths } from "./eventStats";
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
 import { isBooked, orderNet, orderTotal, stageMap, todayIso, vatOn, type VatMode } from "./orderTypes";
 import type { VatView } from "./vatView";
@@ -229,6 +230,13 @@ export interface MonthlyFinancials {
   expensesByCategory: Record<string, number>;
   profit: number;
   unitsSold: number;
+  /**
+   * What events took this month (v0.103) — already inside `revenue`,
+   * `profit` and `unitsSold`, and carried apart so an average per order
+   * can leave it out: a stall's customers are not orders.
+   */
+  eventRevenue: number;
+  eventSales: number;
 }
 
 /**
@@ -271,7 +279,7 @@ export async function getYearlyFinancials(
   year: number = Number(todayIso().slice(0, 4)),
 ): Promise<YearlyFinancials> {
   const net = vatView === "net";
-  const [orders, dbExpenses, packageTypes] = await Promise.all([
+  const [orders, dbExpenses, packageTypes, eventMonths] = await Promise.all([
     getOrders(),
     // The Sheet's monthly totals are no longer read here: migration 018
     // turned each into a real expenses row, so adding them again would
@@ -280,6 +288,7 @@ export async function getYearlyFinancials(
     // Archived included: units sold is computed from stored package
     // lines, which can reference a package type since retired.
     getPackageTypes(true),
+    getEventMonths(year),
   ]);
   const packageUnitsById = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
   const years = [
@@ -308,14 +317,20 @@ export async function getYearlyFinancials(
     expensesByMonth.set(dbExpense.month, existing);
   }
 
-  const months = new Set<number>([...revenue.map((r) => r.month), ...expensesByMonth.keys()]);
+  const months = new Set<number>([
+    ...revenue.map((r) => r.month),
+    ...expensesByMonth.keys(),
+    ...eventMonths.map((e) => e.month),
+  ]);
 
   const rows = Array.from(months)
     .sort((a, b) => a - b)
     .map((month) => {
       const rev = revenue.find((r) => r.month === month);
       const exp = expensesByMonth.get(month);
-      const revenueTotal = (net ? rev?.netTotal : rev?.total) ?? 0;
+      const ev = eventMonths.find((e) => e.month === month);
+      const eventRevenue = (net ? ev?.netTotal : ev?.total) ?? 0;
+      const revenueTotal = ((net ? rev?.netTotal : rev?.total) ?? 0) + eventRevenue;
       const expensesTotal = exp?.total ?? 0;
       return {
         month,
@@ -325,7 +340,9 @@ export async function getYearlyFinancials(
         expenses: expensesTotal,
         expensesByCategory: exp?.byCategory ?? {},
         profit: revenueTotal - expensesTotal,
-        unitsSold: rev?.unitsSold ?? 0,
+        unitsSold: (rev?.unitsSold ?? 0) + (ev?.units ?? 0),
+        eventRevenue,
+        eventSales: ev?.sales ?? 0,
       };
     });
   return { year, years, months: rows };

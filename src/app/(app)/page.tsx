@@ -1,6 +1,7 @@
 import { getYearlyFinancials, yearOf } from "@/lib/financials";
 import { getOrders, orderMonth, orderFlavorUnits } from "@/lib/orders";
-import { isBooked, stageMap } from "@/lib/orderTypes";
+import { isBooked, stageMap, todayIso } from "@/lib/orderTypes";
+import { getEventSummaries } from "@/lib/eventStats";
 import { aroundToday, inRange } from "@/lib/orderScope";
 import { DUE_SOON_DAYS } from "@/lib/dueSoon";
 import { getFlavors, getPrices, getProductionStages, getStaff } from "@/lib/settings";
@@ -16,8 +17,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   await requireAdminPage();
   const vatView = await getVatView();
   const asked = Number((await searchParams).year);
-  const [{ year, years, months: financials }, orders, flavors, stages, tasks, staff, prices] = await Promise.all([
-    getYearlyFinancials(vatView, Number.isInteger(asked) && asked > 2000 ? asked : undefined),
+  const askedYear = Number.isInteger(asked) && asked > 2000 ? asked : Number(todayIso().slice(0, 4));
+  const [{ year, years, months: financials }, orders, flavors, stages, tasks, staff, prices, events] = await Promise.all([
+    getYearlyFinancials(vatView, askedYear),
     getOrders(),
     // Archived included: this resolves what stored orders packed, not
     // what a new one may pick.
@@ -29,6 +31,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
     getTasks(),
     getStaff(),
     getPrices(),
+    getEventSummaries(askedYear),
   ]);
 
   const stageIndex = stageMap(stages);
@@ -74,6 +77,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       tasks={tasks}
       staff={staff}
       owing={owing}
+      events={events}
     />
   );
 }

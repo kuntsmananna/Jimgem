@@ -6,6 +6,9 @@ import { getContentPresets } from "@/lib/settings";
 import { todayIso, orderWeekday, formatOrderDate } from "@/lib/orderTypes";
 import { MigrationNeeded } from "@/components/Pane";
 import type { SaleEvent } from "@/lib/eventTypes";
+import { getEventSummaries, type EventSummary } from "@/lib/eventStats";
+import { EventStatsButton } from "@/components/events/EventsPane";
+import { count, currency } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +21,13 @@ const PAY_WORDS = { staff: "Staff rings it up", self: "Customers self-scan", bot
  * ones already held under them. Admins only — every event is priced.
  */
 export default async function EventsPage() {
-  const [, { available, events }, presets] = await Promise.all([
+  const [, { available, events }, presets, summaries] = await Promise.all([
     requireAdminPage(),
     getEvents(),
     getContentPresets(),
+    getEventSummaries(),
   ]);
+  const takings = new Map(summaries.map((s) => [s.id, s]));
   const today = todayIso();
   const coming = events.filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
   const done = events.filter((e) => e.date < today);
@@ -59,7 +64,7 @@ export default async function EventsPage() {
           <h2 className="mb-2.5 text-xs font-extrabold tracking-[0.12em] uppercase">Coming up</h2>
           <ul className="motion-stagger flex flex-col gap-2">
             {coming.map((event) => (
-              <EventRow key={event.id} event={event} presetName={presetName} />
+              <EventRow key={event.id} event={event} presetName={presetName} summary={takings.get(event.id)} />
             ))}
           </ul>
         </section>
@@ -70,7 +75,7 @@ export default async function EventsPage() {
           <h2 className="mb-2.5 text-xs font-extrabold tracking-[0.12em] uppercase">Done</h2>
           <ul className="motion-stagger flex flex-col gap-2">
             {done.map((event) => (
-              <EventRow key={event.id} event={event} presetName={presetName} past />
+              <EventRow key={event.id} event={event} presetName={presetName} summary={takings.get(event.id)} past />
             ))}
           </ul>
         </section>
@@ -82,21 +87,24 @@ export default async function EventsPage() {
 function EventRow({
   event,
   presetName,
+  summary,
   past = false,
 }: {
   event: SaleEvent;
   presetName: Map<number, string>;
+  summary?: EventSummary;
   past?: boolean;
 }) {
+  const sold = summary && summary.sales > 0 ? summary : null;
   const products = event.products.map((p) => presetName.get(p.presetId) ?? "A retired preset");
   const hours = event.startsAt ? `${event.startsAt}${event.endsAt ? `–${event.endsAt}` : ""}` : "";
   return (
-    <li>
+    <li className="relative">
       <Link
         href={`/events/${event.id}`}
         className={`hover-line grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-4 rounded-card border border-line px-5 py-4 max-md:grid-cols-[64px_minmax(0,1fr)] ${
           past ? "bg-cream" : "bg-card"
-        }`}
+        } ${sold ? "max-md:pe-24" : ""}`}
       >
         <span>
           <span className="block text-xs font-bold text-ink-soft">{orderWeekday(event.date)}</span>
@@ -110,8 +118,14 @@ function EventRow({
               .join(" · ")}
           </span>
         </span>
-        <span className="flex items-center gap-2 max-md:col-span-2 max-md:justify-start">
-          <span className="text-sm font-semibold text-ink-soft max-md:text-xs">{PAY_WORDS[event.payMode]}</span>
+        <span className={`flex items-center gap-2 max-md:col-span-2 max-md:justify-start ${sold ? "md:pe-24" : ""}`}>
+          {sold ? (
+            <span className="text-sm font-bold tabular-nums max-md:text-xs">
+              {count(sold.sales)} customers · {currency(sold.takings)}
+            </span>
+          ) : (
+            <span className="text-sm font-semibold text-ink-soft max-md:text-xs">{PAY_WORDS[event.payMode]}</span>
+          )}
           <span
             className={`keeps-color rounded-full px-3 py-1 text-xs font-extrabold ${
               event.status === "ready" ? "bg-[#cfe0cf]" : "bg-tile-peach"
@@ -121,6 +135,9 @@ function EventRow({
           </span>
         </span>
       </Link>
+      {/* Beside the link, not inside it: a button in an <a> is invalid,
+          and the row itself opens the setup. */}
+      {sold && <EventStatsButton eventId={event.id} className="absolute end-5 top-1/2 -translate-y-1/2 max-md:top-4 max-md:translate-y-0" />}
     </li>
   );
 }

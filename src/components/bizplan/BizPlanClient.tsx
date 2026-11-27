@@ -9,16 +9,21 @@ import { useIsMobile } from "@/components/useMediaQuery";
 import { MonthsMobileList } from "@/components/bizplan/MonthsMobileList";
 import { count, currency } from "@/lib/money";
 import { YearSwitch } from "@/components/YearSwitch";
+import { EventsPane } from "@/components/events/EventsPane";
+import type { EventSummary } from "@/lib/eventStats";
 
 
 export function BizPlanClient({
   financials,
   year,
   years,
+  events,
 }: {
   financials: MonthlyFinancials[];
   year: number;
   years: number[];
+  /** The year's events — one row each, opening its statistics (v0.103). */
+  events: EventSummary[];
 }) {
   const [hideEmpty, setHideEmpty] = useState(true);
   /*
@@ -41,10 +46,13 @@ export function BizPlanClient({
       profit: acc.profit + m.profit,
       orders: acc.orders + m.orderCount,
       units: acc.units + m.unitsSold,
+      events: acc.events + m.eventRevenue,
     }),
-    { revenue: 0, profit: 0, orders: 0, units: 0 },
+    { revenue: 0, profit: 0, orders: 0, units: 0, events: 0 },
   );
-  const avgOrderValue = ytd.orders > 0 ? ytd.revenue / ytd.orders : 0;
+  // Orders' revenue only: event takings are in the revenue figure but a
+  // stall's customers are not orders (see eventStats.ts).
+  const avgOrderValue = ytd.orders > 0 ? (ytd.revenue - ytd.events) / ytd.orders : 0;
   const { label: vatLabel } = useVatView();
 
   return (
@@ -170,6 +178,8 @@ export function BizPlanClient({
         </div>
         )}
       </section>
+
+      <EventsPane events={events} year={year} />
     </div>
   );
 }

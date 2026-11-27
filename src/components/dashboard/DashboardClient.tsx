@@ -11,6 +11,8 @@ import { useVatView } from "@/components/VatViewContext";
 import { BarBreakdown, type BreakdownSlice } from "@/components/charts/BarBreakdown";
 import { CHART_COLORS, EXPENSE_PALETTE } from "@/lib/chartPalette";
 import { TaskList } from "@/components/tasks/TaskList";
+import { EventsPane } from "@/components/events/EventsPane";
+import type { EventSummary } from "@/lib/eventStats";
 import { SelectDropdown } from "@/components/orders/Dropdown";
 import { count, currency } from "@/lib/money";
 import { YearSwitch } from "@/components/YearSwitch";
@@ -69,6 +71,7 @@ export function DashboardClient({
   tasks,
   staff,
   owing,
+  events,
 }: {
   financials: MonthlyFinancials[];
   /** The year `financials` is in, and the years there is anything for — see `YearSwitch`. */
@@ -84,6 +87,8 @@ export function DashboardClient({
   staff: StaffAccount[];
   /** Orders around the coming week that still owe — see `DueSoonStrip`. */
   owing: Order[];
+  /** The year's events with their takings — see `EventsPane`. */
+  events: EventSummary[];
 }) {
   const [selectedMonth, setSelectedMonth] = useState<number | "all">("all");
   const stageMap = useStageMap();
@@ -295,6 +300,12 @@ export function DashboardClient({
               />
             </div>
           </section>
+
+          {/* The month pills narrow it like every figure here. */}
+          <EventsPane
+            year={year}
+            events={selectedMonth === "all" ? events : events.filter((e) => Number(e.date.slice(5, 7)) === selectedMonth)}
+          />
 
           <section className="min-w-0 rounded-card border border-line bg-card p-6 max-md:p-4">
             <h2 className="font-display text-base font-bold text-ink">Expense category split</h2>
