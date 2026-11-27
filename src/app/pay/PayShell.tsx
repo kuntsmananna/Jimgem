@@ -32,17 +32,27 @@ export function PayShell({
       lang={lang}
       className="flex min-h-dvh flex-col items-center bg-cream px-4 pt-6 pb-8 text-ink"
     >
-      <div className="flex w-full max-w-sm items-center justify-between">
+      <div dir="ltr" className="flex w-full max-w-sm items-center justify-between">
         <a href={SITE_URL} aria-label="Gems Cocktail Bites" className="block">
           <GemsLogo className="h-12 w-auto text-brand" />
         </a>
-        {/* A plain link: switching sets a cookie and comes straight back. */}
-        <a
-          href={`/pay/${token}/lang?to=${t.switchLang}&back=${back}`}
-          className="flex h-9 items-center rounded-full border border-line bg-card px-3.5 text-sm font-semibold text-ink"
-        >
-          {t.switchTo}
-        </a>
+        {/* Two plain links, the current one filled — the same place and the
+            same order in both languages, so it never moves under a thumb.
+            Choosing sets a cookie and comes straight back. */}
+        <div role="group" aria-label="Language" className="flex rounded-full bg-band p-[3px]">
+          {(["he", "en"] as const).map((code) => (
+            <a
+              key={code}
+              href={`/pay/${token}/lang?to=${code}&back=${back}`}
+              aria-current={lang === code ? "true" : undefined}
+              className={`flex h-8 min-w-11 items-center justify-center rounded-full px-3 text-sm font-bold ${
+                lang === code ? "bg-card text-ink shadow-sm" : "text-ink-soft"
+              }`}
+            >
+              {code === "he" ? "עב" : "EN"}
+            </a>
+          ))}
+        </div>
       </div>
 
       <main className="mt-6 w-full max-w-sm rounded-[24px] border border-line bg-card p-6 shadow-[0_18px_40px_-28px_rgb(60_30_10/0.45)]">

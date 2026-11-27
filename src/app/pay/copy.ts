@@ -30,8 +30,6 @@ export function payCopy(lang: PayLang) {
   const he = lang === "he";
   return {
     dir: he ? ("rtl" as const) : ("ltr" as const),
-    switchTo: he ? "English" : "עברית",
-    switchLang: (he ? "en" : "he") as PayLang,
     kind: (kind: PaymentLinkKind) => KIND[lang][kind],
     forOrder: he ? "להזמנה מ-Gems" : "for your Gems order",
     name: he ? "על שם" : "Name",
