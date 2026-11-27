@@ -16,6 +16,7 @@ import {
   DEFAULT_DEPOSIT_PERCENT,
   PAYMENT_LINK_KIND_LABEL,
   paymentMessage,
+  paymentSubject,
   suggestedAmount,
   whatsappNumber,
   type PaymentLink,
@@ -323,16 +324,20 @@ function SharePanel({
     };
   }, [link.url]);
 
-  const message = paymentMessage({
-    customer: client?.name || order.customer,
-    kind: link.kind,
-    amount: link.amount,
-    date: formatOrderDate(order.date),
-    url: link.url,
-  });
+  const messageFor = (channel: "whatsapp" | "email") =>
+    paymentMessage({
+      customer: client?.name || order.customer,
+      kind: link.kind,
+      amount: link.amount,
+      date: formatOrderDate(order.date),
+      url: link.url,
+      channel,
+    });
   const phone = client?.phone ? whatsappNumber(client.phone) : null;
-  const whatsapp = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
-  const email = `mailto:${client?.email ?? ""}?subject=${encodeURIComponent("לינק לתשלום — Gems")}&body=${encodeURIComponent(message)}`;
+  const whatsapp = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(messageFor("whatsapp"))}`;
+  const email = `mailto:${client?.email ?? ""}?subject=${encodeURIComponent(
+    paymentSubject(link.kind, formatOrderDate(order.date)),
+  )}&body=${encodeURIComponent(messageFor("email"))}`;
 
   const copy = async () => {
     try {

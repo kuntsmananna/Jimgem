@@ -83,7 +83,17 @@ export function whatsappNumber(phone: string): string | null {
   return digits.length >= 9 ? digits : null;
 }
 
-/** The message that goes with the link, in Hebrew — it is for the customer. */
+/**
+ * The message that goes with the link, in Hebrew — it is for the customer.
+ *
+ * Plain text, because it leaves through `wa.me` and `mailto:`, which carry
+ * nothing else. So the shape is done with lines: a greeting, one sentence,
+ * the date and the amount each on a line of its own behind a mark, the
+ * link alone on its line (a line mixing Hebrew with a URL or a ₪ figure is
+ * where right-to-left text scrambles), and a signature with the website.
+ * WhatsApp draws `*…*` as bold, so that version bolds the amount; an email
+ * would show the stars, so it does not.
+ */
 export function paymentMessage(input: {
   customer: string;
   kind: PaymentLinkKind;
@@ -91,13 +101,29 @@ export function paymentMessage(input: {
   /** "D/M" as the app writes dates. */
   date: string;
   url: string;
+  channel?: "whatsapp" | "email";
 }): string {
   const first = input.customer.trim().split(/\s+/)[0] ?? "";
   const amount = `₪${input.amount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const bold = (text: string) => (input.channel === "whatsapp" ? `*${text}*` : text);
   return [
     `היי${first ? ` ${first}` : ""} 🙂`,
-    `מצרפת לינק ל${PAYMENT_LINK_KIND_HEBREW[input.kind]} עבור ההזמנה שלך מ-Gems לתאריך ${input.date}: ${amount}`,
+    "",
+    `מצרפת לינק ל${PAYMENT_LINK_KIND_HEBREW[input.kind]} עבור ההזמנה שלך מ-Gems.`,
+    "",
+    `📅 תאריך האירוע: ${input.date}`,
+    `💳 סכום לתשלום: ${bold(amount)}`,
+    "",
+    "לתשלום מאובטח:",
     input.url,
-    "תודה! 🍸",
+    "",
+    "תודה ונתראה באירוע! 🍸",
+    "Gems Cocktail Bites",
+    "gem-bites.com",
   ].join("\n");
+}
+
+/** The email's subject line: who it is from and what it is for. */
+export function paymentSubject(kind: PaymentLinkKind, date: string): string {
+  return `Gems · לינק ל${PAYMENT_LINK_KIND_HEBREW[kind]} עבור ההזמנה ל-${date}`;
 }

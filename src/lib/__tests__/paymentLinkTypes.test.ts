@@ -50,5 +50,13 @@ describe("paymentMessage", () => {
     expect(text).toContain("מקדמה");
     expect(text).toContain("₪618");
     expect(text).toContain("https://x/pay/abc");
+    expect(text.split("\n")).toContain("https://x/pay/abc");
+    expect(text).toContain("gem-bites.com");
+  });
+
+  it("bolds the amount for WhatsApp only", () => {
+    const base = { customer: "Noa", kind: "full" as const, amount: 410, date: "27/11", url: "u" };
+    expect(paymentMessage({ ...base, channel: "whatsapp" })).toContain("*₪410*");
+    expect(paymentMessage({ ...base, channel: "email" })).not.toContain("*");
   });
 });
