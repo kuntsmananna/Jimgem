@@ -10,7 +10,7 @@ import { whenText } from "@/components/LastEdited";
 import { sendWrite } from "@/components/saveError";
 import { notify } from "@/components/Notices";
 import { currency } from "@/lib/money";
-import { formatOrderDate, orderTotal, stillDue, type Order } from "@/lib/orderTypes";
+import { formatOrderDate, orderTotal, stillDue, PAYMENT_STATUS_LABEL, type Order, type PaymentStatus } from "@/lib/orderTypes";
 import type { Client } from "@/lib/clients";
 import {
   DEFAULT_DEPOSIT_PERCENT,
@@ -21,7 +21,6 @@ import {
   type PaymentLink,
   type PaymentLinkKind,
 } from "@/lib/paymentLinkTypes";
-import { Segmented } from "./OrderSheet";
 
 type LinkWithUrl = PaymentLink & { url: string };
 
@@ -55,6 +54,7 @@ export function PaymentLinkModal({
   const [percent, setPercent] = useState(DEFAULT_DEPOSIT_PERCENT);
   const [amount, setAmount] = useState(() => suggestedAmount(order, nothingPaid ? "deposit" : "balance"));
   const [busy, setBusy] = useState(false);
+  const paidShare = total > 0 ? Math.min(100, Math.max(0, (order.deposit / total) * 100)) : 0;
   const [error, setError] = useState<string | null>(null);
 
   const [links, setLinks] = useState<LinkWithUrl[] | null>(null);
@@ -95,6 +95,16 @@ export function PaymentLinkModal({
     setError(null);
     if (next !== "custom") setAmount(suggestedAmount(order, next, percent));
   };
+
+  /** What the chosen tab means, under the figure, in words. */
+  const hint =
+    kind === "deposit"
+      ? `${percent}% of the order total, in whole shekels`
+      : kind === "balance"
+        ? "Everything still due on the order"
+        : kind === "full"
+          ? "The whole order, regardless of what was paid"
+          : "Type any amount, incl. VAT";
 
   const create = async () => {
     setError(null);
@@ -150,68 +160,100 @@ export function PaymentLinkModal({
           </p>
         )}
 
-        <p className="text-xs text-ink-soft">
-          Order total <b className="text-ink">{currency(total)}</b> · paid so far{" "}
-          <b className="text-ink">{currency(order.deposit)}</b> · still due <b className="text-ink">{currency(due)}</b>
-        </p>
+        {/*
+          Where the order stands, read-only: a tinted box of three figures
+          and a bar of how much is paid, apart from the part that asks.
+        */}
+        <section aria-label="Payment so far" className="rounded-2xl bg-cream px-4 py-3">
+          <p className="text-[11px] font-extrabold tracking-[0.14em] text-ink uppercase">Payment so far</p>
+          <dl className="mt-2 grid grid-cols-3 gap-2">
+            <Figure label="Order total" value={currency(total)} />
+            <Figure label="Paid" value={currency(order.deposit)} tone="text-accent" />
+            <Figure label="Still due" value={currency(due)} tone={due > 0 ? "text-due" : "text-accent"} />
+          </dl>
+          <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-band" aria-hidden>
+            <div className="h-full rounded-full bg-accent" style={{ width: `${paidShare}%` }} />
+          </div>
+          <p className="mt-1 text-xs font-semibold text-ink-soft">
+            {PAYMENT_STATUS_LABEL[order.paymentStatus as PaymentStatus] ?? order.paymentStatus}
+            {total > 0 ? ` · ${Math.round(paidShare)}% paid` : ""}
+          </p>
+        </section>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Segmented
-            label="What the link is for"
-            value={kind}
-            onChange={choose}
-            options={(["deposit", "balance", "full", "custom"] as const).map((value) => ({
-              value,
-              text: PAYMENT_LINK_KIND_LABEL[value],
-            }))}
-          />
-        </div>
-
-        <div className="flex items-end gap-3">
-          {kind === "deposit" && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-ink-soft">Deposit</span>
-              <span className="flex items-center gap-1">
+        {/*
+          What to ask for: the four choices are tabs on the amount's own
+          box, so the choice and the figure it produces read as one thing.
+        */}
+        <section aria-labelledby="ask-heading">
+          <h3 id="ask-heading" className="text-[11px] font-extrabold tracking-[0.14em] text-ink uppercase">
+            Amount to ask
+          </h3>
+          <div className="mt-2 overflow-hidden rounded-2xl border border-line bg-card">
+            <div role="tablist" aria-label="What the link is for" className="grid grid-cols-4 bg-band/60 p-1">
+              {(["full", "deposit", "balance", "custom"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={kind === value}
+                  onClick={() => kind !== value && choose(value)}
+                  className={`h-9 rounded-xl text-[13px] font-semibold transition max-md:h-11 ${
+                    kind === value ? "bg-card text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  {PAYMENT_LINK_KIND_LABEL[value]}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <label className="flex min-w-0 flex-1 items-baseline gap-1">
+                <span className="sr-only">Amount, incl. VAT</span>
+                <span className="font-display text-2xl font-extrabold text-ink-soft">₪</span>
                 <input
                   type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={100}
-                  value={percent}
-                  onChange={(e) => {
-                    const next = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                    setPercent(next);
-                    setAmount(suggestedAmount(order, "deposit", next));
-                  }}
-                  className="input w-16 text-right tabular-nums"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  data-money
+                  value={amount || ""}
+                  placeholder="0"
+                  autoFocus={kind === "custom"}
+                  onChange={(e) => setAmount(Number(e.target.value) || 0)}
+                  className="keeps-size w-full min-w-0 border-0 bg-transparent p-0 font-display text-[34px] leading-none font-extrabold tabular-nums text-ink outline-none"
                 />
-                <span className="font-semibold">%</span>
-              </span>
-            </label>
-          )}
-          <label className="flex flex-1 flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-soft">Amount to ask, incl. VAT (₪)</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="any"
-              data-money
-              value={amount || ""}
-              placeholder="0"
-              onChange={(e) => setAmount(Number(e.target.value) || 0)}
-              className="input w-full tabular-nums"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={create}
-            disabled={busy}
-            className="press flex h-10 shrink-0 items-center gap-2 rounded-full bg-black px-4 font-semibold text-cream"
-          >
-            {busy ? <JellyHop /> : "Create link"}
-          </button>
-        </div>
+              </label>
+              {kind === "deposit" && (
+                <label className="flex shrink-0 items-center gap-1 rounded-full bg-cream px-3 py-1.5">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={100}
+                    value={percent}
+                    aria-label="Deposit percent"
+                    onChange={(e) => {
+                      const next = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                      setPercent(next);
+                      setAmount(suggestedAmount(order, "deposit", next));
+                    }}
+                    className="w-10 border-0 bg-transparent p-0 text-right text-base font-bold tabular-nums outline-none"
+                  />
+                  <span className="font-bold">%</span>
+                </label>
+              )}
+            </div>
+            <p className="border-t border-line/60 px-4 py-2 text-xs font-semibold text-ink-soft">{hint}</p>
+          </div>
+        </section>
+
+        <button
+          type="button"
+          onClick={create}
+          disabled={busy}
+          className="press flex h-11 w-full items-center justify-center gap-2 rounded-full bg-black font-semibold text-cream max-md:h-12"
+        >
+          {busy ? <JellyHop /> : amount > 0 ? `Create link for ${currency(amount)}` : "Create link"}
+        </button>
         {error && <p className="text-xs font-semibold text-red-700">{error}</p>}
 
         {shown && <SharePanel link={shown} order={order} client={client} onDone={() => setShown(null)} />}
@@ -359,5 +401,15 @@ function IconButton({ label, onClick, children }: { label: string; onClick: () =
     >
       {children}
     </button>
+  );
+}
+
+/** One read-only figure in the "Payment so far" box. */
+function Figure({ label, value, tone = "text-ink" }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-semibold text-ink-soft">{label}</dt>
+      <dd className={`font-display text-xl leading-tight font-extrabold tabular-nums ${tone}`}>{value}</dd>
+    </div>
   );
 }

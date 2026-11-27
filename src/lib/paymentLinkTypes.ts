@@ -10,7 +10,7 @@ import { orderTotal, stillDue, type Order } from "./orderTypes";
  * What a link asks for. `custom` is an amount typed by hand; the other
  * three are worked out from the order (see `suggestedAmount`).
  */
-export const PAYMENT_LINK_KINDS = ["deposit", "balance", "full", "custom"] as const;
+export const PAYMENT_LINK_KINDS = ["full", "deposit", "balance", "custom"] as const;
 export type PaymentLinkKind = (typeof PAYMENT_LINK_KINDS)[number];
 
 export const PAYMENT_LINK_KIND_LABEL: Record<PaymentLinkKind, string> = {
