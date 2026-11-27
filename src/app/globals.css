@@ -787,6 +787,21 @@ thead .pick-box,
   animation: rise-in var(--motion) var(--ease-entrance);
 }
 
+/* A confirmation arriving (v0.99.6, the paid tick on the customer's
+   thank-you page): out of nothing, a little past full size, then settled —
+   the one place an overshoot is the point, since it is a small celebration
+   rather than a control. */
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.12); }
+  80% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+.motion-pop {
+  animation: pop-in 520ms var(--ease-entrance) 120ms backwards;
+}
+
 .motion-drop {
   animation: drop-in var(--motion-fast) var(--ease-entrance);
   transform-origin: top;
@@ -1066,6 +1081,7 @@ thead .pick-box,
 @media (prefers-reduced-motion: reduce) {
   .motion-veil,
   .motion-rise,
+  .motion-pop,
   .motion-drop,
   .motion-lift,
   .motion-fade,

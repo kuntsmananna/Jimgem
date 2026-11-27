@@ -63,7 +63,7 @@ export default async function PayPage({
         <span dir="ltr">{shekels(link.amount)}</span>
       </p>
 
-      <dl className="mt-5 divide-y divide-line border-y border-line">
+      <dl className="motion-stagger mt-5 divide-y divide-line border-y border-line">
         <PayRow label={t.name}>
           <span data-private>{link.customer}</span>
         </PayRow>

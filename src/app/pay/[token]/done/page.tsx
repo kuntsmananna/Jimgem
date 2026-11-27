@@ -58,7 +58,7 @@ export default async function PayDonePage({
   return (
     <PayShell lang={lang} token={token} back="done">
       <div className="flex flex-col items-center text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-cream">
+        <span className="motion-pop flex h-16 w-16 items-center justify-center rounded-full bg-accent text-cream">
           <CircleCheck size={34} strokeWidth={2} aria-hidden />
         </span>
         <h1 className="font-display mt-4 text-[26px] leading-tight font-extrabold">{t.paidTitle}</h1>
@@ -74,7 +74,7 @@ export default async function PayDonePage({
 
       {/* The invitation, in a box of its own under a rule: a thank-you
           first, an ask second. */}
-      <div className="mt-6 rounded-2xl bg-cream p-4">
+      <div className="motion-stagger mt-6 rounded-2xl bg-cream p-4">
         <p className="font-bold">{t.followTitle}</p>
         <p className="mt-0.5 text-sm text-ink-soft">{t.followText}</p>
         <div className="mt-3 flex flex-col gap-2">

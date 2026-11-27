@@ -55,7 +55,7 @@ export function PayShell({
         </div>
       </div>
 
-      <main className="mt-6 w-full max-w-sm rounded-[24px] border border-line bg-card p-6 shadow-[0_18px_40px_-28px_rgb(60_30_10/0.45)]">
+      <main className="motion-rise mt-6 w-full max-w-sm rounded-[24px] border border-line bg-card p-6 shadow-[0_18px_40px_-28px_rgb(60_30_10/0.45)]">
         {children}
       </main>
 
