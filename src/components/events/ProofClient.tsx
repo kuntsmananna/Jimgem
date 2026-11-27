@@ -36,6 +36,7 @@ export function HandOverButton({
   label,
   note,
   doneLabel,
+  onHanded,
 }: {
   token: string;
   handedAt: string | null;
@@ -43,6 +44,8 @@ export function HandOverButton({
   note: string;
   /** With `{time}` where the time goes — a function cannot cross from the server. */
   doneLabel: string;
+  /** Called once the tap is saved — the proof then gives way to the thank-you. */
+  onHanded?: () => void;
 }) {
   const [at, setAt] = useState(handedAt);
   const [busy, setBusy] = useState(false);
@@ -56,6 +59,7 @@ export function HandOverButton({
       const body = (await response.json().catch(() => ({}))) as { handedAt?: string };
       if (!response.ok || !body.handedAt) throw new Error();
       setAt(body.handedAt);
+      onHanded?.();
     } catch {
       setFailed(true);
     } finally {

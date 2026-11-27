@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { CircleCheck, Clock } from "lucide-react";
 import { confirmReturn, getPublicLink } from "@/lib/paymentLinks";
 import { payCopy } from "../../copy";
-import { FollowUs, PayShell, readPayLang, shekels } from "../../PayShell";
+import { PayShell, readPayLang, shekels } from "../../PayShell";
 import { SaleProof } from "../../SaleProof";
+import { FollowUs } from "../../FollowUs";
 
 export const metadata: Metadata = { title: "Gems — תודה / Thank you", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -60,7 +61,6 @@ export default async function PayDonePage({
     return (
       <PayShell lang={lang} token={token} back="done">
         <SaleProof token={token} lang={lang} amount={link.paidAmount ?? link.amount} />
-        <FollowUs lang={lang} title={t.thanksBuy} />
       </PayShell>
     );
   }

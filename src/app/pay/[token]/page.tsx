@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { CircleCheck, Lock } from "lucide-react";
 import { getPublicLink } from "@/lib/paymentLinks";
 import { payCopy } from "../copy";
-import { FollowUs, PayRow, PayShell, readPayLang, shekels } from "../PayShell";
+import { PayRow, PayShell, readPayLang, shekels } from "../PayShell";
 import { SaleProof } from "../SaleProof";
 
 export const metadata: Metadata = { title: "Gems — תשלום / Payment", robots: { index: false, follow: false } };
@@ -37,7 +37,6 @@ export default async function PayPage({
     return (
       <PayShell lang={lang} token={token} back="page">
         <SaleProof token={token} lang={lang} amount={link.paidAmount ?? link.amount} />
-        <FollowUs lang={lang} title={t.thanksBuy} />
       </PayShell>
     );
   }

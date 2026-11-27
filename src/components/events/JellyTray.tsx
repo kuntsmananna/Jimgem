@@ -123,7 +123,7 @@ export function JellyTray({ cubes, shakeLabel }: { cubes: CubeColor[]; shakeLabe
           gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${rows}, auto)`,
           gridAutoFlow: "column",
-          width: `min(100%, ${columns * 44 + 24}px)`,
+          width: `min(100%, ${columns * 30 + 24}px)`,
         }}
         aria-hidden
       >
@@ -139,7 +139,7 @@ export function JellyTray({ cubes, shakeLabel }: { cubes: CubeColor[]; shakeLabe
         <button
           type="button"
           onClick={ask}
-          className="press mt-3 rounded-full border border-line bg-card px-4 py-2 text-sm font-bold"
+          className="press mt-2.5 rounded-full border border-line bg-card px-4 py-2 text-sm font-bold"
         >
           {shakeLabel}
         </button>

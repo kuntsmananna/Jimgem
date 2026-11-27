@@ -1685,9 +1685,15 @@ paste, and the proof screen simply reads "not handed over".
   (`createSaleLink`'s `lazy`): anyone can fill a basket from a printed
   sign, so the metered call waits for Pay, where `sumitUrlForCustomer`
   makes it. `shopIsBusy` refuses past 120 baskets in ten minutes per event.
-- **The thank-you of a sale is the proof screen** (`SaleProof` /
-  `SaleProofView` in `src/app/pay/`), also shown when a paid sale's link is
-  reopened: the sale's code and colour (`saleMark`, from its id), a clock
+- **The thank-you of a sale is the proof screen, then a thank-you —
+  two screens that each fit a phone** (v0.102.1, the owner's call: on one
+  long page nobody scrolled down to the tray and the links).
+  `SaleProof` in `src/app/pay/` reads the data and the client
+  `SaleProofView` in `components/events/` draws it; also shown when a paid
+  sale's link is reopened. An un-handed self-service sale opens on the
+  proof and moves on to the thank-you by itself once the staff tap is
+  saved (a small link moves on early and back); a staff-rung or handed
+  sale opens on the thank-you. The proof: the sale's code and colour (`saleMark`, from its id), a clock
   that ticks (a screenshot does not), what was taken, and for a
   self-service sale **"Staff: tap once handed over"**, which stamps
   `event_sales.handed_at` through `/pay/<token>/handed` and reads as handed
@@ -1695,8 +1701,8 @@ paste, and the proof screen simply reads "not handed over".
   bought (`trayCubes`, at most 36, MIX spread over the others), wobbling
   under a finger through `wobble.ts` and when the phone is shaken —
   behind a "Shake the phone" button where iOS must be asked, on touch
-  screens only. Then Follow us (`FollowUs`, shared with the order
-  thank-you).
+  screens only. Then Follow us (`FollowUs` in `pay/FollowUs.tsx`, shared
+  with the order thank-you; `compact` is the two buttons side by side).
 - **`/events/<id>/signs`** (admin) prints the signs: a sign per box with
   its own QR, four to an A4, or one stall sign, as the setup chose; both
   languages, the box's deal on its sign. The QR points at the

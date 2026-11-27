@@ -92,6 +92,8 @@ export function payCopy(lang: PayLang) {
     handedDone: (time: string) => (he ? `נמסר ב-${time}` : `Handed over at ${time}`),
     thanksBuy: he ? "תודה שקניתם ב-Gems!" : "Thanks for buying Gems!",
     yourTray: he ? "המגש שלכם — נענעו אותו עם האצבע" : "Your tray — wobble it with a finger",
+    toThanks: he ? "לתודה ולמגש הג׳לי שלכם" : "On to your thank-you and jelly tray",
+    backToProof: he ? "חזרה למסך האישור" : "Back to the confirmation",
     shake: he ? "לנער את הטלפון 🍸" : "Shake the phone 🍸",
     pendingText: he
       ? "עדיין לא קיבלנו אישור מ-SUMIT. אם חויבת, נראה את זה אצלנו בקרוב — אין צורך לשלם שוב."
