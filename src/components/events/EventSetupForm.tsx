@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Clock, Plus, Trash2, X } from "lucide-react";
@@ -501,13 +502,7 @@ export function EventSetupForm({
               ))}
             </ul>
           </div>
-          <div className="rounded-card bg-black p-5 text-cream">
-            <p className="font-extrabold">On the day</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-cream/75">
-              The register for this event opens on the seller&apos;s phone — coming in the next stage, with the
-              signs to print.
-            </p>
-          </div>
+          <OnTheDay eventId={eventId} />
         </aside>
       </div>
     </div>
@@ -588,8 +583,10 @@ function Choice({ on, onClick, label, note }: { on: boolean; onClick: () => void
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`press rounded-2xl border-2 px-4 py-3.5 text-left transition-colors ${
-        on ? "border-black bg-card" : "border-line bg-[#FBF7F4]"
+      // No grow-on-hover here: a card this wide grows past the folding
+      // box around it, which clips its edge. It answers by its border.
+      className={`rounded-2xl border-2 px-4 py-3.5 text-left transition-[border-color,background-color,transform] duration-150 active:scale-[0.98] ${
+        on ? "border-black bg-card" : "border-line bg-[#FBF7F4] hover:border-ink/40"
       }`}
     >
       <span className="block font-extrabold">{label}</span>
@@ -646,5 +643,51 @@ function DealChip({ on, onClick, children }: { on: boolean; onClick: () => void;
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * The register's way in: a button, and a QR of the register's address for
+ * the seller to scan with their phone — the canvas's "On the day" card.
+ * Only once the event is saved, since the register needs its id.
+ */
+function OnTheDay({ eventId }: { eventId: number | null }) {
+  const [qr, setQr] = useState<string | null>(null);
+  useEffect(() => {
+    if (eventId === null) return;
+    let live = true;
+    QRCode.toDataURL(`${window.location.origin}/events/${eventId}/register`, {
+      margin: 1,
+      width: 300,
+      color: { dark: "#2A2520", light: "#FFFFFF" },
+    }).then((data) => live && setQr(data));
+    return () => {
+      live = false;
+    };
+  }, [eventId]);
+  return (
+    <div className="rounded-card bg-black p-5 text-cream">
+      <p className="font-extrabold">On the day</p>
+      {eventId === null ? (
+        <p className="mt-1.5 text-sm leading-relaxed text-cream/75">Save the event first — then the register opens from here.</p>
+      ) : (
+        <>
+          <p className="mt-1.5 text-sm leading-relaxed text-cream/75">
+            The seller scans this with their phone to open the register for this event.
+          </p>
+          {qr && (
+            // A data URL, so there is nothing for next/image to optimise.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={qr} alt="QR code that opens the register" className="mx-auto mt-3 h-36 w-36 rounded-xl bg-white p-2" />
+          )}
+          <Link
+            href={`/events/${eventId}/register`}
+            className="press mt-3 flex h-11 items-center justify-center rounded-full bg-cream font-extrabold text-black"
+          >
+            Open the register
+          </Link>
+        </>
+      )}
+    </div>
   );
 }

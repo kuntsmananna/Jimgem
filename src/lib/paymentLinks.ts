@@ -129,35 +129,92 @@ async function orderFor(orderId: number) {
   return { order, client };
 }
 
-/** Asks SUMIT for a page for this link. One metered call. */
-async function sumitPageFor(
-  link: { token: string; kind: PaymentLinkKind; amount: number },
-  order: Order,
-  client: Awaited<ReturnType<typeof orderFor>>["client"],
-  appUrl: string,
-): Promise<{ url: string; expiresAt: Date }> {
-  const page = paymentPageUrl(appUrl, link.token);
-  const url = await beginPaymentRedirect({
+/**
+ * Who pays and for what, as SUMIT and the customer's page need it — an
+ * order's client, or an event sale's walk-in customer (v0.101).
+ */
+interface ChargeTarget {
+  customer: { id: number | null; name: string; phone?: string | null; email?: string | null };
+  itemName: string;
+  description: string;
+  vatRate?: number;
+  /** For the customer's page. */
+  customerName: string;
+  date: string;
+  receiptByEmail: boolean;
+  items: { name: string; qty: number }[];
+}
+
+function orderTarget(kind: PaymentLinkKind, order: Order, client: Awaited<ReturnType<typeof orderFor>>["client"]): ChargeTarget {
+  return {
     customer: {
       id: client?.sumitCustomerId ?? null,
       name: client?.name || order.customer || "לקוח",
       phone: client?.phone,
       email: client?.email,
     },
-    items: [
-      {
-        // One income item per kind of charge, reused — see beginPaymentRedirect.
-        name: `${PAYMENT_LINK_KIND_HEBREW[link.kind]} — הזמנת Gems`,
-        description: `${order.customer} · ${formatOrderDate(order.date)}`,
-        unitPrice: link.amount,
-      },
-    ],
+    // One income item per kind of charge, reused — see beginPaymentRedirect.
+    itemName: `${PAYMENT_LINK_KIND_HEBREW[kind]} — הזמנת Gems`,
+    description: `${order.customer} · ${formatOrderDate(order.date)}`,
+    vatRate: order.vatMode === "exempt" ? 0 : undefined,
+    customerName: order.customer,
+    date: formatOrderDate(order.date),
+    receiptByEmail: !!client?.email,
+    items: [],
+  };
+}
+
+/** An event sale's target: no client, a walk-in — "לקוח מזדמן" to SUMIT. */
+async function saleTarget(saleId: number): Promise<ChargeTarget | null> {
+  const { rows } = await getDb().query<{ name: string; date: string | Date; items: { presetId: number; qty: number }[]; names: Record<string, string> | null }>(
+    `SELECT e.name, e.date, s.items,
+            (SELECT json_object_agg(p.id, p.name) FROM content_presets p
+              WHERE p.id IN (SELECT (i ->> 'presetId')::int FROM jsonb_array_elements(s.items) i)) AS names
+       FROM event_sales s JOIN events e ON e.id = s.event_id
+      WHERE s.id = $1`,
+    [saleId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const date = formatOrderDate(typeof row.date === "string" ? row.date.slice(0, 10) : row.date.toISOString().slice(0, 10));
+  const items = (row.items ?? []).map((i) => ({ name: row.names?.[String(i.presetId)] ?? "Gems", qty: i.qty }));
+  return {
+    customer: { id: null, name: "לקוח מזדמן" },
+    itemName: "רכישה באירוע — Gems",
+    description: `${row.name} · ${items.map((i) => `${i.qty}× ${i.name}`).join(", ")}`.slice(0, 250),
+    customerName: "",
+    date,
+    receiptByEmail: false,
+    items,
+  };
+}
+
+/** The target behind a stored link: its order, else the sale that points at it. */
+async function targetForLink(row: LinkRow): Promise<ChargeTarget | null> {
+  if (row.order_id !== null) {
+    const found = await orderFor(row.order_id).catch(() => null);
+    return found ? orderTarget(row.kind, found.order, found.client) : null;
+  }
+  const { rows } = await getDb().query<{ id: number }>("SELECT id FROM event_sales WHERE payment_link_id = $1", [row.id]);
+  return rows[0] ? saleTarget(rows[0].id) : null;
+}
+
+/** Asks SUMIT for a page for this link. One metered call. */
+async function sumitPageFor(
+  link: { token: string; amount: number },
+  target: ChargeTarget,
+  appUrl: string,
+): Promise<{ url: string; expiresAt: Date }> {
+  const page = paymentPageUrl(appUrl, link.token);
+  const url = await beginPaymentRedirect({
+    customer: target.customer,
+    items: [{ name: target.itemName, description: target.description, unitPrice: link.amount }],
     externalIdentifier: link.token,
     redirectUrl: `${page}/done`,
     cancelUrl: `${page}?cancelled=1`,
     expirationHours: EXPIRATION_HOURS,
-    emailReceiptTo: client?.email || null,
-    vatRate: order.vatMode === "exempt" ? 0 : undefined,
+    emailReceiptTo: target.customer.email || null,
+    vatRate: target.vatRate,
   });
   return { url, expiresAt: new Date(Date.now() + EXPIRATION_HOURS * 3600 * 1000) };
 }
@@ -185,7 +242,7 @@ export async function createPaymentLink(input: {
 
   const token = randomBytes(18).toString("base64url");
   try {
-    const page = await sumitPageFor({ token, kind: input.kind, amount }, order, client, input.appUrl);
+    const page = await sumitPageFor({ token, amount }, orderTarget(input.kind, order, client), input.appUrl);
     const { rows } = await getDb().query<LinkRow>(
       `INSERT INTO payment_links (token, order_id, kind, amount, sumit_url, sumit_expires_at, created_by, updated_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $7) RETURNING *`,
@@ -216,13 +273,15 @@ export interface PublicPaymentLink {
   /** "D/M". */
   date: string;
   receiptByEmail: boolean;
+  /** What an event sale took; empty for an order. */
+  items: { name: string; qty: number }[];
 }
 
 export async function getPublicLink(token: string): Promise<PublicPaymentLink | null> {
   const row = await linkByToken(token);
-  if (!row || row.order_id === null) return null;
-  const { order, client } = await orderFor(row.order_id).catch(() => ({ order: null, client: undefined }));
-  if (!order) return null;
+  if (!row) return null;
+  const target = await targetForLink(row);
+  if (!target) return null;
   const link = mapLink(row);
   return {
     token: link.token,
@@ -231,9 +290,10 @@ export async function getPublicLink(token: string): Promise<PublicPaymentLink | 
     status: link.status,
     paidAmount: link.paidAmount,
     paidAt: link.paidAt,
-    customer: order.customer,
-    date: formatOrderDate(order.date),
-    receiptByEmail: !!client?.email,
+    customer: target.customerName,
+    date: target.date,
+    receiptByEmail: target.receiptByEmail,
+    items: target.items,
   };
 }
 
@@ -243,18 +303,14 @@ export async function getPublicLink(token: string): Promise<PublicPaymentLink | 
  */
 export async function sumitUrlForCustomer(token: string, appUrl: string): Promise<string | null> {
   const row = await linkByToken(token);
-  if (!row || row.status !== "open" || row.order_id === null) return null;
+  if (!row || row.status !== "open") return null;
   const expires = row.sumit_expires_at ? new Date(row.sumit_expires_at).getTime() : 0;
   if (row.sumit_url && expires - Date.now() > EXPIRY_MARGIN_MS) return row.sumit_url;
 
-  const { order, client } = await orderFor(row.order_id);
+  const target = await targetForLink(row);
+  if (!target) return null;
   try {
-    const page = await sumitPageFor(
-      { token: row.token, kind: row.kind, amount: Number(row.amount) },
-      order,
-      client,
-      appUrl,
-    );
+    const page = await sumitPageFor({ token: row.token, amount: Number(row.amount) }, target, appUrl);
     await getDb().query("UPDATE payment_links SET sumit_url = $2, sumit_expires_at = $3 WHERE id = $1", [
       row.id,
       page.url,
@@ -308,6 +364,9 @@ async function markPaid(row: LinkRow, payment: SumitPayment): Promise<void> {
               paid_amount = $4, paid_at = now(), updated_at = now(), updated_by = $6
         WHERE id = $1 AND status <> 'paid'
         RETURNING order_id, paid_amount
+     ), sale AS (
+       UPDATE event_sales SET status = 'paid', paid_at = now()
+        WHERE payment_link_id = $1 AND status <> 'paid' AND EXISTS (SELECT 1 FROM link)
      ), card AS (
        SELECT id FROM payment_methods
         WHERE archived_at IS NULL
@@ -432,4 +491,32 @@ export async function reconcileOpenLinks(): Promise<{ open: number; paid: number
 /** A day's slack either side, since SUMIT's dates are its own clock's. */
 function dayBefore(date: Date): Date {
   return new Date(date.getTime() - 24 * 3600 * 1000);
+}
+
+/**
+ * A card payment for an event sale (v0.101): the sale row is written
+ * first (open), SUMIT is asked for a page, then the link is stored and the
+ * sale pointed at it. A refusal from SUMIT leaves the sale open with no
+ * link, which the register shows as a failure and can cancel.
+ */
+export async function createSaleLink(saleId: number, amount: number, appUrl: string, editor?: string): Promise<PaymentLink> {
+  const target = await saleTarget(saleId);
+  if (!target) throw new PaymentLinkError("That sale no longer exists.");
+  const token = randomBytes(18).toString("base64url");
+  try {
+    const page = await sumitPageFor({ token, amount }, target, appUrl);
+    const { rows } = await getDb().query<LinkRow>(
+      `WITH link AS (
+         INSERT INTO payment_links (token, order_id, kind, amount, sumit_url, sumit_expires_at, created_by, updated_by)
+         VALUES ($1, NULL, 'sale', $2, $3, $4, $5, $5) RETURNING *
+       ), sale AS (
+         UPDATE event_sales SET payment_link_id = (SELECT id FROM link) WHERE id = $6
+       )
+       SELECT * FROM link`,
+      [token, amount, page.url, page.expiresAt, editor ?? null, saleId],
+    );
+    return mapLink(rows[0]);
+  } finally {
+    await flushSumitCalls();
+  }
 }

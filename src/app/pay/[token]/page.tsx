@@ -57,16 +57,24 @@ export default async function PayPage({
   return (
     <PayShell lang={lang} token={token} back="page">
       <p className="text-sm font-semibold text-ink-soft">
-        {t.kind(link.kind)} {t.forOrder}
+        {link.kind === "sale" ? `${t.kind(link.kind)} · Gems` : `${t.kind(link.kind)} ${t.forOrder}`}
       </p>
       <p className="font-display mt-1 text-[52px] leading-none font-extrabold tabular-nums">
         <span dir="ltr">{shekels(link.amount)}</span>
       </p>
 
       <dl className="motion-stagger mt-5 divide-y divide-line border-y border-line">
-        <PayRow label={t.name}>
-          <span data-private>{link.customer}</span>
-        </PayRow>
+        {link.items.length > 0
+          ? link.items.map((item) => (
+              <PayRow key={item.name} label={item.name}>
+                × {item.qty}
+              </PayRow>
+            ))
+          : link.customer && (
+              <PayRow label={t.name}>
+                <span data-private>{link.customer}</span>
+              </PayRow>
+            )}
         <PayRow label={t.eventDate}>{link.date}</PayRow>
         <PayRow label={t.amount}>
           <span dir="ltr">{shekels(link.amount)}</span>

@@ -10,14 +10,18 @@ import { orderTotal, stillDue, type Order } from "./orderTypes";
  * What a link asks for. `custom` is an amount typed by hand; the other
  * three are worked out from the order (see `suggestedAmount`).
  */
-export const PAYMENT_LINK_KINDS = ["full", "deposit", "balance", "custom"] as const;
+export const PAYMENT_LINK_KINDS = ["full", "deposit", "balance", "custom", "sale"] as const;
 export type PaymentLinkKind = (typeof PAYMENT_LINK_KINDS)[number];
+
+/** The kinds an order's link may be — `sale` belongs to an event sale (v0.101). */
+export const ORDER_LINK_KINDS = ["full", "deposit", "balance", "custom"] as const;
 
 export const PAYMENT_LINK_KIND_LABEL: Record<PaymentLinkKind, string> = {
   deposit: "Deposit",
   balance: "Balance",
   full: "Whole order",
   custom: "Other amount",
+  sale: "Event sale",
 };
 
 /** The same, as the customer reads it — on the payment page and in the message. */
@@ -26,6 +30,7 @@ export const PAYMENT_LINK_KIND_HEBREW: Record<PaymentLinkKind, string> = {
   balance: "יתרת תשלום",
   full: "תשלום מלא",
   custom: "תשלום",
+  sale: "רכישה באירוע",
 };
 
 export type PaymentLinkStatus = "open" | "paid" | "cancelled";
@@ -60,6 +65,7 @@ export function suggestedAmount(order: Order, kind: PaymentLinkKind, depositPerc
     case "full":
       return round2(orderTotal(order));
     case "custom":
+    case "sale":
       return 0;
   }
 }

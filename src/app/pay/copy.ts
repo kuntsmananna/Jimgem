@@ -22,8 +22,8 @@ export function payLang(value: string | undefined): PayLang {
 }
 
 const KIND: Record<PayLang, Record<PaymentLinkKind, string>> = {
-  he: { deposit: "מקדמה", balance: "יתרת תשלום", full: "תשלום מלא", custom: "תשלום" },
-  en: { deposit: "Deposit", balance: "Balance", full: "Full payment", custom: "Payment" },
+  he: { deposit: "מקדמה", balance: "יתרת תשלום", full: "תשלום מלא", custom: "תשלום", sale: "רכישה באירוע" },
+  en: { deposit: "Deposit", balance: "Balance", full: "Full payment", custom: "Payment", sale: "Event purchase" },
 };
 
 export function payCopy(lang: PayLang) {

@@ -516,6 +516,7 @@ const KIND_TIP: Record<PaymentLinkKind, string> = {
   deposit: "Ask for part of the order up front — half, unless you change the percent",
   balance: "Ask for what is still due after what was paid",
   custom: "Type any amount yourself",
+  sale: "A sale at an event",
 };
 
 /** One read-only figure in the "Payment so far" box. */

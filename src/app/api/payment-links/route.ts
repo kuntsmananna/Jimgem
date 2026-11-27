@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { refuseNonAdmin } from "@/lib/guard";
 import { currentEditor } from "@/lib/editor";
 import { createPaymentLink, getLinksForOrder, PaymentLinkError } from "@/lib/paymentLinks";
-import { PAYMENT_LINK_KINDS, paymentPageUrl, type PaymentLinkKind } from "@/lib/paymentLinkTypes";
+import { ORDER_LINK_KINDS, paymentPageUrl, type PaymentLinkKind } from "@/lib/paymentLinkTypes";
 import { parseRowId } from "@/lib/validate";
 import { badRequest, readJson } from "@/lib/requestBody";
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const orderId = parseRowId(String(body.orderId ?? ""));
   if (orderId === null) return badRequest("No such order.");
-  if (!PAYMENT_LINK_KINDS.includes(body.kind as PaymentLinkKind)) return badRequest("Choose what the link is for.");
+  if (!(ORDER_LINK_KINDS as readonly string[]).includes(String(body.kind))) return badRequest("Choose what the link is for.");
   const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) return badRequest("The amount has to be more than ₪0.");
 

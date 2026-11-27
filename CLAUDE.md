@@ -1636,6 +1636,37 @@ migration to paste; nothing else is touched.
   popup and a Dashboard line per event (4). Sales will reuse
   `payment_links` (its `order_id` is nullable for exactly this).
 
+### v0.101 — events, stage 2: the register
+
+**Run `scripts/migrate-041-event-sales.sql` before shipping** (one new
+table, and `sale` added to `payment_links.kind`). Until it is run the
+register says which migration to paste.
+
+- **`/events/<id>/register`** (`EventRegister`, phone-first, Hebrew or
+  English by a switch remembered on the phone): a tile per box on the
+  table — tap adds one, a small minus takes one off, a springing count
+  badge, and "N left" where stock is counted (brought − sold − in basket);
+  a black bar with the basket, the deal that applies and the total over
+  **Cash** and **Charge**. Reached from the setup screen's "On the day"
+  card (a button and a QR of the register's address for the seller's
+  phone). Admins only for now, the owner's call.
+- **A sale is priced on the server** (`recordSale` in `eventSales.ts`):
+  the register sends only presets and counts, and the price is the event's
+  own through `priceBasket`, so a stale or tampered screen cannot charge
+  anything else. `event_sales` keeps the items with the price copied in,
+  subtotal, discount, total and the deal's words.
+- **Cash** is paid at once. **Charge** writes the sale open, makes a
+  payment link of kind `sale` (`createSaleLink`; SUMIT's customer is
+  "לקוח מזדמן", one item "רכישה באירוע"), and turns the phone to the
+  customer: the amount and a big QR of `/pay/<token>`. The register polls
+  `/api/event-sales/<id>` — our database, no SUMIT call — every 2.5s;
+  `markPaid` marks the sale paid in the same statement as its link, so the
+  return page, ↻ Check and the nightly net all reach it. "Paid cash
+  instead" and Cancel settle an open sale and cancel its link in one
+  statement. The customer's page lists what was taken for a sale.
+- Verified against a real Postgres: cash, card paid through `markPaid`,
+  cash-instead and cancel.
+
 ## Data-fetching conventions
 
 - Server Components fetch DB data directly at render time (via
