@@ -1,6 +1,6 @@
 import { getSaleProof } from "@/lib/eventSales";
 import { getContentPresets, getFlavors, getPackageTypes } from "@/lib/settings";
-import { presetSummaries, trayCubes } from "@/lib/eventPresets";
+import { NEUTRAL, presetSummaries, trayCubes } from "@/lib/eventPresets";
 import { SaleProofView } from "@/components/events/SaleProofView";
 import type { PayLang } from "./copy";
 
@@ -40,4 +40,3 @@ export async function SaleProof({ token, lang, amount }: { token: string; lang: 
   );
 }
 
-const NEUTRAL = { g: "#efe6df", b: "#d9cbc1", s: "#b9a89c" };

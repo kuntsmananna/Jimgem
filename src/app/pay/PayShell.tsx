@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { GemsLogo } from "@/components/GemsLogo";
 import { INSTAGRAM_URL, PAY_LANG_COOKIE, payCopy, payLang, SITE_URL, type PayLang } from "./copy";
+import { currencyExact } from "@/lib/money";
 
 /**
  * The frame every customer-facing payment page sits in (v0.99, redrawn in
@@ -81,9 +82,7 @@ export async function readPayLang(): Promise<PayLang> {
 }
 
 /** A shekel figure as the customer reads it — ₪1,234 or ₪1,234.50. */
-export function shekels(n: number): string {
-  return `₪${n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
-}
+export const shekels = currencyExact;
 
 /** A label and its value, one row of the card's short list. */
 export function PayRow({ label, children }: { label: string; children: React.ReactNode }) {

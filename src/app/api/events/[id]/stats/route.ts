@@ -3,7 +3,7 @@ import { refuseNonAdmin } from "@/lib/guard";
 import { getEvent } from "@/lib/events";
 import { getEventStats } from "@/lib/eventStats";
 import { getContentPresets, getFlavors, getPackageTypes, getStaff } from "@/lib/settings";
-import { presetSummaries } from "@/lib/eventPresets";
+import { NEUTRAL, presetSummaries } from "@/lib/eventPresets";
 import { parseRowId } from "@/lib/validate";
 import { badRequest } from "@/lib/requestBody";
 
@@ -49,7 +49,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/events/[id]
         presetId,
         name: summary?.name ?? "A retired box",
         units: summary?.units ?? 0,
-        color: summary?.color ?? { g: "#efe6df", b: "#d9cbc1", s: "#b9a89c" },
+        color: summary?.color ?? NEUTRAL,
         brought: event.products.find((p) => p.presetId === presetId)?.brought ?? null,
       };
     }),

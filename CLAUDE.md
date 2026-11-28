@@ -1724,7 +1724,8 @@ No migration.
   stall's customers are not orders. `MonthlyFinancials` carries
   `eventRevenue`/`eventSales` apart so the Biz Plan's average order value
   leaves event takings out. The year switch offers a year that has only
-  events (`getEventYears`), and the Dashboard's flavour split counts event
+  events (`getEventMonths` reads every year in one query, and the report
+  filters it), and the Dashboard's flavour split counts event
   boxes too (`getEventSaleItems` + `presetFlavorUnits`), so it adds up to
   the Units sold tile beside it.
 - **`EventStatsModal`** (the canvas's Stats board): customers, takings

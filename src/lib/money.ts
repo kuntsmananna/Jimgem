@@ -38,9 +38,12 @@ export function currency(amount: number): string {
  * app where the fraction is real; everything else is priced in shekels.
  */
 const exact = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const agorot = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function currencyExact(amount: number): string {
-  return withSign(exact.format(amount));
+  // ₪12.50, never ₪12.5: a fraction of a shekel is written as agorot.
+  const whole = Math.abs(Math.round(amount * 100)) % 100 === 0;
+  return withSign((whole ? exact : agorot).format(amount));
 }
 
 /**

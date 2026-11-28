@@ -5,6 +5,7 @@ import { Check, Lock, Minus, Plus } from "lucide-react";
 import { JellyHop } from "@/components/JellyLoader";
 import { payCopy, type PayLang } from "@/app/pay/copy";
 import { dealLabel, priceBasket, type EventDeal } from "@/lib/eventTypes";
+import { currencyExact } from "@/lib/money";
 
 export interface ShopProduct {
   presetId: number;
@@ -16,8 +17,7 @@ export interface ShopProduct {
   left: number | null;
 }
 
-const shekels = (n: number) =>
-  `₪${n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+const shekels = currencyExact;
 
 const storageKey = (token: string) => `gems:shop:${token}`;
 

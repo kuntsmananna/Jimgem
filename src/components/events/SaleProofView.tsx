@@ -6,11 +6,11 @@ import { HandOverButton, LiveClock } from "@/components/events/ProofClient";
 import { JellyTray } from "@/components/events/JellyTray";
 import { FollowUs } from "@/app/pay/FollowUs";
 import { payCopy, type PayLang } from "@/app/pay/copy";
+import { currencyExact } from "@/lib/money";
 
 type CubeColor = { g: string; b: string; s: string };
 
-const shekels = (n: number) =>
-  `₪${n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+const shekels = currencyExact;
 
 /** Letters nobody reads as a digit or as each other across a stall. */
 const CODE_LETTERS = "ACDEFHJKLMNPRTUVWXY";

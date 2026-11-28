@@ -24,6 +24,7 @@ const SALE_UNITS = `(SELECT COALESCE(sum((i ->> 'qty')::int * COALESCE(pt.units_
      LEFT JOIN package_types pt ON pt.id = cp.package_type_id)`;
 
 export interface EventMonth {
+  year: number;
   month: number;
   /** What customers paid, VAT included. */
   total: number;
@@ -32,21 +33,33 @@ export interface EventMonth {
   units: number;
 }
 
-/** Paid event takings per month of one year. Empty before migration 041. */
-export async function getEventMonths(year: number): Promise<EventMonth[]> {
+/**
+ * Paid event takings per month, every year at once — a handful of rows,
+ * and one round trip that also says which years have events for the
+ * reports' year switch. Empty before migration 041.
+ */
+export async function getEventMonths(): Promise<EventMonth[]> {
   try {
-    const { rows } = await getDb().query<{ month: number; total: string; net: string; sales: string; units: string }>(
-      `SELECT extract(month FROM e.date)::int AS month,
+    const { rows } = await getDb().query<{
+      year: number;
+      month: number;
+      total: string;
+      net: string;
+      sales: string;
+      units: string;
+    }>(
+      `SELECT extract(year FROM e.date)::int AS year,
+              extract(month FROM e.date)::int AS month,
               sum(s.total) AS total,
               sum(s.total / (1 + ${VAT_RATE} / 100)) AS net,
               count(*) AS sales,
               sum(${SALE_UNITS}) AS units
          FROM event_sales s JOIN events e ON e.id = s.event_id
-        WHERE s.status = 'paid' AND e.deleted_at IS NULL AND extract(year FROM e.date) = $1
-        GROUP BY 1 ORDER BY 1`,
-      [year],
+        WHERE s.status = 'paid' AND e.deleted_at IS NULL
+        GROUP BY 1, 2 ORDER BY 1, 2`,
     );
     return rows.map((r) => ({
+      year: r.year,
       month: r.month,
       total: Number(r.total),
       netTotal: Math.round(Number(r.net) * 100) / 100,
@@ -173,21 +186,6 @@ export async function getEventStats(eventId: number): Promise<EventStats> {
       };
     }),
   };
-}
-
-/** Every year with a paid event sale in it — for the reports' year switch. */
-export async function getEventYears(): Promise<number[]> {
-  try {
-    const { rows } = await getDb().query<{ year: number }>(
-      `SELECT DISTINCT extract(year FROM e.date)::int AS year
-         FROM event_sales s JOIN events e ON e.id = s.event_id
-        WHERE s.status = 'paid' AND e.deleted_at IS NULL`,
-    );
-    return rows.map((r) => r.year);
-  } catch (error) {
-    if (isMissingTable(error, "event_sales")) return [];
-    throw error;
-  }
 }
 
 /**

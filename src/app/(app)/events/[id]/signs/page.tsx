@@ -11,10 +11,11 @@ import { appUrlFor } from "@/lib/calendarSync";
 import { GemsLogo } from "@/components/GemsLogo";
 import { MigrationNeeded } from "@/components/Pane";
 import { PrintButton } from "@/components/events/PrintButton";
+import { currencyExact } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
-const shekels = (n: number) => `₪${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+const shekels = currencyExact;
 
 /** An SVG QR code as markup — generated here from our own address, so safe to inline. */
 function qrSvg(url: string): Promise<string> {

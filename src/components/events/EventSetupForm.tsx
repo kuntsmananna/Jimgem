@@ -11,7 +11,7 @@ import { Tip } from "@/components/Tip";
 import { notify } from "@/components/Notices";
 import { sendWrite } from "@/components/saveError";
 import { currency } from "@/lib/money";
-import type { PresetSummary } from "@/lib/eventPresets";
+import { NEUTRAL, type PresetSummary } from "@/lib/eventPresets";
 import {
   DEAL_KINDS,
   dealLabel,
@@ -614,7 +614,7 @@ function Cube({ color }: { color?: { g: string; b: string; s: string } }) {
     <span
       aria-hidden
       className="jelly-cube block h-6 w-6 rounded-[5px]"
-      style={{ ["--g" as string]: color?.g ?? "#efe6df", ["--b" as string]: color?.b ?? "#d9cbc1", ["--s" as string]: color?.s ?? "#b9a89c" }}
+      style={{ ["--g" as string]: color?.g ?? NEUTRAL.g, ["--b" as string]: color?.b ?? NEUTRAL.b, ["--s" as string]: color?.s ?? NEUTRAL.s }}
     />
   );
 }

@@ -1,4 +1,4 @@
-import { getEventMonths, getEventYears } from "./eventStats";
+import { getEventMonths } from "./eventStats";
 import { getOrders, orderMonth, orderUnits, type Order } from "./orders";
 import { isBooked, orderNet, orderTotal, stageMap, todayIso, vatOn, type VatMode } from "./orderTypes";
 import type { VatView } from "./vatView";
@@ -279,7 +279,7 @@ export async function getYearlyFinancials(
   year: number = Number(todayIso().slice(0, 4)),
 ): Promise<YearlyFinancials> {
   const net = vatView === "net";
-  const [orders, dbExpenses, packageTypes, eventMonths, eventYears] = await Promise.all([
+  const [orders, dbExpenses, packageTypes, allEventMonths] = await Promise.all([
     getOrders(),
     // The Sheet's monthly totals are no longer read here: migration 018
     // turned each into a real expenses row, so adding them again would
@@ -288,16 +288,16 @@ export async function getYearlyFinancials(
     // Archived included: units sold is computed from stored package
     // lines, which can reference a package type since retired.
     getPackageTypes(true),
-    getEventMonths(year),
-    getEventYears(),
+    getEventMonths(),
   ]);
   const packageUnitsById = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
+  const eventMonths = allEventMonths.filter((e) => e.year === year);
   const years = [
     ...new Set([
       year,
       ...orders.map((o) => yearOf(o.date)).filter((y): y is number => y !== null),
       ...dbExpenses.map((e) => e.year),
-      ...eventYears,
+      ...allEventMonths.map((e) => e.year),
     ]),
   ].sort((a, b) => b - a);
   const revenue = await getMonthlyRevenue(

@@ -15,7 +15,8 @@ export interface PresetSummary {
   color: { g: string; b: string; s: string };
 }
 
-const NEUTRAL = { g: "#efe6df", b: "#d9cbc1", s: "#b9a89c" };
+/** The colour of a box with no flavour to take one from. */
+export const NEUTRAL = { g: "#efe6df", b: "#d9cbc1", s: "#b9a89c" };
 
 export function presetSummaries(presets: ContentPreset[], flavors: Flavor[], packageTypes: PackageType[]): PresetSummary[] {
   return presets.map((preset) => {

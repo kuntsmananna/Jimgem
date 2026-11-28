@@ -6,6 +6,7 @@
  * the server all have to agree on.
  */
 
+import { currencyExact } from "./money";
 /** Who a self-service sale is recorded as sold by (v0.102). */
 export const SELF_SERVICE = "self-service";
 
@@ -171,7 +172,7 @@ export function priceBasket(lines: BasketLine[], deals: EventDeal[]): BasketPric
 
 /** A deal in a few words, for lists and the register — "3 for ₪100", or in Hebrew. */
 export function dealLabel(deal: EventDeal, lang: "en" | "he" = "en"): string {
-  const shekels = (n: number | null) => `₪${(n ?? 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  const shekels = (n: number | null) => currencyExact(n ?? 0);
   const he = lang === "he";
   switch (deal.kind) {
     case "bundle":
