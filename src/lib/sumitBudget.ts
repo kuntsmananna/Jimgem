@@ -166,6 +166,38 @@ export async function assertWithinSumitBudget(): Promise<void> {
   if (available && used >= SUMIT_CALL_BUDGET) throw new SumitBudgetError(used);
 }
 
+/**
+ * How many SUMIT calls an hour the public pages may start (v0.103.4). The
+ * payment page's Pay button and its thank-you each spend a call, and since
+ * the self-service shop anyone can mint a payment link from a printed QR —
+ * so without a ceiling a script could spend the month's allowance in
+ * minutes and stop every real card payment with it. Counted from the log,
+ * so it holds across serverless instances; a busy stall is a few customers
+ * a minute at most, two calls each.
+ */
+export const PUBLIC_SUMIT_CALLS_PER_HOUR = 60;
+
+export class SumitBusyError extends Error {
+  constructor() {
+    super("Too many payment pages were opened in the last hour. Try again shortly.");
+    this.name = "SumitBusyError";
+  }
+}
+
+/** Refuses a call a public page is about to make when the last hour already had its share. */
+export async function assertPublicSumitAllowance(): Promise<void> {
+  try {
+    const { rows } = await getDb().query<{ n: string }>(
+      "SELECT count(*) AS n FROM sumit_api_calls WHERE called_at > now() - interval '1 hour'",
+    );
+    if (Number(rows[0]?.n ?? 0) >= PUBLIC_SUMIT_CALLS_PER_HOUR) throw new SumitBusyError();
+  } catch (error) {
+    // No log table, nothing to count by — the monthly gate says the same.
+    if (isMissingTable(error, "sumit_api_calls")) return;
+    throw error;
+  }
+}
+
 /** Log writes in flight, so a burst can wait for its own record of itself. */
 const pending = new Set<Promise<void>>();
 

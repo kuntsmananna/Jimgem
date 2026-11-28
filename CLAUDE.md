@@ -1684,7 +1684,14 @@ paste, and the proof screen simply reads "not handed over".
   seller `self-service`, and makes the link **without a SUMIT page**
   (`createSaleLink`'s `lazy`): anyone can fill a basket from a printed
   sign, so the metered call waits for Pay, where `sumitUrlForCustomer`
-  makes it. `shopIsBusy` refuses past 120 baskets in ten minutes per event.
+  makes it. `shopIsBusy` refuses past 40 baskets in ten minutes per event.
+  **The public pages' SUMIT calls are capped** (v0.103.4): since the shop,
+  anyone can mint a payment link, so `/pay/<token>/go` and the thank-you's
+  confirm each check `assertPublicSumitAllowance` (60 calls in the last
+  hour, counted from `sumit_api_calls`, so it holds across instances)
+  before spending one; the confirm also skips a link that never reached
+  SUMIT (no `sumit_url`) and asks once per link per ten minutes, whatever
+  payment id is offered. The language cookie is `Secure`.
 - **The thank-you of a sale is the proof screen, then a thank-you —
   two screens that each fit a phone** (v0.102.1, the owner's call: on one
   long page nobody scrolled down to the tray and the links).

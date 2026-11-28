@@ -35,7 +35,7 @@ import { getOrderById } from "./orders";
 import { getClientById } from "./clients";
 import { formatOrderDate, orderTotal, type Order } from "./orderTypes";
 import { beginPaymentRedirect, getPayment, listValidPayments, type SumitPayment } from "./sumit";
-import { flushSumitCalls } from "./sumitBudget";
+import { assertPublicSumitAllowance, flushSumitCalls } from "./sumitBudget";
 import {
   PAYMENT_LINK_KIND_HEBREW,
   paymentPageUrl,
@@ -313,6 +313,7 @@ export async function sumitUrlForCustomer(token: string, appUrl: string): Promis
 
   const target = await targetForLink(row);
   if (!target) return null;
+  await assertPublicSumitAllowance();
   try {
     const page = await sumitPageFor({ token: row.token, amount: Number(row.amount) }, target, appUrl);
     await getDb().query("UPDATE payment_links SET sumit_url = $2, sumit_expires_at = $3 WHERE id = $1", [
@@ -421,12 +422,18 @@ const ASK_AGAIN_MS = 10 * 60 * 1000;
 export async function confirmReturn(token: string, paymentId: number | null): Promise<PaymentLinkStatus | null> {
   const row = await linkByToken(token);
   if (!row) return null;
-  if (row.status === "paid" || paymentId === null) return row.status;
-  const key = `${row.id}:${paymentId}`;
+  // A link that never reached SUMIT cannot have been paid there — and a
+  // self-service basket has no SUMIT page until Pay is pressed, so the
+  // made-up ids a script could send are answered without a call.
+  if (row.status === "paid" || paymentId === null || !row.sumit_url) return row.status;
+  // Once per link per window, whatever id is offered: keyed by the id too,
+  // one token and a counter would buy a SUMIT call per request.
+  const key = String(row.id);
   const now = Date.now();
   if ((askedRecently.get(key) ?? 0) > now - ASK_AGAIN_MS) return row.status;
   askedRecently.set(key, now);
   if (askedRecently.size > 500) askedRecently.clear();
+  await assertPublicSumitAllowance();
   try {
     const payment = await getPayment(paymentId);
     if (!returnMatches(payment, row)) return row.status;

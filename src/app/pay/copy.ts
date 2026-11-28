@@ -24,8 +24,8 @@ export const SITE_URL = "https://gem-bites.com";
  */
 export function setPayLangCookie(response: Response, lang: PayLang) {
   const year = 60 * 60 * 24 * 365;
-  response.headers.append("Set-Cookie", `${PAY_LANG_COOKIE}=${lang}; Path=/; Max-Age=${year}; SameSite=Lax; HttpOnly`);
-  response.headers.append("Set-Cookie", `${PAY_LANG_COOKIE}=; Path=/pay; Max-Age=0; SameSite=Lax; HttpOnly`);
+  response.headers.append("Set-Cookie", `${PAY_LANG_COOKIE}=${lang}; Path=/; Max-Age=${year}; SameSite=Lax; HttpOnly; Secure`);
+  response.headers.append("Set-Cookie", `${PAY_LANG_COOKIE}=; Path=/pay; Max-Age=0; SameSite=Lax; HttpOnly; Secure`);
 }
 
 export function payLang(value: string | undefined): PayLang {

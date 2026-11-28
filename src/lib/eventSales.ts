@@ -141,7 +141,7 @@ export async function settleOpenSale(id: number, how: "cancel" | "cash"): Promis
  * no SUMIT call, but a script filling the table with open sales is still
  * worth stopping. Far above what a queue at a stall can produce.
  */
-const SHOP_BASKETS_PER_10_MIN = 120;
+const SHOP_BASKETS_PER_10_MIN = 40;
 
 export async function shopIsBusy(eventId: number): Promise<boolean> {
   const { rows } = await getDb().query<{ n: string }>(
