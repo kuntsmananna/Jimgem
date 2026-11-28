@@ -23,7 +23,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/events/[id]
   const [event, stats, presets, flavors, packageTypes, staff] = await Promise.all([
     getEvent(id),
     getEventStats(id),
-    getContentPresets(),
+    getContentPresets(true),
     getFlavors(true),
     getPackageTypes(true),
     getStaff(),

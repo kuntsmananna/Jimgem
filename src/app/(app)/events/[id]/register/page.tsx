@@ -18,7 +18,7 @@ export default async function EventRegisterPage({ params }: { params: Promise<{ 
     getEvent(id),
     getEventTally(id),
     // Archived included: a preset retired after the event was set up still sells.
-    getContentPresets(),
+    getContentPresets(true),
     getFlavors(true),
     getPackageTypes(true),
   ]);

@@ -20,7 +20,7 @@ export async function SaleProof({ token, lang, amount }: { token: string; lang: 
   const proof = await getSaleProof(token);
   if (!proof) return null;
   const [presets, flavors, packageTypes] = await Promise.all([
-    getContentPresets(),
+    getContentPresets(true),
     getFlavors(true),
     getPackageTypes(true),
   ]);

@@ -143,10 +143,12 @@ export interface MonthlyRevenue {
 export async function getMonthlyRevenue(
   orders: Order[],
   packageUnitsById: Map<number, number>,
-): Promise<MonthlyRevenue[]> {
   // Archived stages included: an order can sit in a stage since retired,
-  // and it still has to be classified as a sale or a quote.
-  const stages = stageMap(await getProductionStages(true));
+  // and it still has to be classified as a sale or a quote. Passed in by a
+  // caller already reading in parallel, so it is not a round trip of its own.
+  stageRows?: Awaited<ReturnType<typeof getProductionStages>>,
+): Promise<MonthlyRevenue[]> {
+  const stages = stageMap(stageRows ?? (await getProductionStages(true)));
   const byMonth = new Map<number, MonthlyRevenue>();
 
   for (const order of orders) {
@@ -258,6 +260,16 @@ export interface YearlyFinancials {
   months: MonthlyFinancials[];
 }
 
+/**
+ * Which year a report page shows: `?year=` when it is one, else this year.
+ * One rule for the Dashboard and the Biz Plan, which both need the year
+ * before `getYearlyFinancials` answers (for the year's events).
+ */
+export function reportYear(asked: string | string[] | undefined): number {
+  const year = Number(asked);
+  return Number.isInteger(year) && year > 2000 ? year : Number(todayIso().slice(0, 4));
+}
+
 /** The calendar year an ISO date ("2026-08-14") falls in, or null. */
 export function yearOf(date: string): number | null {
   const match = date.trim().match(/^(\d{4})-\d{2}-\d{2}$/);
@@ -279,7 +291,7 @@ export async function getYearlyFinancials(
   year: number = Number(todayIso().slice(0, 4)),
 ): Promise<YearlyFinancials> {
   const net = vatView === "net";
-  const [orders, dbExpenses, packageTypes, allEventMonths] = await Promise.all([
+  const [orders, dbExpenses, packageTypes, allEventMonths, stageRows] = await Promise.all([
     getOrders(),
     // The Sheet's monthly totals are no longer read here: migration 018
     // turned each into a real expenses row, so adding them again would
@@ -289,6 +301,7 @@ export async function getYearlyFinancials(
     // lines, which can reference a package type since retired.
     getPackageTypes(true),
     getEventMonths(),
+    getProductionStages(true),
   ]);
   const packageUnitsById = new Map(packageTypes.map((p) => [p.id, p.unitsPerPackage]));
   const eventMonths = allEventMonths.filter((e) => e.year === year);
@@ -303,6 +316,7 @@ export async function getYearlyFinancials(
   const revenue = await getMonthlyRevenue(
     orders.filter((o) => yearOf(o.date) === year),
     packageUnitsById,
+    stageRows,
   );
 
   const expensesByMonth = new Map<number, { total: number; byCategory: Record<string, number> }>();

@@ -54,7 +54,7 @@ export default async function EventSignsPage({ params }: { params: Promise<{ id:
   const [, event, presets, flavors, packageTypes, requestHeaders] = await Promise.all([
     requireAdminPage(),
     getEvent(id),
-    getContentPresets(),
+    getContentPresets(true),
     getFlavors(true),
     getPackageTypes(true),
     headers(),

@@ -1738,7 +1738,12 @@ No migration.
   when opened, so no page carries every event's sales.
 - **One row per event** (`EventsPane`) under the Biz Plan's months and in
   the Dashboard's column (narrowed by its month pills), each opening the
-  popup; drawn only when the year has events. The Events page shows each
+  popup; drawn only when the year has events. Takings read through
+  `forEvent` beside `forOrder`/`forExpense` in `VatViewContext`, and both
+  report pages take their year from `reportYear` in `financials.ts`.
+  **`getContentPresets(true)`** is what every event screen and the reports
+  pass (v0.103.3): a preset retired after an event was set up still sells
+  and still has to resolve, and the default dropped it. The Events page shows each
   event's customers and takings (following the VAT switch), with a **Stats** button
   (`EventStatsButton`) beside the row's link.
 

@@ -38,7 +38,7 @@ export default async function ShopPage({ params }: { params: Promise<{ token: st
 
   const [tally, presets, flavors, packageTypes] = await Promise.all([
     getEventTally(event.id),
-    getContentPresets(),
+    getContentPresets(true),
     getFlavors(true),
     getPackageTypes(true),
   ]);

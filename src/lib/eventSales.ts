@@ -11,8 +11,6 @@
 import { getDb, isMissingTable } from "./db";
 import { getEvent } from "./events";
 import { dealLabel, priceBasket, SELF_SERVICE, type BasketLine } from "./eventTypes";
-
-export { SELF_SERVICE };
 import { createSaleLink, PaymentLinkError } from "./paymentLinks";
 import { paymentPageUrl } from "./paymentLinkTypes";
 

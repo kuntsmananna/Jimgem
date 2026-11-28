@@ -38,9 +38,9 @@ export function EventStatsButton({ eventId, className = "" }: { eventId: number;
  */
 export function EventsPane({ events, year }: { events: EventSummary[]; year: number }) {
   const [open, setOpen] = useState<number | null>(null);
-  const { view, label } = useVatView();
+  const { label, forEvent } = useVatView();
   if (events.length === 0) return null;
-  const total = events.reduce((sum, e) => sum + (view === "net" ? e.netTakings : e.takings), 0);
+  const total = events.reduce((sum, e) => sum + forEvent(e), 0);
   return (
     <section className="rounded-card border border-line bg-card p-6 max-md:p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -73,7 +73,7 @@ export function EventsPane({ events, year }: { events: EventSummary[]; year: num
                 </span>
               </span>
               <span className="text-sm text-ink-soft tabular-nums max-md:hidden">{count(e.sales)} customers</span>
-              <span className="font-bold tabular-nums">{currency(view === "net" ? e.netTakings : e.takings)}</span>
+              <span className="font-bold tabular-nums">{currency(forEvent(e))}</span>
               <ChevronRight size={16} className="text-ink-soft" aria-hidden />
             </button>
           </li>

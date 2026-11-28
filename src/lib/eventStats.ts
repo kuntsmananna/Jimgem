@@ -149,9 +149,7 @@ const ISRAEL_CLOCK = new Intl.DateTimeFormat("en-GB", {
 
 /** Every paid sale of one event, oldest first. */
 export async function getEventStats(eventId: number): Promise<EventStats> {
-  const db = getDb();
-  const [{ rows }, vat] = await Promise.all([
-    db.query<{
+  const { rows } = await getDb().query<{
       id: number;
       at: string | Date;
       items: { presetId: number; qty: number }[];
@@ -160,17 +158,16 @@ export async function getEventStats(eventId: number): Promise<EventStats> {
       seller: string | null;
       total: string;
       discount: string;
+      vat_rate: string;
     }>(
       // When it was rung up, not when it was confirmed: a card payment the
       // nightly check confirms at 04:00 still happened at the stall.
-      `SELECT id, created_at AS at, items, deal, method, seller, total, discount
+      `SELECT id, created_at AS at, items, deal, method, seller, total, discount, ${VAT_RATE} AS vat_rate
          FROM event_sales WHERE event_id = $1 AND status = 'paid' ORDER BY created_at, id`,
       [eventId],
-    ),
-    db.query<{ amount: string }>("SELECT amount FROM prices WHERE key = 'vat_rate'"),
-  ]);
+  );
   return {
-    vatRate: Number(vat.rows[0]?.amount ?? 0),
+    vatRate: Number(rows[0]?.vat_rate ?? 0),
     sales: rows.map((r) => {
       const time = ISRAEL_CLOCK.format(new Date(r.at));
       const [h, m] = time.split(":").map(Number);
@@ -196,9 +193,11 @@ export async function getEventStats(eventId: number): Promise<EventStats> {
 export async function getEventSaleItems(year: number): Promise<{ month: number; presetId: number; qty: number }[]> {
   try {
     const { rows } = await getDb().query<{ month: number; preset_id: number; qty: number }>(
-      `SELECT extract(month FROM e.date)::int AS month, (i ->> 'presetId')::int AS preset_id, (i ->> 'qty')::int AS qty
+      `SELECT extract(month FROM e.date)::int AS month, (i ->> 'presetId')::int AS preset_id,
+              sum((i ->> 'qty')::int)::int AS qty
          FROM event_sales s JOIN events e ON e.id = s.event_id, jsonb_array_elements(s.items) i
-        WHERE s.status = 'paid' AND e.deleted_at IS NULL AND extract(year FROM e.date) = $1`,
+        WHERE s.status = 'paid' AND e.deleted_at IS NULL AND extract(year FROM e.date) = $1
+        GROUP BY 1, 2`,
       [year],
     );
     return rows.map((r) => ({ month: r.month, presetId: r.preset_id, qty: r.qty }));

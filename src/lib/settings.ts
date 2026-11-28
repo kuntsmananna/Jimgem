@@ -271,14 +271,20 @@ function nestPresets(presetRows: PresetRow[], flavorRows: PresetFlavorRow[]): Co
   }));
 }
 
-export async function getContentPresets(): Promise<ContentPreset[]> {
+/**
+ * The saved presets. `includeArchived` for a lookup that resolves boxes
+ * already sold or set on an event's table — a preset retired since must
+ * still have its name, size and recipe — and not for a picker.
+ */
+export async function getContentPresets(includeArchived = false): Promise<ContentPreset[]> {
   const db = getDb();
   const [{ rows: presetRows }, { rows: flavorRows }] = await Promise.all([
-    db.query<PresetRow>("SELECT * FROM content_presets WHERE archived_at IS NULL ORDER BY id"),
+    db.query<PresetRow>("SELECT * FROM content_presets WHERE $1 OR archived_at IS NULL ORDER BY id", [includeArchived]),
     db.query<PresetFlavorRow>(
       `SELECT f.* FROM content_preset_flavors f
        JOIN content_presets p ON p.id = f.preset_id
-       WHERE p.archived_at IS NULL`,
+       WHERE $1 OR p.archived_at IS NULL`,
+      [includeArchived],
     ),
   ]);
   return nestPresets(presetRows, flavorRows);

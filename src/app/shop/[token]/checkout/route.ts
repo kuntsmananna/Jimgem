@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEventByToken } from "@/lib/events";
-import { recordSale, SELF_SERVICE, shopIsBusy } from "@/lib/eventSales";
+import { recordSale, shopIsBusy } from "@/lib/eventSales";
+import { SELF_SERVICE } from "@/lib/eventTypes";
 import { PaymentLinkError } from "@/lib/paymentLinks";
 import { parseSaleItems } from "@/lib/validate";
 import { badRequest, readJson } from "@/lib/requestBody";

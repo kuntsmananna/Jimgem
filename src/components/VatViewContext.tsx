@@ -14,6 +14,8 @@ interface VatViewValue {
   forOrder: (order: Order | OrderInput) => number;
   /** The same for an expense, which stores its net alongside its amount. */
   forExpense: (expense: { amount: number; netAmount: number }) => number;
+  /** The same for an event's takings, which carry their net beside them. */
+  forEvent: (event: { takings: number; netTakings: number }) => number;
 }
 
 const VatViewContext = createContext<VatViewValue | null>(null);
@@ -48,6 +50,7 @@ export function VatViewProvider({ view, children }: { view: VatView; children: R
         // so there is no single divisor for the month.
         forOrder: (order) => (view === "net" ? orderNet(order) : orderTotal(order)),
         forExpense: (expense) => (view === "net" ? expense.netAmount : expense.amount),
+        forEvent: (event) => (view === "net" ? event.netTakings : event.takings),
       }}
     >
       {children}
@@ -67,6 +70,7 @@ export function useVatView(): VatViewValue {
       setView: () => {},
       forOrder: orderTotal,
       forExpense: (expense) => expense.amount,
+      forEvent: (event) => event.takings,
     }
   );
 }

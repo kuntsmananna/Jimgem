@@ -25,7 +25,7 @@ export default async function EventsPage() {
   const [, { available, events }, presets, summaries, vatView] = await Promise.all([
     requireAdminPage(),
     getEvents(),
-    getContentPresets(),
+    getContentPresets(true),
     getEventSummaries(),
     getVatView(),
   ]);

@@ -1,6 +1,6 @@
-import { getYearlyFinancials, yearOf } from "@/lib/financials";
+import { getYearlyFinancials, reportYear, yearOf } from "@/lib/financials";
 import { getOrders, orderMonth, orderFlavorUnits } from "@/lib/orders";
-import { isBooked, stageMap, todayIso } from "@/lib/orderTypes";
+import { isBooked, stageMap } from "@/lib/orderTypes";
 import { getEventSaleItems, getEventSummaries } from "@/lib/eventStats";
 import { presetFlavorUnits } from "@/lib/eventPresets";
 import { aroundToday, inRange } from "@/lib/orderScope";
@@ -17,8 +17,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   // Money lives on this page — see requireAdminPage.
   await requireAdminPage();
   const vatView = await getVatView();
-  const asked = Number((await searchParams).year);
-  const askedYear = Number.isInteger(asked) && asked > 2000 ? asked : Number(todayIso().slice(0, 4));
+  const askedYear = reportYear((await searchParams).year);
   const [
     { year, years, months: financials },
     orders,
@@ -47,7 +46,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
     getEventSummaries(askedYear),
     getEventSaleItems(askedYear),
     // Archived included: a sale may hold a preset or size since retired.
-    getContentPresets(),
+    getContentPresets(true),
     getPackageTypes(true),
   ]);
 
